@@ -12,6 +12,8 @@ import Dependencies from "./pages/Dependencies";
 import Assumptions from "./pages/Assumptions";
 import ActionLog from "./pages/ActionLog";
 import Relationships from "./pages/Relationships";
+import Stakeholders from "./pages/Stakeholders";
+import Deliverables from "./pages/Deliverables";
 import DashboardLayout from "./components/DashboardLayout";
 
 function Router() {
@@ -41,6 +43,16 @@ function Router() {
       <Route path={"/assumptions"}>
         <DashboardLayout>
           <Assumptions />
+        </DashboardLayout>
+      </Route>
+      <Route path={"/stakeholders"}>
+        <DashboardLayout>
+          <Stakeholders />
+        </DashboardLayout>
+      </Route>
+      <Route path={"/deliverables"}>
+        <DashboardLayout>
+          <Deliverables />
         </DashboardLayout>
       </Route>
       <Route path={"/action-log"}>

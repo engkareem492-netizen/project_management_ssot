@@ -338,7 +338,7 @@ export const appRouter = router({
   // Requirements
   requirements: router({
     list: protectedProcedure.query(async () => {
-      return await db.getAllRequirements();
+      return await db.getAllRequirementsSorted();
     }),
 
     get: protectedProcedure
@@ -349,7 +349,6 @@ export const appRouter = router({
 
     create: protectedProcedure
       .input(z.object({
-        idCode: z.string(),
         taskGroup: z.string().optional(),
         issueGroup: z.string().optional(),
         type: z.string().optional(),
@@ -357,6 +356,7 @@ export const appRouter = router({
         category: z.string().optional(),
         agreement: z.string().optional(),
         owner: z.string().optional(),
+        ownerId: z.number().optional(),
         description: z.string().optional(),
         sourceType: z.string().optional(),
         refSource: z.string().optional(),
@@ -370,8 +370,44 @@ export const appRouter = router({
         updateDate: z.string().optional(),
       }))
       .mutation(async ({ input }) => {
-        await db.createRequirement(input);
-        return { success: true };
+        // Generate auto ID
+        const idCode = await db.getNextId('requirement', 'Q');
+        await db.createRequirement({ ...input, idCode });
+        return { success: true, idCode };
+      }),
+
+    createTask: protectedProcedure
+      .input(z.object({
+        requirementId: z.string(),
+        description: z.string().optional(),
+        responsible: z.string().optional(),
+        responsibleId: z.number().optional(),
+        accountable: z.string().optional(),
+        accountableId: z.number().optional(),
+        informed: z.string().optional(),
+        consulted: z.string().optional(),
+        dueDate: z.string().optional(),
+        status: z.string().optional(),
+        priority: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        // Generate auto ID for task
+        const taskId = await db.getNextId('task', 'T');
+        await db.createTask({
+          taskId,
+          requirementId: input.requirementId,
+          description: input.description,
+          responsible: input.responsible,
+          responsibleId: input.responsibleId,
+          accountable: input.accountable,
+          accountableId: input.accountableId,
+          informed: input.informed,
+          consulted: input.consulted,
+          dueDate: input.dueDate,
+          status: input.status,
+          priority: input.priority,
+        });
+        return { success: true, taskId };
       }),
 
     update: protectedProcedure
@@ -458,7 +494,7 @@ export const appRouter = router({
   // Tasks
   tasks: router({
     list: protectedProcedure.query(async () => {
-      return await db.getAllTasks();
+      return await db.getAllTasksSorted();
     }),
 
     get: protectedProcedure
@@ -469,22 +505,31 @@ export const appRouter = router({
 
     create: protectedProcedure
       .input(z.object({
-        taskId: z.string(),
         taskGroup: z.string().optional(),
         dependencyId: z.string().optional(),
         requirementId: z.string().optional(),
         description: z.string().optional(),
         responsible: z.string().optional(),
+        responsibleId: z.number().optional(),
         accountable: z.string().optional(),
+        accountableId: z.number().optional(),
         informed: z.string().optional(),
+        informedId: z.number().optional(),
         consulted: z.string().optional(),
+        consultedId: z.number().optional(),
+        owner: z.string().optional(),
+        ownerId: z.number().optional(),
         dueDate: z.string().optional(),
         currentStatus: z.string().optional(),
         statusUpdate: z.string().optional(),
+        status: z.string().optional(),
+        priority: z.string().optional(),
       }))
       .mutation(async ({ input }) => {
-        await db.createTask(input);
-        return { success: true };
+        // Generate auto ID
+        const taskId = await db.getNextId('task', 'T');
+        await db.createTask({ ...input, taskId });
+        return { success: true, taskId };
       }),
 
     update: protectedProcedure
@@ -543,7 +588,7 @@ export const appRouter = router({
   // Issues
   issues: router({
     list: protectedProcedure.query(async () => {
-      return await db.getAllIssues();
+      return await db.getAllIssuesSorted();
     }),
 
     get: protectedProcedure
@@ -554,13 +599,13 @@ export const appRouter = router({
 
     create: protectedProcedure
       .input(z.object({
-        issueId: z.string(),
         issueGroup: z.string().optional(),
         taskGroup: z.string().optional(),
         requirementId: z.string().optional(),
         type: z.string().optional(),
         class: z.string().optional(),
         owner: z.string().optional(),
+        ownerId: z.number().optional(),
         status: z.string().optional(),
         description: z.string().optional(),
         sourceType: z.string().optional(),
@@ -574,8 +619,10 @@ export const appRouter = router({
         updateDate: z.string().optional(),
       }))
       .mutation(async ({ input }) => {
-        await db.createIssue(input);
-        return { success: true };
+        // Generate auto ID
+        const issueId = await db.getNextId('issue', 'I');
+        await db.createIssue({ ...input, issueId });
+        return { success: true, issueId };
       }),
 
     update: protectedProcedure
@@ -638,22 +685,30 @@ export const appRouter = router({
   // Dependencies
   dependencies: router({
     list: protectedProcedure.query(async () => {
-      return await db.getAllDependencies();
+      return await db.getAllDependenciesSorted();
     }),
 
     create: protectedProcedure
       .input(z.object({
-        dependencyId: z.string(),
         taskId: z.string().optional(),
         requirementId: z.string().optional(),
         description: z.string().optional(),
         responsible: z.string().optional(),
+        responsibleId: z.number().optional(),
+        accountable: z.string().optional(),
+        accountableId: z.number().optional(),
+        informed: z.string().optional(),
+        informedId: z.number().optional(),
+        consulted: z.string().optional(),
+        consultedId: z.number().optional(),
         dueDate: z.string().optional(),
         currentStatus: z.string().optional(),
       }))
       .mutation(async ({ input }) => {
-        await db.createDependency(input);
-        return { success: true };
+        // Generate auto ID
+        const dependencyId = await db.getNextId('dependency', 'D');
+        await db.createDependency({ ...input, dependencyId });
+        return { success: true, dependencyId };
       }),
 
     delete: protectedProcedure
@@ -667,20 +722,22 @@ export const appRouter = router({
   // Assumptions
   assumptions: router({
     list: protectedProcedure.query(async () => {
-      return await db.getAllAssumptions();
+      return await db.getAllAssumptionsSorted();
     }),
 
     create: protectedProcedure
       .input(z.object({
-        assumptionId: z.string(),
         description: z.string().optional(),
         category: z.string().optional(),
         owner: z.string().optional(),
+        ownerId: z.number().optional(),
         status: z.string().optional(),
       }))
       .mutation(async ({ input }) => {
-        await db.createAssumption(input);
-        return { success: true };
+        // Generate auto ID
+        const assumptionId = await db.getNextId('assumption', 'A');
+        await db.createAssumption({ ...input, assumptionId });
+        return { success: true, assumptionId };
       }),
 
     delete: protectedProcedure
@@ -717,6 +774,188 @@ export const appRouter = router({
       .input(z.object({ requirementId: z.string() }))
       .query(async ({ input }) => {
         return await db.getRequirementRelationships(input.requirementId);
+      }),
+
+    getWithLinkedItems: protectedProcedure
+      .input(z.object({ requirementId: z.string() }))
+      .query(async ({ input }) => {
+        return await db.getRequirementWithLinkedItems(input.requirementId);
+      }),
+  }),
+
+  // Stakeholders
+  stakeholders: router({
+    list: protectedProcedure.query(async () => {
+      return await db.getAllStakeholders();
+    }),
+
+    get: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        return await db.getStakeholderById(input.id);
+      }),
+
+    create: protectedProcedure
+      .input(z.object({
+        fullName: z.string(),
+        email: z.string().optional(),
+        position: z.string().optional(),
+        role: z.string().optional(),
+        job: z.string().optional(),
+        phone: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const result = await db.createStakeholder(input);
+        return result;
+      }),
+
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        data: z.object({
+          fullName: z.string().optional(),
+          email: z.string().optional(),
+          position: z.string().optional(),
+          role: z.string().optional(),
+          job: z.string().optional(),
+          phone: z.string().optional(),
+        }),
+      }))
+      .mutation(async ({ input }) => {
+        const result = await db.updateStakeholder(input.id, input.data);
+        return result;
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.deleteStakeholder(input.id);
+        return { success: true };
+      }),
+  }),
+
+  // Deliverables
+  deliverables: router({
+    list: protectedProcedure.query(async () => {
+      return await db.getAllDeliverables();
+    }),
+
+    get: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        return await db.getDeliverableById(input.id);
+      }),
+
+    create: protectedProcedure
+      .input(z.object({
+        description: z.string().optional(),
+        status: z.string().optional(),
+        dueDate: z.string().optional(),
+        linkedEntities: z.array(z.object({
+          entityType: z.enum(['requirement', 'task', 'dependency']),
+          entityId: z.string(),
+        })).optional(),
+      }))
+      .mutation(async ({ input }) => {
+        // Generate auto ID
+        const deliverableId = await db.getNextId('deliverable', 'DEL');
+        const created = await db.createDeliverable({
+          deliverableId,
+          description: input.description,
+          status: input.status,
+          dueDate: input.dueDate,
+        });
+
+        // Create links if provided
+        if (created && input.linkedEntities) {
+          for (const link of input.linkedEntities) {
+            await db.createDeliverableLink({
+              deliverableId: created.id,
+              linkedEntityType: link.entityType,
+              linkedEntityId: link.entityId,
+            });
+          }
+        }
+
+        return created;
+      }),
+
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        data: z.object({
+          description: z.string().optional(),
+          status: z.string().optional(),
+          dueDate: z.string().optional(),
+        }),
+      }))
+      .mutation(async ({ input }) => {
+        const updated = await db.updateDeliverable(input.id, input.data);
+        return updated;
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.deleteDeliverable(input.id);
+        return { success: true };
+      }),
+
+    getLinks: protectedProcedure
+      .input(z.object({ deliverableId: z.number() }))
+      .query(async ({ input }) => {
+        return await db.getDeliverableLinks(input.deliverableId);
+      }),
+
+    addLink: protectedProcedure
+      .input(z.object({
+        deliverableId: z.number(),
+        entityType: z.enum(['requirement', 'task', 'dependency']),
+        entityId: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        await db.createDeliverableLink({
+          deliverableId: input.deliverableId,
+          linkedEntityType: input.entityType,
+          linkedEntityId: input.entityId,
+        });
+        return { success: true };
+      }),
+
+    removeLink: protectedProcedure
+      .input(z.object({ linkId: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.deleteDeliverableLink(input.linkId);
+        return { success: true };
+      }),
+
+    getByEntity: protectedProcedure
+      .input(z.object({
+        entityType: z.enum(['requirement', 'task', 'dependency']),
+        entityId: z.string(),
+      }))
+      .query(async ({ input }) => {
+        return await db.getDeliverablesByEntity(input.entityType, input.entityId);
+      }),
+  }),
+
+  // Auto ID generation
+  autoId: router({
+    getNext: protectedProcedure
+      .input(z.object({
+        entityType: z.enum(['requirement', 'task', 'issue', 'dependency', 'assumption', 'deliverable']),
+      }))
+      .query(async ({ input }) => {
+        const prefixes: Record<string, string> = {
+          requirement: 'Q',
+          task: 'T',
+          issue: 'I',
+          dependency: 'D',
+          assumption: 'A',
+          deliverable: 'DEL',
+        };
+        const nextId = await db.getNextId(input.entityType, prefixes[input.entityType]);
+        return { nextId };
       }),
   }),
 });

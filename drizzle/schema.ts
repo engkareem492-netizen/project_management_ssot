@@ -19,6 +19,38 @@ export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
 /**
+ * ID Sequences table - tracks auto-generated IDs for each entity type
+ */
+export const idSequences = mysqlTable("idSequences", {
+  id: int("id").autoincrement().primaryKey(),
+  entityType: varchar("entityType", { length: 50 }).notNull().unique(),
+  prefix: varchar("prefix", { length: 10 }).notNull(),
+  currentNumber: int("currentNumber").notNull().default(0),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type IdSequence = typeof idSequences.$inferSelect;
+export type InsertIdSequence = typeof idSequences.$inferInsert;
+
+/**
+ * Stakeholders table - stores all project stakeholders for person-based fields
+ */
+export const stakeholders = mysqlTable("stakeholders", {
+  id: int("id").autoincrement().primaryKey(),
+  fullName: varchar("fullName", { length: 200 }).notNull(),
+  email: varchar("email", { length: 320 }),
+  position: varchar("position", { length: 200 }),
+  role: varchar("role", { length: 200 }),
+  job: varchar("job", { length: 200 }),
+  phone: varchar("phone", { length: 50 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Stakeholder = typeof stakeholders.$inferSelect;
+export type InsertStakeholder = typeof stakeholders.$inferInsert;
+
+/**
  * Requirements table - stores all project requirements
  */
 export const requirements = mysqlTable("requirements", {
@@ -32,6 +64,7 @@ export const requirements = mysqlTable("requirements", {
   category: varchar("category", { length: 100 }),
   agreement: varchar("agreement", { length: 100 }),
   owner: varchar("owner", { length: 200 }),
+  ownerId: int("ownerId"),
   description: text("description"),
   sourceType: varchar("sourceType", { length: 100 }),
   refSource: varchar("refSource", { length: 200 }),
@@ -61,12 +94,20 @@ export const tasks = mysqlTable("tasks", {
   requirementId: varchar("requirementId", { length: 50 }),
   description: text("description"),
   responsible: varchar("responsible", { length: 200 }),
+  responsibleId: int("responsibleId"),
   accountable: varchar("accountable", { length: 200 }),
+  accountableId: int("accountableId"),
   informed: varchar("informed", { length: 200 }),
+  informedId: int("informedId"),
   consulted: varchar("consulted", { length: 200 }),
+  consultedId: int("consultedId"),
   dueDate: varchar("dueDate", { length: 50 }),
   currentStatus: text("currentStatus"),
   statusUpdate: text("statusUpdate"),
+  owner: varchar("owner", { length: 200 }),
+  ownerId: int("ownerId"),
+  status: varchar("status", { length: 100 }),
+  priority: varchar("priority", { length: 100 }),
   importedAt: timestamp("importedAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -86,6 +127,7 @@ export const issues = mysqlTable("issues", {
   type: varchar("type", { length: 100 }),
   class: varchar("class", { length: 100 }),
   owner: varchar("owner", { length: 200 }),
+  ownerId: int("ownerId"),
   status: varchar("status", { length: 100 }),
   description: text("description"),
   sourceType: varchar("sourceType", { length: 100 }),
@@ -116,9 +158,13 @@ export const dependencies = mysqlTable("dependencies", {
   requirementId: varchar("requirementId", { length: 50 }),
   description: text("description"),
   responsible: varchar("responsible", { length: 200 }),
+  responsibleId: int("responsibleId"),
   accountable: varchar("accountable", { length: 200 }),
+  accountableId: int("accountableId"),
   informed: varchar("informed", { length: 200 }),
+  informedId: int("informedId"),
   consulted: varchar("consulted", { length: 200 }),
+  consultedId: int("consultedId"),
   dueDate: varchar("dueDate", { length: 50 }),
   currentStatus: text("currentStatus"),
   statusUpdate: text("statusUpdate"),
@@ -138,6 +184,7 @@ export const assumptions = mysqlTable("assumptions", {
   description: text("description"),
   category: varchar("category", { length: 100 }),
   owner: varchar("owner", { length: 200 }),
+  ownerId: int("ownerId"),
   status: varchar("status", { length: 100 }),
   importedAt: timestamp("importedAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -145,6 +192,36 @@ export const assumptions = mysqlTable("assumptions", {
 
 export type Assumption = typeof assumptions.$inferSelect;
 export type InsertAssumption = typeof assumptions.$inferInsert;
+
+/**
+ * Deliverables table - stores project deliverables
+ */
+export const deliverables = mysqlTable("deliverables", {
+  id: int("id").autoincrement().primaryKey(),
+  deliverableId: varchar("deliverableId", { length: 50 }).notNull().unique(),
+  description: text("description"),
+  status: varchar("status", { length: 100 }),
+  dueDate: varchar("dueDate", { length: 50 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Deliverable = typeof deliverables.$inferSelect;
+export type InsertDeliverable = typeof deliverables.$inferInsert;
+
+/**
+ * Deliverable Links table - many-to-many relationships between deliverables and other entities
+ */
+export const deliverableLinks = mysqlTable("deliverableLinks", {
+  id: int("id").autoincrement().primaryKey(),
+  deliverableId: int("deliverableId").notNull(),
+  linkedEntityType: mysqlEnum("linkedEntityType", ["requirement", "task", "dependency"]).notNull(),
+  linkedEntityId: varchar("linkedEntityId", { length: 50 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type DeliverableLink = typeof deliverableLinks.$inferSelect;
+export type InsertDeliverableLink = typeof deliverableLinks.$inferInsert;
 
 /**
  * Action Log table - stores all changes with delta tracking

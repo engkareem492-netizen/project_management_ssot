@@ -4,11 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Search, Edit, History, Loader2, Plus, Trash2 } from "lucide-react";
+import { Search, Edit, History, Loader2, Plus, Trash2, Eye, CheckSquare, Save, X, Link2 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 
 export default function Requirements() {
@@ -20,17 +23,32 @@ export default function Requirements() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [selectedRequirement, setSelectedRequirement] = useState<any>(null);
+  const [createTaskDialogOpen, setCreateTaskDialogOpen] = useState(false);
+  const [newTask, setNewTask] = useState({
+    description: '',
+    owner: '',
+    status: 'Open',
+    priority: 'Medium',
+  });
   const [newRequirement, setNewRequirement] = useState<any>({
-    idCode: '',
     description: '',
     owner: '',
     status: 'Open',
     priority: 'Medium',
     deliverables1: '',
     d1Status: 'Pending',
+    type: '',
+    class: '',
+    category: '',
   });
 
+  const utils = trpc.useUtils();
   const { data: requirements, isLoading, refetch } = trpc.requirements.list.useQuery();
+  const { data: stakeholders } = trpc.stakeholders.list.useQuery();
+  const { data: tasks } = trpc.tasks.list.useQuery();
+  const { data: issues } = trpc.issues.list.useQuery();
   const { data: actionLogs } = trpc.actionLogs.getByEntity.useQuery(
     { entityType: "requirement", entityId: selectedEntityId },
     { enabled: historyDialogOpen && !!selectedEntityId }
@@ -48,17 +66,19 @@ export default function Requirements() {
   });
 
   const createMutation = trpc.requirements.create.useMutation({
-    onSuccess: () => {
-      toast.success('Requirement created successfully');
+    onSuccess: (data) => {
+      toast.success(`Requirement ${data.idCode} created successfully`);
       setCreateDialogOpen(false);
       setNewRequirement({
-        idCode: '',
         description: '',
         owner: '',
         status: 'Open',
         priority: 'Medium',
         deliverables1: '',
         d1Status: 'Pending',
+        type: '',
+        class: '',
+        category: '',
       });
       refetch();
     },
@@ -76,6 +96,23 @@ export default function Requirements() {
     },
     onError: (error) => {
       toast.error(`Delete failed: ${error.message}`);
+    },
+  });
+
+  const createTaskMutation = trpc.tasks.create.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Task ${data.taskId} created and linked to ${selectedRequirement?.idCode}`);
+      setCreateTaskDialogOpen(false);
+      setNewTask({
+        description: '',
+        owner: '',
+        status: 'Open',
+        priority: 'Medium',
+      });
+      utils.tasks.list.invalidate();
+    },
+    onError: (error) => {
+      toast.error(`Create task failed: ${error.message}`);
     },
   });
 
@@ -118,10 +155,6 @@ export default function Requirements() {
   };
 
   const handleCreate = () => {
-    if (!newRequirement.idCode) {
-      toast.error('ID Code is required');
-      return;
-    }
     createMutation.mutate(newRequirement);
   };
 
@@ -136,6 +169,23 @@ export default function Requirements() {
     }
   };
 
+  const handleViewDetails = (req: any) => {
+    setSelectedRequirement(req);
+    setViewDialogOpen(true);
+  };
+
+  const handleCreateTaskFromRequirement = () => {
+    if (!selectedRequirement) return;
+    createTaskMutation.mutate({
+      ...newTask,
+      requirementId: selectedRequirement.idCode,
+    });
+  };
+
+  // Get linked items for selected requirement
+  const linkedTasks = tasks?.filter(t => t.requirementId === selectedRequirement?.idCode) || [];
+  const linkedIssues = issues?.filter(i => i.requirementId === selectedRequirement?.idCode) || [];
+
   const getPriorityColor = (priority: string | null) => {
     if (!priority) return "secondary";
     if (priority.includes("Very High")) return "destructive";
@@ -146,8 +196,9 @@ export default function Requirements() {
 
   const getStatusColor = (status: string | null) => {
     if (!status) return "secondary";
-    if (status === "Closed" || status === "Solved") return "default";
-    if (status === "Pending") return "outline";
+    if (status === "Closed" || status === "Solved" || status === "Completed") return "default";
+    if (status === "Pending" || status === "Open") return "outline";
+    if (status === "In Progress") return "secondary";
     return "secondary";
   };
 
@@ -160,13 +211,22 @@ export default function Requirements() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       <Card>
         <CardHeader>
-          <CardTitle>Requirements Management</CardTitle>
-          <CardDescription>
-            View, edit, and track changes to project requirements
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Requirements Management</CardTitle>
+              <CardDescription>
+                View, edit, and track changes to project requirements. IDs are auto-generated.
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-sm">
+                {requirements?.length || 0} Requirements
+              </Badge>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-4 mb-6">
@@ -197,21 +257,21 @@ export default function Requirements() {
                   <TableHead>D1</TableHead>
                   <TableHead>D1 Status</TableHead>
                   <TableHead>Last Update</TableHead>
-                  <TableHead className="w-[150px]">Actions</TableHead>
+                  <TableHead className="w-[180px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredRequirements?.map((req) => (
                   <TableRow key={req.id}>
-                    <TableCell className="font-medium">{req.idCode}</TableCell>
-                    <TableCell className="max-w-xs truncate">{req.description}</TableCell>
+                    <TableCell className="font-mono font-medium">{req.idCode}</TableCell>
+                    <TableCell className="max-w-[200px] truncate">{req.description}</TableCell>
                     <TableCell>{req.owner}</TableCell>
                     <TableCell>
                       {editingId === req.id ? (
                         <Input
                           value={editData.status}
                           onChange={(e) => setEditData({ ...editData, status: e.target.value })}
-                          className="w-32"
+                          className="w-24 h-8"
                         />
                       ) : (
                         <Badge variant={getStatusColor(req.status)}>{req.status || 'N/A'}</Badge>
@@ -222,7 +282,7 @@ export default function Requirements() {
                         <Input
                           value={editData.priority}
                           onChange={(e) => setEditData({ ...editData, priority: e.target.value })}
-                          className="w-32"
+                          className="w-24 h-8"
                         />
                       ) : (
                         <Badge variant={getPriorityColor(req.priority)}>{req.priority || 'N/A'}</Badge>
@@ -233,10 +293,10 @@ export default function Requirements() {
                         <Input
                           value={editData.deliverables1}
                           onChange={(e) => setEditData({ ...editData, deliverables1: e.target.value })}
-                          className="w-32"
+                          className="w-24 h-8"
                         />
                       ) : (
-                        req.deliverables1 || 'N/A'
+                        <span className="truncate max-w-[100px] block">{req.deliverables1 || '-'}</span>
                       )}
                     </TableCell>
                     <TableCell>
@@ -244,43 +304,36 @@ export default function Requirements() {
                         <Input
                           value={editData.d1Status}
                           onChange={(e) => setEditData({ ...editData, d1Status: e.target.value })}
-                          className="w-32"
+                          className="w-24 h-8"
                         />
                       ) : (
-                        req.d1Status || 'N/A'
+                        req.d1Status || '-'
                       )}
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {editingId === req.id ? (
-                        <Input
-                          value={editData.lastUpdate}
-                          onChange={(e) => setEditData({ ...editData, lastUpdate: e.target.value })}
-                          className="w-full"
-                        />
-                      ) : (
-                        req.lastUpdate || 'N/A'
-                      )}
-                    </TableCell>
+                    <TableCell>{req.lastUpdate || '-'}</TableCell>
                     <TableCell>
-                      <div className="flex gap-2">
+                      <div className="flex items-center gap-1">
                         {editingId === req.id ? (
                           <>
-                            <Button size="sm" onClick={() => handleSave(req)} disabled={updateMutation.isPending}>
-                              Save
+                            <Button size="sm" variant="default" onClick={() => handleSave(req)} disabled={updateMutation.isPending}>
+                              <Save className="w-3 h-3" />
                             </Button>
                             <Button size="sm" variant="outline" onClick={handleCancel}>
-                              Cancel
+                              <X className="w-3 h-3" />
                             </Button>
                           </>
                         ) : (
                           <>
-                            <Button size="sm" variant="outline" onClick={() => handleEdit(req)}>
+                            <Button size="sm" variant="ghost" onClick={() => handleViewDetails(req)} title="View Details">
+                              <Eye className="w-3 h-3" />
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => handleEdit(req)} title="Edit">
                               <Edit className="w-3 h-3" />
                             </Button>
-                            <Button size="sm" variant="outline" onClick={() => showHistory(req.idCode)}>
+                            <Button size="sm" variant="ghost" onClick={() => showHistory(req.idCode)} title="History">
                               <History className="w-3 h-3" />
                             </Button>
-                            <Button size="sm" variant="destructive" onClick={() => handleDelete(req.id)}>
+                            <Button size="sm" variant="destructive" onClick={() => handleDelete(req.id)} title="Delete">
                               <Trash2 className="w-3 h-3" />
                             </Button>
                           </>
@@ -301,6 +354,245 @@ export default function Requirements() {
         </CardContent>
       </Card>
 
+      {/* View Details Dialog with Linked Items */}
+      <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <span className="font-mono bg-muted px-2 py-1 rounded">{selectedRequirement?.idCode}</span>
+              Requirement Details
+            </DialogTitle>
+            <DialogDescription>
+              View all details and linked items for this requirement
+            </DialogDescription>
+          </DialogHeader>
+          
+          <Tabs defaultValue="details" className="mt-4">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="details">Details</TabsTrigger>
+              <TabsTrigger value="tasks">
+                Linked Tasks ({linkedTasks.length})
+              </TabsTrigger>
+              <TabsTrigger value="issues">
+                Linked Issues ({linkedIssues.length})
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="details" className="space-y-4 mt-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Description</Label>
+                  <p className="font-medium">{selectedRequirement?.description || '-'}</p>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Owner</Label>
+                  <p className="font-medium">{selectedRequirement?.owner || '-'}</p>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Status</Label>
+                  <Badge variant={getStatusColor(selectedRequirement?.status)}>
+                    {selectedRequirement?.status || 'N/A'}
+                  </Badge>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Priority</Label>
+                  <Badge variant={getPriorityColor(selectedRequirement?.priority)}>
+                    {selectedRequirement?.priority || 'N/A'}
+                  </Badge>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Type</Label>
+                  <p className="font-medium">{selectedRequirement?.type || '-'}</p>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Class</Label>
+                  <p className="font-medium">{selectedRequirement?.class || '-'}</p>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Category</Label>
+                  <p className="font-medium">{selectedRequirement?.category || '-'}</p>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Created At</Label>
+                  <p className="font-medium">{selectedRequirement?.createdAt || '-'}</p>
+                </div>
+              </div>
+              
+              <div className="border-t pt-4 mt-4">
+                <h4 className="font-medium mb-3">Deliverables</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground">Deliverable 1</Label>
+                    <p className="font-medium">{selectedRequirement?.deliverables1 || '-'}</p>
+                    <Badge variant="outline">{selectedRequirement?.d1Status || 'N/A'}</Badge>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground">Deliverable 2</Label>
+                    <p className="font-medium">{selectedRequirement?.deliverables2 || '-'}</p>
+                    <Badge variant="outline">{selectedRequirement?.d2Status || 'N/A'}</Badge>
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="tasks" className="mt-4">
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-sm text-muted-foreground">
+                  Tasks linked to this requirement
+                </p>
+                <Button size="sm" onClick={() => setCreateTaskDialogOpen(true)}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Task
+                </Button>
+              </div>
+              
+              {linkedTasks.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground border rounded-lg">
+                  No tasks linked to this requirement yet.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {linkedTasks.map((task) => (
+                    <Card key={task.id} className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <CheckSquare className="w-4 h-4 text-muted-foreground" />
+                          <span className="font-mono text-sm">{task.taskId}</span>
+                          <span className="text-sm">{task.description || 'No description'}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant={getStatusColor(task.status)}>{task.status || 'N/A'}</Badge>
+                          <Badge variant={getPriorityColor(task.priority)}>{task.priority || 'N/A'}</Badge>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+            
+            <TabsContent value="issues" className="mt-4">
+              <p className="text-sm text-muted-foreground mb-4">
+                Issues linked to this requirement
+              </p>
+              
+              {linkedIssues.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground border rounded-lg">
+                  No issues linked to this requirement yet.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {linkedIssues.map((issue) => (
+                    <Card key={issue.id} className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Link2 className="w-4 h-4 text-muted-foreground" />
+                          <span className="font-mono text-sm">{issue.issueId}</span>
+                          <span className="text-sm">{issue.description || 'No description'}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant={getStatusColor(issue.status)}>{issue.status || 'N/A'}</Badge>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+          
+          <DialogFooter className="mt-6">
+            <Button variant="outline" onClick={() => setViewDialogOpen(false)}>Close</Button>
+            <Button onClick={() => showHistory(selectedRequirement?.idCode)}>
+              <History className="w-4 h-4 mr-2" />
+              View History
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Task from Requirement Dialog */}
+      <Dialog open={createTaskDialogOpen} onOpenChange={setCreateTaskDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Create Task for {selectedRequirement?.idCode}</DialogTitle>
+            <DialogDescription>
+              Create a new task linked to this requirement. Task ID will be auto-generated.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Textarea
+                value={newTask.description}
+                onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
+                placeholder="Task description..."
+                rows={3}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Owner</Label>
+                <Select
+                  value={newTask.owner}
+                  onValueChange={(value) => setNewTask({ ...newTask, owner: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select owner..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {stakeholders?.map((s) => (
+                      <SelectItem key={s.id} value={s.fullName}>{s.fullName}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select
+                  value={newTask.status}
+                  onValueChange={(value) => setNewTask({ ...newTask, status: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Open">Open</SelectItem>
+                    <SelectItem value="In Progress">In Progress</SelectItem>
+                    <SelectItem value="Completed">Completed</SelectItem>
+                    <SelectItem value="Blocked">Blocked</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Priority</Label>
+              <Select
+                value={newTask.priority}
+                onValueChange={(value) => setNewTask({ ...newTask, priority: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Low">Low</SelectItem>
+                  <SelectItem value="Medium">Medium</SelectItem>
+                  <SelectItem value="High">High</SelectItem>
+                  <SelectItem value="Very High">Very High</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateTaskDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleCreateTaskFromRequirement} disabled={createTaskMutation.isPending}>
+              {createTaskMutation.isPending ? 'Creating...' : 'Create Task'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* History Dialog */}
       <Dialog open={historyDialogOpen} onOpenChange={setHistoryDialogOpen}>
         <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
@@ -312,12 +604,12 @@ export default function Requirements() {
           <div className="space-y-4">
             {actionLogs?.map((log) => (
               <Card key={log.id}>
-                <CardHeader>
+                <CardHeader className="py-3">
                   <CardTitle className="text-sm font-medium">
                     {new Date(log.changedAt).toLocaleString()}
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="py-2">
                   <div className="space-y-2">
                     {Object.entries(log.changedFields as Record<string, { oldValue: any; newValue: any }>).map(([field, change]) => (
                       <div key={field} className="grid grid-cols-3 gap-4 text-sm">
@@ -343,59 +635,102 @@ export default function Requirements() {
         </DialogContent>
       </Dialog>
 
+      {/* Create Requirement Dialog - Auto ID */}
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Create New Requirement</DialogTitle>
             <DialogDescription>
-              Add a new requirement to the project
+              Add a new requirement to the project. ID will be auto-generated (Q-XXXX format).
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="idCode" className="text-right">ID Code *</Label>
-              <Input
-                id="idCode"
-                value={newRequirement.idCode}
-                onChange={(e) => setNewRequirement({ ...newRequirement, idCode: e.target.value })}
-                className="col-span-3"
-                placeholder="Q-0001"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="description" className="text-right">Description</Label>
-              <Input
+              <Label htmlFor="description" className="text-right">Description *</Label>
+              <Textarea
                 id="description"
                 value={newRequirement.description}
                 onChange={(e) => setNewRequirement({ ...newRequirement, description: e.target.value })}
                 className="col-span-3"
+                placeholder="Describe the requirement..."
+                rows={3}
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="owner" className="text-right">Owner</Label>
-              <Input
-                id="owner"
+              <Select
                 value={newRequirement.owner}
-                onChange={(e) => setNewRequirement({ ...newRequirement, owner: e.target.value })}
-                className="col-span-3"
-              />
+                onValueChange={(value) => setNewRequirement({ ...newRequirement, owner: value })}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select owner from stakeholders..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {stakeholders?.map((s) => (
+                    <SelectItem key={s.id} value={s.fullName}>{s.fullName} - {s.position || s.role || 'N/A'}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="status" className="text-right">Status</Label>
-              <Input
-                id="status"
+              <Select
                 value={newRequirement.status}
-                onChange={(e) => setNewRequirement({ ...newRequirement, status: e.target.value })}
-                className="col-span-3"
-              />
+                onValueChange={(value) => setNewRequirement({ ...newRequirement, status: value })}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Open">Open</SelectItem>
+                  <SelectItem value="In Progress">In Progress</SelectItem>
+                  <SelectItem value="Pending">Pending</SelectItem>
+                  <SelectItem value="Closed">Closed</SelectItem>
+                  <SelectItem value="Solved">Solved</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="priority" className="text-right">Priority</Label>
-              <Input
-                id="priority"
+              <Select
                 value={newRequirement.priority}
-                onChange={(e) => setNewRequirement({ ...newRequirement, priority: e.target.value })}
+                onValueChange={(value) => setNewRequirement({ ...newRequirement, priority: value })}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Low">Low</SelectItem>
+                  <SelectItem value="Medium">Medium</SelectItem>
+                  <SelectItem value="High">High</SelectItem>
+                  <SelectItem value="Very High">Very High</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="type" className="text-right">Type</Label>
+              <Select
+                value={newRequirement.type}
+                onValueChange={(value) => setNewRequirement({ ...newRequirement, type: value })}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select type..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="WRICEF">WRICEF</SelectItem>
+                  <SelectItem value="Configuration">Configuration</SelectItem>
+                  <SelectItem value="Solution">Solution</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="category" className="text-right">Category</Label>
+              <Input
+                id="category"
+                value={newRequirement.category}
+                onChange={(e) => setNewRequirement({ ...newRequirement, category: e.target.value })}
                 className="col-span-3"
+                placeholder="e.g., FICO, SD, MM, HXM"
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
@@ -405,27 +740,37 @@ export default function Requirements() {
                 value={newRequirement.deliverables1}
                 onChange={(e) => setNewRequirement({ ...newRequirement, deliverables1: e.target.value })}
                 className="col-span-3"
+                placeholder="e.g., FSD, Report, Form"
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="d1Status" className="text-right">D1 Status</Label>
-              <Input
-                id="d1Status"
+              <Select
                 value={newRequirement.d1Status}
-                onChange={(e) => setNewRequirement({ ...newRequirement, d1Status: e.target.value })}
-                className="col-span-3"
-              />
+                onValueChange={(value) => setNewRequirement({ ...newRequirement, d1Status: value })}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Pending">Pending</SelectItem>
+                  <SelectItem value="In Progress">In Progress</SelectItem>
+                  <SelectItem value="Completed">Completed</SelectItem>
+                  <SelectItem value="Initial D1">Initial D1</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
-          <div className="flex justify-end gap-2">
+          <DialogFooter>
             <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
             <Button onClick={handleCreate} disabled={createMutation.isPending}>
               {createMutation.isPending ? 'Creating...' : 'Create'}
             </Button>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
+      {/* Delete Confirmation */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>

@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
-import { Upload, FileSpreadsheet, Download, Database, GitBranch, Clock, Filter } from "lucide-react";
+import { Upload, FileSpreadsheet, Download, Database, GitBranch, Clock, Filter, Users, Package } from "lucide-react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { useState } from "react";
@@ -249,6 +249,30 @@ export default function Home() {
               </CardTitle>
               <CardDescription>
                 Track project assumptions
+              </CardDescription>
+            </CardHeader>
+          </Card>
+
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setLocation('/stakeholders')}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Users className="w-5 h-5 text-teal-600" />
+                Stakeholders
+              </CardTitle>
+              <CardDescription>
+                Manage project stakeholders
+              </CardDescription>
+            </CardHeader>
+          </Card>
+
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setLocation('/deliverables')}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Package className="w-5 h-5 text-pink-600" />
+                Deliverables
+              </CardTitle>
+              <CardDescription>
+                Track project deliverables
               </CardDescription>
             </CardHeader>
           </Card>

@@ -378,3 +378,265 @@ export async function getAllRelationships() {
   
   return relationships;
 }
+
+
+// Import new schema types
+import { 
+  stakeholders, 
+  deliverables, 
+  deliverableLinks, 
+  idSequences,
+  InsertStakeholder,
+  InsertDeliverable,
+  InsertDeliverableLink,
+  Stakeholder,
+  Deliverable
+} from "../drizzle/schema";
+
+// ID Sequence functions - Auto-generate IDs
+export async function getNextId(entityType: string, prefix: string): Promise<string> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  // Try to get existing sequence
+  const existing = await db
+    .select()
+    .from(idSequences)
+    .where(eq(idSequences.entityType, entityType))
+    .limit(1);
+  
+  let nextNumber: number;
+  
+  if (existing.length === 0) {
+    // Create new sequence starting at 1
+    await db.insert(idSequences).values({
+      entityType,
+      prefix,
+      currentNumber: 1,
+    });
+    nextNumber = 1;
+  } else {
+    // Increment existing sequence
+    nextNumber = existing[0].currentNumber + 1;
+    await db
+      .update(idSequences)
+      .set({ currentNumber: nextNumber })
+      .where(eq(idSequences.entityType, entityType));
+  }
+  
+  // Format as prefix + 4-digit number (e.g., Q-0001)
+  return `${prefix}-${nextNumber.toString().padStart(4, '0')}`;
+}
+
+export async function initializeIdSequence(entityType: string, prefix: string, startNumber: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const existing = await db
+    .select()
+    .from(idSequences)
+    .where(eq(idSequences.entityType, entityType))
+    .limit(1);
+  
+  if (existing.length === 0) {
+    await db.insert(idSequences).values({
+      entityType,
+      prefix,
+      currentNumber: startNumber,
+    });
+  } else if (startNumber > existing[0].currentNumber) {
+    await db
+      .update(idSequences)
+      .set({ currentNumber: startNumber })
+      .where(eq(idSequences.entityType, entityType));
+  }
+}
+
+// Stakeholders CRUD
+export async function getAllStakeholders() {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(stakeholders).orderBy(stakeholders.fullName);
+}
+
+export async function getStakeholderById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(stakeholders).where(eq(stakeholders.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function createStakeholder(data: InsertStakeholder) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(stakeholders).values(data);
+  const insertId = result[0].insertId;
+  const created = await db.select().from(stakeholders).where(eq(stakeholders.id, insertId)).limit(1);
+  return created[0];
+}
+
+export async function updateStakeholder(id: number, data: Partial<Stakeholder>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(stakeholders).set(data).where(eq(stakeholders.id, id));
+  const updated = await db.select().from(stakeholders).where(eq(stakeholders.id, id)).limit(1);
+  return updated[0];
+}
+
+export async function deleteStakeholder(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(stakeholders).where(eq(stakeholders.id, id));
+}
+
+// Deliverables CRUD
+export async function getAllDeliverables() {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(deliverables).orderBy(deliverables.deliverableId);
+}
+
+export async function getDeliverableById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(deliverables).where(eq(deliverables.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function createDeliverable(data: InsertDeliverable) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(deliverables).values(data);
+  const insertId = result[0].insertId;
+  const created = await db.select().from(deliverables).where(eq(deliverables.id, insertId)).limit(1);
+  return created[0];
+}
+
+export async function updateDeliverable(id: number, data: Partial<Deliverable>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(deliverables).set(data).where(eq(deliverables.id, id));
+  const updated = await db.select().from(deliverables).where(eq(deliverables.id, id)).limit(1);
+  return updated[0];
+}
+
+export async function deleteDeliverable(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  // Delete all links first
+  await db.delete(deliverableLinks).where(eq(deliverableLinks.deliverableId, id));
+  // Then delete the deliverable
+  await db.delete(deliverables).where(eq(deliverables.id, id));
+}
+
+// Deliverable Links CRUD
+export async function getDeliverableLinks(deliverableId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db
+    .select()
+    .from(deliverableLinks)
+    .where(eq(deliverableLinks.deliverableId, deliverableId));
+}
+
+export async function getLinksByEntity(entityType: "requirement" | "task" | "dependency", entityId: string) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db
+    .select()
+    .from(deliverableLinks)
+    .where(
+      and(
+        eq(deliverableLinks.linkedEntityType, entityType),
+        eq(deliverableLinks.linkedEntityId, entityId)
+      )
+    );
+}
+
+export async function createDeliverableLink(data: InsertDeliverableLink) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(deliverableLinks).values(data);
+  return result;
+}
+
+export async function deleteDeliverableLink(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(deliverableLinks).where(eq(deliverableLinks.id, id));
+}
+
+export async function getDeliverablesByEntity(entityType: "requirement" | "task" | "dependency", entityId: string) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const links = await getLinksByEntity(entityType, entityId);
+  if (links.length === 0) return [];
+  
+  const deliverableIds = links.map(l => l.deliverableId);
+  const allDeliverables = await getAllDeliverables();
+  return allDeliverables.filter(d => deliverableIds.includes(d.id));
+}
+
+// Enhanced relationship functions
+export async function getRequirementWithLinkedItems(requirementId: string) {
+  const db = await getDb();
+  if (!db) return null;
+  
+  // Get the requirement
+  const req = await getRequirementByIdCode(requirementId);
+  if (!req) return null;
+  
+  // Get linked tasks
+  const relatedTasks = await db
+    .select()
+    .from(tasks)
+    .where(eq(tasks.requirementId, requirementId));
+  
+  // Get linked issues
+  const relatedIssues = await db
+    .select()
+    .from(issues)
+    .where(eq(issues.requirementId, requirementId));
+  
+  // Get linked deliverables
+  const relatedDeliverables = await getDeliverablesByEntity("requirement", requirementId);
+  
+  return {
+    requirement: req,
+    tasks: relatedTasks,
+    issues: relatedIssues,
+    deliverables: relatedDeliverables,
+  };
+}
+
+// Get sorted lists by ID
+export async function getAllRequirementsSorted() {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(requirements).orderBy(requirements.idCode);
+}
+
+export async function getAllTasksSorted() {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(tasks).orderBy(tasks.taskId);
+}
+
+export async function getAllIssuesSorted() {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(issues).orderBy(issues.issueId);
+}
+
+export async function getAllDependenciesSorted() {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(dependencies).orderBy(dependencies.dependencyId);
+}
+
+export async function getAllAssumptionsSorted() {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(assumptions).orderBy(assumptions.assumptionId);
+}

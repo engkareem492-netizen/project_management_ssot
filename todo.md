@@ -100,5 +100,55 @@
 - [x] Test create operations for all entities
 - [x] Test delete operations with confirmation
 - [x] Verify inline editing still works
-- [ ] Create checkpoint
-- [ ] Deliver enhanced application
+- [x] Create checkpoint
+- [x] Deliver enhanced application
+
+## Enhancement V2: Next Level Features
+
+### Phase 1: Automatic IDs and Sorting
+- [x] Implement auto-generated IDs for Requirements (Q-XXXX format)
+- [x] Implement auto-generated IDs for Tasks (T-XXXX format)
+- [x] Implement auto-generated IDs for Issues (I-XXXX format)
+- [x] Implement auto-generated IDs for Dependencies (D-XXXX format)
+- [x] Implement auto-generated IDs for Assumptions (A-XXXX format)
+- [x] Add sorting by ID for all entity tables
+- [x] Remove manual ID input from create forms (frontend)
+### Phase 2: Stakeholder Register
+- [x] Create stakeholders database table
+- [x] Create Stakeholder Register page with CRUD operations
+- [x] Add Full Name, Email, Position, Role, Job, Phone fields
+- [ ] Integrate stakeholders as dropdown options for Owner/Responsible/Accountable/Informed/Consultedakeholder dropdown for Owner field in Tasks
+- [ ] Integrate stakeholder dropdown for Owner field in Issues
+- [ ] Integrate stakeholder dropdown for Responsible field in Dependencies
+
+### Phase 3: Deliverables System
+- [x] Create deliverables database table
+- [x] Create deliverable_links table for many-to-many relationships
+- [x] Create Deliverables page with CRUD operations
+- [x] Implement linking to Requirements, Tasks, Dependencies
+- [ ] Add ability to create deliverables from Tasks/Requirements/Dependencies pagesrables to Dependencies
+- [ ] Add ability to create deliverables from within Requirements/Tasks
+
+### Phase 4: Navigation and Accessibility
+- [x] Fix 404 error on Page 2 (updated navigation menu)
+- [ ] Improve sidebar navigation with proper routing
+- [ ] Add breadcrumb navigation
+- [ ] Ensure all pages are accessible from navigation
+
+### Phase 5: Requirement-Task Integration
+- [x] Add "Create Task" button within Requirement edit/view
+- [x] Auto-link created tasks to parent requirement
+- [x] Create Requirement Detail popup showing all linked items
+- [x] Show linked Tasks with status in popup
+- [x] Show linked Issues with status in popup
+- [ ] Show linked Deliverables with status in popup
+- [x] Reflect task creation in Tasks page automatically
+
+### Phase 6: Testing and Delivery
+- [x] Test automatic ID generation
+- [x] Test stakeholder integration
+- [x] Test deliverables relationships
+- [x] Test navigation fixes
+- [x] Test requirement-task linking
+- [x] Create checkpoint
+- [x] Deliver enhanced application
