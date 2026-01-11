@@ -347,6 +347,33 @@ export const appRouter = router({
         return await db.getRequirementByIdCode(input.idCode);
       }),
 
+    create: protectedProcedure
+      .input(z.object({
+        idCode: z.string(),
+        taskGroup: z.string().optional(),
+        issueGroup: z.string().optional(),
+        type: z.string().optional(),
+        class: z.string().optional(),
+        category: z.string().optional(),
+        agreement: z.string().optional(),
+        owner: z.string().optional(),
+        description: z.string().optional(),
+        sourceType: z.string().optional(),
+        refSource: z.string().optional(),
+        status: z.string().optional(),
+        priority: z.string().optional(),
+        deliverables1: z.string().optional(),
+        d1Status: z.string().optional(),
+        deliverables2: z.string().optional(),
+        d2Status: z.string().optional(),
+        lastUpdate: z.string().optional(),
+        updateDate: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        await db.createRequirement(input);
+        return { success: true };
+      }),
+
     update: protectedProcedure
       .input(z.object({
         id: z.number(),
@@ -419,6 +446,13 @@ export const appRouter = router({
       .query(async ({ input }) => {
         return await db.filterRequirements(input);
       }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.deleteRequirement(input.id);
+        return { success: true };
+      }),
   }),
 
   // Tasks
@@ -431,6 +465,26 @@ export const appRouter = router({
       .input(z.object({ taskId: z.string() }))
       .query(async ({ input }) => {
         return await db.getTaskByTaskId(input.taskId);
+      }),
+
+    create: protectedProcedure
+      .input(z.object({
+        taskId: z.string(),
+        taskGroup: z.string().optional(),
+        dependencyId: z.string().optional(),
+        requirementId: z.string().optional(),
+        description: z.string().optional(),
+        responsible: z.string().optional(),
+        accountable: z.string().optional(),
+        informed: z.string().optional(),
+        consulted: z.string().optional(),
+        dueDate: z.string().optional(),
+        currentStatus: z.string().optional(),
+        statusUpdate: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        await db.createTask(input);
+        return { success: true };
       }),
 
     update: protectedProcedure
@@ -477,6 +531,13 @@ export const appRouter = router({
 
         return { success: true, changedFields: Object.keys(changedFields) };
       }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.deleteTask(input.id);
+        return { success: true };
+      }),
   }),
 
   // Issues
@@ -489,6 +550,32 @@ export const appRouter = router({
       .input(z.object({ issueId: z.string() }))
       .query(async ({ input }) => {
         return await db.getIssueByIssueId(input.issueId);
+      }),
+
+    create: protectedProcedure
+      .input(z.object({
+        issueId: z.string(),
+        issueGroup: z.string().optional(),
+        taskGroup: z.string().optional(),
+        requirementId: z.string().optional(),
+        type: z.string().optional(),
+        class: z.string().optional(),
+        owner: z.string().optional(),
+        status: z.string().optional(),
+        description: z.string().optional(),
+        sourceType: z.string().optional(),
+        refSource: z.string().optional(),
+        priority: z.string().optional(),
+        deliverables1: z.string().optional(),
+        d1Status: z.string().optional(),
+        deliverables2: z.string().optional(),
+        d2Status: z.string().optional(),
+        lastUpdate: z.string().optional(),
+        updateDate: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        await db.createIssue(input);
+        return { success: true };
       }),
 
     update: protectedProcedure
@@ -539,6 +626,13 @@ export const appRouter = router({
 
         return { success: true, changedFields: Object.keys(changedFields) };
       }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.deleteIssue(input.id);
+        return { success: true };
+      }),
   }),
 
   // Dependencies
@@ -546,6 +640,28 @@ export const appRouter = router({
     list: protectedProcedure.query(async () => {
       return await db.getAllDependencies();
     }),
+
+    create: protectedProcedure
+      .input(z.object({
+        dependencyId: z.string(),
+        taskId: z.string().optional(),
+        requirementId: z.string().optional(),
+        description: z.string().optional(),
+        responsible: z.string().optional(),
+        dueDate: z.string().optional(),
+        currentStatus: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        await db.createDependency(input);
+        return { success: true };
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.deleteDependency(input.id);
+        return { success: true };
+      }),
   }),
 
   // Assumptions
@@ -553,6 +669,26 @@ export const appRouter = router({
     list: protectedProcedure.query(async () => {
       return await db.getAllAssumptions();
     }),
+
+    create: protectedProcedure
+      .input(z.object({
+        assumptionId: z.string(),
+        description: z.string().optional(),
+        category: z.string().optional(),
+        owner: z.string().optional(),
+        status: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        await db.createAssumption(input);
+        return { success: true };
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.deleteAssumption(input.id);
+        return { success: true };
+      }),
   }),
 
   // Action Logs

@@ -133,6 +133,12 @@ export async function updateRequirement(id: number, data: Partial<Requirement>) 
   await db.update(requirements).set(data).where(eq(requirements.id, id));
 }
 
+export async function deleteRequirement(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(requirements).where(eq(requirements.id, id));
+}
+
 export async function deleteAllRequirements() {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -164,6 +170,12 @@ export async function updateTask(id: number, data: Partial<Task>) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.update(tasks).set(data).where(eq(tasks.id, id));
+}
+
+export async function deleteTask(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(tasks).where(eq(tasks.id, id));
 }
 
 export async function deleteAllTasks() {
@@ -199,6 +211,12 @@ export async function updateIssue(id: number, data: Partial<Issue>) {
   await db.update(issues).set(data).where(eq(issues.id, id));
 }
 
+export async function deleteIssue(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(issues).where(eq(issues.id, id));
+}
+
 export async function deleteAllIssues() {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -219,6 +237,12 @@ export async function createDependency(data: InsertDependency) {
   return result;
 }
 
+export async function deleteDependency(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(dependencies).where(eq(dependencies.id, id));
+}
+
 export async function deleteAllDependencies() {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -237,6 +261,12 @@ export async function createAssumption(data: InsertAssumption) {
   if (!db) throw new Error("Database not available");
   const result = await db.insert(assumptions).values(data);
   return result;
+}
+
+export async function deleteAssumption(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(assumptions).where(eq(assumptions.id, id));
 }
 
 export async function deleteAllAssumptions() {

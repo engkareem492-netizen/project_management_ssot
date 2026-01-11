@@ -5,7 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Search, Edit, History, Loader2 } from "lucide-react";
+import { Search, Edit, History, Loader2, Plus, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 
 export default function Tasks() {
@@ -14,6 +17,16 @@ export default function Tasks() {
   const [editData, setEditData] = useState<any>({});
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
   const [selectedEntityId, setSelectedEntityId] = useState<string>("");
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [newTask, setNewTask] = useState<any>({
+    taskId: '',
+    description: '',
+    responsible: '',
+    currentStatus: 'Not Started',
+    statusUpdate: '',
+  });
 
   const { data: tasks, isLoading, refetch } = trpc.tasks.list.useQuery();
   const { data: actionLogs } = trpc.actionLogs.getByEntity.useQuery(
@@ -29,6 +42,36 @@ export default function Tasks() {
     },
     onError: (error) => {
       toast.error(`Update failed: ${error.message}`);
+    },
+  });
+
+  const createMutation = trpc.tasks.create.useMutation({
+    onSuccess: () => {
+      toast.success('Task created successfully');
+      setCreateDialogOpen(false);
+      setNewTask({
+        taskId: '',
+        description: '',
+        responsible: '',
+        currentStatus: 'Not Started',
+        statusUpdate: '',
+      });
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(`Create failed: ${error.message}`);
+    },
+  });
+
+  const deleteMutation = trpc.tasks.delete.useMutation({
+    onSuccess: () => {
+      toast.success('Task deleted successfully');
+      setDeleteDialogOpen(false);
+      setDeletingId(null);
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(`Delete failed: ${error.message}`);
     },
   });
 
@@ -64,6 +107,32 @@ export default function Tasks() {
     setHistoryDialogOpen(true);
   };
 
+  const handleCreate = () => {
+    if (!newTask.taskId) {
+      toast.error('Task ID is required');
+      return;
+    }
+    createMutation.mutate(newTask);
+  };
+
+  const handleDelete = (id: number) => {
+    setDeletingId(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (deletingId) {
+      deleteMutation.mutate({ id: deletingId });
+    }
+  };
+
+  const getStatusColor = (status: string | null) => {
+    if (!status) return "secondary";
+    if (status === "Completed" || status === "Done") return "default";
+    if (status === "In Progress") return "outline";
+    return "secondary";
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -92,6 +161,10 @@ export default function Tasks() {
                 className="pl-10"
               />
             </div>
+            <Button onClick={() => setCreateDialogOpen(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Create New
+            </Button>
           </div>
 
           <div className="rounded-md border overflow-x-auto">
@@ -157,6 +230,9 @@ export default function Tasks() {
                             <Button size="sm" variant="outline" onClick={() => showHistory(task.taskId)}>
                               <History className="w-3 h-3" />
                             </Button>
+                            <Button size="sm" variant="destructive" onClick={() => handleDelete(task.id)}>
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
                           </>
                         )}
                       </div>
@@ -169,7 +245,7 @@ export default function Tasks() {
 
           {filteredTasks?.length === 0 && (
             <div className="text-center py-12 text-muted-foreground">
-              No tasks found. Import an Excel file to get started.
+              No tasks found. Create a new task or import an Excel file to get started.
             </div>
           )}
         </CardContent>
@@ -216,6 +292,88 @@ export default function Tasks() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Create New Task</DialogTitle>
+            <DialogDescription>
+              Add a new task to the project
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="taskId" className="text-right">Task ID *</Label>
+              <Input
+                id="taskId"
+                value={newTask.taskId}
+                onChange={(e) => setNewTask({ ...newTask, taskId: e.target.value })}
+                className="col-span-3"
+                placeholder="T-001"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="description" className="text-right">Description</Label>
+              <Input
+                id="description"
+                value={newTask.description}
+                onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="responsible" className="text-right">Responsible</Label>
+              <Input
+                id="responsible"
+                value={newTask.responsible}
+                onChange={(e) => setNewTask({ ...newTask, responsible: e.target.value })}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="currentStatus" className="text-right">Current Status</Label>
+              <Input
+                id="currentStatus"
+                value={newTask.currentStatus}
+                onChange={(e) => setNewTask({ ...newTask, currentStatus: e.target.value })}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="statusUpdate" className="text-right">Status Update</Label>
+              <Input
+                id="statusUpdate"
+                value={newTask.statusUpdate}
+                onChange={(e) => setNewTask({ ...newTask, statusUpdate: e.target.value })}
+                className="col-span-3"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleCreate} disabled={createMutation.isPending}>
+              {createMutation.isPending ? 'Creating...' : 'Create'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the task.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} disabled={deleteMutation.isPending}>
+              {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

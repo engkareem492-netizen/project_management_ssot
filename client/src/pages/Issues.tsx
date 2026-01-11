@@ -6,7 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Search, Edit, History, Loader2 } from "lucide-react";
+import { Search, Edit, History, Loader2, Plus, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
 export default function Issues() {
@@ -15,6 +17,16 @@ export default function Issues() {
   const [editData, setEditData] = useState<any>({});
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
   const [selectedEntityId, setSelectedEntityId] = useState<string>("");
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [newIssue, setNewIssue] = useState<any>({
+    issueId: '',
+    description: '',
+    owner: '',
+    status: 'Open',
+    priority: 'Medium',
+  });
 
   const { data: issues, isLoading, refetch } = trpc.issues.list.useQuery();
   const { data: actionLogs } = trpc.actionLogs.getByEntity.useQuery(
@@ -30,6 +42,36 @@ export default function Issues() {
     },
     onError: (error) => {
       toast.error(`Update failed: ${error.message}`);
+    },
+  });
+
+  const createMutation = trpc.issues.create.useMutation({
+    onSuccess: () => {
+      toast.success('Issue created successfully');
+      setCreateDialogOpen(false);
+      setNewIssue({
+        issueId: '',
+        description: '',
+        owner: '',
+        status: 'Open',
+        priority: 'Medium',
+      });
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(`Create failed: ${error.message}`);
+    },
+  });
+
+  const deleteMutation = trpc.issues.delete.useMutation({
+    onSuccess: () => {
+      toast.success('Issue deleted successfully');
+      setDeleteDialogOpen(false);
+      setDeletingId(null);
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(`Delete failed: ${error.message}`);
     },
   });
 
@@ -71,6 +113,25 @@ export default function Issues() {
     setHistoryDialogOpen(true);
   };
 
+  const handleCreate = () => {
+    if (!newIssue.issueId) {
+      toast.error('Issue ID is required');
+      return;
+    }
+    createMutation.mutate(newIssue);
+  };
+
+  const handleDelete = (id: number) => {
+    setDeletingId(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (deletingId) {
+      deleteMutation.mutate({ id: deletingId });
+    }
+  };
+
   const getPriorityColor = (priority: string | null) => {
     if (!priority) return "secondary";
     if (priority.includes("Very High")) return "destructive";
@@ -107,6 +168,10 @@ export default function Issues() {
                 className="pl-10"
               />
             </div>
+            <Button onClick={() => setCreateDialogOpen(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Create New
+            </Button>
           </div>
 
           <div className="rounded-md border overflow-x-auto">
@@ -182,6 +247,9 @@ export default function Issues() {
                             <Button size="sm" variant="outline" onClick={() => showHistory(issue.issueId)}>
                               <History className="w-3 h-3" />
                             </Button>
+                            <Button size="sm" variant="destructive" onClick={() => handleDelete(issue.id)}>
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
                           </>
                         )}
                       </div>
@@ -194,7 +262,7 @@ export default function Issues() {
 
           {filteredIssues?.length === 0 && (
             <div className="text-center py-12 text-muted-foreground">
-              No issues found. Import an Excel file to get started.
+              No issues found. Create a new issue or import an Excel file to get started.
             </div>
           )}
         </CardContent>
@@ -241,6 +309,88 @@ export default function Issues() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Create New Issue</DialogTitle>
+            <DialogDescription>
+              Add a new issue to the project
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="issueId" className="text-right">Issue ID *</Label>
+              <Input
+                id="issueId"
+                value={newIssue.issueId}
+                onChange={(e) => setNewIssue({ ...newIssue, issueId: e.target.value })}
+                className="col-span-3"
+                placeholder="I-001"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="description" className="text-right">Description</Label>
+              <Input
+                id="description"
+                value={newIssue.description}
+                onChange={(e) => setNewIssue({ ...newIssue, description: e.target.value })}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="owner" className="text-right">Owner</Label>
+              <Input
+                id="owner"
+                value={newIssue.owner}
+                onChange={(e) => setNewIssue({ ...newIssue, owner: e.target.value })}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="status" className="text-right">Status</Label>
+              <Input
+                id="status"
+                value={newIssue.status}
+                onChange={(e) => setNewIssue({ ...newIssue, status: e.target.value })}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="priority" className="text-right">Priority</Label>
+              <Input
+                id="priority"
+                value={newIssue.priority}
+                onChange={(e) => setNewIssue({ ...newIssue, priority: e.target.value })}
+                className="col-span-3"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleCreate} disabled={createMutation.isPending}>
+              {createMutation.isPending ? 'Creating...' : 'Create'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the issue.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} disabled={deleteMutation.isPending}>
+              {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

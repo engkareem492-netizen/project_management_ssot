@@ -6,7 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Search, Edit, History, Loader2 } from "lucide-react";
+import { Search, Edit, History, Loader2, Plus, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
 export default function Requirements() {
@@ -15,6 +17,18 @@ export default function Requirements() {
   const [editData, setEditData] = useState<any>({});
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
   const [selectedEntityId, setSelectedEntityId] = useState<string>("");
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [newRequirement, setNewRequirement] = useState<any>({
+    idCode: '',
+    description: '',
+    owner: '',
+    status: 'Open',
+    priority: 'Medium',
+    deliverables1: '',
+    d1Status: 'Pending',
+  });
 
   const { data: requirements, isLoading, refetch } = trpc.requirements.list.useQuery();
   const { data: actionLogs } = trpc.actionLogs.getByEntity.useQuery(
@@ -30,6 +44,38 @@ export default function Requirements() {
     },
     onError: (error) => {
       toast.error(`Update failed: ${error.message}`);
+    },
+  });
+
+  const createMutation = trpc.requirements.create.useMutation({
+    onSuccess: () => {
+      toast.success('Requirement created successfully');
+      setCreateDialogOpen(false);
+      setNewRequirement({
+        idCode: '',
+        description: '',
+        owner: '',
+        status: 'Open',
+        priority: 'Medium',
+        deliverables1: '',
+        d1Status: 'Pending',
+      });
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(`Create failed: ${error.message}`);
+    },
+  });
+
+  const deleteMutation = trpc.requirements.delete.useMutation({
+    onSuccess: () => {
+      toast.success('Requirement deleted successfully');
+      setDeleteDialogOpen(false);
+      setDeletingId(null);
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(`Delete failed: ${error.message}`);
     },
   });
 
@@ -69,6 +115,25 @@ export default function Requirements() {
   const showHistory = (idCode: string) => {
     setSelectedEntityId(idCode);
     setHistoryDialogOpen(true);
+  };
+
+  const handleCreate = () => {
+    if (!newRequirement.idCode) {
+      toast.error('ID Code is required');
+      return;
+    }
+    createMutation.mutate(newRequirement);
+  };
+
+  const handleDelete = (id: number) => {
+    setDeletingId(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (deletingId) {
+      deleteMutation.mutate({ id: deletingId });
+    }
   };
 
   const getPriorityColor = (priority: string | null) => {
@@ -114,6 +179,10 @@ export default function Requirements() {
                 className="pl-10"
               />
             </div>
+            <Button onClick={() => setCreateDialogOpen(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Create New
+            </Button>
           </div>
 
           <div className="rounded-md border overflow-x-auto">
@@ -211,6 +280,9 @@ export default function Requirements() {
                             <Button size="sm" variant="outline" onClick={() => showHistory(req.idCode)}>
                               <History className="w-3 h-3" />
                             </Button>
+                            <Button size="sm" variant="destructive" onClick={() => handleDelete(req.id)}>
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
                           </>
                         )}
                       </div>
@@ -223,7 +295,7 @@ export default function Requirements() {
 
           {filteredRequirements?.length === 0 && (
             <div className="text-center py-12 text-muted-foreground">
-              No requirements found. Import an Excel file to get started.
+              No requirements found. Create a new requirement or import an Excel file to get started.
             </div>
           )}
         </CardContent>
@@ -270,6 +342,106 @@ export default function Requirements() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Create New Requirement</DialogTitle>
+            <DialogDescription>
+              Add a new requirement to the project
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="idCode" className="text-right">ID Code *</Label>
+              <Input
+                id="idCode"
+                value={newRequirement.idCode}
+                onChange={(e) => setNewRequirement({ ...newRequirement, idCode: e.target.value })}
+                className="col-span-3"
+                placeholder="Q-0001"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="description" className="text-right">Description</Label>
+              <Input
+                id="description"
+                value={newRequirement.description}
+                onChange={(e) => setNewRequirement({ ...newRequirement, description: e.target.value })}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="owner" className="text-right">Owner</Label>
+              <Input
+                id="owner"
+                value={newRequirement.owner}
+                onChange={(e) => setNewRequirement({ ...newRequirement, owner: e.target.value })}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="status" className="text-right">Status</Label>
+              <Input
+                id="status"
+                value={newRequirement.status}
+                onChange={(e) => setNewRequirement({ ...newRequirement, status: e.target.value })}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="priority" className="text-right">Priority</Label>
+              <Input
+                id="priority"
+                value={newRequirement.priority}
+                onChange={(e) => setNewRequirement({ ...newRequirement, priority: e.target.value })}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="deliverables1" className="text-right">Deliverables 1</Label>
+              <Input
+                id="deliverables1"
+                value={newRequirement.deliverables1}
+                onChange={(e) => setNewRequirement({ ...newRequirement, deliverables1: e.target.value })}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="d1Status" className="text-right">D1 Status</Label>
+              <Input
+                id="d1Status"
+                value={newRequirement.d1Status}
+                onChange={(e) => setNewRequirement({ ...newRequirement, d1Status: e.target.value })}
+                className="col-span-3"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleCreate} disabled={createMutation.isPending}>
+              {createMutation.isPending ? 'Creating...' : 'Create'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the requirement.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} disabled={deleteMutation.isPending}>
+              {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

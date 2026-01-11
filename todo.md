@@ -65,5 +65,40 @@
 
 ## Phase 9: Delivery
 - [x] Final testing and bug fixes
+- [x] Create checkpoint
+- [x] Deliver application to user
+
+## Enhancement: Full CRUD Operations
+
+### Phase 1: Create/Add Functionality
+- [x] Add "Create New Requirement" button and form dialog
+- [x] Add "Create New Task" button and form dialog
+- [x] Add "Create New Issue" button and form dialog
+- [x] Add "Create New Dependency" button and form dialog
+- [x] Add "Create New Assumption" button and form dialog
+- [x] Implement form validation for all create forms
+- [x] Add backend procedures for creating new entities
+
+### Phase 2: Delete Functionality
+- [x] Add delete button to Requirements table
+- [x] Add delete button to Tasks table
+- [x] Add delete button to Issues table
+- [x] Add delete button to Dependencies table
+- [x] Add delete button to Assumptions table
+- [x] Implement confirmation dialogs for delete operations
+- [x] Add backend procedures for deleting entities
+
+### Phase 3: Bulk Operations (SKIPPED per user request)
+- [-] Add checkbox selection to Requirements table
+- [-] Add checkbox selection to Tasks table
+- [-] Add checkbox selection to Issues table
+- [-] Implement bulk delete functionality
+- [-] Implement bulk status update functionality
+- [-] Add "Select All" / "Deselect All" functionality
+
+### Phase 4: Testing & Delivery
+- [x] Test create operations for all entities
+- [x] Test delete operations with confirmation
+- [x] Verify inline editing still works
 - [ ] Create checkpoint
-- [ ] Deliver application to user
+- [ ] Deliver enhanced application
