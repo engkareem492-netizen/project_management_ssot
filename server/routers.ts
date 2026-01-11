@@ -1,10 +1,13 @@
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, router } from "./_core/trpc";
+import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
+import { z } from "zod";
+import * as db from "./db";
+import * as XLSX from "xlsx";
+import { TRPCError } from "@trpc/server";
 
 export const appRouter = router({
-    // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
@@ -17,12 +20,569 @@ export const appRouter = router({
     }),
   }),
 
-  // TODO: add feature routers here, e.g.
-  // todo: router({
-  //   list: protectedProcedure.query(({ ctx }) =>
-  //     db.getUserTodos(ctx.user.id)
-  //   ),
-  // }),
+  // Excel import/export
+  excel: router({
+    import: protectedProcedure
+      .input(z.object({
+        base64Data: z.string(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        try {
+          // Decode base64 to buffer
+          const buffer = Buffer.from(input.base64Data, 'base64');
+          const workbook = XLSX.read(buffer, { type: 'buffer' });
+
+          let importedCounts = {
+            requirements: 0,
+            tasks: 0,
+            issues: 0,
+            dependencies: 0,
+            assumptions: 0,
+          };
+
+          // Clear existing data
+          await db.deleteAllRequirements();
+          await db.deleteAllTasks();
+          await db.deleteAllIssues();
+          await db.deleteAllDependencies();
+          await db.deleteAllAssumptions();
+
+          // Import Requirements
+          if (workbook.SheetNames.includes('Requirements')) {
+            const sheet = workbook.Sheets['Requirements'];
+            const data = XLSX.utils.sheet_to_json(sheet);
+            
+            for (const row of data) {
+              const req: any = row;
+              await db.createRequirement({
+                idCode: req['ID-Code'] || '',
+                taskGroup: req['Task Group'] || null,
+                issueGroup: req['Issue Group'] || null,
+                createdAt: req['created at'] || null,
+                type: req['Type'] || null,
+                class: req['Class'] || null,
+                category: req['Category'] || null,
+                agreement: req['Aggrement'] || null,
+                owner: req['Owner'] || null,
+                description: req['Description'] || null,
+                sourceType: req['Source Type'] || null,
+                refSource: req['Ref Source '] || null,
+                status: req['Status'] || null,
+                priority: req['Priority'] || null,
+                deliverables1: req['Deliverables 1'] || null,
+                d1Status: req['D1 Status'] || null,
+                deliverables2: req['Deliverables 2'] || null,
+                d2Status: req['D2 Status'] || null,
+                lastUpdate: req['Last Update'] || null,
+                updateDate: req['Update Date'] || null,
+              });
+              importedCounts.requirements++;
+            }
+          }
+
+          // Import Tasks
+          if (workbook.SheetNames.includes('Tasks')) {
+            const sheet = workbook.Sheets['Tasks'];
+            const data = XLSX.utils.sheet_to_json(sheet);
+            
+            for (const row of data) {
+              const task: any = row;
+              await db.createTask({
+                taskId: task['Task ID'] || '',
+                taskGroup: task['Task Group'] || null,
+                dependencyId: task['Depeneddncy ID'] || null,
+                requirementId: task['Requirement ID'] || null,
+                description: task['Description'] || null,
+                responsible: task['Reponsible'] || null,
+                accountable: task['Accountable'] || null,
+                informed: task['Informed'] || null,
+                consulted: task['Consulted'] || null,
+                dueDate: task['Due Date'] || null,
+                currentStatus: task['Current Status'] || null,
+                statusUpdate: task['Ststus Update'] || null,
+              });
+              importedCounts.tasks++;
+            }
+          }
+
+          // Import Issues
+          if (workbook.SheetNames.includes('Issue')) {
+            const sheet = workbook.Sheets['Issue'];
+            const data = XLSX.utils.sheet_to_json(sheet);
+            
+            for (const row of data) {
+              const issue: any = row;
+              await db.createIssue({
+                issueId: issue['Issue ID'] || '',
+                issueGroup: issue['Issue Group'] || null,
+                taskGroup: issue['Task Group'] || null,
+                requirementId: issue['Requirement ID'] || null,
+                type: issue['Type'] || null,
+                class: issue['Class'] || null,
+                owner: issue['Owner'] || null,
+                status: issue['Status'] || null,
+                description: issue['Description'] || null,
+                sourceType: issue['Source Type'] || null,
+                refSource: issue['Ref Source '] || null,
+                createdAt: issue['Created At'] || null,
+                priority: issue['Priority'] || null,
+                deliverables1: issue['Deliverables 1'] || null,
+                d1Status: issue['D1 Status'] || null,
+                deliverables2: issue['Deliverables 2'] || null,
+                d2Status: issue['D2 Status'] || null,
+                lastUpdate: issue['Last Update'] || null,
+                updateDate: issue['Update Date'] || null,
+              });
+              importedCounts.issues++;
+            }
+          }
+
+          // Import Dependencies
+          if (workbook.SheetNames.includes('Dependency')) {
+            const sheet = workbook.Sheets['Dependency'];
+            const data = XLSX.utils.sheet_to_json(sheet);
+            
+            for (const row of data) {
+              const dep: any = row;
+              if (dep['Dependency ID']) {
+                await db.createDependency({
+                  dependencyId: dep['Dependency ID'] || '',
+                  depGroup: dep['Dep Group'] || null,
+                  taskId: dep['Task ID'] || null,
+                  requirementId: dep['Requirement ID'] || null,
+                  description: dep['Description'] || null,
+                  responsible: dep['Reponsible'] || null,
+                  accountable: dep['Accountable'] || null,
+                  informed: dep['Informed'] || null,
+                  consulted: dep['Consulted'] || null,
+                  dueDate: dep['Due Date'] || null,
+                  currentStatus: dep['Current Status'] || null,
+                  statusUpdate: dep['Ststus Update'] || null,
+                });
+                importedCounts.dependencies++;
+              }
+            }
+          }
+
+          // Import Assumptions
+          if (workbook.SheetNames.includes('Assumptions')) {
+            const sheet = workbook.Sheets['Assumptions'];
+            const data = XLSX.utils.sheet_to_json(sheet);
+            
+            for (const row of data) {
+              const assumption: any = row;
+              if (assumption['Assumption Id']) {
+                await db.createAssumption({
+                  assumptionId: assumption['Assumption Id'] || '',
+                  description: assumption['Description'] || null,
+                  category: assumption['Category'] || null,
+                  owner: assumption['Owner'] || null,
+                  status: assumption['Status'] || null,
+                });
+                importedCounts.assumptions++;
+              }
+            }
+          }
+
+          return {
+            success: true,
+            imported: importedCounts,
+          };
+        } catch (error) {
+          console.error('Excel import error:', error);
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: 'Failed to import Excel file',
+          });
+        }
+      }),
+
+    export: protectedProcedure.query(async () => {
+      try {
+        const requirements = await db.getAllRequirements();
+        const tasks = await db.getAllTasks();
+        const issues = await db.getAllIssues();
+        const dependencies = await db.getAllDependencies();
+        const assumptions = await db.getAllAssumptions();
+        const actionLogs = await db.getAllActionLogs();
+
+        const workbook = XLSX.utils.book_new();
+
+        // Requirements sheet
+        const reqData = requirements.map(r => ({
+          'ID-Code': r.idCode,
+          'Task Group': r.taskGroup,
+          'Issue Group': r.issueGroup,
+          'created at': r.createdAt,
+          'Type': r.type,
+          'Class': r.class,
+          'Category': r.category,
+          'Aggrement': r.agreement,
+          'Owner': r.owner,
+          'Description': r.description,
+          'Source Type': r.sourceType,
+          'Ref Source ': r.refSource,
+          'Status': r.status,
+          'Priority': r.priority,
+          'Deliverables 1': r.deliverables1,
+          'D1 Status': r.d1Status,
+          'Deliverables 2': r.deliverables2,
+          'D2 Status': r.d2Status,
+          'Last Update': r.lastUpdate,
+          'Update Date': r.updateDate,
+        }));
+        const reqSheet = XLSX.utils.json_to_sheet(reqData);
+        XLSX.utils.book_append_sheet(workbook, reqSheet, 'Requirements');
+
+        // Tasks sheet
+        const taskData = tasks.map(t => ({
+          'Task ID': t.taskId,
+          'Task Group': t.taskGroup,
+          'Depeneddncy ID': t.dependencyId,
+          'Requirement ID': t.requirementId,
+          'Description': t.description,
+          'Reponsible': t.responsible,
+          'Accountable': t.accountable,
+          'Informed': t.informed,
+          'Consulted': t.consulted,
+          'Due Date': t.dueDate,
+          'Current Status': t.currentStatus,
+          'Ststus Update': t.statusUpdate,
+        }));
+        const taskSheet = XLSX.utils.json_to_sheet(taskData);
+        XLSX.utils.book_append_sheet(workbook, taskSheet, 'Tasks');
+
+        // Issues sheet
+        const issueData = issues.map(i => ({
+          'Issue ID': i.issueId,
+          'Issue Group': i.issueGroup,
+          'Task Group': i.taskGroup,
+          'Requirement ID': i.requirementId,
+          'Type': i.type,
+          'Class': i.class,
+          'Owner': i.owner,
+          'Status': i.status,
+          'Description': i.description,
+          'Source Type': i.sourceType,
+          'Ref Source ': i.refSource,
+          'Created At': i.createdAt,
+          'Priority': i.priority,
+          'Deliverables 1': i.deliverables1,
+          'D1 Status': i.d1Status,
+          'Deliverables 2': i.d2Status,
+          'D2 Status': i.d2Status,
+          'Last Update': i.lastUpdate,
+          'Update Date': i.updateDate,
+        }));
+        const issueSheet = XLSX.utils.json_to_sheet(issueData);
+        XLSX.utils.book_append_sheet(workbook, issueSheet, 'Issue');
+
+        // Dependencies sheet
+        const depData = dependencies.map(d => ({
+          'Dependency ID': d.dependencyId,
+          'Dep Group': d.depGroup,
+          'Task ID': d.taskId,
+          'Requirement ID': d.requirementId,
+          'Description': d.description,
+          'Reponsible': d.responsible,
+          'Accountable': d.accountable,
+          'Informed': d.informed,
+          'Consulted': d.consulted,
+          'Due Date': d.dueDate,
+          'Current Status': d.currentStatus,
+          'Ststus Update': d.statusUpdate,
+        }));
+        const depSheet = XLSX.utils.json_to_sheet(depData);
+        XLSX.utils.book_append_sheet(workbook, depSheet, 'Dependency');
+
+        // Assumptions sheet
+        const assumpData = assumptions.map(a => ({
+          'Assumption Id': a.assumptionId,
+          'Description': a.description,
+          'Category': a.category,
+          'Owner': a.owner,
+          'Status': a.status,
+        }));
+        const assumpSheet = XLSX.utils.json_to_sheet(assumpData);
+        XLSX.utils.book_append_sheet(workbook, assumpSheet, 'Assumptions');
+
+        // Action Log sheet
+        const logData = actionLogs.map(log => ({
+          'Entity Type': log.entityType,
+          'Entity ID': log.entityId,
+          'Changed Fields': JSON.stringify(log.changedFields),
+          'Changed At': log.changedAt,
+        }));
+        const logSheet = XLSX.utils.json_to_sheet(logData);
+        XLSX.utils.book_append_sheet(workbook, logSheet, 'Action log');
+
+        // Convert to base64
+        const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+        const base64 = buffer.toString('base64');
+
+        return {
+          success: true,
+          base64Data: base64,
+          filename: `SSOT-Export-${new Date().toISOString().split('T')[0]}.xlsx`,
+        };
+      } catch (error) {
+        console.error('Excel export error:', error);
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Failed to export Excel file',
+        });
+      }
+    }),
+  }),
+
+  // Requirements
+  requirements: router({
+    list: protectedProcedure.query(async () => {
+      return await db.getAllRequirements();
+    }),
+
+    get: protectedProcedure
+      .input(z.object({ idCode: z.string() }))
+      .query(async ({ input }) => {
+        return await db.getRequirementByIdCode(input.idCode);
+      }),
+
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        idCode: z.string(),
+        data: z.object({
+          status: z.string().optional(),
+          priority: z.string().optional(),
+          deliverables1: z.string().optional(),
+          d1Status: z.string().optional(),
+          deliverables2: z.string().optional(),
+          d2Status: z.string().optional(),
+          lastUpdate: z.string().optional(),
+          updateDate: z.string().optional(),
+          owner: z.string().optional(),
+          description: z.string().optional(),
+        }),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        // Get current state
+        const current = await db.getRequirementByIdCode(input.idCode);
+        if (!current) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Requirement not found' });
+        }
+
+        // Detect changes
+        const changedFields: Record<string, { oldValue: any; newValue: any }> = {};
+        const trackFields = ['status', 'priority', 'deliverables1', 'd1Status', 'deliverables2', 'd2Status', 'lastUpdate', 'updateDate'];
+        
+        for (const field of trackFields) {
+          if (input.data[field as keyof typeof input.data] !== undefined && 
+              current[field as keyof typeof current] !== input.data[field as keyof typeof input.data]) {
+            changedFields[field] = {
+              oldValue: current[field as keyof typeof current],
+              newValue: input.data[field as keyof typeof input.data],
+            };
+          }
+        }
+
+        // Update requirement
+        await db.updateRequirement(input.id, input.data);
+
+        // Log changes if any
+        if (Object.keys(changedFields).length > 0) {
+          await db.createActionLog({
+            entityType: 'requirement',
+            entityId: input.idCode,
+            entityInternalId: input.id,
+            changedFields,
+            changedBy: ctx.user.id,
+          });
+        }
+
+        return { success: true, changedFields: Object.keys(changedFields) };
+      }),
+
+    search: protectedProcedure
+      .input(z.object({ searchTerm: z.string() }))
+      .query(async ({ input }) => {
+        return await db.searchRequirements(input.searchTerm);
+      }),
+
+    filter: protectedProcedure
+      .input(z.object({
+        status: z.string().optional(),
+        priority: z.string().optional(),
+        owner: z.string().optional(),
+        dateFrom: z.string().optional(),
+        dateTo: z.string().optional(),
+      }))
+      .query(async ({ input }) => {
+        return await db.filterRequirements(input);
+      }),
+  }),
+
+  // Tasks
+  tasks: router({
+    list: protectedProcedure.query(async () => {
+      return await db.getAllTasks();
+    }),
+
+    get: protectedProcedure
+      .input(z.object({ taskId: z.string() }))
+      .query(async ({ input }) => {
+        return await db.getTaskByTaskId(input.taskId);
+      }),
+
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        taskId: z.string(),
+        data: z.object({
+          currentStatus: z.string().optional(),
+          statusUpdate: z.string().optional(),
+          description: z.string().optional(),
+          dueDate: z.string().optional(),
+        }),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const current = await db.getTaskByTaskId(input.taskId);
+        if (!current) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Task not found' });
+        }
+
+        const changedFields: Record<string, { oldValue: any; newValue: any }> = {};
+        const trackFields = ['currentStatus', 'statusUpdate'];
+        
+        for (const field of trackFields) {
+          if (input.data[field as keyof typeof input.data] !== undefined && 
+              current[field as keyof typeof current] !== input.data[field as keyof typeof input.data]) {
+            changedFields[field] = {
+              oldValue: current[field as keyof typeof current],
+              newValue: input.data[field as keyof typeof input.data],
+            };
+          }
+        }
+
+        await db.updateTask(input.id, input.data);
+
+        if (Object.keys(changedFields).length > 0) {
+          await db.createActionLog({
+            entityType: 'task',
+            entityId: input.taskId,
+            entityInternalId: input.id,
+            changedFields,
+            changedBy: ctx.user.id,
+          });
+        }
+
+        return { success: true, changedFields: Object.keys(changedFields) };
+      }),
+  }),
+
+  // Issues
+  issues: router({
+    list: protectedProcedure.query(async () => {
+      return await db.getAllIssues();
+    }),
+
+    get: protectedProcedure
+      .input(z.object({ issueId: z.string() }))
+      .query(async ({ input }) => {
+        return await db.getIssueByIssueId(input.issueId);
+      }),
+
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        issueId: z.string(),
+        data: z.object({
+          status: z.string().optional(),
+          priority: z.string().optional(),
+          deliverables1: z.string().optional(),
+          d1Status: z.string().optional(),
+          deliverables2: z.string().optional(),
+          d2Status: z.string().optional(),
+          lastUpdate: z.string().optional(),
+          updateDate: z.string().optional(),
+        }),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const current = await db.getIssueByIssueId(input.issueId);
+        if (!current) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Issue not found' });
+        }
+
+        const changedFields: Record<string, { oldValue: any; newValue: any }> = {};
+        const trackFields = ['status', 'priority', 'deliverables1', 'd1Status', 'deliverables2', 'd2Status', 'lastUpdate', 'updateDate'];
+        
+        for (const field of trackFields) {
+          if (input.data[field as keyof typeof input.data] !== undefined && 
+              current[field as keyof typeof current] !== input.data[field as keyof typeof input.data]) {
+            changedFields[field] = {
+              oldValue: current[field as keyof typeof current],
+              newValue: input.data[field as keyof typeof input.data],
+            };
+          }
+        }
+
+        await db.updateIssue(input.id, input.data);
+
+        if (Object.keys(changedFields).length > 0) {
+          await db.createActionLog({
+            entityType: 'issue',
+            entityId: input.issueId,
+            entityInternalId: input.id,
+            changedFields,
+            changedBy: ctx.user.id,
+          });
+        }
+
+        return { success: true, changedFields: Object.keys(changedFields) };
+      }),
+  }),
+
+  // Dependencies
+  dependencies: router({
+    list: protectedProcedure.query(async () => {
+      return await db.getAllDependencies();
+    }),
+  }),
+
+  // Assumptions
+  assumptions: router({
+    list: protectedProcedure.query(async () => {
+      return await db.getAllAssumptions();
+    }),
+  }),
+
+  // Action Logs
+  actionLogs: router({
+    list: protectedProcedure.query(async () => {
+      return await db.getAllActionLogs();
+    }),
+
+    getByEntity: protectedProcedure
+      .input(z.object({
+        entityType: z.enum(['requirement', 'task', 'issue']),
+        entityId: z.string(),
+      }))
+      .query(async ({ input }) => {
+        return await db.getActionLogsByEntity(input.entityType, input.entityId);
+      }),
+  }),
+
+  // Relationships
+  relationships: router({
+    getAll: protectedProcedure.query(async () => {
+      return await db.getAllRelationships();
+    }),
+
+    getByRequirement: protectedProcedure
+      .input(z.object({ requirementId: z.string() }))
+      .query(async ({ input }) => {
+        return await db.getRequirementRelationships(input.requirementId);
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;
