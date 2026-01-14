@@ -640,3 +640,33 @@ export async function getAllAssumptionsSorted() {
   if (!db) return [];
   return await db.select().from(assumptions).orderBy(assumptions.assumptionId);
 }
+
+// ID Configuration functions
+export async function getAllIdSequences() {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(idSequences);
+}
+
+export async function getIdSequence(entityType: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(idSequences).where(eq(idSequences.entityType, entityType)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function updateIdSequence(entityType: string, data: { prefix?: string; startNumber?: number; padding?: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const updateData: any = {};
+  if (data.prefix !== undefined) updateData.prefix = data.prefix;
+  if (data.startNumber !== undefined) updateData.currentNumber = data.startNumber - 1; // Set to startNumber - 1 so next ID will be startNumber
+  if (data.padding !== undefined) updateData.padding = data.padding;
+  
+  await db.update(idSequences)
+    .set(updateData)
+    .where(eq(idSequences.entityType, entityType));
+  
+  return await getIdSequence(entityType);
+}

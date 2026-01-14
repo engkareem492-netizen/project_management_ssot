@@ -939,6 +939,29 @@ export const appRouter = router({
       }),
   }),
 
+  // ID Configuration
+  idConfig: router({
+    list: protectedProcedure
+      .query(async () => {
+        return await db.getAllIdSequences();
+      }),
+
+    update: protectedProcedure
+      .input(z.object({
+        entityType: z.string(),
+        prefix: z.string(),
+        startNumber: z.number().optional(),
+        padding: z.number().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        return await db.updateIdSequence(input.entityType, {
+          prefix: input.prefix,
+          startNumber: input.startNumber,
+          padding: input.padding,
+        });
+      }),
+  }),
+
   // Auto ID generation
   autoId: router({
     getNext: protectedProcedure

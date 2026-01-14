@@ -152,3 +152,44 @@
 - [x] Test requirement-task linking
 - [x] Create checkpoint
 - [x] Deliver enhanced application
+
+## Enhancement V3: Comprehensive Improvements
+
+### ID Configuration
+- [x] Create ID Configuration backend router
+- [x] Create Settings page for ID configuration
+- [x] Add Settings to navigation menu
+- [ ] Test ID configuration changes
+
+### Stakeholder Integration
+- [ ] Add stakeholder dropdown for Owner in Requirements
+- [ ] Add stakeholder dropdown for Owner in Issues  
+- [ ] Add stakeholder dropdown for Responsible/Accountable in Tasks
+- [ ] Add stakeholder dropdown for Responsible in Dependencies
+
+### Status & Priority Dropdowns
+- [ ] Add Status dropdown with predefined options (Open, Pending, Closed, In Progress)
+- [ ] Add Priority dropdown with predefined options (Low, Medium, High, Very High)
+- [ ] Apply to Requirements, Tasks, Issues
+
+### Deliverables Integration
+- [ ] Show linked Deliverables from database in Requirements popup (not Excel fields)
+- [ ] Add "Create Deliverable" button in Requirements
+- [ ] Add "Create Deliverable" button in Tasks
+- [ ] Update Deliverables page to show linked Requirements/Tasks
+
+### Bidirectional Linking
+- [ ] Show parent Requirement in Tasks table/detail view
+- [ ] Show parent Requirement in Issues table/detail view
+- [ ] Add "Create Issue" button in Requirements
+
+### Last Update Field
+- [ ] Make Last Update field prominently editable
+- [ ] Auto-update Last Update on any change
+
+### Testing & Delivery
+- [ ] Test all dropdown integrations
+- [ ] Test deliverables linking
+- [ ] Test bidirectional navigation
+- [ ] Create checkpoint
+- [ ] Deliver V3 enhancements

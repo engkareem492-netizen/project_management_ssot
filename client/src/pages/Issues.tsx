@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Search, Edit, History, Loader2, Plus, Trash2 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 
 export default function Issues() {
@@ -21,14 +22,16 @@ export default function Issues() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [newIssue, setNewIssue] = useState<any>({
-    issueId: '',
     description: '',
     owner: '',
     status: 'Open',
     priority: 'Medium',
+    requirementId: '',
   });
 
   const { data: issues, isLoading, refetch } = trpc.issues.list.useQuery();
+  const { data: stakeholders } = trpc.stakeholders.list.useQuery();
+  const { data: requirements } = trpc.requirements.list.useQuery();
   const { data: actionLogs } = trpc.actionLogs.getByEntity.useQuery(
     { entityType: "issue", entityId: selectedEntityId },
     { enabled: historyDialogOpen && !!selectedEntityId }
@@ -46,15 +49,15 @@ export default function Issues() {
   });
 
   const createMutation = trpc.issues.create.useMutation({
-    onSuccess: () => {
-      toast.success('Issue created successfully');
+    onSuccess: (data) => {
+      toast.success(`Issue ${data.issueId} created successfully`);
       setCreateDialogOpen(false);
       setNewIssue({
-        issueId: '',
         description: '',
         owner: '',
         status: 'Open',
         priority: 'Medium',
+        requirementId: '',
       });
       refetch();
     },
@@ -80,6 +83,12 @@ export default function Issues() {
     issue.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     issue.owner?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const getRequirementStatus = (requirementId: string | null) => {
+    if (!requirementId || !requirements) return null;
+    const req = requirements.find(r => r.idCode === requirementId);
+    return req?.status || null;
+  };
 
   const handleEdit = (issue: any) => {
     setEditingId(issue.id);
@@ -114,8 +123,8 @@ export default function Issues() {
   };
 
   const handleCreate = () => {
-    if (!newIssue.issueId) {
-      toast.error('Issue ID is required');
+    if (!newIssue.description) {
+      toast.error('Description is required');
       return;
     }
     createMutation.mutate(newIssue);
@@ -181,6 +190,7 @@ export default function Issues() {
                   <TableHead className="w-[100px]">Issue ID</TableHead>
                   <TableHead>Description</TableHead>
                   <TableHead>Requirement ID</TableHead>
+                  <TableHead>Req Status</TableHead>
                   <TableHead>Owner</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Priority</TableHead>
@@ -194,6 +204,13 @@ export default function Issues() {
                     <TableCell className="font-medium">{issue.issueId}</TableCell>
                     <TableCell className="max-w-xs truncate">{issue.description}</TableCell>
                     <TableCell>{issue.requirementId || 'N/A'}</TableCell>
+                    <TableCell>
+                      {getRequirementStatus(issue.requirementId) ? (
+                        <Badge variant="outline">{getRequirementStatus(issue.requirementId)}</Badge>
+                      ) : (
+                        <span className="text-muted-foreground">N/A</span>
+                      )}
+                    </TableCell>
                     <TableCell>{issue.owner}</TableCell>
                     <TableCell>
                       {editingId === issue.id ? (
@@ -315,55 +332,90 @@ export default function Issues() {
           <DialogHeader>
             <DialogTitle>Create New Issue</DialogTitle>
             <DialogDescription>
-              Add a new issue to the project
+              Add a new issue to the project. Issue ID will be auto-generated (I-XXXX format).
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="issueId" className="text-right">Issue ID *</Label>
-              <Input
-                id="issueId"
-                value={newIssue.issueId}
-                onChange={(e) => setNewIssue({ ...newIssue, issueId: e.target.value })}
-                className="col-span-3"
-                placeholder="I-001"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="description" className="text-right">Description</Label>
+              <Label htmlFor="description" className="text-right">Description *</Label>
               <Input
                 id="description"
                 value={newIssue.description}
                 onChange={(e) => setNewIssue({ ...newIssue, description: e.target.value })}
                 className="col-span-3"
+                placeholder="Issue description..."
               />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="requirementId" className="text-right">Requirement ID</Label>
+              <Select
+                value={newIssue.requirementId}
+                onValueChange={(value) => setNewIssue({ ...newIssue, requirementId: value })}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select requirement..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">None</SelectItem>
+                  {requirements?.map((req) => (
+                    <SelectItem key={req.id} value={req.idCode}>
+                      {req.idCode} - {req.description?.substring(0, 50) || 'No description'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="owner" className="text-right">Owner</Label>
-              <Input
-                id="owner"
+              <Select
                 value={newIssue.owner}
-                onChange={(e) => setNewIssue({ ...newIssue, owner: e.target.value })}
-                className="col-span-3"
-              />
+                onValueChange={(value) => setNewIssue({ ...newIssue, owner: value })}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select owner..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {stakeholders?.map((s) => (
+                    <SelectItem key={s.id} value={s.fullName}>
+                      {s.fullName} - {s.position || s.role || 'N/A'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="status" className="text-right">Status</Label>
-              <Input
-                id="status"
+              <Select
                 value={newIssue.status}
-                onChange={(e) => setNewIssue({ ...newIssue, status: e.target.value })}
-                className="col-span-3"
-              />
+                onValueChange={(value) => setNewIssue({ ...newIssue, status: value })}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Open">Open</SelectItem>
+                  <SelectItem value="In Progress">In Progress</SelectItem>
+                  <SelectItem value="Resolved">Resolved</SelectItem>
+                  <SelectItem value="Closed">Closed</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="priority" className="text-right">Priority</Label>
-              <Input
-                id="priority"
+              <Select
                 value={newIssue.priority}
-                onChange={(e) => setNewIssue({ ...newIssue, priority: e.target.value })}
-                className="col-span-3"
-              />
+                onValueChange={(value) => setNewIssue({ ...newIssue, priority: value })}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Low">Low</SelectItem>
+                  <SelectItem value="Medium">Medium</SelectItem>
+                  <SelectItem value="High">High</SelectItem>
+                  <SelectItem value="Very High">Very High</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <div className="flex justify-end gap-2">

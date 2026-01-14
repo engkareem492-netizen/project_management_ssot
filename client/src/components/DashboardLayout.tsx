@@ -33,7 +33,8 @@ import {
   History, 
   GitBranch, 
   Package,
-  FileCheck
+  FileCheck,
+  Settings as SettingsIcon
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -50,6 +51,7 @@ const menuItems = [
   { icon: Package, label: "Deliverables", path: "/deliverables" },
   { icon: History, label: "Action Log", path: "/action-log" },
   { icon: GitBranch, label: "Relationships", path: "/relationships" },
+  { icon: SettingsIcon, label: "Settings", path: "/settings" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";

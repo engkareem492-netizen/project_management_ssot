@@ -9,6 +9,7 @@ import { Search, Edit, History, Loader2, Plus, Trash2 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 
 export default function Tasks() {
@@ -21,14 +22,18 @@ export default function Tasks() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [newTask, setNewTask] = useState<any>({
-    taskId: '',
     description: '',
     responsible: '',
-    currentStatus: 'Not Started',
-    statusUpdate: '',
+    accountable: '',
+    owner: '',
+    status: 'Not Started',
+    priority: 'Medium',
+    requirementId: '',
   });
 
   const { data: tasks, isLoading, refetch } = trpc.tasks.list.useQuery();
+  const { data: stakeholders } = trpc.stakeholders.list.useQuery();
+  const { data: requirements } = trpc.requirements.list.useQuery();
   const { data: actionLogs } = trpc.actionLogs.getByEntity.useQuery(
     { entityType: "task", entityId: selectedEntityId },
     { enabled: historyDialogOpen && !!selectedEntityId }
@@ -46,15 +51,17 @@ export default function Tasks() {
   });
 
   const createMutation = trpc.tasks.create.useMutation({
-    onSuccess: () => {
-      toast.success('Task created successfully');
+    onSuccess: (data) => {
+      toast.success(`Task ${data.taskId} created successfully`);
       setCreateDialogOpen(false);
       setNewTask({
-        taskId: '',
         description: '',
         responsible: '',
-        currentStatus: 'Not Started',
-        statusUpdate: '',
+        accountable: '',
+        owner: '',
+        status: 'Not Started',
+        priority: 'Medium',
+        requirementId: '',
       });
       refetch();
     },
@@ -80,6 +87,12 @@ export default function Tasks() {
     task.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     task.responsible?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const getRequirementStatus = (requirementId: string | null) => {
+    if (!requirementId || !requirements) return null;
+    const req = requirements.find(r => r.idCode === requirementId);
+    return req?.status || null;
+  };
 
   const handleEdit = (task: any) => {
     setEditingId(task.id);
@@ -174,6 +187,7 @@ export default function Tasks() {
                   <TableHead className="w-[100px]">Task ID</TableHead>
                   <TableHead>Description</TableHead>
                   <TableHead>Requirement ID</TableHead>
+                  <TableHead>Req Status</TableHead>
                   <TableHead>Responsible</TableHead>
                   <TableHead>Due Date</TableHead>
                   <TableHead>Current Status</TableHead>
@@ -187,6 +201,13 @@ export default function Tasks() {
                     <TableCell className="font-medium">{task.taskId}</TableCell>
                     <TableCell className="max-w-xs truncate">{task.description}</TableCell>
                     <TableCell>{task.requirementId || 'N/A'}</TableCell>
+                    <TableCell>
+                      {getRequirementStatus(task.requirementId) ? (
+                        <Badge variant="outline">{getRequirementStatus(task.requirementId)}</Badge>
+                      ) : (
+                        <span className="text-muted-foreground">N/A</span>
+                      )}
+                    </TableCell>
                     <TableCell>{task.responsible}</TableCell>
                     <TableCell>{task.dueDate || 'N/A'}</TableCell>
                     <TableCell>
@@ -298,55 +319,109 @@ export default function Tasks() {
           <DialogHeader>
             <DialogTitle>Create New Task</DialogTitle>
             <DialogDescription>
-              Add a new task to the project
+              Add a new task to the project. Task ID will be auto-generated (T-XXXX format).
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="taskId" className="text-right">Task ID *</Label>
-              <Input
-                id="taskId"
-                value={newTask.taskId}
-                onChange={(e) => setNewTask({ ...newTask, taskId: e.target.value })}
-                className="col-span-3"
-                placeholder="T-001"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="description" className="text-right">Description</Label>
+              <Label htmlFor="description" className="text-right">Description *</Label>
               <Input
                 id="description"
                 value={newTask.description}
                 onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
                 className="col-span-3"
+                placeholder="Task description..."
               />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="requirementId" className="text-right">Requirement ID</Label>
+              <Select
+                value={newTask.requirementId}
+                onValueChange={(value) => setNewTask({ ...newTask, requirementId: value })}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select requirement..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">None</SelectItem>
+                  {requirements?.map((req) => (
+                    <SelectItem key={req.id} value={req.idCode}>
+                      {req.idCode} - {req.description?.substring(0, 50) || 'No description'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="responsible" className="text-right">Responsible</Label>
-              <Input
-                id="responsible"
+              <Select
                 value={newTask.responsible}
-                onChange={(e) => setNewTask({ ...newTask, responsible: e.target.value })}
-                className="col-span-3"
-              />
+                onValueChange={(value) => setNewTask({ ...newTask, responsible: value })}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select responsible person..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {stakeholders?.map((s) => (
+                    <SelectItem key={s.id} value={s.fullName}>
+                      {s.fullName} - {s.position || s.role || 'N/A'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="currentStatus" className="text-right">Current Status</Label>
-              <Input
-                id="currentStatus"
-                value={newTask.currentStatus}
-                onChange={(e) => setNewTask({ ...newTask, currentStatus: e.target.value })}
-                className="col-span-3"
-              />
+              <Label htmlFor="accountable" className="text-right">Accountable</Label>
+              <Select
+                value={newTask.accountable}
+                onValueChange={(value) => setNewTask({ ...newTask, accountable: value })}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select accountable person..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {stakeholders?.map((s) => (
+                    <SelectItem key={s.id} value={s.fullName}>
+                      {s.fullName} - {s.position || s.role || 'N/A'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="statusUpdate" className="text-right">Status Update</Label>
-              <Input
-                id="statusUpdate"
-                value={newTask.statusUpdate}
-                onChange={(e) => setNewTask({ ...newTask, statusUpdate: e.target.value })}
-                className="col-span-3"
-              />
+              <Label htmlFor="status" className="text-right">Status</Label>
+              <Select
+                value={newTask.status}
+                onValueChange={(value) => setNewTask({ ...newTask, status: value })}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Not Started">Not Started</SelectItem>
+                  <SelectItem value="In Progress">In Progress</SelectItem>
+                  <SelectItem value="Completed">Completed</SelectItem>
+                  <SelectItem value="On Hold">On Hold</SelectItem>
+                  <SelectItem value="Blocked">Blocked</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="priority" className="text-right">Priority</Label>
+              <Select
+                value={newTask.priority}
+                onValueChange={(value) => setNewTask({ ...newTask, priority: value })}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Low">Low</SelectItem>
+                  <SelectItem value="Medium">Medium</SelectItem>
+                  <SelectItem value="High">High</SelectItem>
+                  <SelectItem value="Very High">Very High</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <div className="flex justify-end gap-2">

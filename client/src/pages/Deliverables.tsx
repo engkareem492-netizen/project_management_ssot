@@ -67,6 +67,10 @@ export default function Deliverables() {
   const { data: requirements } = trpc.requirements.list.useQuery();
   const { data: tasks } = trpc.tasks.list.useQuery();
   const { data: dependencies } = trpc.dependencies.list.useQuery();
+  const { data: deliverableLinks } = trpc.deliverables.getLinks.useQuery(
+    { deliverableId: selectedDeliverable?.id || 0 },
+    { enabled: isLinkOpen && !!selectedDeliverable?.id }
+  );
   
   const createMutation = trpc.deliverables.create.useMutation({
     onSuccess: (data) => {
@@ -108,6 +112,7 @@ export default function Deliverables() {
   const addLinkMutation = trpc.deliverables.addLink.useMutation({
     onSuccess: () => {
       utils.deliverables.list.invalidate();
+      utils.deliverables.getLinks.invalidate();
       setLinkData({ entityType: "requirement", entityId: "" });
       toast.success("Link added successfully");
     },
@@ -119,6 +124,7 @@ export default function Deliverables() {
   const removeLinkMutation = trpc.deliverables.removeLink.useMutation({
     onSuccess: () => {
       utils.deliverables.list.invalidate();
+      utils.deliverables.getLinks.invalidate();
       toast.success("Link removed successfully");
     },
     onError: (error) => {
@@ -193,6 +199,22 @@ export default function Deliverables() {
         return dependencies?.map((d) => ({ id: d.dependencyId, label: `${d.dependencyId} - ${d.description?.substring(0, 30) || "No description"}` })) || [];
       default:
         return [];
+    }
+  };
+
+  const getLinkedEntityDetails = (entityType: string, entityId: string) => {
+    switch (entityType) {
+      case "requirement":
+        const req = requirements?.find((r) => r.idCode === entityId);
+        return req ? { id: req.idCode, description: req.description, status: req.status } : null;
+      case "task":
+        const task = tasks?.find((t) => t.taskId === entityId);
+        return task ? { id: task.taskId, description: task.description, status: task.currentStatus } : null;
+      case "dependency":
+        const dep = dependencies?.find((d) => d.dependencyId === entityId);
+        return dep ? { id: dep.dependencyId, description: dep.description, status: dep.currentStatus } : null;
+      default:
+        return null;
     }
   };
 
@@ -502,7 +524,7 @@ export default function Deliverables() {
 
       {/* Link Management Dialog */}
       <Dialog open={isLinkOpen} onOpenChange={setIsLinkOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Manage Links for {selectedDeliverable?.deliverableId}</DialogTitle>
             <DialogDescription>
@@ -511,7 +533,7 @@ export default function Deliverables() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             {/* Add new link */}
-            <div className="p-4 border rounded-lg space-y-3">
+            <div className="p-4 border rounded-lg space-y-3 bg-muted/30">
               <h4 className="font-medium">Add New Link</h4>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
@@ -553,13 +575,60 @@ export default function Deliverables() {
               </div>
               <Button onClick={handleAddLink} disabled={addLinkMutation.isPending} className="w-full">
                 <Plus className="h-4 w-4 mr-2" />
-                Add Link
+                {addLinkMutation.isPending ? "Adding..." : "Add Link"}
               </Button>
             </div>
 
-            {/* Current links would be shown here - simplified for now */}
-            <div className="text-sm text-muted-foreground text-center py-4">
-              Links are managed through the entity pages. Use the link function above to add new connections.
+            {/* Current links */}
+            <div className="space-y-3">
+              <h4 className="font-medium">Current Links</h4>
+              {!deliverableLinks || deliverableLinks.length === 0 ? (
+                <div className="text-sm text-muted-foreground text-center py-8 border rounded-lg">
+                  No links yet. Add links to Requirements, Tasks, or Dependencies above.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {deliverableLinks.map((link: any) => {
+                    const details = getLinkedEntityDetails(link.entityType, link.entityId);
+                    if (!details) return null;
+                    
+                    return (
+                      <div key={link.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/30">
+                        <div className="flex-1 space-y-1">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="capitalize">
+                              {link.entityType}
+                            </Badge>
+                            <span className="font-mono font-medium">{details.id}</span>
+                            {details.status && (
+                              <Badge className={getStatusColor(details.status)}>
+                                {details.status}
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground truncate">
+                            {details.description || "No description"}
+                          </p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            if (confirm(`Remove link to ${details.id}?`)) {
+                              removeLinkMutation.mutate({
+                                linkId: link.id,
+                              });
+                            }
+                          }}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
           <DialogFooter>
