@@ -125,7 +125,12 @@ export default function Tasks() {
       toast.error('Task ID is required');
       return;
     }
-    createMutation.mutate(newTask);
+    // Convert "none" to undefined for optional requirementId
+    const taskData = {
+      ...newTask,
+      requirementId: newTask.requirementId === "none" ? undefined : newTask.requirementId,
+    };
+    createMutation.mutate(taskData);
   };
 
   const handleDelete = (id: number) => {
@@ -343,7 +348,7 @@ export default function Tasks() {
                   <SelectValue placeholder="Select requirement..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
                   {requirements?.map((req) => (
                     <SelectItem key={req.id} value={req.idCode}>
                       {req.idCode} - {req.description?.substring(0, 50) || 'No description'}

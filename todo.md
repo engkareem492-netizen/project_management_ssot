@@ -193,3 +193,6 @@
 - [ ] Test bidirectional navigation
 - [ ] Create checkpoint
 - [ ] Deliver V3 enhancements
+
+## Bugs
+- [x] Fix Select.Item empty value error in Tasks page
