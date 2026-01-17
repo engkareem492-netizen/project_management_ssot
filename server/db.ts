@@ -17,7 +17,11 @@ import {
   InsertActionLog,
   Requirement,
   Task,
-  Issue
+  Issue,
+  statusOptions,
+  priorityOptions,
+  typeOptions,
+  categoryOptions
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -669,4 +673,182 @@ export async function updateIdSequence(entityType: string, data: { prefix?: stri
     .where(eq(idSequences.entityType, entityType));
   
   return await getIdSequence(entityType);
+}
+
+
+// ==================== Dropdown Options Management ====================
+
+/**
+ * Status Options
+ */
+export async function getAllStatusOptions(category?: string) {
+  const db = await getDb();
+  if (!db) return [];
+  if (category && category !== 'all') {
+    return await db.select().from(statusOptions).where(
+      or(eq(statusOptions.category, category), eq(statusOptions.category, 'all'))
+    );
+  }
+  return await db.select().from(statusOptions);
+}
+
+export async function createStatusOption(data: { value: string; label: string; category: string; color?: string; isDefault?: boolean }) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  const [created] = await db.insert(statusOptions).values(data);
+  return created;
+}
+
+export async function updateStatusOption(id: number, data: Partial<{ label: string; category: string; color: string; isDefault: boolean }>) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  await db.update(statusOptions).set(data).where(eq(statusOptions.id, id));
+  return await db.select().from(statusOptions).where(eq(statusOptions.id, id)).limit(1);
+}
+
+export async function deleteStatusOption(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  // Check if option is in use
+  const option = await db.select().from(statusOptions).where(eq(statusOptions.id, id)).limit(1);
+  if (option[0]?.usageCount && option[0].usageCount > 0) {
+    throw new Error('Cannot delete option that is currently in use');
+  }
+  await db.delete(statusOptions).where(eq(statusOptions.id, id));
+}
+
+export async function incrementStatusUsage(value: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(statusOptions)
+    .set({ usageCount: sql`${statusOptions.usageCount} + 1` })
+    .where(eq(statusOptions.value, value));
+}
+
+/**
+ * Priority Options
+ */
+export async function getAllPriorityOptions(category?: string) {
+  const db = await getDb();
+  if (!db) return [];
+  if (category && category !== 'all') {
+    return await db.select().from(priorityOptions).where(
+      or(eq(priorityOptions.category, category), eq(priorityOptions.category, 'all'))
+    ).orderBy(priorityOptions.level);
+  }
+  return await db.select().from(priorityOptions).orderBy(priorityOptions.level);
+}
+
+export async function createPriorityOption(data: { value: string; label: string; category: string; level: number; color?: string; isDefault?: boolean }) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  const [created] = await db.insert(priorityOptions).values(data);
+  return created;
+}
+
+export async function updatePriorityOption(id: number, data: Partial<{ label: string; category: string; level: number; color: string; isDefault: boolean }>) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  await db.update(priorityOptions).set(data).where(eq(priorityOptions.id, id));
+  return await db.select().from(priorityOptions).where(eq(priorityOptions.id, id)).limit(1);
+}
+
+export async function deletePriorityOption(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  const option = await db.select().from(priorityOptions).where(eq(priorityOptions.id, id)).limit(1);
+  if (option[0]?.usageCount && option[0].usageCount > 0) {
+    throw new Error('Cannot delete option that is currently in use');
+  }
+  await db.delete(priorityOptions).where(eq(priorityOptions.id, id));
+}
+
+export async function incrementPriorityUsage(value: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(priorityOptions)
+    .set({ usageCount: sql`${priorityOptions.usageCount} + 1` })
+    .where(eq(priorityOptions.value, value));
+}
+
+/**
+ * Type Options
+ */
+export async function getAllTypeOptions() {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(typeOptions);
+}
+
+export async function createTypeOption(data: { value: string; label: string; description?: string; isDefault?: boolean }) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  const [created] = await db.insert(typeOptions).values(data);
+  return created;
+}
+
+export async function updateTypeOption(id: number, data: Partial<{ label: string; description: string; isDefault: boolean }>) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  await db.update(typeOptions).set(data).where(eq(typeOptions.id, id));
+  return await db.select().from(typeOptions).where(eq(typeOptions.id, id)).limit(1);
+}
+
+export async function deleteTypeOption(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  const option = await db.select().from(typeOptions).where(eq(typeOptions.id, id)).limit(1);
+  if (option[0]?.usageCount && option[0].usageCount > 0) {
+    throw new Error('Cannot delete option that is currently in use');
+  }
+  await db.delete(typeOptions).where(eq(typeOptions.id, id));
+}
+
+export async function incrementTypeUsage(value: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(typeOptions)
+    .set({ usageCount: sql`${typeOptions.usageCount} + 1` })
+    .where(eq(typeOptions.value, value));
+}
+
+/**
+ * Category Options
+ */
+export async function getAllCategoryOptions() {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(categoryOptions);
+}
+
+export async function createCategoryOption(data: { value: string; label: string; description?: string; isDefault?: boolean }) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  const [created] = await db.insert(categoryOptions).values(data);
+  return created;
+}
+
+export async function updateCategoryOption(id: number, data: Partial<{ label: string; description: string; isDefault: boolean }>) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  await db.update(categoryOptions).set(data).where(eq(categoryOptions.id, id));
+  return await db.select().from(categoryOptions).where(eq(categoryOptions.id, id)).limit(1);
+}
+
+export async function deleteCategoryOption(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  const option = await db.select().from(categoryOptions).where(eq(categoryOptions.id, id)).limit(1);
+  if (option[0]?.usageCount && option[0].usageCount > 0) {
+    throw new Error('Cannot delete option that is currently in use');
+  }
+  await db.delete(categoryOptions).where(eq(categoryOptions.id, id));
+}
+
+export async function incrementCategoryUsage(value: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(categoryOptions)
+    .set({ usageCount: sql`${categoryOptions.usageCount} + 1` })
+    .where(eq(categoryOptions.value, value));
 }

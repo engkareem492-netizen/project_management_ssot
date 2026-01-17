@@ -127,7 +127,12 @@ export default function Issues() {
       toast.error('Description is required');
       return;
     }
-    createMutation.mutate(newIssue);
+    // Convert "none" to undefined for optional requirementId
+    const issueData = {
+      ...newIssue,
+      requirementId: newIssue.requirementId === "none" ? undefined : newIssue.requirementId,
+    };
+    createMutation.mutate(issueData);
   };
 
   const handleDelete = (id: number) => {
@@ -356,7 +361,7 @@ export default function Issues() {
                   <SelectValue placeholder="Select requirement..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
                   {requirements?.map((req) => (
                     <SelectItem key={req.id} value={req.idCode}>
                       {req.idCode} - {req.description?.substring(0, 50) || 'No description'}

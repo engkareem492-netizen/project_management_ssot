@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, json } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, json, boolean } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -239,3 +239,74 @@ export const actionLogs = mysqlTable("actionLogs", {
 
 export type ActionLog = typeof actionLogs.$inferSelect;
 export type InsertActionLog = typeof actionLogs.$inferInsert;
+
+/**
+ * Status Options table - stores customizable status values
+ */
+export const statusOptions = mysqlTable("statusOptions", {
+  id: int("id").autoincrement().primaryKey(),
+  value: varchar("value", { length: 100 }).notNull().unique(),
+  label: varchar("label", { length: 100 }).notNull(),
+  category: varchar("category", { length: 50 }).notNull(), // 'requirement', 'task', 'issue', 'dependency', 'all'
+  color: varchar("color", { length: 50 }), // for badge colors
+  isDefault: boolean("isDefault").default(false).notNull(),
+  usageCount: int("usageCount").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type StatusOption = typeof statusOptions.$inferSelect;
+export type InsertStatusOption = typeof statusOptions.$inferInsert;
+
+/**
+ * Priority Options table - stores customizable priority values
+ */
+export const priorityOptions = mysqlTable("priorityOptions", {
+  id: int("id").autoincrement().primaryKey(),
+  value: varchar("value", { length: 100 }).notNull().unique(),
+  label: varchar("label", { length: 100 }).notNull(),
+  category: varchar("category", { length: 50 }).notNull(), // 'requirement', 'task', 'issue', 'all'
+  color: varchar("color", { length: 50 }), // for badge colors
+  level: int("level").notNull(), // 1=Low, 2=Medium, 3=High, 4=Very High
+  isDefault: boolean("isDefault").default(false).notNull(),
+  usageCount: int("usageCount").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type PriorityOption = typeof priorityOptions.$inferSelect;
+export type InsertPriorityOption = typeof priorityOptions.$inferInsert;
+
+/**
+ * Type Options table - stores customizable type values (for requirements)
+ */
+export const typeOptions = mysqlTable("typeOptions", {
+  id: int("id").autoincrement().primaryKey(),
+  value: varchar("value", { length: 100 }).notNull().unique(),
+  label: varchar("label", { length: 100 }).notNull(),
+  description: text("description"),
+  isDefault: boolean("isDefault").default(false).notNull(),
+  usageCount: int("usageCount").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type TypeOption = typeof typeOptions.$inferSelect;
+export type InsertTypeOption = typeof typeOptions.$inferInsert;
+
+/**
+ * Category Options table - stores customizable category values (for requirements)
+ */
+export const categoryOptions = mysqlTable("categoryOptions", {
+  id: int("id").autoincrement().primaryKey(),
+  value: varchar("value", { length: 100 }).notNull().unique(),
+  label: varchar("label", { length: 100 }).notNull(),
+  description: text("description"),
+  isDefault: boolean("isDefault").default(false).notNull(),
+  usageCount: int("usageCount").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CategoryOption = typeof categoryOptions.$inferSelect;
+export type InsertCategoryOption = typeof categoryOptions.$inferInsert;

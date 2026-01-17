@@ -22,6 +22,13 @@
       "when": 1768154748979,
       "tag": "0002_fat_titanium_man",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1768577685919,
+      "tag": "0003_fixed_frank_castle",
+      "breakpoints": true
     }
   ]
 }

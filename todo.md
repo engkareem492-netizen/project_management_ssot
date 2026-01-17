@@ -196,3 +196,54 @@
 
 ## Bugs
 - [x] Fix Select.Item empty value error in Tasks page
+- [x] Fix Select.Item empty value error in Issues page
+
+## Enhancement V4: Settings Management & Today Dashboard
+
+### Phase 1: Fix Issues Page Error
+- [x] Fix Select.Item empty value error in Issues create dialog
+
+### Phase 2: Database Schema for Dropdown Options
+- [x] Create status_options table
+- [x] Create priority_options table
+- [x] Create type_options table
+- [x] Create category_options table
+- [x] Add usage_count field to track option usage
+- [x] Seed initial data for all option tables
+- [x] Add database helpers for CRUD operations
+
+### Phase 3: Settings Buttons for Dropdowns
+- [ ] Add Settings icon button beside Status dropdown
+- [ ] Add Settings icon button beside Priority dropdown
+- [ ] Add Settings icon button beside Type dropdown
+- [ ] Add Settings icon button beside Category dropdown
+- [ ] Create mini-dialog for quick add/edit/delete options
+- [ ] Implement validation: prevent delete if option is in use
+
+### Phase 4: Settings Page Enhancement
+- [ ] Create comprehensive Settings page with tabs
+- [ ] Add Status Options management section
+- [ ] Add Priority Options management section
+- [ ] Add Type Options management section
+- [ ] Add Category Options management section
+- [ ] Show usage count for each option
+- [ ] Implement bulk operations (import/export options)
+
+### Phase 5: Today Dashboard
+- [ ] Create Today/Dashboard page in navigation
+- [ ] Show tasks due today with status
+- [ ] Show requirements due today with status
+- [ ] Show overdue tasks (past due date)
+- [ ] Show overdue requirements
+- [ ] Show upcoming tasks (next 7 days)
+- [ ] Show upcoming requirements (next 7 days)
+- [ ] Add quick action buttons (mark complete, edit)
+- [ ] Add summary cards (total today, overdue, upcoming)
+
+### Phase 6: Testing & Delivery
+- [ ] Test dropdown options CRUD
+- [ ] Test Settings buttons functionality
+- [ ] Test Settings page management
+- [ ] Test Today Dashboard filtering
+- [ ] Create checkpoint
+- [ ] Deliver V4 enhancements

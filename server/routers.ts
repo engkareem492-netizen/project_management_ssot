@@ -981,6 +981,153 @@ export const appRouter = router({
         return { nextId };
       }),
   }),
+
+  // Dropdown Options Management
+  statusOptions: router({
+    list: publicProcedure
+      .input(z.object({ category: z.string().optional() }).optional())
+      .query(async ({ input }) => {
+        return await db.getAllStatusOptions(input?.category);
+      }),
+    create: protectedProcedure
+      .input(z.object({
+        value: z.string(),
+        label: z.string(),
+        category: z.string(),
+        color: z.string().optional(),
+        isDefault: z.boolean().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        return await db.createStatusOption(input);
+      }),
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        data: z.object({
+          label: z.string().optional(),
+          category: z.string().optional(),
+          color: z.string().optional(),
+          isDefault: z.boolean().optional(),
+        }),
+      }))
+      .mutation(async ({ input }) => {
+        return await db.updateStatusOption(input.id, input.data);
+      }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.deleteStatusOption(input.id);
+        return { success: true };
+      }),
+  }),
+
+  priorityOptions: router({
+    list: publicProcedure
+      .input(z.object({ category: z.string().optional() }).optional())
+      .query(async ({ input }) => {
+        return await db.getAllPriorityOptions(input?.category);
+      }),
+    create: protectedProcedure
+      .input(z.object({
+        value: z.string(),
+        label: z.string(),
+        category: z.string(),
+        level: z.number(),
+        color: z.string().optional(),
+        isDefault: z.boolean().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        return await db.createPriorityOption(input);
+      }),
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        data: z.object({
+          label: z.string().optional(),
+          category: z.string().optional(),
+          level: z.number().optional(),
+          color: z.string().optional(),
+          isDefault: z.boolean().optional(),
+        }),
+      }))
+      .mutation(async ({ input }) => {
+        return await db.updatePriorityOption(input.id, input.data);
+      }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.deletePriorityOption(input.id);
+        return { success: true };
+      }),
+  }),
+
+  typeOptions: router({
+    list: publicProcedure.query(async () => {
+      return await db.getAllTypeOptions();
+    }),
+    create: protectedProcedure
+      .input(z.object({
+        value: z.string(),
+        label: z.string(),
+        description: z.string().optional(),
+        isDefault: z.boolean().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        return await db.createTypeOption(input);
+      }),
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        data: z.object({
+          label: z.string().optional(),
+          description: z.string().optional(),
+          isDefault: z.boolean().optional(),
+        }),
+      }))
+      .mutation(async ({ input }) => {
+        return await db.updateTypeOption(input.id, input.data);
+      }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.deleteTypeOption(input.id);
+        return { success: true };
+      }),
+  }),
+
+  categoryOptions: router({
+    list: publicProcedure.query(async () => {
+      return await db.getAllCategoryOptions();
+    }),
+    create: protectedProcedure
+      .input(z.object({
+        value: z.string(),
+        label: z.string(),
+        description: z.string().optional(),
+        isDefault: z.boolean().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        return await db.createCategoryOption(input);
+      }),
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        data: z.object({
+          label: z.string().optional(),
+          description: z.string().optional(),
+          isDefault: z.boolean().optional(),
+        }),
+      }))
+      .mutation(async ({ input }) => {
+        return await db.updateCategoryOption(input.id, input.data);
+      }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.deleteCategoryOption(input.id);
+        return { success: true };
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;
