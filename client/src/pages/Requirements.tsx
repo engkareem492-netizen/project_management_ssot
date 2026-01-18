@@ -963,33 +963,7 @@ export default function Requirements() {
                 placeholder="e.g., FICO, SD, MM, HXM"
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="deliverables1" className="text-right">Deliverables 1</Label>
-              <Input
-                id="deliverables1"
-                value={newRequirement.deliverables1}
-                onChange={(e) => setNewRequirement({ ...newRequirement, deliverables1: e.target.value })}
-                className="col-span-3"
-                placeholder="e.g., FSD, Report, Form"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="d1Status" className="text-right">D1 Status</Label>
-              <Select
-                value={newRequirement.d1Status}
-                onValueChange={(value) => setNewRequirement({ ...newRequirement, d1Status: value })}
-              >
-                <SelectTrigger className="col-span-3">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Pending">Pending</SelectItem>
-                  <SelectItem value="In Progress">In Progress</SelectItem>
-                  <SelectItem value="Completed">Completed</SelectItem>
-                  <SelectItem value="Initial D1">Initial D1</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>Cancel</Button>

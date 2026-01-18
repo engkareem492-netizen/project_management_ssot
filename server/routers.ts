@@ -1128,6 +1128,150 @@ export const appRouter = router({
         return { success: true };
       }),
   }),
+
+  // Dropdown Options namespace for easier frontend access
+  dropdownOptions: router({
+    status: router({
+      getAll: publicProcedure
+        .input(z.object({ category: z.string().optional() }).optional())
+        .query(async ({ input }) => {
+          return await db.getAllStatusOptions(input?.category);
+        }),
+      create: protectedProcedure
+        .input(z.object({
+          value: z.string(),
+          category: z.string().optional(),
+        }))
+        .mutation(async ({ input }) => {
+          return await db.createStatusOption({
+            value: input.value,
+            label: input.value,
+            category: input.category || 'general',
+          });
+        }),
+      update: protectedProcedure
+        .input(z.object({
+          id: z.number(),
+          value: z.string(),
+        }))
+        .mutation(async ({ input }) => {
+          return await db.updateStatusOption(input.id, { label: input.value });
+        }),
+      delete: protectedProcedure
+        .input(z.object({ id: z.number() }))
+        .mutation(async ({ input }) => {
+          await db.deleteStatusOption(input.id);
+          return { success: true };
+        }),
+    }),
+    priority: router({
+      getAll: publicProcedure
+        .input(z.object({ category: z.string().optional() }).optional())
+        .query(async ({ input }) => {
+          return await db.getAllPriorityOptions(input?.category);
+        }),
+      create: protectedProcedure
+        .input(z.object({
+          value: z.string(),
+          category: z.string().optional(),
+        }))
+        .mutation(async ({ input }) => {
+          // Assign level based on common priority values
+          const levelMap: Record<string, number> = {
+            'Low': 1,
+            'Medium': 2,
+            'High': 3,
+            'Very High': 4,
+            'Critical': 5,
+          };
+          const level = levelMap[input.value] || 2;
+          return await db.createPriorityOption({
+            value: input.value,
+            label: input.value,
+            category: input.category || 'general',
+            level,
+          });
+        }),
+      update: protectedProcedure
+        .input(z.object({
+          id: z.number(),
+          value: z.string(),
+        }))
+        .mutation(async ({ input }) => {
+          return await db.updatePriorityOption(input.id, { label: input.value });
+        }),
+      delete: protectedProcedure
+        .input(z.object({ id: z.number() }))
+        .mutation(async ({ input }) => {
+          await db.deletePriorityOption(input.id);
+          return { success: true };
+        }),
+    }),
+    type: router({
+      getAll: publicProcedure
+        .input(z.object({ category: z.string().optional() }).optional())
+        .query(async () => {
+          return await db.getAllTypeOptions();
+        }),
+      create: protectedProcedure
+        .input(z.object({
+          value: z.string(),
+          category: z.string().optional(),
+        }))
+        .mutation(async ({ input }) => {
+          return await db.createTypeOption({
+            value: input.value,
+            label: input.value,
+          });
+        }),
+      update: protectedProcedure
+        .input(z.object({
+          id: z.number(),
+          value: z.string(),
+        }))
+        .mutation(async ({ input }) => {
+          return await db.updateTypeOption(input.id, { label: input.value });
+        }),
+      delete: protectedProcedure
+        .input(z.object({ id: z.number() }))
+        .mutation(async ({ input }) => {
+          await db.deleteTypeOption(input.id);
+          return { success: true };
+        }),
+    }),
+    category: router({
+      getAll: publicProcedure
+        .input(z.object({ category: z.string().optional() }).optional())
+        .query(async () => {
+          return await db.getAllCategoryOptions();
+        }),
+      create: protectedProcedure
+        .input(z.object({
+          value: z.string(),
+          category: z.string().optional(),
+        }))
+        .mutation(async ({ input }) => {
+          return await db.createCategoryOption({
+            value: input.value,
+            label: input.value,
+          });
+        }),
+      update: protectedProcedure
+        .input(z.object({
+          id: z.number(),
+          value: z.string(),
+        }))
+        .mutation(async ({ input }) => {
+          return await db.updateCategoryOption(input.id, { label: input.value });
+        }),
+      delete: protectedProcedure
+        .input(z.object({ id: z.number() }))
+        .mutation(async ({ input }) => {
+          await db.deleteCategoryOption(input.id);
+          return { success: true };
+        }),
+    }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;
