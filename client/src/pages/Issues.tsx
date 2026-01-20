@@ -6,10 +6,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Search, Edit, History, Loader2, Plus, Trash2 } from "lucide-react";
+import { Search, Edit, History, Loader2, Plus, Trash2, Settings } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DropdownOptionsManager } from "@/components/DropdownOptionsManager";
 import { toast } from "sonner";
 
 export default function Issues() {
@@ -21,6 +22,8 @@ export default function Issues() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsType, setSettingsType] = useState<"status" | "priority">("status");
   const [newIssue, setNewIssue] = useState<any>({
     description: '',
     owner: '',
@@ -166,10 +169,43 @@ export default function Issues() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Issues Management</CardTitle>
-          <CardDescription>
-            View, edit, and track changes to project issues
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Issues Management</CardTitle>
+              <CardDescription>
+                View, edit, and track changes to project issues
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-sm">
+                {issues?.length || 0} Issues
+              </Badge>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setSettingsType("status");
+                  setSettingsOpen(true);
+                }}
+                title="Manage Status Options"
+              >
+                <Settings className="w-4 h-4 mr-1" />
+                Status
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setSettingsType("priority");
+                  setSettingsOpen(true);
+                }}
+                title="Manage Priority Options"
+              >
+                <Settings className="w-4 h-4 mr-1" />
+                Priority
+              </Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-4 mb-6">
@@ -390,37 +426,43 @@ export default function Issues() {
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="status" className="text-right">Status</Label>
-              <Select
-                value={newIssue.status}
-                onValueChange={(value) => setNewIssue({ ...newIssue, status: value })}
-              >
-                <SelectTrigger className="col-span-3">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Open">Open</SelectItem>
-                  <SelectItem value="In Progress">In Progress</SelectItem>
-                  <SelectItem value="Resolved">Resolved</SelectItem>
-                  <SelectItem value="Closed">Closed</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="col-span-3 flex gap-2">
+                <Select
+                  value={newIssue.status}
+                  onValueChange={(value) => setNewIssue({ ...newIssue, status: value })}
+                >
+                  <SelectTrigger className="flex-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Open">Open</SelectItem>
+                    <SelectItem value="In Progress">In Progress</SelectItem>
+                    <SelectItem value="Resolved">Resolved</SelectItem>
+                    <SelectItem value="Closed">Closed</SelectItem>
+                  </SelectContent>
+                </Select>
+                <DropdownOptionsManager type="status" />
+              </div>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="priority" className="text-right">Priority</Label>
-              <Select
-                value={newIssue.priority}
-                onValueChange={(value) => setNewIssue({ ...newIssue, priority: value })}
-              >
-                <SelectTrigger className="col-span-3">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Low">Low</SelectItem>
-                  <SelectItem value="Medium">Medium</SelectItem>
-                  <SelectItem value="High">High</SelectItem>
-                  <SelectItem value="Very High">Very High</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="col-span-3 flex gap-2">
+                <Select
+                  value={newIssue.priority}
+                  onValueChange={(value) => setNewIssue({ ...newIssue, priority: value })}
+                >
+                  <SelectTrigger className="flex-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Low">Low</SelectItem>
+                    <SelectItem value="Medium">Medium</SelectItem>
+                    <SelectItem value="High">High</SelectItem>
+                    <SelectItem value="Very High">Very High</SelectItem>
+                  </SelectContent>
+                </Select>
+                <DropdownOptionsManager type="priority" />
+              </div>
             </div>
           </div>
           <div className="flex justify-end gap-2">
@@ -428,6 +470,22 @@ export default function Issues() {
             <Button onClick={handleCreate} disabled={createMutation.isPending}>
               {createMutation.isPending ? 'Creating...' : 'Create'}
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Settings Dialog */}
+      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Manage {settingsType === 'status' ? 'Status' : 'Priority'} Options</DialogTitle>
+            <DialogDescription>
+              Add, edit, or delete {settingsType} options for issues
+            </DialogDescription>
+          </DialogHeader>
+          <DropdownOptionsManager type={settingsType} />
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={() => setSettingsOpen(false)}>Close</Button>
           </div>
         </DialogContent>
       </Dialog>

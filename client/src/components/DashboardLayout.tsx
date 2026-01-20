@@ -34,7 +34,8 @@ import {
   GitBranch, 
   Package,
   FileCheck,
-  Settings as SettingsIcon
+  Settings as SettingsIcon,
+  Calendar
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -42,6 +43,7 @@ import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
 
 const menuItems = [
+  { icon: Calendar, label: "Today", path: "/today" },
   { icon: FileText, label: "Requirements", path: "/requirements" },
   { icon: CheckSquare, label: "Tasks", path: "/tasks" },
   { icon: AlertCircle, label: "Issues", path: "/issues" },

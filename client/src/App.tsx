@@ -14,6 +14,7 @@ import ActionLog from "./pages/ActionLog";
 import Relationships from "./pages/Relationships";
 import Stakeholders from "./pages/Stakeholders";
 import Deliverables from "./pages/Deliverables";
+import Today from "./pages/Today";
 import DashboardLayout from "./components/DashboardLayout";
 
 function Router() {
@@ -55,12 +56,17 @@ function Router() {
           <Deliverables />
         </DashboardLayout>
       </Route>
+      <Route path={"/today"}>
+        <DashboardLayout>
+          <Today />
+        </DashboardLayout>
+      </Route>
       <Route path={"/action-log"}>
         <DashboardLayout>
           <ActionLog />
         </DashboardLayout>
       </Route>
-      <Route path={"/relationships"}>
+       <Route path={"/relationships"}>
         <DashboardLayout>
           <Relationships />
         </DashboardLayout>

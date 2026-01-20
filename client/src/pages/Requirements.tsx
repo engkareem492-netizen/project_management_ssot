@@ -6,12 +6,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Search, Edit, History, Loader2, Plus, Trash2, Eye, CheckSquare, Save, X, Link2 } from "lucide-react";
+import { Search, Edit, History, Loader2, Plus, Trash2, Eye, CheckSquare, Save, X, Link2, Settings } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DropdownOptionsManager } from "@/components/DropdownOptionsManager";
 import { toast } from "sonner";
 
 export default function Requirements() {
@@ -28,6 +29,8 @@ export default function Requirements() {
   const [createTaskDialogOpen, setCreateTaskDialogOpen] = useState(false);
   const [createIssueDialogOpen, setCreateIssueDialogOpen] = useState(false);
   const [createDeliverableDialogOpen, setCreateDeliverableDialogOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsType, setSettingsType] = useState<"status" | "priority" | "type" | "category">("status");
   const [newTask, setNewTask] = useState({
     description: '',
     owner: '',
@@ -294,6 +297,30 @@ export default function Requirements() {
               <Badge variant="outline" className="text-sm">
                 {requirements?.length || 0} Requirements
               </Badge>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setSettingsType("status");
+                  setSettingsOpen(true);
+                }}
+                title="Manage Status Options"
+              >
+                <Settings className="w-4 h-4 mr-1" />
+                Status
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setSettingsType("priority");
+                  setSettingsOpen(true);
+                }}
+                title="Manage Priority Options"
+              >
+                <Settings className="w-4 h-4 mr-1" />
+                Priority
+              </Button>
             </div>
           </div>
         </CardHeader>
@@ -904,64 +931,83 @@ export default function Requirements() {
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="status" className="text-right">Status</Label>
-              <Select
-                value={newRequirement.status}
-                onValueChange={(value) => setNewRequirement({ ...newRequirement, status: value })}
-              >
-                <SelectTrigger className="col-span-3">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Open">Open</SelectItem>
-                  <SelectItem value="In Progress">In Progress</SelectItem>
-                  <SelectItem value="Pending">Pending</SelectItem>
-                  <SelectItem value="Closed">Closed</SelectItem>
-                  <SelectItem value="Solved">Solved</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="col-span-3 flex gap-2">
+                <Select
+                  value={newRequirement.status}
+                  onValueChange={(value) => setNewRequirement({ ...newRequirement, status: value })}
+                >
+                  <SelectTrigger className="flex-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Open">Open</SelectItem>
+                    <SelectItem value="In Progress">In Progress</SelectItem>
+                    <SelectItem value="Pending">Pending</SelectItem>
+                    <SelectItem value="Closed">Closed</SelectItem>
+                    <SelectItem value="Solved">Solved</SelectItem>
+                  </SelectContent>
+                </Select>
+                <DropdownOptionsManager type="status" />
+              </div>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="priority" className="text-right">Priority</Label>
-              <Select
-                value={newRequirement.priority}
-                onValueChange={(value) => setNewRequirement({ ...newRequirement, priority: value })}
-              >
-                <SelectTrigger className="col-span-3">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Low">Low</SelectItem>
-                  <SelectItem value="Medium">Medium</SelectItem>
-                  <SelectItem value="High">High</SelectItem>
-                  <SelectItem value="Very High">Very High</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="col-span-3 flex gap-2">
+                <Select
+                  value={newRequirement.priority}
+                  onValueChange={(value) => setNewRequirement({ ...newRequirement, priority: value })}
+                >
+                  <SelectTrigger className="flex-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Low">Low</SelectItem>
+                    <SelectItem value="Medium">Medium</SelectItem>
+                    <SelectItem value="High">High</SelectItem>
+                    <SelectItem value="Very High">Very High</SelectItem>
+                  </SelectContent>
+                </Select>
+                <DropdownOptionsManager type="priority" />
+              </div>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="type" className="text-right">Type</Label>
-              <Select
-                value={newRequirement.type}
-                onValueChange={(value) => setNewRequirement({ ...newRequirement, type: value })}
-              >
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select type..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="WRICEF">WRICEF</SelectItem>
-                  <SelectItem value="Configuration">Configuration</SelectItem>
-                  <SelectItem value="Solution">Solution</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="col-span-3 flex gap-2">
+                <Select
+                  value={newRequirement.type}
+                  onValueChange={(value) => setNewRequirement({ ...newRequirement, type: value })}
+                >
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Select type..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="WRICEF">WRICEF</SelectItem>
+                    <SelectItem value="Configuration">Configuration</SelectItem>
+                    <SelectItem value="Solution">Solution</SelectItem>
+                  </SelectContent>
+                </Select>
+                <DropdownOptionsManager type="type" />
+              </div>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="category" className="text-right">Category</Label>
-              <Input
-                id="category"
-                value={newRequirement.category}
-                onChange={(e) => setNewRequirement({ ...newRequirement, category: e.target.value })}
-                className="col-span-3"
-                placeholder="e.g., FICO, SD, MM, HXM"
-              />
+              <div className="col-span-3 flex gap-2">
+                <Select
+                  value={newRequirement.category}
+                  onValueChange={(value) => setNewRequirement({ ...newRequirement, category: value })}
+                >
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Select category..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="FICO">FICO</SelectItem>
+                    <SelectItem value="SD">SD</SelectItem>
+                    <SelectItem value="MM">MM</SelectItem>
+                    <SelectItem value="HXM">HXM</SelectItem>
+                  </SelectContent>
+                </Select>
+                <DropdownOptionsManager type="category" />
+              </div>
             </div>
 
           </div>
@@ -970,6 +1016,22 @@ export default function Requirements() {
             <Button onClick={handleCreate} disabled={createMutation.isPending}>
               {createMutation.isPending ? 'Creating...' : 'Create'}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Settings Dialog */}
+      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Manage {settingsType === 'status' ? 'Status' : settingsType === 'priority' ? 'Priority' : settingsType === 'type' ? 'Type' : 'Category'} Options</DialogTitle>
+            <DialogDescription>
+              Add, edit, or delete {settingsType} options for requirements
+            </DialogDescription>
+          </DialogHeader>
+          <DropdownOptionsManager type={settingsType} />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSettingsOpen(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

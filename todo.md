@@ -216,30 +216,30 @@
 - [x] Created DropdownOptionsManager component
 - [x] Added dropdownOptions namespace router in server
 - [x] Removed Deliverables 1 and D1 Status fields from Requirements
-- [ ] Add Settings buttons in Requirements page
-- [ ] Add Settings buttons in Tasks page
-- [ ] Add Settings buttons in Issues page
-- [ ] Add Settings buttons in Deliverables page
+- [x] Add Settings buttons in Requirements page
+- [x] Add Settings buttons in Tasks page
+- [x] Add Settings buttons in Issues page
+- [x] Add Settings buttons in Deliverables page
 
 ### Phase 4: Settings Page Enhancement
-- [ ] Create comprehensive Settings page with tabs
-- [ ] Add Status Options management section
-- [ ] Add Priority Options management section
-- [ ] Add Type Options management section
-- [ ] Add Category Options management section
-- [ ] Show usage count for each option
-- [ ] Implement bulk operations (import/export options)
+- [x] Create comprehensive Settings page with tabs
+- [x] Add Status Options management section
+- [x] Add Priority Options management section
+- [x] Add Type Options management section
+- [x] Add Category Options management section
+- [x] Show usage count for each option
+- [x] Prevent delete if option is in use
 
 ### Phase 5: Today Dashboard
-- [ ] Create Today/Dashboard page in navigation
-- [ ] Show tasks due today with status
-- [ ] Show requirements due today with status
-- [ ] Show overdue tasks (past due date)
-- [ ] Show overdue requirements
-- [ ] Show upcoming tasks (next 7 days)
-- [ ] Show upcoming requirements (next 7 days)
-- [ ] Add quick action buttons (mark complete, edit)
-- [ ] Add summary cards (total today, overdue, upcoming)
+- [x] Create Today/Dashboard page in navigation
+- [x] Show tasks due today with status
+- [x] Show requirements due today with status
+- [x] Show overdue tasks (past due date)
+- [x] Show overdue requirements
+- [x] Show upcoming tasks (next 7 days)
+- [x] Show upcoming requirements (next 7 days)
+- [x] Add quick action buttons (mark complete, edit)
+- [x] Add summary cards (total today, overdue, upcoming)
 
 ### Phase 6: Testing & Delivery
 - [ ] Test dropdown options CRUD
