@@ -310,7 +310,7 @@ export default function Settings() {
           ) : (
             options.map((option) => (
               <TableRow key={option.id}>
-                <TableCell className="font-medium">{option.name}</TableCell>
+                <TableCell className="font-medium">{option.value}</TableCell>
                 {type === "priority" && <TableCell>{option.level || 0}</TableCell>}
                 <TableCell className="max-w-xs truncate">{option.description || "-"}</TableCell>
                 <TableCell>

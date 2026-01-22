@@ -31,6 +31,8 @@ export default function Requirements() {
   const [createDeliverableDialogOpen, setCreateDeliverableDialogOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsType, setSettingsType] = useState<"status" | "priority" | "type" | "category">("status");
+  const [addStakeholderDialogOpen, setAddStakeholderDialogOpen] = useState(false);
+  const [newStakeholder, setNewStakeholder] = useState({ fullName: '', position: '', role: '' });
   const [newTask, setNewTask] = useState({
     description: '',
     owner: '',
@@ -53,8 +55,6 @@ export default function Requirements() {
     owner: '',
     status: 'Open',
     priority: 'Medium',
-    deliverables1: '',
-    d1Status: 'Pending',
     type: '',
     class: '',
     category: '',
@@ -94,8 +94,6 @@ export default function Requirements() {
         owner: '',
         status: 'Open',
         priority: 'Medium',
-        deliverables1: '',
-        d1Status: 'Pending',
         type: '',
         class: '',
         category: '',
@@ -169,6 +167,18 @@ export default function Requirements() {
     },
   });
 
+  const createStakeholderMutation = trpc.stakeholders.create.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Stakeholder ${data.fullName} created successfully`);
+      setAddStakeholderDialogOpen(false);
+      setNewStakeholder({ fullName: '', position: '', role: '' });
+      utils.stakeholders.list.invalidate();
+    },
+    onError: (error) => {
+      toast.error(`Failed to create stakeholder: ${error.message}`);
+    },
+  });
+
   const filteredRequirements = requirements?.filter(req =>
     req.idCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
     req.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -180,10 +190,6 @@ export default function Requirements() {
     setEditData({
       status: req.status || '',
       priority: req.priority || '',
-      deliverables1: req.deliverables1 || '',
-      d1Status: req.d1Status || '',
-      deliverables2: req.deliverables2 || '',
-      d2Status: req.d2Status || '',
       lastUpdate: req.lastUpdate || '',
       updateDate: new Date().toLocaleDateString('en-GB'),
     });
@@ -252,6 +258,14 @@ export default function Requirements() {
         entityId: selectedRequirement.idCode,
       }],
     });
+  };
+
+  const handleCreateStakeholder = () => {
+    if (!newStakeholder.fullName.trim()) {
+      toast.error('Full name is required');
+      return;
+    }
+    createStakeholderMutation.mutate(newStakeholder);
   };
 
   // Get linked items for selected requirement
@@ -350,8 +364,6 @@ export default function Requirements() {
                   <TableHead>Owner</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Priority</TableHead>
-                  <TableHead>D1</TableHead>
-                  <TableHead>D1 Status</TableHead>
                   <TableHead>Last Update</TableHead>
                   <TableHead className="w-[180px]">Actions</TableHead>
                 </TableRow>
@@ -382,28 +394,6 @@ export default function Requirements() {
                         />
                       ) : (
                         <Badge variant={getPriorityColor(req.priority)}>{req.priority || 'N/A'}</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {editingId === req.id ? (
-                        <Input
-                          value={editData.deliverables1}
-                          onChange={(e) => setEditData({ ...editData, deliverables1: e.target.value })}
-                          className="w-24 h-8"
-                        />
-                      ) : (
-                        <span className="truncate max-w-[100px] block">{req.deliverables1 || '-'}</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {editingId === req.id ? (
-                        <Input
-                          value={editData.d1Status}
-                          onChange={(e) => setEditData({ ...editData, d1Status: e.target.value })}
-                          className="w-24 h-8"
-                        />
-                      ) : (
-                        req.d1Status || '-'
                       )}
                     </TableCell>
                     <TableCell>{req.lastUpdate || '-'}</TableCell>
@@ -915,19 +905,29 @@ export default function Requirements() {
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="owner" className="text-right">Owner</Label>
-              <Select
-                value={newRequirement.owner}
-                onValueChange={(value) => setNewRequirement({ ...newRequirement, owner: value })}
-              >
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select owner from stakeholders..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {stakeholders?.map((s) => (
-                    <SelectItem key={s.id} value={s.fullName}>{s.fullName} - {s.position || s.role || 'N/A'}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="col-span-3 flex gap-2">
+                <Select
+                  value={newRequirement.owner}
+                  onValueChange={(value) => setNewRequirement({ ...newRequirement, owner: value })}
+                >
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Select owner from stakeholders..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {stakeholders?.map((s) => (
+                      <SelectItem key={s.id} value={s.fullName}>{s.fullName} - {s.position || s.role || 'N/A'}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setAddStakeholderDialogOpen(true)}
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="status" className="text-right">Status</Label>
@@ -1032,6 +1032,53 @@ export default function Requirements() {
           <DropdownOptionsManager type={settingsType} />
           <DialogFooter>
             <Button variant="outline" onClick={() => setSettingsOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Stakeholder Dialog */}
+      <Dialog open={addStakeholderDialogOpen} onOpenChange={setAddStakeholderDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add New Stakeholder</DialogTitle>
+            <DialogDescription>
+              Create a new stakeholder to use in dropdowns
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="fullName">Full Name *</Label>
+              <Input
+                id="fullName"
+                value={newStakeholder.fullName}
+                onChange={(e) => setNewStakeholder({ ...newStakeholder, fullName: e.target.value })}
+                placeholder="Enter full name..."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="position">Position</Label>
+              <Input
+                id="position"
+                value={newStakeholder.position}
+                onChange={(e) => setNewStakeholder({ ...newStakeholder, position: e.target.value })}
+                placeholder="Enter position..."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="role">Role</Label>
+              <Input
+                id="role"
+                value={newStakeholder.role}
+                onChange={(e) => setNewStakeholder({ ...newStakeholder, role: e.target.value })}
+                placeholder="Enter role..."
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddStakeholderDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleCreateStakeholder} disabled={createStakeholderMutation.isPending}>
+              {createStakeholderMutation.isPending ? 'Creating...' : 'Create'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

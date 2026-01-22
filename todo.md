@@ -248,3 +248,30 @@
 - [ ] Test Today Dashboard filtering
 - [ ] Create checkpoint
 - [ ] Deliver V4 enhancements
+
+## Bug Fixes V4.1
+
+### Phase 1: Fix Settings Data and Remove D1/D1 Status
+- [x] Debug why Settings page doesn't show dropdown options data
+- [x] Remove D1 and D1 Status fields completely from Requirements view dialog
+- [x] Remove D1 and D1 Status columns from Requirements table
+
+### Phase 2: Fix Today Dashboard and Remove Deliverables Tab
+- [ ] Check Today Dashboard route in App.tsx
+- [ ] Add Today/Dashboard to navigation menu
+- [ ] Remove Deliverables tab from Requirements view dialog
+
+### Phase 3: Add Stakeholder Management
+- [x] Create StakeholderManager component with add/edit/delete (using inline dialog)
+- [x] Add "Add New" button beside Responsible dropdown in Tasks
+- [x] Add "Add New" button beside Accountable dropdown in Tasks
+- [x] Add "Add New" button beside Owner dropdown in Requirements
+- [x] Add "Add New" button beside Owner dropdown in Issues
+- [ ] Add Stakeholders management section in Settings page
+
+### Phase 4: Testing & Delivery
+- [ ] Test Settings page data loading
+- [ ] Test Today Dashboard functionality
+- [ ] Test Stakeholder management
+- [ ] Create checkpoint
+- [ ] Deliver fixes

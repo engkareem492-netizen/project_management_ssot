@@ -11,6 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownOptionsManager } from "@/components/DropdownOptionsManager";
+import { DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 
 export default function Issues() {
@@ -24,6 +25,8 @@ export default function Issues() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsType, setSettingsType] = useState<"status" | "priority">("status");
+  const [addStakeholderDialogOpen, setAddStakeholderDialogOpen] = useState(false);
+  const [newStakeholder, setNewStakeholder] = useState({ fullName: '', position: '', role: '' });
   const [newIssue, setNewIssue] = useState<any>({
     description: '',
     owner: '',
@@ -78,6 +81,18 @@ export default function Issues() {
     },
     onError: (error) => {
       toast.error(`Delete failed: ${error.message}`);
+    },
+  });
+
+  const createStakeholderMutation = trpc.stakeholders.create.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Stakeholder ${data.fullName} created successfully`);
+      setAddStakeholderDialogOpen(false);
+      setNewStakeholder({ fullName: '', position: '', role: '' });
+      trpc.useUtils().stakeholders.list.invalidate();
+    },
+    onError: (error) => {
+      toast.error(`Failed to create stakeholder: ${error.message}`);
     },
   });
 
@@ -141,6 +156,14 @@ export default function Issues() {
   const handleDelete = (id: number) => {
     setDeletingId(id);
     setDeleteDialogOpen(true);
+  };
+
+  const handleCreateStakeholder = () => {
+    if (!newStakeholder.fullName.trim()) {
+      toast.error('Full name is required');
+      return;
+    }
+    createStakeholderMutation.mutate(newStakeholder);
   };
 
   const confirmDelete = () => {
@@ -408,21 +431,31 @@ export default function Issues() {
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="owner" className="text-right">Owner</Label>
-              <Select
-                value={newIssue.owner}
-                onValueChange={(value) => setNewIssue({ ...newIssue, owner: value })}
-              >
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select owner..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {stakeholders?.map((s) => (
-                    <SelectItem key={s.id} value={s.fullName}>
-                      {s.fullName} - {s.position || s.role || 'N/A'}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="col-span-3 flex gap-2">
+                <Select
+                  value={newIssue.owner}
+                  onValueChange={(value) => setNewIssue({ ...newIssue, owner: value })}
+                >
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Select owner..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {stakeholders?.map((s) => (
+                      <SelectItem key={s.id} value={s.fullName}>
+                        {s.fullName} - {s.position || s.role || 'N/A'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setAddStakeholderDialogOpen(true)}
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="status" className="text-right">Status</Label>
@@ -487,6 +520,53 @@ export default function Issues() {
           <div className="flex justify-end gap-2 mt-4">
             <Button variant="outline" onClick={() => setSettingsOpen(false)}>Close</Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Stakeholder Dialog */}
+      <Dialog open={addStakeholderDialogOpen} onOpenChange={setAddStakeholderDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add New Stakeholder</DialogTitle>
+            <DialogDescription>
+              Create a new stakeholder to use in dropdowns
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="fullName">Full Name *</Label>
+              <Input
+                id="fullName"
+                value={newStakeholder.fullName}
+                onChange={(e) => setNewStakeholder({ ...newStakeholder, fullName: e.target.value })}
+                placeholder="Enter full name..."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="position">Position</Label>
+              <Input
+                id="position"
+                value={newStakeholder.position}
+                onChange={(e) => setNewStakeholder({ ...newStakeholder, position: e.target.value })}
+                placeholder="Enter position..."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="role">Role</Label>
+              <Input
+                id="role"
+                value={newStakeholder.role}
+                onChange={(e) => setNewStakeholder({ ...newStakeholder, role: e.target.value })}
+                placeholder="Enter role..."
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddStakeholderDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleCreateStakeholder} disabled={createStakeholderMutation.isPending}>
+              {createStakeholderMutation.isPending ? 'Creating...' : 'Create'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
