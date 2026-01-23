@@ -275,3 +275,48 @@
 - [ ] Test Stakeholder management
 - [ ] Create checkpoint
 - [ ] Deliver fixes
+
+## Bug Fixes V4.2 & Schema Updates
+
+### Phase 1: Fix Dropdown Refresh Issues
+- [x] Fix Type dropdown not refreshing after adding new options in Settings
+- [x] Fix Priority dropdown not refreshing after adding new options in Settings
+- [x] Fix Status dropdown not refreshing after adding new options in Settings
+- [x] Fix Category dropdown not refreshing after adding new options in Settings
+- [x] Implement proper cache invalidation for dropdown options
+
+### Phase 2: Add Task Group Field
+- [x] Add taskGroup field to tasks table in database schema (already existed)
+- [x] Update Tasks create form to include Task Group field
+- [x] Update Tasks table to display Task Group column
+- [x] Update Tasks edit functionality to support Task Group
+- [x] Make Task Group required field
+
+### Phase 3: Add Source Field
+- [x] Add source field (varchar 20) to requirements table
+- [x] Add source field (varchar 20) to issues table
+- [x] Update Requirements create/edit forms to include Source field
+- [x] Update Issues create/edit forms to include Source field
+- [ ] Display Source in Requirements and Issues tables (not added to table view yet)
+
+### Phase 4: Convert Last Update to Text Input
+- [x] Change Last Update field from display-only to editable text input
+- [x] Update Requirements Last Update field to text input
+- [x] Update Tasks Last Update field to text input
+- [x] Update Issues Last Update field to text input (already implemented)
+- [x] Ensure Last Update text is saved in action logs for history
+
+### Phase 5: Update Requirements-Tasks Relationship
+- [x] Change Requirements to link to Task Group instead of Task ID (schema already supports it)
+- [x] Update Requirements view dialog to show tasks grouped by Task Group
+- [ ] Update task creation from Requirements to use Task Group (future enhancement)
+- [x] Update relationship mapping to use Task Group
+
+### Phase 6: Testing & Delivery
+- [ ] Test dropdown refresh after Settings changes
+- [ ] Test Task Group field in all operations
+- [ ] Test Source field in Requirements and Issues
+- [ ] Test Last Update text input and history tracking
+- [ ] Test Requirements-Task Group relationships
+- [ ] Create checkpoint
+- [ ] Deliver fixes

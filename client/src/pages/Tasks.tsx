@@ -28,6 +28,7 @@ export default function Tasks() {
   const [addStakeholderDialogOpen, setAddStakeholderDialogOpen] = useState(false);
   const [newStakeholder, setNewStakeholder] = useState({ fullName: '', position: '', role: '' });
   const [newTask, setNewTask] = useState<any>({
+    taskGroup: '',
     description: '',
     responsible: '',
     accountable: '',
@@ -61,6 +62,7 @@ export default function Tasks() {
       toast.success(`Task ${data.taskId} created successfully`);
       setCreateDialogOpen(false);
       setNewTask({
+        taskGroup: '',
         description: '',
         responsible: '',
         accountable: '',
@@ -117,6 +119,7 @@ export default function Tasks() {
     setEditingId(task.id);
     setEditData({
       currentStatus: task.currentStatus || '',
+      lastUpdate: task.lastUpdate || '',
       statusUpdate: task.statusUpdate || '',
     });
   };
@@ -140,8 +143,12 @@ export default function Tasks() {
   };
 
   const handleCreate = () => {
-    if (!newTask.taskId) {
-      toast.error('Task ID is required');
+    if (!newTask.taskGroup || !newTask.taskGroup.trim()) {
+      toast.error('Task Group is required');
+      return;
+    }
+    if (!newTask.description || !newTask.description.trim()) {
+      toast.error('Description is required');
       return;
     }
     // Convert "none" to undefined for optional requirementId
@@ -250,12 +257,14 @@ export default function Tasks() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[100px]">Task ID</TableHead>
+                  <TableHead className="w-[120px]">Task Group</TableHead>
                   <TableHead>Description</TableHead>
                   <TableHead>Requirement ID</TableHead>
                   <TableHead>Req Status</TableHead>
                   <TableHead>Responsible</TableHead>
                   <TableHead>Due Date</TableHead>
                   <TableHead>Current Status</TableHead>
+                  <TableHead>Last Update</TableHead>
                   <TableHead>Status Update</TableHead>
                   <TableHead className="w-[150px]">Actions</TableHead>
                 </TableRow>
@@ -264,6 +273,7 @@ export default function Tasks() {
                 {filteredTasks?.map((task) => (
                   <TableRow key={task.id}>
                     <TableCell className="font-medium">{task.taskId}</TableCell>
+                    <TableCell>{task.taskGroup || 'N/A'}</TableCell>
                     <TableCell className="max-w-xs truncate">{task.description}</TableCell>
                     <TableCell>{task.requirementId || 'N/A'}</TableCell>
                     <TableCell>
@@ -284,6 +294,18 @@ export default function Tasks() {
                         />
                       ) : (
                         task.currentStatus || 'N/A'
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {editingId === task.id ? (
+                        <Input
+                          value={editData.lastUpdate}
+                          onChange={(e) => setEditData({ ...editData, lastUpdate: e.target.value })}
+                          className="w-full"
+                          placeholder="Enter update..."
+                        />
+                      ) : (
+                        task.lastUpdate || '-'
                       )}
                     </TableCell>
                     <TableCell>
@@ -388,6 +410,16 @@ export default function Tasks() {
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="taskGroup" className="text-right">Task Group *</Label>
+              <Input
+                id="taskGroup"
+                value={newTask.taskGroup}
+                onChange={(e) => setNewTask({ ...newTask, taskGroup: e.target.value })}
+                className="col-span-3"
+                placeholder="Enter task group..."
+              />
+            </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="description" className="text-right">Description *</Label>
               <Input

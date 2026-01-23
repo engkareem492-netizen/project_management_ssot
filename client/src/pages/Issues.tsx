@@ -29,6 +29,7 @@ export default function Issues() {
   const [newStakeholder, setNewStakeholder] = useState({ fullName: '', position: '', role: '' });
   const [newIssue, setNewIssue] = useState<any>({
     description: '',
+    source: '',
     owner: '',
     status: 'Open',
     priority: 'Medium',
@@ -408,6 +409,17 @@ export default function Issues() {
                 onChange={(e) => setNewIssue({ ...newIssue, description: e.target.value })}
                 className="col-span-3"
                 placeholder="Issue description..."
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="source" className="text-right">Source</Label>
+              <Input
+                id="source"
+                value={newIssue.source}
+                onChange={(e) => setNewIssue({ ...newIssue, source: e.target.value })}
+                className="col-span-3"
+                placeholder="Source (max 20 characters)..."
+                maxLength={20}
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">

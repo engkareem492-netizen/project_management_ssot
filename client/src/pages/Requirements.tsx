@@ -52,6 +52,7 @@ export default function Requirements() {
   });
   const [newRequirement, setNewRequirement] = useState<any>({
     description: '',
+    source: '',
     owner: '',
     status: 'Open',
     priority: 'Medium',
@@ -65,6 +66,10 @@ export default function Requirements() {
   const { data: stakeholders } = trpc.stakeholders.list.useQuery();
   const { data: tasks } = trpc.tasks.list.useQuery();
   const { data: issues } = trpc.issues.list.useQuery();
+  const { data: statusOptions } = trpc.dropdownOptions.status.getAll.useQuery();
+  const { data: priorityOptions } = trpc.dropdownOptions.priority.getAll.useQuery();
+  const { data: typeOptions } = trpc.dropdownOptions.type.getAll.useQuery();
+  const { data: categoryOptions } = trpc.dropdownOptions.category.getAll.useQuery();
   const { data: actionLogs } = trpc.actionLogs.getByEntity.useQuery(
     { entityType: "requirement", entityId: selectedEntityId },
     { enabled: historyDialogOpen && !!selectedEntityId }
@@ -271,6 +276,14 @@ export default function Requirements() {
   // Get linked items for selected requirement
   const linkedTasks = tasks?.filter(t => t.requirementId === selectedRequirement?.idCode) || [];
   const linkedIssues = issues?.filter(i => i.requirementId === selectedRequirement?.idCode) || [];
+  
+  // Group tasks by Task Group
+  const tasksByGroup = linkedTasks.reduce((acc, task) => {
+    const group = task.taskGroup || 'Ungrouped';
+    if (!acc[group]) acc[group] = [];
+    acc[group].push(task);
+    return acc;
+  }, {} as Record<string, typeof linkedTasks>);
 
   const getPriorityColor = (priority: string | null) => {
     if (!priority) return "secondary";
@@ -396,7 +409,18 @@ export default function Requirements() {
                         <Badge variant={getPriorityColor(req.priority)}>{req.priority || 'N/A'}</Badge>
                       )}
                     </TableCell>
-                    <TableCell>{req.lastUpdate || '-'}</TableCell>
+                    <TableCell>
+                      {editingId === req.id ? (
+                        <Input
+                          value={editData.lastUpdate}
+                          onChange={(e) => setEditData({ ...editData, lastUpdate: e.target.value })}
+                          className="w-full h-8"
+                          placeholder="Enter update..."
+                        />
+                      ) : (
+                        req.lastUpdate || '-'
+                      )}
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
                         {editingId === req.id ? (
@@ -555,21 +579,31 @@ export default function Requirements() {
                   No tasks linked to this requirement yet.
                 </div>
               ) : (
-                <div className="space-y-2">
-                  {linkedTasks.map((task) => (
-                    <Card key={task.id} className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <CheckSquare className="w-4 h-4 text-muted-foreground" />
-                          <span className="font-mono text-sm">{task.taskId}</span>
-                          <span className="text-sm">{task.description || 'No description'}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant={getStatusColor(task.status)}>{task.status || 'N/A'}</Badge>
-                          <Badge variant={getPriorityColor(task.priority)}>{task.priority || 'N/A'}</Badge>
-                        </div>
+                <div className="space-y-4">
+                  {Object.entries(tasksByGroup).map(([group, groupTasks]) => (
+                    <div key={group} className="space-y-2">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h4 className="font-semibold text-sm">{group}</h4>
+                        <Badge variant="outline" className="text-xs">{groupTasks.length} task{groupTasks.length !== 1 ? 's' : ''}</Badge>
                       </div>
-                    </Card>
+                      <div className="space-y-2 pl-4">
+                        {groupTasks.map((task) => (
+                          <Card key={task.id} className="p-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <CheckSquare className="w-4 h-4 text-muted-foreground" />
+                                <span className="font-mono text-sm">{task.taskId}</span>
+                                <span className="text-sm">{task.description || 'No description'}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Badge variant={getStatusColor(task.status)}>{task.status || 'N/A'}</Badge>
+                                <Badge variant={getPriorityColor(task.priority)}>{task.priority || 'N/A'}</Badge>
+                              </div>
+                            </div>
+                          </Card>
+                        ))}
+                      </div>
+                    </div>
                   ))}
                 </div>
               )}
@@ -904,6 +938,17 @@ export default function Requirements() {
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="source" className="text-right">Source</Label>
+              <Input
+                id="source"
+                value={newRequirement.source}
+                onChange={(e) => setNewRequirement({ ...newRequirement, source: e.target.value })}
+                className="col-span-3"
+                placeholder="Source (max 20 characters)..."
+                maxLength={20}
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="owner" className="text-right">Owner</Label>
               <div className="col-span-3 flex gap-2">
                 <Select
@@ -940,11 +985,11 @@ export default function Requirements() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Open">Open</SelectItem>
-                    <SelectItem value="In Progress">In Progress</SelectItem>
-                    <SelectItem value="Pending">Pending</SelectItem>
-                    <SelectItem value="Closed">Closed</SelectItem>
-                    <SelectItem value="Solved">Solved</SelectItem>
+                    {statusOptions?.map((opt) => (
+                      <SelectItem key={opt.id} value={opt.value}>
+                        {opt.label || opt.value}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <DropdownOptionsManager type="status" />
@@ -961,10 +1006,11 @@ export default function Requirements() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Low">Low</SelectItem>
-                    <SelectItem value="Medium">Medium</SelectItem>
-                    <SelectItem value="High">High</SelectItem>
-                    <SelectItem value="Very High">Very High</SelectItem>
+                    {priorityOptions?.map((opt) => (
+                      <SelectItem key={opt.id} value={opt.value}>
+                        {opt.label || opt.value}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <DropdownOptionsManager type="priority" />
@@ -981,9 +1027,11 @@ export default function Requirements() {
                     <SelectValue placeholder="Select type..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="WRICEF">WRICEF</SelectItem>
-                    <SelectItem value="Configuration">Configuration</SelectItem>
-                    <SelectItem value="Solution">Solution</SelectItem>
+                    {typeOptions?.map((opt) => (
+                      <SelectItem key={opt.id} value={opt.value}>
+                        {opt.label || opt.value}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <DropdownOptionsManager type="type" />
@@ -1000,10 +1048,11 @@ export default function Requirements() {
                     <SelectValue placeholder="Select category..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="FICO">FICO</SelectItem>
-                    <SelectItem value="SD">SD</SelectItem>
-                    <SelectItem value="MM">MM</SelectItem>
-                    <SelectItem value="HXM">HXM</SelectItem>
+                    {categoryOptions?.map((opt) => (
+                      <SelectItem key={opt.id} value={opt.value}>
+                        {opt.label || opt.value}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <DropdownOptionsManager type="category" />

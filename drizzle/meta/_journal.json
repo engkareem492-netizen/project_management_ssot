@@ -29,6 +29,20 @@
       "when": 1768577685919,
       "tag": "0003_fixed_frank_castle",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1769059500612,
+      "tag": "0004_deep_king_bedlam",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1769187445876,
+      "tag": "0005_strange_longshot",
+      "breakpoints": true
     }
   ]
 }
