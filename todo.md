@@ -118,3 +118,12 @@
 - [x] Add ID number range control for Issue Groups in Settings (IG-XXXX format)
 - [x] Enable Task creation from Requirement detail view Tasks tab with Task Group dropdown and RACI fields
 - [x] Enable Issue creation from Requirement detail view Issues tab with Issue Group dropdown
+
+## Feature Requests (Jan 25, 2026 - Batch 9)
+
+- [ ] Add Task Groups and Issue Groups management tab in Settings
+- [ ] Display all existing Task Groups with their IDs and names
+- [ ] Display all existing Issue Groups with their IDs and names
+- [ ] Implement edit functionality to rename groups
+- [ ] Implement delete functionality to remove unused groups
+- [ ] Show usage count (how many requirements/tasks/issues use each group)

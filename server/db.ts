@@ -931,7 +931,7 @@ export async function createTaskGroup(data: { projectId: number; name: string; d
   
   try {
     // Generate ID code for Task Group
-    const idCode = await getNextId('Task Group', 'TG-', data.projectId);
+    const idCode = await getNextId('Task Group', 'TG', data.projectId);
     const result = await db.insert(taskGroups).values({ ...data, idCode });
     const insertResult = result as any;
     const insertId = insertResult[0]?.insertId || insertResult.insertId;
@@ -949,6 +949,13 @@ export async function createTaskGroup(data: { projectId: number; name: string; d
     console.error("[Database] Failed to create task group:", error);
     throw error;
   }
+}
+
+export async function updateTaskGroup(id: number, data: { name?: string; description?: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(taskGroups).set(data).where(eq(taskGroups.id, id));
+  return { success: true };
 }
 
 export async function deleteTaskGroup(id: number) {
@@ -977,7 +984,7 @@ export async function createIssueGroup(data: { projectId: number; name: string; 
   
   try {
     // Generate ID code for Issue Group
-    const idCode = await getNextId('Issue Group', 'IG-', data.projectId);
+    const idCode = await getNextId('Issue Group', 'IG', data.projectId);
     const result = await db.insert(issueGroups).values({ ...data, idCode });
     const insertResult = result as any;
     const insertId = insertResult[0]?.insertId || insertResult.insertId;
@@ -995,6 +1002,13 @@ export async function createIssueGroup(data: { projectId: number; name: string; 
     console.error("[Database] Failed to create issue group:", error);
     throw error;
   }
+}
+
+export async function updateIssueGroup(id: number, data: { name?: string; description?: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(issueGroups).set(data).where(eq(issueGroups.id, id));
+  return { success: true };
 }
 
 export async function deleteIssueGroup(id: number) {

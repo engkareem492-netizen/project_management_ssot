@@ -1,0 +1,13 @@
+{
+  "query": "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'taskGroups' AND COLUMN_NAME LIKE '%code%';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 34DzJoQKEqyc4cp.root --database MtjPfUT7z9e3zhUb3tuetB --execute SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'taskGroups' AND COLUMN_NAME LIKE '%code%';",
+  "rows": [
+    {
+      "COLUMN_NAME": "idCode"
+    }
+  ],
+  "messages": [],
+  "stdout": "COLUMN_NAME\nidCode\n",
+  "stderr": "",
+  "execution_time_ms": 1514
+}

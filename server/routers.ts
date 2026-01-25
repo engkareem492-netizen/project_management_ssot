@@ -1310,6 +1310,17 @@ export const appRouter = router({
         .mutation(async ({ input }) => {
           return await db.createTaskGroup(input);
         }),
+      update: protectedProcedure
+        .input(z.object({
+          id: z.number(),
+          data: z.object({
+            name: z.string().optional(),
+            description: z.string().optional(),
+          }),
+        }))
+        .mutation(async ({ input }) => {
+          return await db.updateTaskGroup(input.id, input.data);
+        }),
       delete: protectedProcedure
         .input(z.object({ id: z.number() }))
         .mutation(async ({ input }) => {
@@ -1332,6 +1343,17 @@ export const appRouter = router({
         }))
         .mutation(async ({ input }) => {
           return await db.createIssueGroup(input);
+        }),
+      update: protectedProcedure
+        .input(z.object({
+          id: z.number(),
+          data: z.object({
+            name: z.string().optional(),
+            description: z.string().optional(),
+          }),
+        }))
+        .mutation(async ({ input }) => {
+          return await db.updateIssueGroup(input.id, input.data);
         }),
       delete: protectedProcedure
         .input(z.object({ id: z.number() }))

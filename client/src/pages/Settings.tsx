@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { useState } from "react";
 import { Settings as SettingsIcon, Save, Plus, Edit, Trash2, Hash, AlertCircle, Sun, Moon, Monitor } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useProject } from "@/contexts/ProjectContext";
 
 interface IdConfigEdit {
   prefix: string;
@@ -62,6 +63,7 @@ function ThemeSelectorInline() {
 }
 
 export default function Settings() {
+  const { currentProjectId } = useProject();
   const [activeTab, setActiveTab] = useState("id-config");
   const [optionsTab, setOptionsTab] = useState("status");
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -81,6 +83,66 @@ export default function Settings() {
   const { data: priorityOptions, refetch: refetchPriority } = trpc.dropdownOptions.priority.getAll.useQuery();
   const { data: typeOptions, refetch: refetchType } = trpc.dropdownOptions.type.getAll.useQuery();
   const { data: categoryOptions, refetch: refetchCategory } = trpc.dropdownOptions.category.getAll.useQuery();
+
+  // Task Groups and Issue Groups queries
+  const { data: taskGroupsData, refetch: refetchTaskGroups } = trpc.dropdownOptions.taskGroups.getAll.useQuery(
+    { projectId: currentProjectId || 0 },
+    { enabled: !!currentProjectId }
+  );
+  const { data: issueGroupsData, refetch: refetchIssueGroups } = trpc.dropdownOptions.issueGroups.getAll.useQuery(
+    { projectId: currentProjectId || 0 },
+    { enabled: !!currentProjectId }
+  );
+
+  // Task Groups mutations
+  const createTaskGroupMutation = trpc.dropdownOptions.taskGroups.create.useMutation({
+    onSuccess: () => {
+      toast.success("Task Group created successfully");
+      refetchTaskGroups();
+    },
+    onError: (error) => toast.error(`Failed to create: ${error.message}`),
+  });
+
+  const updateTaskGroupMutation = trpc.dropdownOptions.taskGroups.update.useMutation({
+    onSuccess: () => {
+      toast.success("Task Group updated successfully");
+      refetchTaskGroups();
+    },
+    onError: (error) => toast.error(`Failed to update: ${error.message}`),
+  });
+
+  const deleteTaskGroupMutation = trpc.dropdownOptions.taskGroups.delete.useMutation({
+    onSuccess: () => {
+      toast.success("Task Group deleted successfully");
+      refetchTaskGroups();
+    },
+    onError: (error) => toast.error(`Failed to delete: ${error.message}`),
+  });
+
+  // Issue Groups mutations
+  const createIssueGroupMutation = trpc.dropdownOptions.issueGroups.create.useMutation({
+    onSuccess: () => {
+      toast.success("Issue Group created successfully");
+      refetchIssueGroups();
+    },
+    onError: (error) => toast.error(`Failed to create: ${error.message}`),
+  });
+
+  const updateIssueGroupMutation = trpc.dropdownOptions.issueGroups.update.useMutation({
+    onSuccess: () => {
+      toast.success("Issue Group updated successfully");
+      refetchIssueGroups();
+    },
+    onError: (error) => toast.error(`Failed to update: ${error.message}`),
+  });
+
+  const deleteIssueGroupMutation = trpc.dropdownOptions.issueGroups.delete.useMutation({
+    onSuccess: () => {
+      toast.success("Issue Group deleted successfully");
+      refetchIssueGroups();
+    },
+    onError: (error) => toast.error(`Failed to delete: ${error.message}`),
+  });
 
   // Dropdown options mutations
   const createStatusMutation = trpc.dropdownOptions.status.create.useMutation({
@@ -446,6 +508,7 @@ export default function Settings() {
         <TabsList>
           <TabsTrigger value="id-config">ID Configuration</TabsTrigger>
           <TabsTrigger value="dropdown-options">Dropdown Options</TabsTrigger>
+          <TabsTrigger value="groups">Groups</TabsTrigger>
           <TabsTrigger value="theme">Theme</TabsTrigger>
         </TabsList>
 
@@ -674,6 +737,146 @@ export default function Settings() {
               </Card>
             </TabsContent>
           </Tabs>
+        </TabsContent>
+
+        {/* Groups Tab */}
+        <TabsContent value="groups" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Hash className="w-5 h-5" />
+                Task Groups & Issue Groups
+              </CardTitle>
+              <CardDescription>
+                Manage Task Groups and Issue Groups used across requirements, tasks, and issues
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Task Groups Section */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold">Task Groups</h3>
+                  <Button size="sm" onClick={() => {
+                    const name = prompt("Enter new Task Group name:");
+                    if (name && currentProjectId) {
+                      createTaskGroupMutation.mutate({ projectId: currentProjectId, name, description: "" });
+                    }
+                  }}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Task Group
+                  </Button>
+                </div>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>ID</TableHead>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {taskGroupsData?.map((group) => (
+                      <TableRow key={group.id}>
+                        <TableCell className="font-mono text-sm">{group.idCode}</TableCell>
+                        <TableCell className="font-medium">{group.name}</TableCell>
+                        <TableCell className="text-muted-foreground">{group.description || "-"}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                const newName = prompt("Enter new name:", group.name);
+                                if (newName && newName !== group.name) {
+                                  updateTaskGroupMutation.mutate({ id: group.id, data: { name: newName, description: group.description || "" } });
+                                }
+                              }}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                if (confirm(`Delete Task Group "${group.name}"?`)) {
+                                  deleteTaskGroupMutation.mutate({ id: group.id });
+                                }
+                              }}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Issue Groups Section */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold">Issue Groups</h3>
+                  <Button size="sm" onClick={() => {
+                    const name = prompt("Enter new Issue Group name:");
+                    if (name && currentProjectId) {
+                      createIssueGroupMutation.mutate({ projectId: currentProjectId, name, description: "" });
+                    }
+                  }}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Issue Group
+                  </Button>
+                </div>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>ID</TableHead>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {issueGroupsData?.map((group) => (
+                      <TableRow key={group.id}>
+                        <TableCell className="font-mono text-sm">{group.idCode}</TableCell>
+                        <TableCell className="font-medium">{group.name}</TableCell>
+                        <TableCell className="text-muted-foreground">{group.description || "-"}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                const newName = prompt("Enter new name:", group.name);
+                                if (newName && newName !== group.name) {
+                                  updateIssueGroupMutation.mutate({ id: group.id, data: { name: newName, description: group.description || "" } });
+                                }
+                              }}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                if (confirm(`Delete Issue Group "${group.name}"?`)) {
+                                  deleteIssueGroupMutation.mutate({ id: group.id });
+                                }
+                              }}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* Theme Tab */}
