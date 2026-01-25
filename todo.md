@@ -33,3 +33,8 @@
 ## Bug Fixes / Improvements
 
 - [x] Add demo/bypass authentication mode for testing without OAuth
+- [x] Fix invalid hook call in Requirements.tsx (useProject called inside callback)
+- [x] Fix invalid hook call in Deliverables.tsx
+- [x] Fix invalid hook call in Issues.tsx
+- [x] Fix invalid hook call in Stakeholders.tsx
+- [x] Fix invalid hook call in Tasks.tsx

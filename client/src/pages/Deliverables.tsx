@@ -69,6 +69,7 @@ export default function Deliverables() {
   const { data: requirements } = trpc.requirements.list.useQuery();
   const { data: tasks } = trpc.tasks.list.useQuery();
   const { data: dependencies } = trpc.dependencies.list.useQuery();
+  const { currentProjectId } = useProject();
   const { data: deliverableLinks } = trpc.deliverables.getLinks.useQuery(
     { deliverableId: selectedDeliverable?.id || 0 },
     { enabled: isLinkOpen && !!selectedDeliverable?.id }
@@ -143,7 +144,6 @@ export default function Deliverables() {
   };
 
   const handleCreate = () => {
-    const { currentProjectId } = useProject();
     if (!currentProjectId) {
       toast.error('No project selected');
       return;

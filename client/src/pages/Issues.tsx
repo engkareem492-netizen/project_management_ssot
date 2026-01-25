@@ -44,6 +44,7 @@ export default function Issues() {
     { entityType: "issue", entityId: selectedEntityId },
     { enabled: historyDialogOpen && !!selectedEntityId }
   );
+  const { currentProjectId } = useProject();
 
   const updateMutation = trpc.issues.update.useMutation({
     onSuccess: (data) => {
@@ -165,7 +166,6 @@ export default function Issues() {
       toast.error('Full name is required');
       return;
     }
-    const { currentProjectId } = useProject();
     if (!currentProjectId) {
       toast.error('No project selected');
       return;

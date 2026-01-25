@@ -52,6 +52,7 @@ export default function Stakeholders() {
 
   const utils = trpc.useUtils();
   const { data: stakeholders, isLoading } = trpc.stakeholders.list.useQuery();
+  const { currentProjectId } = useProject();
   
   const createMutation = trpc.stakeholders.create.useMutation({
     onSuccess: () => {
@@ -106,7 +107,6 @@ export default function Stakeholders() {
       toast.error("Full name is required");
       return;
     }
-    const { currentProjectId } = useProject();
     if (!currentProjectId) {
       toast.error("No project selected");
       return;

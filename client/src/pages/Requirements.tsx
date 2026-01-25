@@ -80,6 +80,7 @@ export default function Requirements() {
   const { data: priorityOptions } = trpc.dropdownOptions.priority.getAll.useQuery();
   const { data: typeOptions } = trpc.dropdownOptions.type.getAll.useQuery();
   const { data: categoryOptions } = trpc.dropdownOptions.category.getAll.useQuery();
+  const { currentProjectId } = useProject();
   const { data: actionLogs } = trpc.actionLogs.getByEntity.useQuery(
     { entityType: "requirement", entityId: selectedEntityId },
     { enabled: historyDialogOpen && !!selectedEntityId }
@@ -283,7 +284,6 @@ export default function Requirements() {
       toast.error('Task Group is required');
       return;
     }
-    const { currentProjectId } = useProject();
     if (!currentProjectId) {
       toast.error('No project selected');
       return;
@@ -297,7 +297,6 @@ export default function Requirements() {
 
   const handleCreateIssueFromRequirement = () => {
     if (!selectedRequirement) return;
-    const { currentProjectId } = useProject();
     if (!currentProjectId) {
       toast.error('No project selected');
       return;
@@ -311,7 +310,6 @@ export default function Requirements() {
 
   const handleCreateDeliverableFromRequirement = () => {
     if (!selectedRequirement) return;
-    const { currentProjectId } = useProject();
     if (!currentProjectId) {
       toast.error('No project selected');
       return;
@@ -331,7 +329,6 @@ export default function Requirements() {
       toast.error('Full name is required');
       return;
     }
-    const { currentProjectId } = useProject();
     if (!currentProjectId) {
       toast.error('No project selected');
       return;
