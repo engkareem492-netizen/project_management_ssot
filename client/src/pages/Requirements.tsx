@@ -146,6 +146,7 @@ export default function Requirements() {
         category: '',
         sourceType: '',
         refSource: '',
+        createdAt: new Date().toISOString().split('T')[0],
       });
       refetch();
     },

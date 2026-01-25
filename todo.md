@@ -106,3 +106,7 @@
 - [x] Apply unified dialog to Requirements page
 - [x] Apply unified dialog to Tasks page
 - [x] Apply unified dialog to Issues page
+
+## Bug Fixes (Jan 25, 2026 - Batch 7)
+
+- [x] Fix controlled/uncontrolled input error in Requirements page (added missing createdAt field to reset state)
