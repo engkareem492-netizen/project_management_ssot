@@ -222,7 +222,7 @@ export default function Stakeholders() {
               <TableHead className="font-semibold">Email</TableHead>
               <TableHead className="font-semibold">Position</TableHead>
               <TableHead className="font-semibold">Role</TableHead>
-              <TableHead className="font-semibold">Job</TableHead>
+              <TableHead className="font-semibold">Department</TableHead>
               <TableHead className="font-semibold">Phone</TableHead>
               <TableHead className="font-semibold w-24">Actions</TableHead>
             </TableRow>
@@ -342,7 +342,7 @@ export default function Stakeholders() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="job">Job</Label>
+                <Label htmlFor="job">Department</Label>
                 <Input
                   id="job"
                   value={formData.job}
@@ -419,7 +419,7 @@ export default function Stakeholders() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="editJob">Job</Label>
+                <Label htmlFor="editJob">Department</Label>
                 <Input
                   id="editJob"
                   value={formData.job}

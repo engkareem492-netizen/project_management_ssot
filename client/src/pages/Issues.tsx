@@ -52,6 +52,20 @@ export default function Issues() {
     { enabled: historyDialogOpen && !!selectedEntityId }
   );
   const { currentProjectId } = useProject();
+  const { data: issueGroups } = trpc.dropdownOptions.issueGroups.getAll.useQuery(
+    { projectId: currentProjectId || 0 },
+    { enabled: !!currentProjectId }
+  );
+
+  const createIssueGroupMutation = trpc.dropdownOptions.issueGroups.create.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Issue Group "${data.name}" created successfully`);
+      setNewIssue({ ...newIssue, issueGroup: data.name });
+    },
+    onError: (error) => {
+      toast.error(`Failed to create issue group: ${error.message}`);
+    },
+  });
 
   const updateMutation = trpc.issues.update.useMutation({
     onSuccess: (data) => {
@@ -480,22 +494,38 @@ export default function Issues() {
             {/* Issue Group - Dropdown from Issues */}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="issueGroup" className="text-right">Issue Group</Label>
-              <Select
-                value={newIssue.issueGroup}
-                onValueChange={(value) => setNewIssue({ ...newIssue, issueGroup: value })}
-              >
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select issue group from issues..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {/* Get unique issue groups from existing issues */}
-                  {Array.from(new Set(issues?.map(i => i.issueGroup).filter(Boolean) || [])).map((group) => (
-                    <SelectItem key={group} value={group as string}>
-                      {group}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="col-span-3 flex gap-2">
+                <Select
+                  value={newIssue.issueGroup}
+                  onValueChange={(value) => setNewIssue({ ...newIssue, issueGroup: value })}
+                >
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Select issue group..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {issueGroups?.map((group) => (
+                      <SelectItem key={group.id} value={group.name}>
+                        {group.idCode ? `${group.idCode} - ${group.name}` : group.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="outline"
+                  onClick={() => {
+                    const newGroup = prompt('Enter new Issue Group name:');
+                    if (newGroup && newGroup.trim() && currentProjectId) {
+                      createIssueGroupMutation.mutate({ projectId: currentProjectId, name: newGroup.trim() });
+                    }
+                  }}
+                  title="Add new issue group"
+                  disabled={createIssueGroupMutation.isPending}
+                >
+                  {createIssueGroupMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                </Button>
+              </div>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="description" className="text-right">Description *</Label>

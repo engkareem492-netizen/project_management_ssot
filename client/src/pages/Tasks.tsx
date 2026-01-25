@@ -58,6 +58,20 @@ export default function Tasks() {
     { enabled: historyDialogOpen && !!selectedEntityId }
   );
   const { currentProjectId } = useProject();
+  const { data: taskGroups } = trpc.dropdownOptions.taskGroups.getAll.useQuery(
+    { projectId: currentProjectId || 0 },
+    { enabled: !!currentProjectId }
+  );
+
+  const createTaskGroupMutation = trpc.dropdownOptions.taskGroups.create.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Task Group "${data.name}" created successfully`);
+      setNewTask({ ...newTask, taskGroup: data.name });
+    },
+    onError: (error) => {
+      toast.error(`Failed to create task group: ${error.message}`);
+    },
+  });
 
   const updateMutation = trpc.tasks.update.useMutation({
     onSuccess: (data) => {
@@ -512,21 +526,38 @@ export default function Tasks() {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="taskGroup">Task Group *</Label>
-                  <Select
-                    value={newTask.taskGroup}
-                    onValueChange={(value) => setNewTask({ ...newTask, taskGroup: value === "custom" ? "" : value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select task group from requirements..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Array.from(new Set(requirements?.map(r => r.taskGroup).filter(Boolean) || [])).map((group) => (
-                        <SelectItem key={group} value={group as string}>
-                          {group}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex gap-2">
+                    <Select
+                      value={newTask.taskGroup}
+                      onValueChange={(value) => setNewTask({ ...newTask, taskGroup: value })}
+                    >
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Select task group..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {taskGroups?.map((group) => (
+                          <SelectItem key={group.id} value={group.name}>
+                            {group.idCode ? `${group.idCode} - ${group.name}` : group.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      onClick={() => {
+                        const newGroup = prompt('Enter new Task Group name:');
+                        if (newGroup && newGroup.trim() && currentProjectId) {
+                          createTaskGroupMutation.mutate({ projectId: currentProjectId, name: newGroup.trim() });
+                        }
+                      }}
+                      title="Add new task group"
+                      disabled={createTaskGroupMutation.isPending}
+                    >
+                      {createTaskGroupMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                    </Button>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="description">Description *</Label>

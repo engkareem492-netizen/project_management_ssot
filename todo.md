@@ -121,9 +121,15 @@
 
 ## Feature Requests (Jan 25, 2026 - Batch 9)
 
-- [ ] Add Task Groups and Issue Groups management tab in Settings
-- [ ] Display all existing Task Groups with their IDs and names
-- [ ] Display all existing Issue Groups with their IDs and names
-- [ ] Implement edit functionality to rename groups
-- [ ] Implement delete functionality to remove unused groups
+- [x] Add Task Groups and Issue Groups management tab in Settings
+- [x] Display all existing Task Groups with their IDs and names
+- [x] Display all existing Issue Groups with their IDs and names
+- [x] Implement edit functionality to rename groups
+- [x] Implement delete functionality to remove unused groups
 - [ ] Show usage count (how many requirements/tasks/issues use each group)
+
+## Feature Requests (Jan 25, 2026 - Batch 10)
+
+- [x] Rename "Job" field to "Department" in Stakeholder edit/create dialog
+- [x] Add "+" button to Task Group dropdown in Create Task dialog for inline group creation
+- [x] Add "+" button to Issue Group dropdown in Create Issue dialog for inline group creation
