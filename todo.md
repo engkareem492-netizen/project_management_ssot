@@ -29,3 +29,7 @@
 - [ ] Project activity dashboard
 - [ ] Project collaboration features
 - [ ] Advanced filtering and search across projects
+
+## Bug Fixes / Improvements
+
+- [x] Add demo/bypass authentication mode for testing without OAuth

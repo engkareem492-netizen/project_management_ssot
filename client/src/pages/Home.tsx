@@ -1,6 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useProject } from "@/contexts/ProjectContext";
 import ProjectSelector from "@/components/ProjectSelector";
@@ -14,6 +14,14 @@ export default function Home() {
   const { user, loading, isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
   const { currentProjectId, setCurrentProjectId } = useProject();
+  const [demoMode, setDemoMode] = useState(() => {
+    return localStorage.getItem('pm-ssot-demo-mode') === 'true';
+  });
+
+  const enableDemoMode = () => {
+    localStorage.setItem('pm-ssot-demo-mode', 'true');
+    setDemoMode(true);
+  };
 
   if (loading) {
     return (
@@ -26,7 +34,8 @@ export default function Home() {
     );
   }
 
-  if (!isAuthenticated) {
+  // Allow access if authenticated OR in demo mode
+  if (!isAuthenticated && !demoMode) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
         <Card className="w-full max-w-md">
@@ -37,7 +46,7 @@ export default function Home() {
               Single Source of Truth for your project requirements, tasks, and issues
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
             <Button 
               onClick={() => window.location.href = getLoginUrl()} 
               className="w-full"
@@ -45,6 +54,25 @@ export default function Home() {
             >
               Sign In to Continue
             </Button>
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white px-2 text-muted-foreground">Or</span>
+              </div>
+            </div>
+            <Button 
+              onClick={enableDemoMode} 
+              variant="outline"
+              className="w-full"
+              size="lg"
+            >
+              Continue as Demo User
+            </Button>
+            <p className="text-xs text-center text-muted-foreground">
+              Demo mode allows you to test all features without authentication
+            </p>
           </CardContent>
         </Card>
       </div>
