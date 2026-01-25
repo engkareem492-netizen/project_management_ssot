@@ -329,4 +329,12 @@
 - [x] Add Settings button for Deliverable Status dropdown
 - [x] Test task creation with taskGroup
 - [x] Test deliverable editing functionality
-- [ ] Create checkpoint
+- [x] Create checkpoint
+
+## Bug Fix V4.4 & Export
+
+### Critical Fix
+- [x] Add RACI fields (Responsible, Accountable, Informed, Consulted) to create task dialog from Requirements
+- [x] Test task creation from Requirements with all required fields
+- [ ] Export website to GitHub for handover to another Manus profile (user action required)
+- [ ] Create final checkpoint

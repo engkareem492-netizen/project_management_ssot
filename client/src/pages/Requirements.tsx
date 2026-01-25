@@ -43,6 +43,10 @@ export default function Requirements() {
     owner: '',
     status: 'Open',
     priority: 'Medium',
+    responsible: '',
+    accountable: '',
+    informed: '',
+    consulted: '',
   });
   const [newIssue, setNewIssue] = useState({
     description: '',
@@ -137,6 +141,10 @@ export default function Requirements() {
         owner: '',
         status: 'Open',
         priority: 'Medium',
+        responsible: '',
+        accountable: '',
+        informed: '',
+        consulted: '',
       });
       utils.tasks.list.invalidate();
     },
@@ -843,6 +851,74 @@ export default function Requirements() {
                   <SelectItem value="Very High">Very High</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Responsible</Label>
+                <Select
+                  value={newTask.responsible}
+                  onValueChange={(value) => setNewTask({ ...newTask, responsible: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select responsible..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {stakeholders?.map((s) => (
+                      <SelectItem key={s.id} value={s.fullName}>{s.fullName}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Accountable</Label>
+                <Select
+                  value={newTask.accountable}
+                  onValueChange={(value) => setNewTask({ ...newTask, accountable: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select accountable..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {stakeholders?.map((s) => (
+                      <SelectItem key={s.id} value={s.fullName}>{s.fullName}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Informed</Label>
+                <Select
+                  value={newTask.informed}
+                  onValueChange={(value) => setNewTask({ ...newTask, informed: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select informed..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {stakeholders?.map((s) => (
+                      <SelectItem key={s.id} value={s.fullName}>{s.fullName}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Consulted</Label>
+                <Select
+                  value={newTask.consulted}
+                  onValueChange={(value) => setNewTask({ ...newTask, consulted: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select consulted..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {stakeholders?.map((s) => (
+                      <SelectItem key={s.id} value={s.fullName}>{s.fullName}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
           <DialogFooter>
