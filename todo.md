@@ -90,3 +90,19 @@
 - [x] Add "+" button to Issue Group dropdown in Requirements for inline creation
 - [x] Enlarge History dialog to display changes properly (increase max-width from 2xl to 5xl)
 - [x] Fix Task creation dialog messy layout (restructured with sections: Basic Information, RACI Assignment, Dates, Status & Priority)
+
+## Bug Fixes (Jan 25, 2026 - Batch 5)
+
+- [x] Fix Task Group + button to create persistent groups in database (created taskGroups table)
+- [x] Fix Issue Group + button to create persistent groups in database (created issueGroups table)
+- [x] Make History screen even bigger (full-width 90vw, 70vh height) to display all changes properly
+- [x] Add theme toggle option (light/dark mode) in Settings > Theme tab
+
+## Bug Fixes (Jan 25, 2026 - Batch 6)
+
+- [x] Unify Edit and View dialogs into single full-screen dialog with editable mode
+- [x] View button opens full-screen detail dialog (read-only)
+- [x] Edit button opens same full-screen dialog but with all fields editable
+- [x] Apply unified dialog to Requirements page
+- [x] Apply unified dialog to Tasks page
+- [x] Apply unified dialog to Issues page

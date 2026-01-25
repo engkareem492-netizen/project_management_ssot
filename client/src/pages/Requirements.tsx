@@ -28,6 +28,8 @@ export default function Requirements() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [selectedRequirement, setSelectedRequirement] = useState<any>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editFormData, setEditFormData] = useState<any>({});
   const [createTaskDialogOpen, setCreateTaskDialogOpen] = useState(false);
   const [createIssueDialogOpen, setCreateIssueDialogOpen] = useState(false);
   const [createDeliverableDialogOpen, setCreateDeliverableDialogOpen] = useState(false);
@@ -85,6 +87,30 @@ export default function Requirements() {
   const { data: typeOptions } = trpc.dropdownOptions.type.getAll.useQuery();
   const { data: categoryOptions } = trpc.dropdownOptions.category.getAll.useQuery();
   const { currentProjectId } = useProject();
+  const { data: taskGroups, refetch: refetchTaskGroups } = trpc.dropdownOptions.taskGroups.getAll.useQuery(
+    { projectId: currentProjectId! },
+    { enabled: !!currentProjectId }
+  );
+  const { data: issueGroups, refetch: refetchIssueGroups } = trpc.dropdownOptions.issueGroups.getAll.useQuery(
+    { projectId: currentProjectId! },
+    { enabled: !!currentProjectId }
+  );
+  const createTaskGroupMutation = trpc.dropdownOptions.taskGroups.create.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Task Group "${data.name}" created`);
+      refetchTaskGroups();
+      setNewRequirement({ ...newRequirement, taskGroup: data.name });
+    },
+    onError: (error) => toast.error(`Failed to create Task Group: ${error.message}`),
+  });
+  const createIssueGroupMutation = trpc.dropdownOptions.issueGroups.create.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Issue Group "${data.name}" created`);
+      refetchIssueGroups();
+      setNewRequirement({ ...newRequirement, issueGroup: data.name });
+    },
+    onError: (error) => toast.error(`Failed to create Issue Group: ${error.message}`),
+  });
   const { data: actionLogs } = trpc.actionLogs.getByEntity.useQuery(
     { entityType: "requirement", entityId: selectedEntityId },
     { enabled: historyDialogOpen && !!selectedEntityId }
@@ -288,7 +314,50 @@ export default function Requirements() {
 
   const handleViewDetails = (req: any) => {
     setSelectedRequirement(req);
+    setEditFormData({
+      taskGroup: req.taskGroup || '',
+      issueGroup: req.issueGroup || '',
+      priority: req.priority || 'Medium',
+      type: req.type || '',
+      category: req.category || '',
+      owner: req.owner || '',
+      sourceType: req.sourceType || '',
+      refSource: req.refSource || '',
+      status: req.status || 'Open',
+      description: req.description || '',
+      lastUpdate: req.lastUpdate || '',
+    });
+    setIsEditMode(false);
     setViewDialogOpen(true);
+  };
+
+  const handleEditDetails = (req: any) => {
+    setSelectedRequirement(req);
+    setEditFormData({
+      taskGroup: req.taskGroup || '',
+      issueGroup: req.issueGroup || '',
+      priority: req.priority || 'Medium',
+      type: req.type || '',
+      category: req.category || '',
+      owner: req.owner || '',
+      sourceType: req.sourceType || '',
+      refSource: req.refSource || '',
+      status: req.status || 'Open',
+      description: req.description || '',
+      lastUpdate: req.lastUpdate || '',
+    });
+    setIsEditMode(true);
+    setViewDialogOpen(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (!selectedRequirement || !currentProjectId) return;
+    updateMutation.mutate({
+      id: selectedRequirement.id,
+      projectId: currentProjectId,
+      ...editFormData,
+    });
+    setIsEditMode(false);
   };
 
   const handleCreateTaskFromRequirement = () => {
@@ -601,7 +670,7 @@ export default function Requirements() {
                             <Button size="sm" variant="ghost" onClick={() => handleViewDetails(req)} title="View Details" className="h-7 w-7 p-0 hover:bg-primary/10">
                               <Eye className="w-3 h-3" />
                             </Button>
-                            <Button size="sm" variant="ghost" onClick={() => handleEdit(req)} title="Edit" className="h-7 w-7 p-0 hover:bg-primary/10">
+                            <Button size="sm" variant="ghost" onClick={() => handleEditDetails(req)} title="Edit" className="h-7 w-7 p-0 hover:bg-primary/10">
                               <Edit className="w-3 h-3" />
                             </Button>
                             <Button size="sm" variant="ghost" onClick={() => showHistory(req.idCode)} title="History" className="h-7 w-7 p-0 hover:bg-primary/10">
@@ -628,21 +697,42 @@ export default function Requirements() {
         </CardContent>
       </Card>
 
-      {/* View Details Dialog with Linked Items */}
-      <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader className="border-b pb-4">
-            <DialogTitle className="flex items-center gap-2 text-xl">
-              <span className="font-mono bg-primary/10 text-primary px-3 py-1 rounded">{selectedRequirement?.idCode}</span>
-              Requirement Details
-            </DialogTitle>
+      {/* View/Edit Details Dialog with Linked Items */}
+      <Dialog open={viewDialogOpen} onOpenChange={(open) => { setViewDialogOpen(open); if (!open) setIsEditMode(false); }}>
+        <DialogContent className="w-[95vw] max-w-[95vw] h-[90vh] max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader className="border-b pb-4 flex-shrink-0">
+            <div className="flex items-center justify-between">
+              <DialogTitle className="flex items-center gap-2 text-xl">
+                <span className="font-mono bg-primary/10 text-primary px-3 py-1 rounded">{selectedRequirement?.idCode}</span>
+                {isEditMode ? 'Edit Requirement' : 'Requirement Details'}
+              </DialogTitle>
+              <div className="flex items-center gap-2">
+                {isEditMode ? (
+                  <>
+                    <Button onClick={handleSaveEdit} disabled={updateMutation.isPending} className="bg-primary hover:bg-primary/90">
+                      <Save className="w-4 h-4 mr-2" />
+                      {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
+                    </Button>
+                    <Button variant="outline" onClick={() => setIsEditMode(false)}>
+                      <X className="w-4 h-4 mr-2" />
+                      Cancel
+                    </Button>
+                  </>
+                ) : (
+                  <Button onClick={() => setIsEditMode(true)} variant="outline">
+                    <Edit className="w-4 h-4 mr-2" />
+                    Edit
+                  </Button>
+                )}
+              </div>
+            </div>
             <DialogDescription>
-              View all details and linked items for this requirement
+              {isEditMode ? 'Edit the requirement details below' : 'View all details and linked items for this requirement'}
             </DialogDescription>
           </DialogHeader>
           
-          <Tabs defaultValue="details" className="mt-4">
-            <TabsList className="grid w-full grid-cols-4">
+          <Tabs defaultValue="details" className="mt-4 flex-1 flex flex-col overflow-hidden">
+            <TabsList className="grid w-full grid-cols-4 flex-shrink-0">
               <TabsTrigger value="details">Details</TabsTrigger>
               <TabsTrigger value="tasks">
                 Tasks ({linkedTasks.length})
@@ -655,62 +745,203 @@ export default function Requirements() {
               </TabsTrigger>
             </TabsList>
             
-            <TabsContent value="details" className="space-y-4 mt-4">
+            <TabsContent value="details" className="space-y-4 mt-4 flex-1 overflow-y-auto">
               {/* Main Details Grid */}
               <div className="grid grid-cols-3 gap-4">
+                {/* Task Group */}
                 <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">Task Group</Label>
-                  <p className="font-medium">{selectedRequirement?.taskGroup || '-'}</p>
+                  {isEditMode ? (
+                    <div className="flex gap-2">
+                      <Select value={editFormData.taskGroup} onValueChange={(v) => setEditFormData({...editFormData, taskGroup: v})}>
+                        <SelectTrigger className="h-8">
+                          <SelectValue placeholder="Select task group" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {taskGroups?.map((g) => (
+                            <SelectItem key={g.id} value={g.name}>{g.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : (
+                    <p className="font-medium">{selectedRequirement?.taskGroup || '-'}</p>
+                  )}
                 </div>
+                {/* Issue Group */}
                 <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">Issue Group</Label>
-                  <p className="font-medium">{selectedRequirement?.issueGroup || '-'}</p>
+                  {isEditMode ? (
+                    <Select value={editFormData.issueGroup} onValueChange={(v) => setEditFormData({...editFormData, issueGroup: v})}>
+                      <SelectTrigger className="h-8">
+                        <SelectValue placeholder="Select issue group" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {issueGroups?.map((g) => (
+                          <SelectItem key={g.id} value={g.name}>{g.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="font-medium">{selectedRequirement?.issueGroup || '-'}</p>
+                  )}
                 </div>
+                {/* Priority */}
                 <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">Priority</Label>
-                  <Badge variant={getPriorityColor(selectedRequirement?.priority)}>
-                    {selectedRequirement?.priority || 'N/A'}
-                  </Badge>
+                  {isEditMode ? (
+                    <Select value={editFormData.priority} onValueChange={(v) => setEditFormData({...editFormData, priority: v})}>
+                      <SelectTrigger className="h-8">
+                        <SelectValue placeholder="Select priority" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {priorityOptions?.map((opt) => (
+                          <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Badge variant={getPriorityColor(selectedRequirement?.priority)}>
+                      {selectedRequirement?.priority || 'N/A'}
+                    </Badge>
+                  )}
                 </div>
+                {/* Creation Date */}
                 <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">Creation Date</Label>
                   <p className="font-medium">{formatDate(selectedRequirement?.createdAt)}</p>
                 </div>
+                {/* Type */}
                 <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">Type</Label>
-                  <p className="font-medium">{selectedRequirement?.type || '-'}</p>
+                  {isEditMode ? (
+                    <Select value={editFormData.type} onValueChange={(v) => setEditFormData({...editFormData, type: v})}>
+                      <SelectTrigger className="h-8">
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {typeOptions?.map((opt) => (
+                          <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="font-medium">{selectedRequirement?.type || '-'}</p>
+                  )}
                 </div>
+                {/* Category */}
                 <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">Category</Label>
-                  <p className="font-medium">{selectedRequirement?.category || '-'}</p>
+                  {isEditMode ? (
+                    <Select value={editFormData.category} onValueChange={(v) => setEditFormData({...editFormData, category: v})}>
+                      <SelectTrigger className="h-8">
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categoryOptions?.map((opt) => (
+                          <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="font-medium">{selectedRequirement?.category || '-'}</p>
+                  )}
                 </div>
+                {/* Owner */}
                 <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">Owner</Label>
-                  <p className="font-medium">{selectedRequirement?.owner || '-'}</p>
+                  {isEditMode ? (
+                    <Select value={editFormData.owner} onValueChange={(v) => setEditFormData({...editFormData, owner: v})}>
+                      <SelectTrigger className="h-8">
+                        <SelectValue placeholder="Select owner" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {stakeholders?.map((s) => (
+                          <SelectItem key={s.id} value={s.fullName}>{s.fullName}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="font-medium">{selectedRequirement?.owner || '-'}</p>
+                  )}
                 </div>
+                {/* Source Type */}
                 <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">Source Type</Label>
-                  <p className="font-medium">{selectedRequirement?.sourceType || '-'}</p>
+                  {isEditMode ? (
+                    <Input
+                      value={editFormData.sourceType}
+                      onChange={(e) => setEditFormData({...editFormData, sourceType: e.target.value})}
+                      className="h-8"
+                      placeholder="Enter source type"
+                    />
+                  ) : (
+                    <p className="font-medium">{selectedRequirement?.sourceType || '-'}</p>
+                  )}
                 </div>
+                {/* External Source */}
                 <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">External Source</Label>
-                  <p className="font-medium">{selectedRequirement?.refSource || '-'}</p>
+                  {isEditMode ? (
+                    <Input
+                      value={editFormData.refSource}
+                      onChange={(e) => setEditFormData({...editFormData, refSource: e.target.value})}
+                      className="h-8"
+                      placeholder="Enter external source"
+                    />
+                  ) : (
+                    <p className="font-medium">{selectedRequirement?.refSource || '-'}</p>
+                  )}
                 </div>
+                {/* Status */}
                 <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">Status</Label>
-                  <Badge variant={getStatusColor(selectedRequirement?.status)}>
-                    {selectedRequirement?.status || 'N/A'}
-                  </Badge>
+                  {isEditMode ? (
+                    <Select value={editFormData.status} onValueChange={(v) => setEditFormData({...editFormData, status: v})}>
+                      <SelectTrigger className="h-8">
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {statusOptions?.map((opt) => (
+                          <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Badge variant={getStatusColor(selectedRequirement?.status)}>
+                      {selectedRequirement?.status || 'N/A'}
+                    </Badge>
+                  )}
                 </div>
+                {/* Last Update */}
                 <div className="col-span-2 space-y-1 p-3 bg-muted/50 rounded-lg">
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">Last Update</Label>
-                  <p className="font-medium">{selectedRequirement?.lastUpdate || '-'}</p>
+                  {isEditMode ? (
+                    <Textarea
+                      value={editFormData.lastUpdate}
+                      onChange={(e) => setEditFormData({...editFormData, lastUpdate: e.target.value})}
+                      className="min-h-[60px]"
+                      placeholder="Enter update notes"
+                    />
+                  ) : (
+                    <p className="font-medium">{selectedRequirement?.lastUpdate || '-'}</p>
+                  )}
                 </div>
               </div>
               
+              {/* Description */}
               <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                 <Label className="text-xs text-muted-foreground uppercase tracking-wide">Description</Label>
-                <p className="font-medium whitespace-pre-wrap">{selectedRequirement?.description || '-'}</p>
+                {isEditMode ? (
+                  <Textarea
+                    value={editFormData.description}
+                    onChange={(e) => setEditFormData({...editFormData, description: e.target.value})}
+                    className="min-h-[100px]"
+                    placeholder="Enter description"
+                  />
+                ) : (
+                  <p className="font-medium whitespace-pre-wrap">{selectedRequirement?.description || '-'}</p>
+                )}
               </div>
               
               {/* Linked Deliverables Section */}
@@ -942,12 +1173,12 @@ export default function Requirements() {
                   onValueChange={(value) => setNewRequirement({ ...newRequirement, taskGroup: value })}
                 >
                   <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Select task group from tasks..." />
+                    <SelectValue placeholder="Select task group..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {Array.from(new Set(tasks?.map(t => t.taskGroup).filter(Boolean))).map((group) => (
-                      <SelectItem key={group} value={group as string}>
-                        {group}
+                    {taskGroups?.map((group) => (
+                      <SelectItem key={group.id} value={group.name}>
+                        {group.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -958,13 +1189,14 @@ export default function Requirements() {
                   variant="outline"
                   onClick={() => {
                     const newGroup = prompt('Enter new Task Group name:');
-                    if (newGroup && newGroup.trim()) {
-                      setNewRequirement({ ...newRequirement, taskGroup: newGroup.trim() });
+                    if (newGroup && newGroup.trim() && currentProjectId) {
+                      createTaskGroupMutation.mutate({ projectId: currentProjectId, name: newGroup.trim() });
                     }
                   }}
                   title="Add new task group"
+                  disabled={createTaskGroupMutation.isPending}
                 >
-                  <Plus className="w-4 h-4" />
+                  {createTaskGroupMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                 </Button>
               </div>
             </div>
@@ -976,12 +1208,12 @@ export default function Requirements() {
                   onValueChange={(value) => setNewRequirement({ ...newRequirement, issueGroup: value })}
                 >
                   <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Select issue group from issues..." />
+                    <SelectValue placeholder="Select issue group..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {Array.from(new Set(issues?.map(i => i.issueGroup).filter(Boolean))).map((group) => (
-                      <SelectItem key={group} value={group as string}>
-                        {group}
+                    {issueGroups?.map((group) => (
+                      <SelectItem key={group.id} value={group.name}>
+                        {group.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -992,13 +1224,14 @@ export default function Requirements() {
                   variant="outline"
                   onClick={() => {
                     const newGroup = prompt('Enter new Issue Group name:');
-                    if (newGroup && newGroup.trim()) {
-                      setNewRequirement({ ...newRequirement, issueGroup: newGroup.trim() });
+                    if (newGroup && newGroup.trim() && currentProjectId) {
+                      createIssueGroupMutation.mutate({ projectId: currentProjectId, name: newGroup.trim() });
                     }
                   }}
                   title="Add new issue group"
+                  disabled={createIssueGroupMutation.isPending}
                 >
-                  <Plus className="w-4 h-4" />
+                  {createIssueGroupMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                 </Button>
               </div>
             </div>
@@ -1307,7 +1540,7 @@ export default function Requirements() {
 
       {/* History Dialog */}
       <Dialog open={historyDialogOpen} onOpenChange={setHistoryDialogOpen}>
-        <DialogContent className="max-w-5xl">
+        <DialogContent className="max-w-[95vw] w-full h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <History className="w-5 h-5 text-primary" />
@@ -1317,7 +1550,7 @@ export default function Requirements() {
               View all modifications made to this requirement
             </DialogDescription>
           </DialogHeader>
-          <div className="max-h-[500px] overflow-auto py-4">
+          <div className="flex-1 overflow-auto py-4">
             {actionLogs && actionLogs.length > 0 ? (
               <Table>
                 <TableHeader>

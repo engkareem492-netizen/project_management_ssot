@@ -1294,6 +1294,52 @@ export const appRouter = router({
           return { success: true };
         }),
     }),
+    // Task Groups
+    taskGroups: router({
+      getAll: publicProcedure
+        .input(z.object({ projectId: z.number() }))
+        .query(async ({ input }) => {
+          return await db.getAllTaskGroups(input.projectId);
+        }),
+      create: protectedProcedure
+        .input(z.object({
+          projectId: z.number(),
+          name: z.string(),
+          description: z.string().optional(),
+        }))
+        .mutation(async ({ input }) => {
+          return await db.createTaskGroup(input);
+        }),
+      delete: protectedProcedure
+        .input(z.object({ id: z.number() }))
+        .mutation(async ({ input }) => {
+          await db.deleteTaskGroup(input.id);
+          return { success: true };
+        }),
+    }),
+    // Issue Groups
+    issueGroups: router({
+      getAll: publicProcedure
+        .input(z.object({ projectId: z.number() }))
+        .query(async ({ input }) => {
+          return await db.getAllIssueGroups(input.projectId);
+        }),
+      create: protectedProcedure
+        .input(z.object({
+          projectId: z.number(),
+          name: z.string(),
+          description: z.string().optional(),
+        }))
+        .mutation(async ({ input }) => {
+          return await db.createIssueGroup(input);
+        }),
+      delete: protectedProcedure
+        .input(z.object({ id: z.number() }))
+        .mutation(async ({ input }) => {
+          await db.deleteIssueGroup(input.id);
+          return { success: true };
+        }),
+    }),
   }),
 });
 

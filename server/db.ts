@@ -23,7 +23,11 @@ import {
   statusOptions,
   priorityOptions,
   typeOptions,
-  categoryOptions
+  categoryOptions,
+  taskGroups,
+  issueGroups,
+  InsertTaskGroup,
+  InsertIssueGroup
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -905,4 +909,92 @@ export async function createProject(data: InsertProject) {
     console.error("[Database] Failed to create project:", error);
     throw error;
   }
+}
+
+// Task Groups functions
+export async function getAllTaskGroups(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  try {
+    const result = await db.select().from(taskGroups).where(eq(taskGroups.projectId, projectId)).orderBy(taskGroups.name);
+    return result;
+  } catch (error) {
+    console.error("[Database] Failed to get task groups:", error);
+    return [];
+  }
+}
+
+export async function createTaskGroup(data: { projectId: number; name: string; description?: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  try {
+    const result = await db.insert(taskGroups).values(data);
+    const insertResult = result as any;
+    const insertId = insertResult[0]?.insertId || insertResult.insertId;
+    if (!insertId || isNaN(Number(insertId))) {
+      // Fallback: get the latest created task group by name
+      const [created] = await db.select().from(taskGroups)
+        .where(and(eq(taskGroups.projectId, data.projectId), eq(taskGroups.name, data.name)))
+        .orderBy(desc(taskGroups.id))
+        .limit(1);
+      return created;
+    }
+    const [created] = await db.select().from(taskGroups).where(eq(taskGroups.id, Number(insertId)));
+    return created;
+  } catch (error) {
+    console.error("[Database] Failed to create task group:", error);
+    throw error;
+  }
+}
+
+export async function deleteTaskGroup(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(taskGroups).where(eq(taskGroups.id, id));
+}
+
+// Issue Groups functions
+export async function getAllIssueGroups(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  try {
+    const result = await db.select().from(issueGroups).where(eq(issueGroups.projectId, projectId)).orderBy(issueGroups.name);
+    return result;
+  } catch (error) {
+    console.error("[Database] Failed to get issue groups:", error);
+    return [];
+  }
+}
+
+export async function createIssueGroup(data: { projectId: number; name: string; description?: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  try {
+    const result = await db.insert(issueGroups).values(data);
+    const insertResult = result as any;
+    const insertId = insertResult[0]?.insertId || insertResult.insertId;
+    if (!insertId || isNaN(Number(insertId))) {
+      // Fallback: get the latest created issue group by name
+      const [created] = await db.select().from(issueGroups)
+        .where(and(eq(issueGroups.projectId, data.projectId), eq(issueGroups.name, data.name)))
+        .orderBy(desc(issueGroups.id))
+        .limit(1);
+      return created;
+    }
+    const [created] = await db.select().from(issueGroups).where(eq(issueGroups.id, Number(insertId)));
+    return created;
+  } catch (error) {
+    console.error("[Database] Failed to create issue group:", error);
+    throw error;
+  }
+}
+
+export async function deleteIssueGroup(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(issueGroups).where(eq(issueGroups.id, id));
 }

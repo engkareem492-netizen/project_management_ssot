@@ -53,6 +53,36 @@ export type IdSequence = typeof idSequences.$inferSelect;
 export type InsertIdSequence = typeof idSequences.$inferInsert;
 
 /**
+ * Task Groups table - stores task group options for requirements and tasks
+ */
+export const taskGroups = mysqlTable("taskGroups", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  name: varchar("name", { length: 200 }).notNull(),
+  description: text("description"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type TaskGroup = typeof taskGroups.$inferSelect;
+export type InsertTaskGroup = typeof taskGroups.$inferInsert;
+
+/**
+ * Issue Groups table - stores issue group options for requirements and issues
+ */
+export const issueGroups = mysqlTable("issueGroups", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  name: varchar("name", { length: 200 }).notNull(),
+  description: text("description"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type IssueGroup = typeof issueGroups.$inferSelect;
+export type InsertIssueGroup = typeof issueGroups.$inferInsert;
+
+/**
  * Stakeholders table - stores all project stakeholders for person-based fields
  */
 export const stakeholders = mysqlTable("stakeholders", {

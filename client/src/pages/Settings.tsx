@@ -10,7 +10,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useState } from "react";
-import { Settings as SettingsIcon, Save, Plus, Edit, Trash2, Hash, AlertCircle } from "lucide-react";
+import { Settings as SettingsIcon, Save, Plus, Edit, Trash2, Hash, AlertCircle, Sun, Moon, Monitor } from "lucide-react";
+import { useTheme } from "@/contexts/ThemeContext";
 
 interface IdConfigEdit {
   prefix: string;
@@ -18,6 +19,46 @@ interface IdConfigEdit {
   minNumber: number;
   maxNumber: number;
   padLength: number;
+}
+
+function ThemeSelectorInline() {
+  const { theme, toggleTheme, switchable } = useTheme();
+  
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <button
+          onClick={() => toggleTheme && theme === 'dark' && toggleTheme()}
+          className={`flex flex-col items-center gap-3 p-6 rounded-lg border-2 transition-all ${
+            theme === 'light'
+              ? 'border-primary bg-primary/10'
+              : 'border-border hover:border-primary/50'
+          }`}
+        >
+          <Sun className="w-8 h-8" />
+          <span className="font-medium">Light Mode</span>
+          <span className="text-xs text-muted-foreground">Bright and clean interface</span>
+        </button>
+        <button
+          onClick={() => toggleTheme && theme === 'light' && toggleTheme()}
+          className={`flex flex-col items-center gap-3 p-6 rounded-lg border-2 transition-all ${
+            theme === 'dark'
+              ? 'border-primary bg-primary/10'
+              : 'border-border hover:border-primary/50'
+          }`}
+        >
+          <Moon className="w-8 h-8" />
+          <span className="font-medium">Dark Mode</span>
+          <span className="text-xs text-muted-foreground">Easy on the eyes</span>
+        </button>
+      </div>
+      {!switchable && (
+        <p className="text-sm text-muted-foreground text-center">
+          Theme switching is currently disabled. Contact administrator to enable.
+        </p>
+      )}
+    </div>
+  );
 }
 
 export default function Settings() {
@@ -405,6 +446,7 @@ export default function Settings() {
         <TabsList>
           <TabsTrigger value="id-config">ID Configuration</TabsTrigger>
           <TabsTrigger value="dropdown-options">Dropdown Options</TabsTrigger>
+          <TabsTrigger value="theme">Theme</TabsTrigger>
         </TabsList>
 
         {/* ID Configuration Tab */}
@@ -632,6 +674,24 @@ export default function Settings() {
               </Card>
             </TabsContent>
           </Tabs>
+        </TabsContent>
+
+        {/* Theme Tab */}
+        <TabsContent value="theme" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Sun className="w-5 h-5" />
+                Theme Settings
+              </CardTitle>
+              <CardDescription>
+                Choose your preferred color theme for the application
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <ThemeSelectorInline />
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 

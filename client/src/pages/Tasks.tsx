@@ -6,9 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Search, Edit, History, Loader2, Plus, Trash2, Settings } from "lucide-react";
+import { Search, Edit, History, Loader2, Plus, Trash2, Settings, Eye, Save, X, CheckSquare } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownOptionsManager } from "@/components/DropdownOptionsManager";
@@ -27,6 +29,10 @@ export default function Tasks() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsType, setSettingsType] = useState<"status" | "priority">("status");
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<any>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editFormData, setEditFormData] = useState<any>({});
   const [addStakeholderDialogOpen, setAddStakeholderDialogOpen] = useState(false);
   const [newStakeholder, setNewStakeholder] = useState({ fullName: '', position: '', role: '' });
   const [newTask, setNewTask] = useState<any>({
@@ -179,6 +185,66 @@ export default function Tasks() {
     setDeleteDialogOpen(true);
   };
 
+  const handleViewDetails = (task: any) => {
+    setSelectedTask(task);
+    setIsEditMode(false);
+    setEditFormData({
+      taskGroup: task.taskGroup || '',
+      description: task.description || '',
+      responsible: task.responsible || '',
+      accountable: task.accountable || '',
+      consulted: task.consulted || '',
+      informed: task.informed || '',
+      owner: task.owner || '',
+      status: task.status || '',
+      priority: task.priority || '',
+      requirementId: task.requirementId || '',
+      dueDate: task.dueDate || '',
+      assignDate: task.assignDate || '',
+      currentStatus: task.currentStatus || '',
+      lastUpdate: task.lastUpdate || '',
+      statusUpdate: task.statusUpdate || '',
+    });
+    setViewDialogOpen(true);
+  };
+
+  const handleEditDetails = (task: any) => {
+    setSelectedTask(task);
+    setIsEditMode(true);
+    setEditFormData({
+      taskGroup: task.taskGroup || '',
+      description: task.description || '',
+      responsible: task.responsible || '',
+      accountable: task.accountable || '',
+      consulted: task.consulted || '',
+      informed: task.informed || '',
+      owner: task.owner || '',
+      status: task.status || '',
+      priority: task.priority || '',
+      requirementId: task.requirementId || '',
+      dueDate: task.dueDate || '',
+      assignDate: task.assignDate || '',
+      currentStatus: task.currentStatus || '',
+      lastUpdate: task.lastUpdate || '',
+      statusUpdate: task.statusUpdate || '',
+    });
+    setViewDialogOpen(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (!selectedTask) return;
+    updateMutation.mutate({
+      id: selectedTask.id,
+      taskId: selectedTask.taskId,
+      data: editFormData,
+    }, {
+      onSuccess: () => {
+        setIsEditMode(false);
+        setViewDialogOpen(false);
+      }
+    });
+  };
+
   const confirmDelete = () => {
     if (deletingId) {
       deleteMutation.mutate({ id: deletingId });
@@ -201,6 +267,14 @@ export default function Tasks() {
     if (!status) return "secondary";
     if (status === "Completed" || status === "Done") return "default";
     if (status === "In Progress") return "outline";
+    return "secondary";
+  };
+
+  const getPriorityColor = (priority: string | null | undefined) => {
+    if (!priority) return "secondary";
+    if (priority === "Critical" || priority === "Very High") return "destructive";
+    if (priority === "High") return "default";
+    if (priority === "Medium") return "outline";
     return "secondary";
   };
 
@@ -351,13 +425,16 @@ export default function Tasks() {
                           </>
                         ) : (
                           <>
-                            <Button size="sm" variant="outline" onClick={() => handleEdit(task)}>
+                            <Button size="sm" variant="outline" onClick={() => handleViewDetails(task)} title="View Details">
+                              <Eye className="w-3 h-3" />
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => handleEditDetails(task)} title="Edit">
                               <Edit className="w-3 h-3" />
                             </Button>
-                            <Button size="sm" variant="outline" onClick={() => showHistory(task.taskId)}>
+                            <Button size="sm" variant="outline" onClick={() => showHistory(task.taskId)} title="History">
                               <History className="w-3 h-3" />
                             </Button>
-                            <Button size="sm" variant="destructive" onClick={() => handleDelete(task.id)}>
+                            <Button size="sm" variant="destructive" onClick={() => handleDelete(task.id)} title="Delete">
                               <Trash2 className="w-3 h-3" />
                             </Button>
                           </>
@@ -658,6 +735,174 @@ export default function Tasks() {
               {createStakeholderMutation.isPending ? 'Creating...' : 'Create'}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* View/Edit Details Dialog */}
+      <Dialog open={viewDialogOpen} onOpenChange={(open) => { setViewDialogOpen(open); if (!open) setIsEditMode(false); }}>
+        <DialogContent className="w-[95vw] max-w-[95vw] h-[90vh] max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader className="border-b pb-4 flex-shrink-0">
+            <div className="flex items-center justify-between">
+              <DialogTitle className="flex items-center gap-2 text-xl">
+                <span className="font-mono bg-primary/10 text-primary px-3 py-1 rounded">{selectedTask?.taskId}</span>
+                {isEditMode ? 'Edit Task' : 'Task Details'}
+              </DialogTitle>
+              <div className="flex items-center gap-2">
+                {isEditMode ? (
+                  <>
+                    <Button onClick={handleSaveEdit} disabled={updateMutation.isPending} className="bg-primary hover:bg-primary/90">
+                      <Save className="w-4 h-4 mr-2" />
+                      {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
+                    </Button>
+                    <Button variant="outline" onClick={() => setIsEditMode(false)}>
+                      <X className="w-4 h-4 mr-2" />
+                      Cancel
+                    </Button>
+                  </>
+                ) : (
+                  <Button onClick={() => setIsEditMode(true)} variant="outline">
+                    <Edit className="w-4 h-4 mr-2" />
+                    Edit
+                  </Button>
+                )}
+              </div>
+            </div>
+            <DialogDescription>
+              {isEditMode ? 'Edit the task details below' : 'View all details for this task'}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex-1 overflow-y-auto mt-4 space-y-4">
+            {/* Basic Information */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Task Group</Label>
+                {isEditMode ? (
+                  <Input value={editFormData.taskGroup} onChange={(e) => setEditFormData({...editFormData, taskGroup: e.target.value})} className="h-8" />
+                ) : (
+                  <p className="font-medium">{selectedTask?.taskGroup || '-'}</p>
+                )}
+              </div>
+              <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Requirement ID</Label>
+                <p className="font-medium">{selectedTask?.requirementId || '-'}</p>
+              </div>
+              <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Status</Label>
+                {isEditMode ? (
+                  <Input value={editFormData.status} onChange={(e) => setEditFormData({...editFormData, status: e.target.value})} className="h-8" />
+                ) : (
+                  <Badge variant={getStatusColor(selectedTask?.status)}>{selectedTask?.status || 'N/A'}</Badge>
+                )}
+              </div>
+              <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Priority</Label>
+                {isEditMode ? (
+                  <Input value={editFormData.priority} onChange={(e) => setEditFormData({...editFormData, priority: e.target.value})} className="h-8" />
+                ) : (
+                  <Badge variant={getPriorityColor(selectedTask?.priority)}>{selectedTask?.priority || 'N/A'}</Badge>
+                )}
+              </div>
+              <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Assign Date</Label>
+                {isEditMode ? (
+                  <Input type="date" value={editFormData.assignDate} onChange={(e) => setEditFormData({...editFormData, assignDate: e.target.value})} className="h-8" />
+                ) : (
+                  <p className="font-medium">{selectedTask?.assignDate || '-'}</p>
+                )}
+              </div>
+              <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Due Date (ETD)</Label>
+                {isEditMode ? (
+                  <Input type="date" value={editFormData.dueDate} onChange={(e) => setEditFormData({...editFormData, dueDate: e.target.value})} className="h-8" />
+                ) : (
+                  <p className="font-medium">{selectedTask?.dueDate || '-'}</p>
+                )}
+              </div>
+            </div>
+
+            {/* RACI Assignment */}
+            <div className="border-t pt-4">
+              <h4 className="font-medium mb-3">RACI Assignment</h4>
+              <div className="grid grid-cols-4 gap-4">
+                <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Responsible (R)</Label>
+                  {isEditMode ? (
+                    <Input value={editFormData.responsible} onChange={(e) => setEditFormData({...editFormData, responsible: e.target.value})} className="h-8" />
+                  ) : (
+                    <p className="font-medium">{selectedTask?.responsible || '-'}</p>
+                  )}
+                </div>
+                <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Accountable (A)</Label>
+                  {isEditMode ? (
+                    <Input value={editFormData.accountable} onChange={(e) => setEditFormData({...editFormData, accountable: e.target.value})} className="h-8" />
+                  ) : (
+                    <p className="font-medium">{selectedTask?.accountable || '-'}</p>
+                  )}
+                </div>
+                <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Consulted (C)</Label>
+                  {isEditMode ? (
+                    <Input value={editFormData.consulted} onChange={(e) => setEditFormData({...editFormData, consulted: e.target.value})} className="h-8" />
+                  ) : (
+                    <p className="font-medium">{selectedTask?.consulted || '-'}</p>
+                  )}
+                </div>
+                <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Informed (I)</Label>
+                  {isEditMode ? (
+                    <Input value={editFormData.informed} onChange={(e) => setEditFormData({...editFormData, informed: e.target.value})} className="h-8" />
+                  ) : (
+                    <p className="font-medium">{selectedTask?.informed || '-'}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Description */}
+            <div className="border-t pt-4">
+              <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Description</Label>
+                {isEditMode ? (
+                  <Textarea value={editFormData.description} onChange={(e) => setEditFormData({...editFormData, description: e.target.value})} className="min-h-[80px]" />
+                ) : (
+                  <p className="font-medium whitespace-pre-wrap">{selectedTask?.description || '-'}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Status Updates */}
+            <div className="border-t pt-4">
+              <h4 className="font-medium mb-3">Status Updates</h4>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Current Status</Label>
+                  {isEditMode ? (
+                    <Textarea value={editFormData.currentStatus} onChange={(e) => setEditFormData({...editFormData, currentStatus: e.target.value})} className="min-h-[60px]" />
+                  ) : (
+                    <p className="font-medium whitespace-pre-wrap">{selectedTask?.currentStatus || '-'}</p>
+                  )}
+                </div>
+                <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Last Update</Label>
+                  {isEditMode ? (
+                    <Textarea value={editFormData.lastUpdate} onChange={(e) => setEditFormData({...editFormData, lastUpdate: e.target.value})} className="min-h-[60px]" />
+                  ) : (
+                    <p className="font-medium whitespace-pre-wrap">{selectedTask?.lastUpdate || '-'}</p>
+                  )}
+                </div>
+                <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Status Update</Label>
+                  {isEditMode ? (
+                    <Textarea value={editFormData.statusUpdate} onChange={(e) => setEditFormData({...editFormData, statusUpdate: e.target.value})} className="min-h-[60px]" />
+                  ) : (
+                    <p className="font-medium whitespace-pre-wrap">{selectedTask?.statusUpdate || '-'}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 
