@@ -1,0 +1,234 @@
+import { useState } from "react";
+import { trpc } from "@/lib/trpc";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Search, Loader2, Plus, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+
+export default function Dependencies() {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [newDependency, setNewDependency] = useState<any>({
+    dependencyId: '',
+    description: '',
+    responsible: '',
+    currentStatus: 'Pending',
+  });
+
+  const { data: dependencies, isLoading, refetch } = trpc.dependencies.list.useQuery();
+
+  const createMutation = trpc.dependencies.create.useMutation({
+    onSuccess: () => {
+      toast.success('Dependency created successfully');
+      setCreateDialogOpen(false);
+      setNewDependency({
+        dependencyId: '',
+        description: '',
+        responsible: '',
+        currentStatus: 'Pending',
+      });
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(`Create failed: ${error.message}`);
+    },
+  });
+
+  const deleteMutation = trpc.dependencies.delete.useMutation({
+    onSuccess: () => {
+      toast.success('Dependency deleted successfully');
+      setDeleteDialogOpen(false);
+      setDeletingId(null);
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(`Delete failed: ${error.message}`);
+    },
+  });
+
+  const filteredDependencies = dependencies?.filter(dep =>
+    dep.dependencyId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    dep.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    dep.responsible?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const handleCreate = () => {
+    if (!newDependency.dependencyId) {
+      toast.error('Dependency ID is required');
+      return;
+    }
+    createMutation.mutate(newDependency);
+  };
+
+  const handleDelete = (id: number) => {
+    setDeletingId(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (deletingId) {
+      deleteMutation.mutate({ id: deletingId });
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Dependencies Management</CardTitle>
+          <CardDescription>
+            View, edit, and track project dependencies
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-4 mb-6">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+              <Input
+                placeholder="Search by Dependency ID, description, or responsible..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Button onClick={() => setCreateDialogOpen(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Create New
+            </Button>
+          </div>
+
+          <div className="rounded-md border overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[100px]">Dependency ID</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead>Task ID</TableHead>
+                  <TableHead>Requirement ID</TableHead>
+                  <TableHead>Responsible</TableHead>
+                  <TableHead>Due Date</TableHead>
+                  <TableHead>Current Status</TableHead>
+                  <TableHead className="w-[150px]">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredDependencies?.map((dep) => (
+                  <TableRow key={dep.id}>
+                    <TableCell className="font-medium">{dep.dependencyId}</TableCell>
+                    <TableCell className="max-w-xs truncate">{dep.description || 'N/A'}</TableCell>
+                    <TableCell>{dep.taskId || 'N/A'}</TableCell>
+                    <TableCell>{dep.requirementId || 'N/A'}</TableCell>
+                    <TableCell>{dep.responsible}</TableCell>
+                    <TableCell>{dep.dueDate || 'N/A'}</TableCell>
+                    <TableCell>{dep.currentStatus || 'N/A'}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="destructive" onClick={() => handleDelete(dep.id)}>
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          {filteredDependencies?.length === 0 && (
+            <div className="text-center py-12 text-muted-foreground">
+              No dependencies found. Create a new dependency or import an Excel file to get started.
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Create New Dependency</DialogTitle>
+            <DialogDescription>
+              Add a new dependency to the project
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="dependencyId" className="text-right">Dependency ID *</Label>
+              <Input
+                id="dependencyId"
+                value={newDependency.dependencyId}
+                onChange={(e) => setNewDependency({ ...newDependency, dependencyId: e.target.value })}
+                className="col-span-3"
+                placeholder="D-001"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="description" className="text-right">Description</Label>
+              <Input
+                id="description"
+                value={newDependency.description}
+                onChange={(e) => setNewDependency({ ...newDependency, description: e.target.value })}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="responsible" className="text-right">Responsible</Label>
+              <Input
+                id="responsible"
+                value={newDependency.responsible}
+                onChange={(e) => setNewDependency({ ...newDependency, responsible: e.target.value })}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="currentStatus" className="text-right">Current Status</Label>
+              <Input
+                id="currentStatus"
+                value={newDependency.currentStatus}
+                onChange={(e) => setNewDependency({ ...newDependency, currentStatus: e.target.value })}
+                className="col-span-3"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleCreate} disabled={createMutation.isPending}>
+              {createMutation.isPending ? 'Creating...' : 'Create'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the dependency.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} disabled={deleteMutation.isPending}>
+              {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
