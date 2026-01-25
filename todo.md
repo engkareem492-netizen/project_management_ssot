@@ -110,3 +110,11 @@
 ## Bug Fixes (Jan 25, 2026 - Batch 7)
 
 - [x] Fix controlled/uncontrolled input error in Requirements page (added missing createdAt field to reset state)
+
+## Feature Requests (Jan 25, 2026 - Batch 8)
+
+- [x] Remove Custom Task Group field from Task creation dialog
+- [x] Add ID number range control for Task Groups in Settings (TG-XXXX format)
+- [x] Add ID number range control for Issue Groups in Settings (IG-XXXX format)
+- [x] Enable Task creation from Requirement detail view Tasks tab with Task Group dropdown and RACI fields
+- [x] Enable Issue creation from Requirement detail view Issues tab with Issue Group dropdown

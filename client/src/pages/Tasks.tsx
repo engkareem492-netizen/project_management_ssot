@@ -525,20 +525,9 @@ export default function Tasks() {
                           {group}
                         </SelectItem>
                       ))}
-                      <SelectItem value="custom">+ Enter custom...</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                {newTask.taskGroup === "" && (
-                  <div className="space-y-2">
-                    <Label>Custom Task Group</Label>
-                    <Input
-                      value={newTask.taskGroup}
-                      onChange={(e) => setNewTask({ ...newTask, taskGroup: e.target.value })}
-                      placeholder="Enter custom task group..."
-                    />
-                  </div>
-                )}
                 <div className="space-y-2">
                   <Label htmlFor="description">Description *</Label>
                   <Input

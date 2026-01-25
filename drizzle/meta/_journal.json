@@ -36,6 +36,13 @@
       "when": 1769335120082,
       "tag": "0004_large_lilandra",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1769338367342,
+      "tag": "0005_tricky_mockingbird",
+      "breakpoints": true
     }
   ]
 }

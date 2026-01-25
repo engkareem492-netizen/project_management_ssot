@@ -57,6 +57,7 @@ export default function Requirements() {
     owner: '',
     status: 'Open',
     priority: 'Medium',
+    issueGroup: '',
   });
   const [newDeliverable, setNewDeliverable] = useState({
     description: '',
@@ -198,6 +199,7 @@ export default function Requirements() {
         owner: '',
         status: 'Open',
         priority: 'Medium',
+        issueGroup: '',
       });
       utils.issues.list.invalidate();
     },
@@ -1328,80 +1330,170 @@ export default function Requirements() {
 
       {/* Create Task Dialog */}
       <Dialog open={createTaskDialogOpen} onOpenChange={setCreateTaskDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Create Task for {selectedRequirement?.idCode}</DialogTitle>
             <DialogDescription>
               Create a new task linked to this requirement
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Task Group</Label>
-              <Input
-                value={newTask.taskGroup}
-                onChange={(e) => setNewTask({ ...newTask, taskGroup: e.target.value })}
-                placeholder="Enter task group"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Description</Label>
-              <Textarea
-                value={newTask.description}
-                onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
-                placeholder="Enter task description"
-                rows={3}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Status</Label>
-                <Select
-                  value={newTask.status}
-                  onValueChange={(value) => setNewTask({ ...newTask, status: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {statusOptions?.map((opt) => (
-                      <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Priority</Label>
-                <Select
-                  value={newTask.priority}
-                  onValueChange={(value) => setNewTask({ ...newTask, priority: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {priorityOptions?.map((opt) => (
-                      <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+          <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
+            {/* Basic Information */}
+            <div className="space-y-4">
+              <h4 className="font-semibold text-sm border-b pb-2">Basic Information</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Task Group *</Label>
+                  <div className="flex gap-2">
+                    <Select
+                      value={newTask.taskGroup}
+                      onValueChange={(value) => setNewTask({ ...newTask, taskGroup: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select task group..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {taskGroups?.map((group) => (
+                          <SelectItem key={group.id} value={group.name}>
+                            {group.idCode ? `${group.idCode} - ${group.name}` : group.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => {
+                        const name = prompt('Enter new Task Group name:');
+                        if (name && currentProjectId) {
+                          createTaskGroupMutation.mutate({ projectId: currentProjectId, name });
+                        }
+                      }}
+                    >
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Description *</Label>
+                  <Input
+                    value={newTask.description}
+                    onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
+                    placeholder="Task description..."
+                  />
+                </div>
               </div>
             </div>
-            <div className="space-y-2">
-              <Label>Responsible</Label>
-              <Select
-                value={newTask.responsible}
-                onValueChange={(value) => setNewTask({ ...newTask, responsible: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select responsible person" />
-                </SelectTrigger>
-                <SelectContent>
-                  {stakeholders?.map((s) => (
-                    <SelectItem key={s.id} value={s.fullName}>{s.fullName}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+
+            {/* RACI Assignment */}
+            <div className="space-y-4">
+              <h4 className="font-semibold text-sm border-b pb-2">RACI Assignment</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Responsible (R)</Label>
+                  <Select
+                    value={newTask.responsible}
+                    onValueChange={(value) => setNewTask({ ...newTask, responsible: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select responsible..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {stakeholders?.map((s) => (
+                        <SelectItem key={s.id} value={s.fullName}>{s.fullName}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Accountable (A)</Label>
+                  <Select
+                    value={newTask.accountable}
+                    onValueChange={(value) => setNewTask({ ...newTask, accountable: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select accountable..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {stakeholders?.map((s) => (
+                        <SelectItem key={s.id} value={s.fullName}>{s.fullName}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Consulted (C)</Label>
+                  <Select
+                    value={newTask.consulted}
+                    onValueChange={(value) => setNewTask({ ...newTask, consulted: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select consulted..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {stakeholders?.map((s) => (
+                        <SelectItem key={s.id} value={s.fullName}>{s.fullName}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Informed (I)</Label>
+                  <Select
+                    value={newTask.informed}
+                    onValueChange={(value) => setNewTask({ ...newTask, informed: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select informed..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {stakeholders?.map((s) => (
+                        <SelectItem key={s.id} value={s.fullName}>{s.fullName}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+
+            {/* Status & Priority */}
+            <div className="space-y-4">
+              <h4 className="font-semibold text-sm border-b pb-2">Status & Priority</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <Select
+                    value={newTask.status}
+                    onValueChange={(value) => setNewTask({ ...newTask, status: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {statusOptions?.map((opt) => (
+                        <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Priority</Label>
+                  <Select
+                    value={newTask.priority}
+                    onValueChange={(value) => setNewTask({ ...newTask, priority: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {priorityOptions?.map((opt) => (
+                        <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </div>
           </div>
           <DialogFooter>
@@ -1415,72 +1507,120 @@ export default function Requirements() {
 
       {/* Create Issue Dialog */}
       <Dialog open={createIssueDialogOpen} onOpenChange={setCreateIssueDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Create Issue for {selectedRequirement?.idCode}</DialogTitle>
             <DialogDescription>
               Create a new issue linked to this requirement
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Description</Label>
-              <Textarea
-                value={newIssue.description}
-                onChange={(e) => setNewIssue({ ...newIssue, description: e.target.value })}
-                placeholder="Enter issue description"
-                rows={3}
-              />
+          <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
+            {/* Basic Information */}
+            <div className="space-y-4">
+              <h4 className="font-semibold text-sm border-b pb-2">Basic Information</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Issue Group *</Label>
+                  <div className="flex gap-2">
+                    <Select
+                      value={newIssue.issueGroup || ''}
+                      onValueChange={(value) => setNewIssue({ ...newIssue, issueGroup: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select issue group..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {issueGroups?.map((group) => (
+                          <SelectItem key={group.id} value={group.name}>
+                            {group.idCode ? `${group.idCode} - ${group.name}` : group.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => {
+                        const name = prompt('Enter new Issue Group name:');
+                        if (name && currentProjectId) {
+                          createIssueGroupMutation.mutate({ projectId: currentProjectId, name });
+                        }
+                      }}
+                    >
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Description *</Label>
+                  <Input
+                    value={newIssue.description}
+                    onChange={(e) => setNewIssue({ ...newIssue, description: e.target.value })}
+                    placeholder="Issue description..."
+                  />
+                </div>
+              </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+
+            {/* Status & Priority */}
+            <div className="space-y-4">
+              <h4 className="font-semibold text-sm border-b pb-2">Status & Priority</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <Select
+                    value={newIssue.status}
+                    onValueChange={(value) => setNewIssue({ ...newIssue, status: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {statusOptions?.map((opt) => (
+                        <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Priority</Label>
+                  <Select
+                    value={newIssue.priority}
+                    onValueChange={(value) => setNewIssue({ ...newIssue, priority: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {priorityOptions?.map((opt) => (
+                        <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+
+            {/* Owner */}
+            <div className="space-y-4">
+              <h4 className="font-semibold text-sm border-b pb-2">Assignment</h4>
               <div className="space-y-2">
-                <Label>Status</Label>
+                <Label>Owner</Label>
                 <Select
-                  value={newIssue.status}
-                  onValueChange={(value) => setNewIssue({ ...newIssue, status: value })}
+                  value={newIssue.owner}
+                  onValueChange={(value) => setNewIssue({ ...newIssue, owner: value })}
                 >
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="Select owner" />
                   </SelectTrigger>
                   <SelectContent>
-                    {statusOptions?.map((opt) => (
-                      <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
+                    {stakeholders?.map((s) => (
+                      <SelectItem key={s.id} value={s.fullName}>{s.fullName}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label>Priority</Label>
-                <Select
-                  value={newIssue.priority}
-                  onValueChange={(value) => setNewIssue({ ...newIssue, priority: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {priorityOptions?.map((opt) => (
-                      <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Owner</Label>
-              <Select
-                value={newIssue.owner}
-                onValueChange={(value) => setNewIssue({ ...newIssue, owner: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select owner" />
-                </SelectTrigger>
-                <SelectContent>
-                  {stakeholders?.map((s) => (
-                    <SelectItem key={s.id} value={s.fullName}>{s.fullName}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
           </div>
           <DialogFooter>

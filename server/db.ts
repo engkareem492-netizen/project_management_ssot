@@ -930,7 +930,9 @@ export async function createTaskGroup(data: { projectId: number; name: string; d
   if (!db) throw new Error("Database not available");
   
   try {
-    const result = await db.insert(taskGroups).values(data);
+    // Generate ID code for Task Group
+    const idCode = await getNextId('Task Group', 'TG-', data.projectId);
+    const result = await db.insert(taskGroups).values({ ...data, idCode });
     const insertResult = result as any;
     const insertId = insertResult[0]?.insertId || insertResult.insertId;
     if (!insertId || isNaN(Number(insertId))) {
@@ -974,7 +976,9 @@ export async function createIssueGroup(data: { projectId: number; name: string; 
   if (!db) throw new Error("Database not available");
   
   try {
-    const result = await db.insert(issueGroups).values(data);
+    // Generate ID code for Issue Group
+    const idCode = await getNextId('Issue Group', 'IG-', data.projectId);
+    const result = await db.insert(issueGroups).values({ ...data, idCode });
     const insertResult = result as any;
     const insertId = insertResult[0]?.insertId || insertResult.insertId;
     if (!insertId || isNaN(Number(insertId))) {

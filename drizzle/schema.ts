@@ -58,6 +58,7 @@ export type InsertIdSequence = typeof idSequences.$inferInsert;
 export const taskGroups = mysqlTable("taskGroups", {
   id: int("id").autoincrement().primaryKey(),
   projectId: int("projectId").notNull(),
+  idCode: varchar("idCode", { length: 20 }),
   name: varchar("name", { length: 200 }).notNull(),
   description: text("description"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -73,6 +74,7 @@ export type InsertTaskGroup = typeof taskGroups.$inferInsert;
 export const issueGroups = mysqlTable("issueGroups", {
   id: int("id").autoincrement().primaryKey(),
   projectId: int("projectId").notNull(),
+  idCode: varchar("idCode", { length: 20 }),
   name: varchar("name", { length: 200 }).notNull(),
   description: text("description"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
