@@ -936,39 +936,71 @@ export default function Requirements() {
           <div className="grid grid-cols-2 gap-4 py-4">
             <div className="space-y-2">
               <Label>Task Group</Label>
-              <Select
-                value={newRequirement.taskGroup}
-                onValueChange={(value) => setNewRequirement({ ...newRequirement, taskGroup: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select task group from tasks..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from(new Set(tasks?.map(t => t.taskGroup).filter(Boolean))).map((group) => (
-                    <SelectItem key={group} value={group as string}>
-                      {group}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex gap-2">
+                <Select
+                  value={newRequirement.taskGroup}
+                  onValueChange={(value) => setNewRequirement({ ...newRequirement, taskGroup: value })}
+                >
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Select task group from tasks..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from(new Set(tasks?.map(t => t.taskGroup).filter(Boolean))).map((group) => (
+                      <SelectItem key={group} value={group as string}>
+                        {group}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="outline"
+                  onClick={() => {
+                    const newGroup = prompt('Enter new Task Group name:');
+                    if (newGroup && newGroup.trim()) {
+                      setNewRequirement({ ...newRequirement, taskGroup: newGroup.trim() });
+                    }
+                  }}
+                  title="Add new task group"
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
             <div className="space-y-2">
               <Label>Issue Group</Label>
-              <Select
-                value={newRequirement.issueGroup}
-                onValueChange={(value) => setNewRequirement({ ...newRequirement, issueGroup: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select issue group from issues..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from(new Set(issues?.map(i => i.issueGroup).filter(Boolean))).map((group) => (
-                    <SelectItem key={group} value={group as string}>
-                      {group}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex gap-2">
+                <Select
+                  value={newRequirement.issueGroup}
+                  onValueChange={(value) => setNewRequirement({ ...newRequirement, issueGroup: value })}
+                >
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Select issue group from issues..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from(new Set(issues?.map(i => i.issueGroup).filter(Boolean))).map((group) => (
+                      <SelectItem key={group} value={group as string}>
+                        {group}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="outline"
+                  onClick={() => {
+                    const newGroup = prompt('Enter new Issue Group name:');
+                    if (newGroup && newGroup.trim()) {
+                      setNewRequirement({ ...newRequirement, issueGroup: newGroup.trim() });
+                    }
+                  }}
+                  title="Add new issue group"
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
             <div className="space-y-2">
               <Label>Creation Date</Label>
@@ -1275,7 +1307,7 @@ export default function Requirements() {
 
       {/* History Dialog */}
       <Dialog open={historyDialogOpen} onOpenChange={setHistoryDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-5xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <History className="w-5 h-5 text-primary" />

@@ -83,3 +83,10 @@
 - [x] Fix Issue Group in Requirements - Should be dropdown linked to Issues entity (not text input)
 - [x] Fix Issue Group in Issues page - Should be dropdown populated from Issues entity, remove custom input option
 - [x] Fix History/Updates display - Change from text format to Excel-like sheet/table format showing field changes
+
+## Bug Fixes (Jan 25, 2026 - Batch 4)
+
+- [x] Add "+" button to Task Group dropdown in Requirements for inline creation
+- [x] Add "+" button to Issue Group dropdown in Requirements for inline creation
+- [x] Enlarge History dialog to display changes properly (increase max-width from 2xl to 5xl)
+- [x] Fix Task creation dialog messy layout (restructured with sections: Basic Information, RACI Assignment, Dates, Status & Priority)

@@ -428,172 +428,165 @@ export default function Tasks() {
               Add a new task to the project. Task ID will be auto-generated (T-XXXX format).
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            {/* Task Group - Dropdown from Requirements */}
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="taskGroup" className="text-right">Task Group *</Label>
-              <Select
-                value={newTask.taskGroup}
-                onValueChange={(value) => setNewTask({ ...newTask, taskGroup: value === "custom" ? "" : value })}
-              >
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select task group from requirements..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {/* Get unique task groups from requirements */}
-                  {Array.from(new Set(requirements?.map(r => r.taskGroup).filter(Boolean) || [])).map((group) => (
-                    <SelectItem key={group} value={group as string}>
-                      {group}
-                    </SelectItem>
-                  ))}
-                  <SelectItem value="custom">+ Enter custom...</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            {/* Custom Task Group Input */}
-            {newTask.taskGroup === "" && (
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">Custom Group</Label>
-                <Input
-                  value={newTask.taskGroup}
-                  onChange={(e) => setNewTask({ ...newTask, taskGroup: e.target.value })}
-                  className="col-span-3"
-                  placeholder="Enter custom task group..."
-                />
+          <div className="space-y-6 py-4">
+            {/* Basic Information Section */}
+            <div className="space-y-4">
+              <h4 className="text-sm font-semibold border-b pb-2">Basic Information</h4>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="taskGroup">Task Group *</Label>
+                  <Select
+                    value={newTask.taskGroup}
+                    onValueChange={(value) => setNewTask({ ...newTask, taskGroup: value === "custom" ? "" : value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select task group from requirements..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from(new Set(requirements?.map(r => r.taskGroup).filter(Boolean) || [])).map((group) => (
+                        <SelectItem key={group} value={group as string}>
+                          {group}
+                        </SelectItem>
+                      ))}
+                      <SelectItem value="custom">+ Enter custom...</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {newTask.taskGroup === "" && (
+                  <div className="space-y-2">
+                    <Label>Custom Task Group</Label>
+                    <Input
+                      value={newTask.taskGroup}
+                      onChange={(e) => setNewTask({ ...newTask, taskGroup: e.target.value })}
+                      placeholder="Enter custom task group..."
+                    />
+                  </div>
+                )}
+                <div className="space-y-2">
+                  <Label htmlFor="description">Description *</Label>
+                  <Input
+                    id="description"
+                    value={newTask.description}
+                    onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
+                    placeholder="Task description..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="requirementId">Requirement ID</Label>
+                  <Select
+                    value={newTask.requirementId}
+                    onValueChange={(value) => setNewTask({ ...newTask, requirementId: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select requirement..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {requirements?.map((req) => (
+                        <SelectItem key={req.id} value={req.idCode}>
+                          {req.idCode} - {req.description?.substring(0, 50) || 'No description'}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-            )}
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="description" className="text-right">Description *</Label>
-              <Input
-                id="description"
-                value={newTask.description}
-                onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
-                className="col-span-3"
-                placeholder="Task description..."
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="requirementId" className="text-right">Requirement ID</Label>
-              <Select
-                value={newTask.requirementId}
-                onValueChange={(value) => setNewTask({ ...newTask, requirementId: value })}
-              >
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select requirement..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  {requirements?.map((req) => (
-                    <SelectItem key={req.id} value={req.idCode}>
-                      {req.idCode} - {req.description?.substring(0, 50) || 'No description'}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
 
-            {/* RACI Section */}
-            <div className="col-span-4 border-t pt-4 mt-2">
-              <h4 className="text-sm font-semibold mb-3">RACI Assignment</h4>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="responsible" className="text-right">Responsible (R)</Label>
-              <div className="col-span-3">
-                <SelectWithCreate
-                  type="stakeholder"
-                  value={newTask.responsible}
-                  onValueChange={(value) => setNewTask({ ...newTask, responsible: value })}
-                  placeholder="Select responsible person..."
-                  projectId={currentProjectId || undefined}
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="accountable" className="text-right">Accountable (A)</Label>
-              <div className="col-span-3">
-                <SelectWithCreate
-                  type="stakeholder"
-                  value={newTask.accountable}
-                  onValueChange={(value) => setNewTask({ ...newTask, accountable: value })}
-                  placeholder="Select accountable person..."
-                  projectId={currentProjectId || undefined}
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="consulted" className="text-right">Consulted (C)</Label>
-              <div className="col-span-3">
-                <SelectWithCreate
-                  type="stakeholder"
-                  value={newTask.consulted}
-                  onValueChange={(value) => setNewTask({ ...newTask, consulted: value })}
-                  placeholder="Select consulted person..."
-                  projectId={currentProjectId || undefined}
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="informed" className="text-right">Informed (I)</Label>
-              <div className="col-span-3">
-                <SelectWithCreate
-                  type="stakeholder"
-                  value={newTask.informed}
-                  onValueChange={(value) => setNewTask({ ...newTask, informed: value })}
-                  placeholder="Select informed person..."
-                  projectId={currentProjectId || undefined}
-                />
+            {/* RACI Assignment Section */}
+            <div className="space-y-4">
+              <h4 className="text-sm font-semibold border-b pb-2">RACI Assignment</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="responsible">Responsible (R)</Label>
+                  <SelectWithCreate
+                    type="stakeholder"
+                    value={newTask.responsible}
+                    onValueChange={(value) => setNewTask({ ...newTask, responsible: value })}
+                    placeholder="Select responsible person..."
+                    projectId={currentProjectId || undefined}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="accountable">Accountable (A)</Label>
+                  <SelectWithCreate
+                    type="stakeholder"
+                    value={newTask.accountable}
+                    onValueChange={(value) => setNewTask({ ...newTask, accountable: value })}
+                    placeholder="Select accountable person..."
+                    projectId={currentProjectId || undefined}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="consulted">Consulted (C)</Label>
+                  <SelectWithCreate
+                    type="stakeholder"
+                    value={newTask.consulted}
+                    onValueChange={(value) => setNewTask({ ...newTask, consulted: value })}
+                    placeholder="Select consulted person..."
+                    projectId={currentProjectId || undefined}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="informed">Informed (I)</Label>
+                  <SelectWithCreate
+                    type="stakeholder"
+                    value={newTask.informed}
+                    onValueChange={(value) => setNewTask({ ...newTask, informed: value })}
+                    placeholder="Select informed person..."
+                    projectId={currentProjectId || undefined}
+                  />
+                </div>
               </div>
             </div>
 
             {/* Dates Section */}
-            <div className="col-span-4 border-t pt-4 mt-2">
-              <h4 className="text-sm font-semibold mb-3">Dates</h4>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="assignDate" className="text-right">Assign Date</Label>
-              <Input
-                id="assignDate"
-                type="date"
-                value={newTask.assignDate}
-                onChange={(e) => setNewTask({ ...newTask, assignDate: e.target.value })}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="dueDate" className="text-right">Due Date (ETD)</Label>
-              <Input
-                id="dueDate"
-                type="date"
-                value={newTask.dueDate}
-                onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })}
-                className="col-span-3"
-              />
-            </div>
-
-            {/* Status & Priority */}
-            <div className="col-span-4 border-t pt-4 mt-2">
-              <h4 className="text-sm font-semibold mb-3">Status & Priority</h4>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="status" className="text-right">Status</Label>
-              <div className="col-span-3">
-                <SelectWithCreate
-                  type="status"
-                  value={newTask.status}
-                  onValueChange={(value) => setNewTask({ ...newTask, status: value })}
-                  placeholder="Select status"
-                />
+            <div className="space-y-4">
+              <h4 className="text-sm font-semibold border-b pb-2">Dates</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="assignDate">Assign Date</Label>
+                  <Input
+                    id="assignDate"
+                    type="date"
+                    value={newTask.assignDate}
+                    onChange={(e) => setNewTask({ ...newTask, assignDate: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="dueDate">Due Date (ETD)</Label>
+                  <Input
+                    id="dueDate"
+                    type="date"
+                    value={newTask.dueDate}
+                    onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })}
+                  />
+                </div>
               </div>
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="priority" className="text-right">Priority</Label>
-              <div className="col-span-3">
-                <SelectWithCreate
-                  type="priority"
-                  value={newTask.priority}
-                  onValueChange={(value) => setNewTask({ ...newTask, priority: value })}
-                  placeholder="Select priority"
-                />
+
+            {/* Status & Priority Section */}
+            <div className="space-y-4">
+              <h4 className="text-sm font-semibold border-b pb-2">Status & Priority</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="status">Status</Label>
+                  <SelectWithCreate
+                    type="status"
+                    value={newTask.status}
+                    onValueChange={(value) => setNewTask({ ...newTask, status: value })}
+                    placeholder="Select status"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="priority">Priority</Label>
+                  <SelectWithCreate
+                    type="priority"
+                    value={newTask.priority}
+                    onValueChange={(value) => setNewTask({ ...newTask, priority: value })}
+                    placeholder="Select priority"
+                  />
+                </div>
               </div>
             </div>
           </div>
