@@ -1,0 +1,9 @@
+{
+  "query": "INSERT INTO idSequences (projectId, entityType, prefix, currentNumber, minNumber, maxNumber, padLength) VALUES \n(1, 'requirement', 'Q', 0, 1, 9999, 4),\n(1, 'task', 'T', 0, 1, 9999, 4),\n(1, 'issue', 'I', 0, 1, 9999, 4),\n(1, 'dependency', 'D', 0, 1, 9999, 4),\n(1, 'assumption', 'A', 0, 1, 9999, 4),\n(1, 'deliverable', 'DEL', 0, 1, 9999, 4);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 34DzJoQKEqyc4cp.root --database MtjPfUT7z9e3zhUb3tuetB --execute INSERT INTO idSequences (projectId, entityType, prefix, currentNumber, minNumber, maxNumber, padLength) VALUES \n(1, 'requirement', 'Q', 0, 1, 9999, 4),\n(1, 'task', 'T', 0, 1, 9999, 4),\n(1, 'issue', 'I', 0, 1, 9999, 4),\n(1, 'dependency', 'D', 0, 1, 9999, 4),\n(1, 'assumption', 'A', 0, 1, 9999, 4),\n(1, 'deliverable', 'DEL', 0, 1, 9999, 4);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1533
+}

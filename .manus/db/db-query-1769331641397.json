@@ -1,0 +1,19 @@
+{
+  "query": "SELECT * FROM projects;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 34DzJoQKEqyc4cp.root --database MtjPfUT7z9e3zhUb3tuetB --execute SELECT * FROM projects;",
+  "rows": [
+    {
+      "id": "1",
+      "name": "Romansiah AMS",
+      "description": "Romansiah Post Process Support Year 2026",
+      "password": "fd23de99032c84f217b6fa3136aba0f766874e6b592c4d0a3a2b334fc17d15b4",
+      "createdBy": "1",
+      "createdAt": "2026-01-25 08:28:20",
+      "updatedAt": "2026-01-25 08:28:20"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tdescription\tpassword\tcreatedBy\tcreatedAt\tupdatedAt\n1\tRomansiah AMS\tRomansiah Post Process Support Year 2026\tfd23de99032c84f217b6fa3136aba0f766874e6b592c4d0a3a2b334fc17d15b4\t1\t2026-01-25 08:28:20\t2026-01-25 08:28:20\n",
+  "stderr": "",
+  "execution_time_ms": 1516
+}

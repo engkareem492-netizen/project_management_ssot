@@ -166,6 +166,11 @@ function DashboardLayoutContent({
     const file = event.target.files?.[0];
     if (!file) return;
 
+    if (!currentProjectId) {
+      toast.error('No project selected');
+      return;
+    }
+
     setUploading(true);
     const reader = new FileReader();
     
@@ -173,11 +178,6 @@ function DashboardLayoutContent({
       const base64Data = e.target?.result as string;
       const base64 = base64Data.split(',')[1];
       
-      const { currentProjectId } = useProject();
-      if (!currentProjectId) {
-        toast.error('No project selected');
-        return;
-      }
       importMutation.mutate({ projectId: currentProjectId, base64Data: base64 });
     };
     

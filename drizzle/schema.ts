@@ -43,6 +43,9 @@ export const idSequences = mysqlTable("idSequences", {
   entityType: varchar("entityType", { length: 50 }).notNull(),
   prefix: varchar("prefix", { length: 10 }).notNull(),
   currentNumber: int("currentNumber").notNull().default(0),
+  minNumber: int("minNumber").notNull().default(1),
+  maxNumber: int("maxNumber").notNull().default(9999),
+  padLength: int("padLength").notNull().default(4),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 

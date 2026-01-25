@@ -15,6 +15,13 @@
       "when": 1769326716913,
       "tag": "0001_broken_living_tribunal",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1769330905296,
+      "tag": "0002_brave_mandarin",
+      "breakpoints": true
     }
   ]
 }

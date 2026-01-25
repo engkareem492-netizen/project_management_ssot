@@ -663,14 +663,16 @@ export async function getIdSequence(entityType: string) {
   return result.length > 0 ? result[0] : null;
 }
 
-export async function updateIdSequence(entityType: string, data: { prefix?: string; startNumber?: number; padding?: number }) {
+export async function updateIdSequence(entityType: string, data: { prefix?: string; startNumber?: number; minNumber?: number; maxNumber?: number; padLength?: number }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
   const updateData: any = {};
   if (data.prefix !== undefined) updateData.prefix = data.prefix;
   if (data.startNumber !== undefined) updateData.currentNumber = data.startNumber - 1; // Set to startNumber - 1 so next ID will be startNumber
-  if (data.padding !== undefined) updateData.padding = data.padding;
+  if (data.minNumber !== undefined) updateData.minNumber = data.minNumber;
+  if (data.maxNumber !== undefined) updateData.maxNumber = data.maxNumber;
+  if (data.padLength !== undefined) updateData.padLength = data.padLength;
   
   await db.update(idSequences)
     .set(updateData)
