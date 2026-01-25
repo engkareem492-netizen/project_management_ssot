@@ -12,6 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownOptionsManager } from "@/components/DropdownOptionsManager";
+import { SelectWithCreate } from "@/components/SelectWithCreate";
 import { DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 
@@ -29,6 +30,7 @@ export default function Issues() {
   const [addStakeholderDialogOpen, setAddStakeholderDialogOpen] = useState(false);
   const [newStakeholder, setNewStakeholder] = useState({ fullName: '', position: '', role: '' });
   const [newIssue, setNewIssue] = useState<any>({
+    issueGroup: '',
     description: '',
     source: '',
     owner: '',
@@ -62,7 +64,9 @@ export default function Issues() {
       toast.success(`Issue ${data.issueId} created successfully`);
       setCreateDialogOpen(false);
       setNewIssue({
+        issueGroup: '',
         description: '',
+        source: '',
         owner: '',
         status: 'Open',
         priority: 'Medium',
@@ -399,7 +403,7 @@ export default function Issues() {
       </Dialog>
 
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create New Issue</DialogTitle>
             <DialogDescription>
@@ -407,6 +411,39 @@ export default function Issues() {
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
+            {/* Issue Group - Dropdown from Requirements */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="issueGroup" className="text-right">Issue Group</Label>
+              <Select
+                value={newIssue.issueGroup}
+                onValueChange={(value) => setNewIssue({ ...newIssue, issueGroup: value === "custom" ? "" : value })}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select issue group from requirements..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {/* Get unique issue groups from requirements */}
+                  {Array.from(new Set(requirements?.map(r => r.issueGroup).filter(Boolean) || [])).map((group) => (
+                    <SelectItem key={group} value={group as string}>
+                      {group}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="custom">+ Enter custom...</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {/* Custom Issue Group Input */}
+            {newIssue.issueGroup === "" && (
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right">Custom Group</Label>
+                <Input
+                  value={newIssue.issueGroup}
+                  onChange={(e) => setNewIssue({ ...newIssue, issueGroup: e.target.value })}
+                  className="col-span-3"
+                  placeholder="Enter custom issue group..."
+                />
+              </div>
+            )}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="description" className="text-right">Description *</Label>
               <Input
@@ -449,70 +486,36 @@ export default function Issues() {
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="owner" className="text-right">Owner</Label>
-              <div className="col-span-3 flex gap-2">
-                <Select
+              <div className="col-span-3">
+                <SelectWithCreate
+                  type="stakeholder"
                   value={newIssue.owner}
                   onValueChange={(value) => setNewIssue({ ...newIssue, owner: value })}
-                >
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Select owner..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {stakeholders?.map((s) => (
-                      <SelectItem key={s.id} value={s.fullName}>
-                        {s.fullName} - {s.position || s.role || 'N/A'}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setAddStakeholderDialogOpen(true)}
-                >
-                  <Plus className="w-4 h-4" />
-                </Button>
+                  placeholder="Select owner..."
+                  projectId={currentProjectId || undefined}
+                />
               </div>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="status" className="text-right">Status</Label>
-              <div className="col-span-3 flex gap-2">
-                <Select
+              <div className="col-span-3">
+                <SelectWithCreate
+                  type="status"
                   value={newIssue.status}
                   onValueChange={(value) => setNewIssue({ ...newIssue, status: value })}
-                >
-                  <SelectTrigger className="flex-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Open">Open</SelectItem>
-                    <SelectItem value="In Progress">In Progress</SelectItem>
-                    <SelectItem value="Resolved">Resolved</SelectItem>
-                    <SelectItem value="Closed">Closed</SelectItem>
-                  </SelectContent>
-                </Select>
-                <DropdownOptionsManager type="status" />
+                  placeholder="Select status"
+                />
               </div>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="priority" className="text-right">Priority</Label>
-              <div className="col-span-3 flex gap-2">
-                <Select
+              <div className="col-span-3">
+                <SelectWithCreate
+                  type="priority"
                   value={newIssue.priority}
                   onValueChange={(value) => setNewIssue({ ...newIssue, priority: value })}
-                >
-                  <SelectTrigger className="flex-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Low">Low</SelectItem>
-                    <SelectItem value="Medium">Medium</SelectItem>
-                    <SelectItem value="High">High</SelectItem>
-                    <SelectItem value="Very High">Very High</SelectItem>
-                  </SelectContent>
-                </Select>
-                <DropdownOptionsManager type="priority" />
+                  placeholder="Select priority"
+                />
               </div>
             </div>
           </div>

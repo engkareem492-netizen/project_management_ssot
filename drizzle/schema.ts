@@ -126,6 +126,7 @@ export const tasks = mysqlTable("tasks", {
   consulted: varchar("consulted", { length: 200 }),
   consultedId: int("consultedId"),
   dueDate: varchar("dueDate", { length: 50 }),
+  assignDate: varchar("assignDate", { length: 50 }),
   currentStatus: text("currentStatus"),
   statusUpdate: text("statusUpdate"),
   owner: varchar("owner", { length: 200 }),

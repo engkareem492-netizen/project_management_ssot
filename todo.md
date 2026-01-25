@@ -53,3 +53,25 @@
 - [x] Verify ID Configuration in Settings works with dynamic number ranges
 - [x] Test requirement creation with new field structure (Q-0001 created successfully)
 - [x] Verify Oracle theme applied to UI
+
+## New Feature Requests (Jan 25, 2026 - Batch 2)
+
+### Requirements Enhancements
+- [x] Task Group and Issue Group should link to Tasks & Issues tabs (dropdown selection)
+- [x] Allow manual control of Creation Date in Requirements
+- [x] Add option to create new Type directly from Requirements form (SelectWithCreate component)
+- [x] Add option to create new Owner (Stakeholder) directly from Requirements form (SelectWithCreate component)
+- [x] Add option to create new Category directly from Requirements form (SelectWithCreate component)
+- [x] Add option to create new Status directly from Requirements form (SelectWithCreate component)
+
+### Tasks Enhancements
+- [x] Add Task Groups field with dropdown selection from Requirements
+- [x] Add RACI People field (Responsible, Accountable, Consulted, Informed)
+- [x] Add ETD/Due Date field for Today Dashboard integration
+- [x] Add Assign Date field
+
+### Issues Enhancements
+- [x] Add Issue Group field with dropdown selection from Requirements
+
+### Today Dashboard
+- [x] Update to use ETD/Due Date from Tasks for scheduling

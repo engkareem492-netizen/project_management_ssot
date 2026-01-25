@@ -244,6 +244,7 @@ export default function Today() {
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">
                         Responsible: {task.responsible || 'Unassigned'}
+                        {task.assignDate && ` • Assigned: ${task.assignDate}`}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -316,7 +317,8 @@ export default function Today() {
                         <span className="text-sm">{task.description || 'No description'}</span>
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Due: {task.dueDate || 'No date'} • Responsible: {task.responsible || 'Unassigned'}
+                        ETD: {task.dueDate || 'No date'} • Responsible: {task.responsible || 'Unassigned'}
+                        {task.assignDate && ` • Assigned: ${task.assignDate}`}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -389,7 +391,8 @@ export default function Today() {
                         <span className="text-sm">{task.description || 'No description'}</span>
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Due: {task.dueDate || 'No date'} • Responsible: {task.responsible || 'Unassigned'}
+                        ETD: {task.dueDate || 'No date'} • Responsible: {task.responsible || 'Unassigned'}
+                        {task.assignDate && ` • Assigned: ${task.assignDate}`}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">

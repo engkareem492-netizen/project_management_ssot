@@ -789,7 +789,8 @@ export async function getAllTypeOptions() {
 export async function createTypeOption(data: { value: string; label: string; description?: string; isDefault?: boolean }) {
   const db = await getDb();
   if (!db) throw new Error('Database not available');
-  const [created] = await db.insert(typeOptions).values(data);
+  await db.insert(typeOptions).values(data);
+  const [created] = await db.select().from(typeOptions).where(eq(typeOptions.value, data.value));
   return created;
 }
 
@@ -830,7 +831,8 @@ export async function getAllCategoryOptions() {
 export async function createCategoryOption(data: { value: string; label: string; description?: string; isDefault?: boolean }) {
   const db = await getDb();
   if (!db) throw new Error('Database not available');
-  const [created] = await db.insert(categoryOptions).values(data);
+  await db.insert(categoryOptions).values(data);
+  const [created] = await db.select().from(categoryOptions).where(eq(categoryOptions.value, data.value));
   return created;
 }
 

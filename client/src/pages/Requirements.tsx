@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DropdownOptionsManager } from "@/components/DropdownOptionsManager";
+import { SelectWithCreate } from "@/components/SelectWithCreate";
 import { toast } from "sonner";
 
 export default function Requirements() {
@@ -71,6 +72,7 @@ export default function Requirements() {
     category: '',
     sourceType: '',
     refSource: '',
+    createdAt: new Date().toISOString().split('T')[0],
   });
 
   const utils = trpc.useUtils();
@@ -921,7 +923,7 @@ export default function Requirements() {
 
       {/* Create Requirement Dialog */}
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader className="border-b pb-4">
             <DialogTitle className="flex items-center gap-2">
               <Plus className="w-5 h-5 text-primary" />
@@ -949,68 +951,49 @@ export default function Requirements() {
               />
             </div>
             <div className="space-y-2">
+              <Label>Creation Date</Label>
+              <Input
+                type="date"
+                value={newRequirement.createdAt}
+                onChange={(e) => setNewRequirement({ ...newRequirement, createdAt: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
               <Label>Priority</Label>
-              <Select
+              <SelectWithCreate
+                type="priority"
                 value={newRequirement.priority}
                 onValueChange={(value) => setNewRequirement({ ...newRequirement, priority: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select priority" />
-                </SelectTrigger>
-                <SelectContent>
-                  {priorityOptions?.map((opt) => (
-                    <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder="Select priority"
+              />
             </div>
             <div className="space-y-2">
               <Label>Type</Label>
-              <Select
+              <SelectWithCreate
+                type="type"
                 value={newRequirement.type}
                 onValueChange={(value) => setNewRequirement({ ...newRequirement, type: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {typeOptions?.map((opt) => (
-                    <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder="Select type"
+              />
             </div>
             <div className="space-y-2">
               <Label>Category</Label>
-              <Select
+              <SelectWithCreate
+                type="category"
                 value={newRequirement.category}
                 onValueChange={(value) => setNewRequirement({ ...newRequirement, category: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categoryOptions?.map((opt) => (
-                    <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder="Select category"
+              />
             </div>
             <div className="space-y-2">
-              <Label>Owner</Label>
-              <Select
+              <Label>Owner (Stakeholder)</Label>
+              <SelectWithCreate
+                type="stakeholder"
                 value={newRequirement.owner}
                 onValueChange={(value) => setNewRequirement({ ...newRequirement, owner: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select owner" />
-                </SelectTrigger>
-                <SelectContent>
-                  {stakeholders?.map((s) => (
-                    <SelectItem key={s.id} value={s.fullName}>{s.fullName}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder="Select owner"
+                projectId={currentProjectId || undefined}
+              />
             </div>
             <div className="space-y-2">
               <Label>Source Type</Label>
@@ -1030,19 +1013,12 @@ export default function Requirements() {
             </div>
             <div className="space-y-2">
               <Label>Status</Label>
-              <Select
+              <SelectWithCreate
+                type="status"
                 value={newRequirement.status}
                 onValueChange={(value) => setNewRequirement({ ...newRequirement, status: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  {statusOptions?.map((opt) => (
-                    <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder="Select status"
+              />
             </div>
             <div className="col-span-2 space-y-2">
               <Label>Description</Label>
