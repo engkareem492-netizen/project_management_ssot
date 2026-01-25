@@ -33,7 +33,12 @@ export default function Requirements() {
   const [settingsType, setSettingsType] = useState<"status" | "priority" | "type" | "category">("status");
   const [addStakeholderDialogOpen, setAddStakeholderDialogOpen] = useState(false);
   const [newStakeholder, setNewStakeholder] = useState({ fullName: '', position: '', role: '' });
+  const [editingDeliverableId, setEditingDeliverableId] = useState<number | null>(null);
+  const [editDeliverableData, setEditDeliverableData] = useState<any>({});
+  const [deletingDeliverableId, setDeletingDeliverableId] = useState<number | null>(null);
+  const [deleteDeliverableDialogOpen, setDeleteDeliverableDialogOpen] = useState(false);
   const [newTask, setNewTask] = useState({
+    taskGroup: '',
     description: '',
     owner: '',
     status: 'Open',
@@ -127,6 +132,7 @@ export default function Requirements() {
       toast.success(`Task ${data.taskId} created and linked to ${selectedRequirement?.idCode}`);
       setCreateTaskDialogOpen(false);
       setNewTask({
+        taskGroup: '',
         description: '',
         owner: '',
         status: 'Open',
@@ -181,6 +187,30 @@ export default function Requirements() {
     },
     onError: (error) => {
       toast.error(`Failed to create stakeholder: ${error.message}`);
+    },
+  });
+
+  const updateDeliverableMutation = trpc.deliverables.update.useMutation({
+    onSuccess: () => {
+      toast.success('Deliverable updated successfully');
+      setEditingDeliverableId(null);
+      setEditDeliverableData({});
+      utils.deliverables.getByEntity.invalidate();
+    },
+    onError: (error) => {
+      toast.error(`Update failed: ${error.message}`);
+    },
+  });
+
+  const deleteDeliverableMutation = trpc.deliverables.delete.useMutation({
+    onSuccess: () => {
+      toast.success('Deliverable deleted successfully');
+      setDeleteDeliverableDialogOpen(false);
+      setDeletingDeliverableId(null);
+      utils.deliverables.getByEntity.invalidate();
+    },
+    onError: (error) => {
+      toast.error(`Delete failed: ${error.message}`);
     },
   });
 
@@ -240,6 +270,10 @@ export default function Requirements() {
 
   const handleCreateTaskFromRequirement = () => {
     if (!selectedRequirement) return;
+    if (!newTask.taskGroup.trim()) {
+      toast.error('Task Group is required');
+      return;
+    }
     createTaskMutation.mutate({
       ...newTask,
       requirementId: selectedRequirement.idCode,
@@ -271,6 +305,38 @@ export default function Requirements() {
       return;
     }
     createStakeholderMutation.mutate(newStakeholder);
+  };
+
+  const handleEditDeliverable = (deliverable: any) => {
+    setEditingDeliverableId(deliverable.id);
+    setEditDeliverableData({
+      description: deliverable.description || '',
+      status: deliverable.status || '',
+      dueDate: deliverable.dueDate || '',
+    });
+  };
+
+  const handleSaveDeliverable = (deliverable: any) => {
+    updateDeliverableMutation.mutate({
+      id: deliverable.id,
+      data: editDeliverableData,
+    });
+  };
+
+  const handleCancelEditDeliverable = () => {
+    setEditingDeliverableId(null);
+    setEditDeliverableData({});
+  };
+
+  const handleDeleteDeliverable = (id: number) => {
+    setDeletingDeliverableId(id);
+    setDeleteDeliverableDialogOpen(true);
+  };
+
+  const confirmDeleteDeliverable = () => {
+    if (deletingDeliverableId) {
+      deleteDeliverableMutation.mutate({ id: deletingDeliverableId });
+    }
   };
 
   // Get linked items for selected requirement
@@ -541,14 +607,58 @@ export default function Requirements() {
                     {linkedDeliverables.map((deliverable) => (
                       <Card key={deliverable.id} className="p-3">
                         <div className="flex items-center justify-between">
-                          <div>
+                          <div className="flex-1">
                             <span className="font-mono text-sm font-medium">{deliverable.deliverableId}</span>
-                            <p className="text-sm text-muted-foreground mt-1">{deliverable.description || 'No description'}</p>
+                            {editingDeliverableId === deliverable.id ? (
+                              <div className="mt-2 space-y-2">
+                                <Textarea
+                                  value={editDeliverableData.description}
+                                  onChange={(e) => setEditDeliverableData({ ...editDeliverableData, description: e.target.value })}
+                                  className="text-sm"
+                                  rows={2}
+                                />
+                                <div className="grid grid-cols-2 gap-2">
+                                  <Input
+                                    value={editDeliverableData.status}
+                                    onChange={(e) => setEditDeliverableData({ ...editDeliverableData, status: e.target.value })}
+                                    placeholder="Status"
+                                    className="text-sm"
+                                  />
+                                  <Input
+                                    type="date"
+                                    value={editDeliverableData.dueDate}
+                                    onChange={(e) => setEditDeliverableData({ ...editDeliverableData, dueDate: e.target.value })}
+                                    className="text-sm"
+                                  />
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="text-sm text-muted-foreground mt-1">{deliverable.description || 'No description'}</p>
+                            )}
                           </div>
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline">{deliverable.status || 'N/A'}</Badge>
-                            {deliverable.dueDate && (
-                              <span className="text-xs text-muted-foreground">Due: {deliverable.dueDate}</span>
+                          <div className="flex items-center gap-2 ml-4">
+                            {editingDeliverableId === deliverable.id ? (
+                              <>
+                                <Button size="sm" onClick={() => handleSaveDeliverable(deliverable)} disabled={updateDeliverableMutation.isPending}>
+                                  <Save className="w-3 h-3" />
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={handleCancelEditDeliverable}>
+                                  <X className="w-3 h-3" />
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <Badge variant="outline">{deliverable.status || 'N/A'}</Badge>
+                                {deliverable.dueDate && (
+                                  <span className="text-xs text-muted-foreground">Due: {deliverable.dueDate}</span>
+                                )}
+                                <Button size="sm" variant="ghost" onClick={() => handleEditDeliverable(deliverable)}>
+                                  <Edit className="w-3 h-3" />
+                                </Button>
+                                <Button size="sm" variant="ghost" onClick={() => handleDeleteDeliverable(deliverable.id)}>
+                                  <Trash2 className="w-3 h-3" />
+                                </Button>
+                              </>
                             )}
                           </div>
                         </div>
@@ -665,6 +775,14 @@ export default function Requirements() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Task Group *</Label>
+              <Input
+                value={newTask.taskGroup}
+                onChange={(e) => setNewTask({ ...newTask, taskGroup: e.target.value })}
+                placeholder="Enter task group name..."
+              />
+            </div>
             <div className="space-y-2">
               <Label>Description</Label>
               <Textarea
@@ -838,7 +956,20 @@ export default function Requirements() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Status</Label>
+                <div className="flex items-center justify-between">
+                  <Label>Status</Label>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setSettingsType('status');
+                      setSettingsOpen(true);
+                    }}
+                    className="h-6 px-2"
+                  >
+                    <Settings className="w-3 h-3" />
+                  </Button>
+                </div>
                 <Select
                   value={newDeliverable.status}
                   onValueChange={(value) => setNewDeliverable({ ...newDeliverable, status: value })}
@@ -1131,6 +1262,24 @@ export default function Requirements() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Deliverable Confirmation */}
+      <AlertDialog open={deleteDeliverableDialogOpen} onOpenChange={setDeleteDeliverableDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Deliverable?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the deliverable.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteDeliverable} disabled={deleteDeliverableMutation.isPending}>
+              {deleteDeliverableMutation.isPending ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Delete Confirmation */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

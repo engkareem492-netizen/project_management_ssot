@@ -320,3 +320,13 @@
 - [ ] Test Requirements-Task Group relationships
 - [ ] Create checkpoint
 - [ ] Deliver fixes
+
+## Bug Fixes V4.3
+
+### Critical Fixes
+- [x] Fix task creation from Requirements - add taskGroup field to create task dialog
+- [x] Enable deliverable modification in Requirements tab (with edit and delete buttons)
+- [x] Add Settings button for Deliverable Status dropdown
+- [x] Test task creation with taskGroup
+- [x] Test deliverable editing functionality
+- [ ] Create checkpoint
