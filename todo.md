@@ -75,3 +75,11 @@
 
 ### Today Dashboard
 - [x] Update to use ETD/Due Date from Tasks for scheduling
+
+## Bug Fixes (Jan 25, 2026 - Batch 3)
+
+- [x] Fix Task Group in Requirements - Should be dropdown linked to Tasks entity (not text input)
+- [x] Fix Task Group in Tasks page - Should be dropdown populated from Tasks entity
+- [x] Fix Issue Group in Requirements - Should be dropdown linked to Issues entity (not text input)
+- [x] Fix Issue Group in Issues page - Should be dropdown populated from Issues entity, remove custom input option
+- [x] Fix History/Updates display - Change from text format to Excel-like sheet/table format showing field changes

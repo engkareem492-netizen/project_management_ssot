@@ -411,39 +411,26 @@ export default function Issues() {
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            {/* Issue Group - Dropdown from Requirements */}
+            {/* Issue Group - Dropdown from Issues */}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="issueGroup" className="text-right">Issue Group</Label>
               <Select
                 value={newIssue.issueGroup}
-                onValueChange={(value) => setNewIssue({ ...newIssue, issueGroup: value === "custom" ? "" : value })}
+                onValueChange={(value) => setNewIssue({ ...newIssue, issueGroup: value })}
               >
                 <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select issue group from requirements..." />
+                  <SelectValue placeholder="Select issue group from issues..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {/* Get unique issue groups from requirements */}
-                  {Array.from(new Set(requirements?.map(r => r.issueGroup).filter(Boolean) || [])).map((group) => (
+                  {/* Get unique issue groups from existing issues */}
+                  {Array.from(new Set(issues?.map(i => i.issueGroup).filter(Boolean) || [])).map((group) => (
                     <SelectItem key={group} value={group as string}>
                       {group}
                     </SelectItem>
                   ))}
-                  <SelectItem value="custom">+ Enter custom...</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            {/* Custom Issue Group Input */}
-            {newIssue.issueGroup === "" && (
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">Custom Group</Label>
-                <Input
-                  value={newIssue.issueGroup}
-                  onChange={(e) => setNewIssue({ ...newIssue, issueGroup: e.target.value })}
-                  className="col-span-3"
-                  placeholder="Enter custom issue group..."
-                />
-              </div>
-            )}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="description" className="text-right">Description *</Label>
               <Input

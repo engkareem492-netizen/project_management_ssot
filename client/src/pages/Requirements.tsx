@@ -936,19 +936,39 @@ export default function Requirements() {
           <div className="grid grid-cols-2 gap-4 py-4">
             <div className="space-y-2">
               <Label>Task Group</Label>
-              <Input
+              <Select
                 value={newRequirement.taskGroup}
-                onChange={(e) => setNewRequirement({ ...newRequirement, taskGroup: e.target.value })}
-                placeholder="Enter task group"
-              />
+                onValueChange={(value) => setNewRequirement({ ...newRequirement, taskGroup: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select task group from tasks..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from(new Set(tasks?.map(t => t.taskGroup).filter(Boolean))).map((group) => (
+                    <SelectItem key={group} value={group as string}>
+                      {group}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>Issue Group</Label>
-              <Input
+              <Select
                 value={newRequirement.issueGroup}
-                onChange={(e) => setNewRequirement({ ...newRequirement, issueGroup: e.target.value })}
-                placeholder="Enter issue group"
-              />
+                onValueChange={(value) => setNewRequirement({ ...newRequirement, issueGroup: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select issue group from issues..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from(new Set(issues?.map(i => i.issueGroup).filter(Boolean))).map((group) => (
+                    <SelectItem key={group} value={group as string}>
+                      {group}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>Creation Date</Label>
@@ -1265,44 +1285,47 @@ export default function Requirements() {
               View all modifications made to this requirement
             </DialogDescription>
           </DialogHeader>
-          <div className="max-h-[400px] overflow-y-auto space-y-3 py-4">
+          <div className="max-h-[500px] overflow-auto py-4">
             {actionLogs && actionLogs.length > 0 ? (
-              actionLogs.map((log) => {
-                const changedFieldNames = Object.keys(log.changedFields || {}).join(', ');
-                const oldValues = Object.entries(log.changedFields || {}).map(([k, v]) => `${k}: ${v.oldValue}`).join(', ');
-                const newValues = Object.entries(log.changedFields || {}).map(([k, v]) => `${k}: ${v.newValue}`).join(', ');
-                return (
-                  <Card key={log.id} className="p-3 border-primary/20">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-xs">Update</Badge>
-                          <span className="text-xs text-muted-foreground">
-                            {new Date(log.changedAt).toLocaleString()}
-                          </span>
-                        </div>
-                        {changedFieldNames && (
-                          <p className="text-sm mt-1">
-                            <span className="text-muted-foreground">Changed: </span>
-                            {changedFieldNames}
-                          </p>
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead className="w-[140px] font-semibold">Update</TableHead>
+                    <TableHead className="w-[180px] font-semibold">Date & Time</TableHead>
+                    <TableHead className="font-semibold">Changed</TableHead>
+                    <TableHead className="font-semibold">Old</TableHead>
+                    <TableHead className="font-semibold">New</TableHead>
+                    <TableHead className="w-[100px] font-semibold">User</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {actionLogs.map((log) => {
+                    const changedFields = Object.entries(log.changedFields || {});
+                    return changedFields.map(([fieldName, values], idx) => (
+                      <TableRow key={`${log.id}-${idx}`} className="hover:bg-muted/30">
+                        {idx === 0 && (
+                          <>
+                            <TableCell rowSpan={changedFields.length} className="align-top">
+                              <Badge variant="outline" className="text-xs">Update</Badge>
+                            </TableCell>
+                            <TableCell rowSpan={changedFields.length} className="text-xs text-muted-foreground align-top">
+                              {new Date(log.changedAt).toLocaleString()}
+                            </TableCell>
+                          </>
                         )}
-                        {oldValues && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Old: {oldValues}
-                          </p>
+                        <TableCell className="text-sm font-medium">{fieldName}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{values.oldValue || '-'}</TableCell>
+                        <TableCell className="text-sm text-primary font-medium">{values.newValue || '-'}</TableCell>
+                        {idx === 0 && (
+                          <TableCell rowSpan={changedFields.length} className="text-xs text-muted-foreground align-top">
+                            User #{log.changedBy}
+                          </TableCell>
                         )}
-                        {newValues && (
-                          <p className="text-xs text-primary mt-1">
-                            New: {newValues}
-                          </p>
-                        )}
-                      </div>
-                      <span className="text-xs text-muted-foreground">User #{log.changedBy}</span>
-                    </div>
-                  </Card>
-                );
-              })
+                      </TableRow>
+                    ));
+                  })}
+                </TableBody>
+              </Table>
             ) : (
               <div className="text-center py-8 text-muted-foreground">
                 No history records found for this requirement.
