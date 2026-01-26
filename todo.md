@@ -133,3 +133,8 @@
 - [x] Rename "Job" field to "Department" in Stakeholder edit/create dialog
 - [x] Add "+" button to Task Group dropdown in Create Task dialog for inline group creation
 - [x] Add "+" button to Issue Group dropdown in Create Issue dialog for inline group creation
+
+## Feature Requests (Jan 25, 2026 - Batch 11)
+
+- [x] Replace browser prompt() with custom dialog for Task Group creation in Tasks page
+- [x] Replace browser prompt() with custom dialog for Issue Group creation in Issues page

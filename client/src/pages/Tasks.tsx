@@ -35,6 +35,8 @@ export default function Tasks() {
   const [editFormData, setEditFormData] = useState<any>({});
   const [addStakeholderDialogOpen, setAddStakeholderDialogOpen] = useState(false);
   const [newStakeholder, setNewStakeholder] = useState({ fullName: '', position: '', role: '' });
+  const [addTaskGroupDialogOpen, setAddTaskGroupDialogOpen] = useState(false);
+  const [newTaskGroupName, setNewTaskGroupName] = useState('');
   const [newTask, setNewTask] = useState<any>({
     taskGroup: '',
     description: '',
@@ -67,6 +69,8 @@ export default function Tasks() {
     onSuccess: (data) => {
       toast.success(`Task Group "${data.name}" created successfully`);
       setNewTask({ ...newTask, taskGroup: data.name });
+      setAddTaskGroupDialogOpen(false);
+      setNewTaskGroupName('');
     },
     onError: (error) => {
       toast.error(`Failed to create task group: ${error.message}`);
@@ -546,12 +550,7 @@ export default function Tasks() {
                       type="button"
                       size="icon"
                       variant="outline"
-                      onClick={() => {
-                        const newGroup = prompt('Enter new Task Group name:');
-                        if (newGroup && newGroup.trim() && currentProjectId) {
-                          createTaskGroupMutation.mutate({ projectId: currentProjectId, name: newGroup.trim() });
-                        }
-                      }}
+                      onClick={() => setAddTaskGroupDialogOpen(true)}
                       title="Add new task group"
                       disabled={createTaskGroupMutation.isPending}
                     >
@@ -942,6 +941,51 @@ export default function Tasks() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Add Task Group Dialog */}
+      <Dialog open={addTaskGroupDialogOpen} onOpenChange={setAddTaskGroupDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New Task Group</DialogTitle>
+            <DialogDescription>
+              Enter a name for the new task group.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="taskGroupName" className="text-right">Name *</Label>
+              <Input
+                id="taskGroupName"
+                value={newTaskGroupName}
+                onChange={(e) => setNewTaskGroupName(e.target.value)}
+                placeholder="Enter task group name..."
+                className="col-span-3"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && newTaskGroupName.trim() && currentProjectId) {
+                    createTaskGroupMutation.mutate({ projectId: currentProjectId, name: newTaskGroupName.trim() });
+                  }
+                }}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setAddTaskGroupDialogOpen(false);
+              setNewTaskGroupName('');
+            }}>Cancel</Button>
+            <Button
+              onClick={() => {
+                if (newTaskGroupName.trim() && currentProjectId) {
+                  createTaskGroupMutation.mutate({ projectId: currentProjectId, name: newTaskGroupName.trim() });
+                }
+              }}
+              disabled={!newTaskGroupName.trim() || createTaskGroupMutation.isPending}
+            >
+              {createTaskGroupMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Creating...</> : 'Create'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

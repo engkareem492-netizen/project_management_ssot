@@ -34,6 +34,8 @@ export default function Issues() {
   const [editFormData, setEditFormData] = useState<any>({});
   const [addStakeholderDialogOpen, setAddStakeholderDialogOpen] = useState(false);
   const [newStakeholder, setNewStakeholder] = useState({ fullName: '', position: '', role: '' });
+  const [addIssueGroupDialogOpen, setAddIssueGroupDialogOpen] = useState(false);
+  const [newIssueGroupName, setNewIssueGroupName] = useState('');
   const [newIssue, setNewIssue] = useState<any>({
     issueGroup: '',
     description: '',
@@ -61,6 +63,8 @@ export default function Issues() {
     onSuccess: (data) => {
       toast.success(`Issue Group "${data.name}" created successfully`);
       setNewIssue({ ...newIssue, issueGroup: data.name });
+      setAddIssueGroupDialogOpen(false);
+      setNewIssueGroupName('');
     },
     onError: (error) => {
       toast.error(`Failed to create issue group: ${error.message}`);
@@ -514,12 +518,7 @@ export default function Issues() {
                   type="button"
                   size="icon"
                   variant="outline"
-                  onClick={() => {
-                    const newGroup = prompt('Enter new Issue Group name:');
-                    if (newGroup && newGroup.trim() && currentProjectId) {
-                      createIssueGroupMutation.mutate({ projectId: currentProjectId, name: newGroup.trim() });
-                    }
-                  }}
+                  onClick={() => setAddIssueGroupDialogOpen(true)}
                   title="Add new issue group"
                   disabled={createIssueGroupMutation.isPending}
                 >
@@ -819,6 +818,51 @@ export default function Issues() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Add Issue Group Dialog */}
+      <Dialog open={addIssueGroupDialogOpen} onOpenChange={setAddIssueGroupDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New Issue Group</DialogTitle>
+            <DialogDescription>
+              Enter a name for the new issue group.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="issueGroupName" className="text-right">Name *</Label>
+              <Input
+                id="issueGroupName"
+                value={newIssueGroupName}
+                onChange={(e) => setNewIssueGroupName(e.target.value)}
+                placeholder="Enter issue group name..."
+                className="col-span-3"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && newIssueGroupName.trim() && currentProjectId) {
+                    createIssueGroupMutation.mutate({ projectId: currentProjectId, name: newIssueGroupName.trim() });
+                  }
+                }}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setAddIssueGroupDialogOpen(false);
+              setNewIssueGroupName('');
+            }}>Cancel</Button>
+            <Button
+              onClick={() => {
+                if (newIssueGroupName.trim() && currentProjectId) {
+                  createIssueGroupMutation.mutate({ projectId: currentProjectId, name: newIssueGroupName.trim() });
+                }
+              }}
+              disabled={!newIssueGroupName.trim() || createIssueGroupMutation.isPending}
+            >
+              {createIssueGroupMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Creating...</> : 'Create'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
