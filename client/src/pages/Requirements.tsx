@@ -357,8 +357,8 @@ export default function Requirements() {
     if (!selectedRequirement || !currentProjectId) return;
     updateMutation.mutate({
       id: selectedRequirement.id,
-      projectId: currentProjectId,
-      ...editFormData,
+      idCode: selectedRequirement.idCode,
+      data: editFormData,
     });
     setIsEditMode(false);
   };

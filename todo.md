@@ -145,3 +145,7 @@
 - [x] Combine Current Status, Last Update, and Status Update columns into a single "Update Status" action cell in Tasks table
 - [x] Implement status update dialog that captures status change and automatically records timestamp
 - [x] Save status updates to action history for tracking changes over time (statusUpdate field includes timestamp)
+
+## Bug Fixes (Jan 27, 2026)
+
+- [x] Fix Requirements page update mutation error - missing idCode and data parameters
