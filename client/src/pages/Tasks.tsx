@@ -37,6 +37,9 @@ export default function Tasks() {
   const [newStakeholder, setNewStakeholder] = useState({ fullName: '', position: '', role: '' });
   const [addTaskGroupDialogOpen, setAddTaskGroupDialogOpen] = useState(false);
   const [newTaskGroupName, setNewTaskGroupName] = useState('');
+  const [statusUpdateDialogOpen, setStatusUpdateDialogOpen] = useState(false);
+  const [selectedTaskForStatus, setSelectedTaskForStatus] = useState<any>(null);
+  const [statusUpdateText, setStatusUpdateText] = useState('');
   const [newTask, setNewTask] = useState<any>({
     taskGroup: '',
     description: '',
@@ -170,6 +173,28 @@ export default function Tasks() {
   const handleCancel = () => {
     setEditingId(null);
     setEditData({});
+  };
+
+  const handleStatusUpdate = () => {
+    if (!selectedTaskForStatus || !statusUpdateText.trim()) return;
+    
+    const now = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+    const updateText = `[${now}] ${statusUpdateText.trim()}`;
+    
+    updateMutation.mutate({
+      id: selectedTaskForStatus.id,
+      taskId: selectedTaskForStatus.taskId,
+      data: {
+        currentStatus: statusUpdateText.trim(),
+        statusUpdate: updateText,
+      },
+    }, {
+      onSuccess: () => {
+        setStatusUpdateDialogOpen(false);
+        setStatusUpdateText('');
+        setSelectedTaskForStatus(null);
+      },
+    });
   };
 
   const showHistory = (taskId: string) => {
@@ -375,8 +400,6 @@ export default function Tasks() {
                   <TableHead>Responsible</TableHead>
                   <TableHead>Due Date</TableHead>
                   <TableHead>Current Status</TableHead>
-                  <TableHead>Last Update</TableHead>
-                  <TableHead>Status Update</TableHead>
                   <TableHead className="w-[150px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -397,38 +420,12 @@ export default function Tasks() {
                     <TableCell>{task.responsible}</TableCell>
                     <TableCell>{task.dueDate || 'N/A'}</TableCell>
                     <TableCell>
-                      {editingId === task.id ? (
-                        <Input
-                          value={editData.currentStatus}
-                          onChange={(e) => setEditData({ ...editData, currentStatus: e.target.value })}
-                          className="w-full"
-                        />
-                      ) : (
-                        task.currentStatus || 'N/A'
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {editingId === task.id ? (
-                        <Input
-                          value={editData.lastUpdate}
-                          onChange={(e) => setEditData({ ...editData, lastUpdate: e.target.value })}
-                          className="w-full"
-                          placeholder="Enter update..."
-                        />
-                      ) : (
-                        task.lastUpdate || '-'
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {editingId === task.id ? (
-                        <Input
-                          value={editData.statusUpdate}
-                          onChange={(e) => setEditData({ ...editData, statusUpdate: e.target.value })}
-                          className="w-full"
-                        />
-                      ) : (
-                        task.statusUpdate || 'N/A'
-                      )}
+                      <div className="max-w-xs">
+                        <div className="text-sm font-medium">{task.currentStatus || 'N/A'}</div>
+                        {task.statusUpdate && (
+                          <div className="text-xs text-muted-foreground mt-1">{task.statusUpdate}</div>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
@@ -443,6 +440,18 @@ export default function Tasks() {
                           </>
                         ) : (
                           <>
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              onClick={() => {
+                                setSelectedTaskForStatus(task);
+                                setStatusUpdateText('');
+                                setStatusUpdateDialogOpen(true);
+                              }} 
+                              title="Update Status"
+                            >
+                              <CheckSquare className="w-3 h-3" />
+                            </Button>
                             <Button size="sm" variant="outline" onClick={() => handleViewDetails(task)} title="View Details">
                               <Eye className="w-3 h-3" />
                             </Button>
@@ -982,6 +991,56 @@ export default function Tasks() {
               disabled={!newTaskGroupName.trim() || createTaskGroupMutation.isPending}
             >
               {createTaskGroupMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Creating...</> : 'Create'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Update Status Dialog */}
+      <Dialog open={statusUpdateDialogOpen} onOpenChange={setStatusUpdateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Update Task Status</DialogTitle>
+            <DialogDescription>
+              Update the status for task {selectedTaskForStatus?.taskId}. The update will be recorded with a timestamp and saved to history.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="statusUpdate">Status Update *</Label>
+              <Textarea
+                id="statusUpdate"
+                value={statusUpdateText}
+                onChange={(e) => setStatusUpdateText(e.target.value)}
+                placeholder="Enter status update..."
+                className="min-h-[100px]"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && e.ctrlKey && statusUpdateText.trim()) {
+                    // Ctrl+Enter to submit
+                    handleStatusUpdate();
+                  }
+                }}
+              />
+              <p className="text-xs text-muted-foreground">Press Ctrl+Enter to submit</p>
+            </div>
+            <div className="text-sm text-muted-foreground">
+              <div><strong>Current Status:</strong> {selectedTaskForStatus?.currentStatus || 'N/A'}</div>
+              {selectedTaskForStatus?.statusUpdate && (
+                <div className="mt-2"><strong>Previous Update:</strong> {selectedTaskForStatus.statusUpdate}</div>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setStatusUpdateDialogOpen(false);
+              setStatusUpdateText('');
+              setSelectedTaskForStatus(null);
+            }}>Cancel</Button>
+            <Button
+              onClick={handleStatusUpdate}
+              disabled={!statusUpdateText.trim() || updateMutation.isPending}
+            >
+              {updateMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Updating...</> : 'Update Status'}
             </Button>
           </DialogFooter>
         </DialogContent>

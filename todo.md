@@ -138,3 +138,10 @@
 
 - [x] Replace browser prompt() with custom dialog for Task Group creation in Tasks page
 - [x] Replace browser prompt() with custom dialog for Issue Group creation in Issues page
+
+## Feature Requests (Jan 26, 2026 - Batch 12)
+
+- [x] Add "+" buttons to RACI fields (Responsible, Accountable, Consulted, Informed) in Tasks create dialog for inline stakeholder creation (already implemented with SelectWithCreate component)
+- [x] Combine Current Status, Last Update, and Status Update columns into a single "Update Status" action cell in Tasks table
+- [x] Implement status update dialog that captures status change and automatically records timestamp
+- [x] Save status updates to action history for tracking changes over time (statusUpdate field includes timestamp)
