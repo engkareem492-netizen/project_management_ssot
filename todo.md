@@ -149,3 +149,7 @@
 ## Bug Fixes (Jan 27, 2026)
 
 - [x] Fix Requirements page update mutation error - missing idCode and data parameters
+
+## Feature Requests (Jan 27, 2026 - Batch 12)
+
+- [x] Add "Forgot Password?" link on Project Selection page that redirects to Manus OAuth password reset page

@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Database, Plus, Lock } from "lucide-react";
+import { getPasswordResetUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 
@@ -157,6 +158,16 @@ export default function ProjectSelector({ onProjectSelected }: ProjectSelectorPr
                 placeholder="Enter project password"
                 onKeyDown={(e) => e.key === "Enter" && handleVerifyPassword()}
               />
+              <div className="text-right">
+                <a
+                  href={getPasswordResetUrl()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-primary hover:underline"
+                >
+                  Forgot Password?
+                </a>
+              </div>
             </div>
             <div className="flex gap-2 pt-4">
               <Button
