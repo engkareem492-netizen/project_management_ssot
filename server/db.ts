@@ -904,9 +904,54 @@ export async function createProject(data: InsertProject) {
   try {
     const result = await db.insert(projects).values(data);
     const insertResult = result as any;
-    return { id: Number(insertResult.insertId), ...data };
+    const insertId = insertResult[0]?.insertId || insertResult.insertId;
+    if (!insertId || isNaN(Number(insertId))) {
+      // Fallback: get the latest created project by name
+      const [created] = await db.select().from(projects)
+        .where(eq(projects.name, data.name))
+        .orderBy(desc(projects.id))
+        .limit(1);
+      return created;
+    }
+    const [created] = await db.select().from(projects).where(eq(projects.id, Number(insertId)));
+    return created;
   } catch (error) {
     console.error("[Database] Failed to create project:", error);
+    throw error;
+  }
+}
+
+export async function updateProjectPassword(projectId: number, hashedPassword: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  try {
+    await db.update(projects).set({ password: hashedPassword }).where(eq(projects.id, projectId));
+    return { success: true };
+  } catch (error) {
+    console.error("[Database] Failed to update project password:", error);
+    throw error;
+  }
+}
+
+export async function deleteProject(projectId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  try {
+    // Delete all related data first
+    await db.delete(requirements).where(eq(requirements.projectId, projectId));
+    await db.delete(tasks).where(eq(tasks.projectId, projectId));
+    await db.delete(issues).where(eq(issues.projectId, projectId));
+    await db.delete(stakeholders).where(eq(stakeholders.projectId, projectId));
+    await db.delete(taskGroups).where(eq(taskGroups.projectId, projectId));
+    await db.delete(issueGroups).where(eq(issueGroups.projectId, projectId));
+    
+    // Finally delete the project itself
+    await db.delete(projects).where(eq(projects.id, projectId));
+    return { success: true };
+  } catch (error) {
+    console.error("[Database] Failed to delete project:", error);
     throw error;
   }
 }

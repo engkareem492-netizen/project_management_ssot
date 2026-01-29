@@ -57,4 +57,74 @@ export const projectsRouter = router({
 
       return { valid };
     }),
+
+  resetPassword: protectedProcedure
+    .input(z.object({
+      projectId: z.number(),
+      newPassword: z.string(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      if (!ctx.user) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: 'You must be logged in to reset password',
+        });
+      }
+
+      const project = await db.getProjectById(input.projectId);
+      
+      if (!project) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Project not found',
+        });
+      }
+
+      // Only allow the project creator to reset password
+      if (project.createdBy !== ctx.user.id) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Only the project creator can reset the password',
+        });
+      }
+
+      const hashedPassword = hashPassword(input.newPassword);
+      await db.updateProjectPassword(input.projectId, hashedPassword);
+
+      return { success: true };
+    }),
+
+  delete: protectedProcedure
+    .input(z.object({
+      projectId: z.number(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      if (!ctx.user) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: 'You must be logged in to delete a project',
+        });
+      }
+
+      const project = await db.getProjectById(input.projectId);
+      
+      if (!project) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Project not found',
+        });
+      }
+
+      // Only allow the project creator to delete
+      if (project.createdBy !== ctx.user.id) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Only the project creator can delete the project',
+        });
+      }
+
+      await db.deleteProject(input.projectId);
+
+      return { success: true };
+    }),
 });

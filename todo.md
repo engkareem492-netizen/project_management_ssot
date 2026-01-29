@@ -153,3 +153,10 @@
 ## Feature Requests (Jan 27, 2026 - Batch 12)
 
 - [x] Add "Forgot Password?" link on Project Selection page that redirects to Manus OAuth password reset page
+
+## Feature Requests (Jan 28, 2026 - Batch 13)
+
+- [x] Add project password reset feature for when users forget their project password
+- [x] Add project deletion feature to remove unwanted projects
+- [x] Add backend procedure to reset project password
+- [x] Add backend procedure to delete project and all associated data
