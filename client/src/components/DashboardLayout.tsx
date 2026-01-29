@@ -47,6 +47,7 @@ import { Button } from "./ui/button";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useProject } from "@/contexts/ProjectContext";
+import { ThemeSelector } from "./ThemeSelector";
 
 const menuItems = [
   { icon: Calendar, label: "Today", path: "/today" },
@@ -388,6 +389,9 @@ function DashboardLayoutContent({
                   </span>
                 </div>
               </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <ThemeSelector />
             </div>
           </div>
         )}

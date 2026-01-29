@@ -160,3 +160,10 @@
 - [x] Add project deletion feature to remove unwanted projects
 - [x] Add backend procedure to reset project password
 - [x] Add backend procedure to delete project and all associated data
+
+## Feature Requests (Jan 29, 2026 - Batch 14)
+
+- [x] Fix Requirements page theme to match the rest of the application (already using semantic theme classes)
+- [x] Add multiple color theme options (Red, Blue, Green, Purple, Teal, Orange)
+- [x] Create theme selector component for users to switch between themes
+- [x] Persist theme selection in localStorage or user preferences
