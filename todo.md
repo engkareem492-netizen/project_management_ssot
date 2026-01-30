@@ -167,3 +167,9 @@
 - [x] Add multiple color theme options (Red, Blue, Green, Purple, Teal, Orange)
 - [x] Create theme selector component for users to switch between themes
 - [x] Persist theme selection in localStorage or user preferences
+
+## Bug Fixes (Jan 29, 2026 - Batch 15)
+
+- [x] Fix newly created Task Groups not appearing in dropdown immediately after creation in Tasks page
+- [x] Fix newly created Issue Groups not appearing in dropdown immediately after creation in Issues page
+- [x] Fix newly created Task Groups not appearing in dropdown immediately after creation in Requirements page

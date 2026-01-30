@@ -96,10 +96,11 @@ export default function Requirements() {
     { projectId: currentProjectId! },
     { enabled: !!currentProjectId }
   );
+
   const createTaskGroupMutation = trpc.dropdownOptions.taskGroups.create.useMutation({
     onSuccess: (data) => {
       toast.success(`Task Group "${data.name}" created`);
-      refetchTaskGroups();
+      utils.dropdownOptions.taskGroups.getAll.invalidate();
       setNewRequirement({ ...newRequirement, taskGroup: data.name });
     },
     onError: (error) => toast.error(`Failed to create Task Group: ${error.message}`),
@@ -107,7 +108,7 @@ export default function Requirements() {
   const createIssueGroupMutation = trpc.dropdownOptions.issueGroups.create.useMutation({
     onSuccess: (data) => {
       toast.success(`Issue Group "${data.name}" created`);
-      refetchIssueGroups();
+      utils.dropdownOptions.issueGroups.getAll.invalidate();
       setNewRequirement({ ...newRequirement, issueGroup: data.name });
     },
     onError: (error) => toast.error(`Failed to create Issue Group: ${error.message}`),

@@ -59,10 +59,13 @@ export default function Issues() {
     { enabled: !!currentProjectId }
   );
 
+  const utils = trpc.useUtils();
+
   const createIssueGroupMutation = trpc.dropdownOptions.issueGroups.create.useMutation({
     onSuccess: (data) => {
       toast.success(`Issue Group "${data.name}" created successfully`);
       setNewIssue({ ...newIssue, issueGroup: data.name });
+      utils.dropdownOptions.issueGroups.getAll.invalidate();
       setAddIssueGroupDialogOpen(false);
       setNewIssueGroupName('');
     },

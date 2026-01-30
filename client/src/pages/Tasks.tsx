@@ -68,10 +68,13 @@ export default function Tasks() {
     { enabled: !!currentProjectId }
   );
 
+  const utils = trpc.useUtils();
+
   const createTaskGroupMutation = trpc.dropdownOptions.taskGroups.create.useMutation({
     onSuccess: (data) => {
       toast.success(`Task Group "${data.name}" created successfully`);
       setNewTask({ ...newTask, taskGroup: data.name });
+      utils.dropdownOptions.taskGroups.getAll.invalidate();
       setAddTaskGroupDialogOpen(false);
       setNewTaskGroupName('');
     },
