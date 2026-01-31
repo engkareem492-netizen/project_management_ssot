@@ -135,7 +135,7 @@ export default function Tasks() {
   const createDeliverableMutation = trpc.deliverables.create.useMutation({
     onSuccess: (data) => {
       toast.success(`Deliverable "${data.deliverableId}" created successfully`);
-      setNewTask({ ...newTask, deliverableId: data.deliverableId });
+      setNewTask({ ...newTask, deliverableId: data.id });
       utils.deliverables.list.invalidate();
       setAddDeliverableDialogOpen(false);
       setNewDeliverable({ description: '', status: 'Pending', dueDate: '' });
@@ -675,8 +675,8 @@ export default function Tasks() {
                   <Label htmlFor="deliverableId">Deliverable</Label>
                   <div className="flex gap-2">
                     <Select
-                      value={newTask.deliverableId || ''}
-                      onValueChange={(value) => setNewTask({ ...newTask, deliverableId: value })}
+                      value={newTask.deliverableId?.toString() || ''}
+                      onValueChange={(value) => setNewTask({ ...newTask, deliverableId: value ? parseInt(value) : undefined })}
                     >
                       <SelectTrigger className="flex-1">
                         <SelectValue placeholder="Select deliverable..." />

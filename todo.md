@@ -321,3 +321,16 @@
 - [x] Add missing updateDate column to tasks table
 - [x] Verify SELECT query works after adding columns
 - [ ] Test task creation after fix
+
+
+## Bug Fix (Jan 31, 2026 - Type Mismatch and Requirements Table)
+
+### DeliverableId Type Mismatch
+- [x] Fix Tasks.tsx to convert deliverableId from string to number using parseInt
+- [x] Fix createDeliverableMutation to use data.id instead of data.deliverableId
+- [ ] Test task creation with deliverable selection
+
+### Requirements Table Missing Columns
+- [x] Check requirements table for missing columns - CONFIRMED: all columns exist
+- [x] Apply same undefined value filtering fix to createRequirement function
+- [ ] Test requirement creation from task dialog

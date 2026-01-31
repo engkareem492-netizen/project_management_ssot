@@ -136,7 +136,16 @@ export async function getRequirementByIdCode(idCode: string) {
 export async function createRequirement(data: InsertRequirement) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(requirements).values(data);
+  
+  // Remove undefined values to prevent Drizzle from using DEFAULT keyword
+  const cleanedData: any = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (value !== undefined) {
+      cleanedData[key] = value;
+    }
+  }
+  
+  const result = await db.insert(requirements).values(cleanedData);
   return result;
 }
 

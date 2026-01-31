@@ -1,0 +1,88 @@
+{
+  "query": "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'requirements' ORDER BY ORDINAL_POSITION;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4FzqaZAU5mRtC.root --database j37MQHBuWbY6PMBApJWnKm --execute SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'requirements' ORDER BY ORDINAL_POSITION;",
+  "rows": [
+    {
+      "COLUMN_NAME": "id"
+    },
+    {
+      "COLUMN_NAME": "projectId"
+    },
+    {
+      "COLUMN_NAME": "idCode"
+    },
+    {
+      "COLUMN_NAME": "taskGroup"
+    },
+    {
+      "COLUMN_NAME": "issueGroup"
+    },
+    {
+      "COLUMN_NAME": "createdAt"
+    },
+    {
+      "COLUMN_NAME": "type"
+    },
+    {
+      "COLUMN_NAME": "class"
+    },
+    {
+      "COLUMN_NAME": "category"
+    },
+    {
+      "COLUMN_NAME": "agreement"
+    },
+    {
+      "COLUMN_NAME": "owner"
+    },
+    {
+      "COLUMN_NAME": "description"
+    },
+    {
+      "COLUMN_NAME": "sourceType"
+    },
+    {
+      "COLUMN_NAME": "refSource"
+    },
+    {
+      "COLUMN_NAME": "status"
+    },
+    {
+      "COLUMN_NAME": "priority"
+    },
+    {
+      "COLUMN_NAME": "deliverables1"
+    },
+    {
+      "COLUMN_NAME": "d1Status"
+    },
+    {
+      "COLUMN_NAME": "deliverables2"
+    },
+    {
+      "COLUMN_NAME": "d2Status"
+    },
+    {
+      "COLUMN_NAME": "lastUpdate"
+    },
+    {
+      "COLUMN_NAME": "updateDate"
+    },
+    {
+      "COLUMN_NAME": "importedAt"
+    },
+    {
+      "COLUMN_NAME": "updatedAt"
+    },
+    {
+      "COLUMN_NAME": "ownerId"
+    },
+    {
+      "COLUMN_NAME": "source"
+    }
+  ],
+  "messages": [],
+  "stdout": "COLUMN_NAME\nid\nprojectId\nidCode\ntaskGroup\nissueGroup\ncreatedAt\ntype\nclass\ncategory\nagreement\nowner\ndescription\nsourceType\nrefSource\nstatus\npriority\ndeliverables1\nd1Status\ndeliverables2\nd2Status\nlastUpdate\nupdateDate\nimportedAt\nupdatedAt\nownerId\nsource\n",
+  "stderr": "",
+  "execution_time_ms": 1527
+}
