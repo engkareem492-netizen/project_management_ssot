@@ -423,3 +423,14 @@
 - [x] Update mutations to close dialogs and reset state
 - [x] Add Task Group and Issue Group creation dialogs to Requirements page
 - [ ] Test Task Group and Issue Group creation from both pages
+
+
+## UI/UX Improvement (Jan 31, 2026 - Vertical Field Layout)
+
+### Restructure Task Display with Vertical Fields
+- [x] Change second line from horizontal row to vertical column layout using grid-cols-1
+- [x] Display each field below the other (Requirement, Deliverable, Responsible, Due Date, Status)
+- [x] Add left border and padding for visual separation
+- [x] Set minimum width for labels (100px) for consistent alignment
+- [x] Keep action buttons on the right side
+- [ ] Test vertical layout on different screen sizes

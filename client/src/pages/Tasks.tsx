@@ -571,9 +571,9 @@ export default function Tasks() {
                         </div>
 
                         {/* Line 2: Requirement, Deliverable, Responsible, Due Date, Status */}
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <div className="grid grid-cols-1 gap-1 text-sm text-muted-foreground pl-4 border-l-2 border-muted">
                           <div className="flex items-center gap-2">
-                            <span className="font-medium">Req:</span>
+                            <span className="font-medium min-w-[100px]">Requirement:</span>
                             {task.requirementId ? (
                               <div className="flex items-center gap-1">
                                 <Badge variant="secondary" className="text-xs">{task.requirementId}</Badge>
@@ -592,7 +592,7 @@ export default function Tasks() {
                             )}
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="font-medium">Del:</span>
+                            <span className="font-medium min-w-[100px]">Deliverable:</span>
                             {task.deliverableId ? (
                               <div className="flex items-center gap-1">
                                 <Badge variant="secondary" className="text-xs">DL-{String(task.deliverableId).padStart(4, '0')}</Badge>
@@ -611,15 +611,15 @@ export default function Tasks() {
                             )}
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="font-medium">Responsible:</span>
+                            <span className="font-medium min-w-[100px]">Responsible:</span>
                             <span>{task.responsible || 'N/A'}</span>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="font-medium">Due:</span>
+                            <span className="font-medium min-w-[100px]">Due Date:</span>
                             <span>{task.dueDate || 'N/A'}</span>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="font-medium">Status:</span>
+                            <span className="font-medium min-w-[100px]">Status:</span>
                             <Badge>{task.currentStatus || 'No updates'}</Badge>
                           </div>
                         </div>
