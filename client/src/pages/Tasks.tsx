@@ -217,6 +217,7 @@ export default function Tasks() {
     // Convert "none" to undefined for optional requirementId
     const taskData = {
       ...newTask,
+      projectId: currentProjectId!,
       requirementId: newTask.requirementId === "none" ? undefined : newTask.requirementId,
       dueDate: newTask.dueDate || undefined,
       assignDate: newTask.assignDate || undefined,

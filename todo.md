@@ -177,3 +177,7 @@
 ## Bug Fixes (Jan 30, 2026 - Batch 16)
 
 - [x] Fix Tasks page mutation error - projectId is undefined when creating Task Groups
+
+## Bug Fixes (Jan 31, 2026 - Batch 17)
+
+- [x] Fix all remaining instances where projectId is undefined in Tasks page mutations
