@@ -38,7 +38,21 @@ export default function Tasks() {
   const [addTaskGroupDialogOpen, setAddTaskGroupDialogOpen] = useState(false);
   const [newTaskGroupName, setNewTaskGroupName] = useState('');
   const [addRequirementDialogOpen, setAddRequirementDialogOpen] = useState(false);
-  const [newRequirement, setNewRequirement] = useState({ description: '', type: '', category: '' });
+  const [addDeliverableDialogOpen, setAddDeliverableDialogOpen] = useState(false);
+  const [newDeliverable, setNewDeliverable] = useState({ description: '', status: 'Pending', dueDate: '' });
+  const [newRequirement, setNewRequirement] = useState({
+    description: '',
+    taskGroup: '',
+    issueGroup: '',
+    owner: '',
+    status: 'Open',
+    priority: 'Medium',
+    type: '',
+    category: '',
+    sourceType: '',
+    refSource: '',
+    createdAt: new Date().toISOString().split('T')[0],
+  });
   const [statusUpdateDialogOpen, setStatusUpdateDialogOpen] = useState(false);
   const [selectedTaskForStatus, setSelectedTaskForStatus] = useState<any>(null);
   const [statusUpdateText, setStatusUpdateText] = useState('');
@@ -64,11 +78,16 @@ export default function Tasks() {
   );
   const { data: stakeholders } = trpc.stakeholders.list.useQuery();
   const { data: requirements } = trpc.requirements.list.useQuery();
+  const { data: deliverables } = trpc.deliverables.list.useQuery();
   const { data: actionLogs } = trpc.actionLogs.getByEntity.useQuery(
     { entityType: "task", entityId: selectedEntityId },
     { enabled: historyDialogOpen && !!selectedEntityId }
   );
   const { data: taskGroups } = trpc.dropdownOptions.taskGroups.getAll.useQuery(
+    { projectId: currentProjectId || 0 },
+    { enabled: !!currentProjectId }
+  );
+  const { data: issueGroups } = trpc.dropdownOptions.issueGroups.getAll.useQuery(
     { projectId: currentProjectId || 0 },
     { enabled: !!currentProjectId }
   );
@@ -89,15 +108,40 @@ export default function Tasks() {
   });
 
   const createRequirementMutation = trpc.requirements.create.useMutation({
-    onSuccess: (data) => {
+      onSuccess: (data) => {
       toast.success(`Requirement "${data.idCode}" created successfully`);
       setNewTask({ ...newTask, requirementId: data.idCode });
       utils.requirements.list.invalidate();
       setAddRequirementDialogOpen(false);
-      setNewRequirement({ description: '', type: '', category: '' });
+      setNewRequirement({
+        description: '',
+        taskGroup: '',
+        issueGroup: '',
+        owner: '',
+        status: 'Open',
+        priority: 'Medium',
+        type: '',
+        category: '',
+        sourceType: '',
+        refSource: '',
+        createdAt: new Date().toISOString().split('T')[0],
+       });
     },
     onError: (error) => {
       toast.error(`Failed to create requirement: ${error.message}`);
+    },
+  });
+
+  const createDeliverableMutation = trpc.deliverables.create.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Deliverable "${data.deliverableId}" created successfully`);
+      setNewTask({ ...newTask, deliverableId: data.deliverableId });
+      utils.deliverables.list.invalidate();
+      setAddDeliverableDialogOpen(false);
+      setNewDeliverable({ description: '', status: 'Pending', dueDate: '' });
+    },
+    onError: (error) => {
+      toast.error(`Failed to create deliverable: ${error.message}`);
     },
   });
 
@@ -627,6 +671,37 @@ export default function Tasks() {
                     </Button>
                   </div>
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="deliverableId">Deliverable</Label>
+                  <div className="flex gap-2">
+                    <Select
+                      value={newTask.deliverableId || ''}
+                      onValueChange={(value) => setNewTask({ ...newTask, deliverableId: value })}
+                    >
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Select deliverable..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {deliverables?.map((del) => (
+                          <SelectItem key={del.id} value={del.deliverableId}>
+                            {del.deliverableId} - {del.description?.substring(0, 50) || 'No description'}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      onClick={() => setAddDeliverableDialogOpen(true)}
+                      title="Add new deliverable"
+                      disabled={createDeliverableMutation.isPending}
+                    >
+                      {createDeliverableMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                    </Button>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -1030,49 +1105,146 @@ export default function Tasks() {
 
       {/* Add Requirement Dialog */}
       <Dialog open={addRequirementDialogOpen} onOpenChange={setAddRequirementDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Add New Requirement</DialogTitle>
             <DialogDescription>
-              Create a new requirement to link with this task.
+              Create a new requirement to link with this task. ID will be auto-generated.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
+          <div className="grid grid-cols-2 gap-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="reqDescription">Description *</Label>
+              <Label>Task Group</Label>
+              <Select
+                value={newRequirement.taskGroup}
+                onValueChange={(value) => setNewRequirement({ ...newRequirement, taskGroup: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select task group" />
+                </SelectTrigger>
+                <SelectContent>
+                  {taskGroups?.map((group) => (
+                    <SelectItem key={group.id} value={group.name}>
+                      {group.idCode ? `${group.idCode} - ${group.name}` : group.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Issue Group</Label>
+              <Select
+                value={newRequirement.issueGroup}
+                onValueChange={(value) => setNewRequirement({ ...newRequirement, issueGroup: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select issue group" />
+                </SelectTrigger>
+                <SelectContent>
+                  {issueGroups?.map((group) => (
+                    <SelectItem key={group.id} value={group.name}>
+                      {group.idCode ? `${group.idCode} - ${group.name}` : group.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Creation Date</Label>
+              <Input
+                type="date"
+                value={newRequirement.createdAt}
+                onChange={(e) => setNewRequirement({ ...newRequirement, createdAt: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Priority</Label>
+              <SelectWithCreate
+                type="priority"
+                value={newRequirement.priority}
+                onValueChange={(value) => setNewRequirement({ ...newRequirement, priority: value })}
+                placeholder="Select priority"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Type</Label>
+              <SelectWithCreate
+                type="type"
+                value={newRequirement.type}
+                onValueChange={(value) => setNewRequirement({ ...newRequirement, type: value })}
+                placeholder="Select type"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Category</Label>
+              <SelectWithCreate
+                type="category"
+                value={newRequirement.category}
+                onValueChange={(value) => setNewRequirement({ ...newRequirement, category: value })}
+                placeholder="Select category"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Owner (Stakeholder)</Label>
+              <SelectWithCreate
+                type="stakeholder"
+                value={newRequirement.owner}
+                onValueChange={(value) => setNewRequirement({ ...newRequirement, owner: value })}
+                placeholder="Select owner"
+                projectId={currentProjectId || undefined}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Source Type</Label>
+              <Input
+                value={newRequirement.sourceType}
+                onChange={(e) => setNewRequirement({ ...newRequirement, sourceType: e.target.value })}
+                placeholder="e.g., Internal, External, Customer"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>External Source</Label>
+              <Input
+                value={newRequirement.refSource}
+                onChange={(e) => setNewRequirement({ ...newRequirement, refSource: e.target.value })}
+                placeholder="Reference source URL or name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <SelectWithCreate
+                type="status"
+                value={newRequirement.status}
+                onValueChange={(value) => setNewRequirement({ ...newRequirement, status: value })}
+                placeholder="Select status"
+              />
+            </div>
+            <div className="col-span-2 space-y-2">
+              <Label>Description *</Label>
               <Textarea
-                id="reqDescription"
                 value={newRequirement.description}
                 onChange={(e) => setNewRequirement({ ...newRequirement, description: e.target.value })}
                 placeholder="Enter requirement description..."
                 rows={3}
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="reqType">Type</Label>
-                <Input
-                  id="reqType"
-                  value={newRequirement.type}
-                  onChange={(e) => setNewRequirement({ ...newRequirement, type: e.target.value })}
-                  placeholder="e.g., Functional, Non-Functional"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="reqCategory">Category</Label>
-                <Input
-                  id="reqCategory"
-                  value={newRequirement.category}
-                  onChange={(e) => setNewRequirement({ ...newRequirement, category: e.target.value })}
-                  placeholder="e.g., UI, Backend, Security"
-                />
-              </div>
-            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => {
               setAddRequirementDialogOpen(false);
-              setNewRequirement({ description: '', type: '', category: '' });
+              setNewRequirement({
+                description: '',
+                taskGroup: '',
+                issueGroup: '',
+                owner: '',
+                status: 'Open',
+                priority: 'Medium',
+                type: '',
+                category: '',
+                sourceType: '',
+                refSource: '',
+                createdAt: new Date().toISOString().split('T')[0],
+              });
             }}>Cancel</Button>
             <Button
               onClick={() => {
@@ -1080,14 +1252,83 @@ export default function Tasks() {
                   createRequirementMutation.mutate({ 
                     projectId: currentProjectId, 
                     description: newRequirement.description.trim(),
+                    taskGroup: newRequirement.taskGroup || undefined,
+                    issueGroup: newRequirement.issueGroup || undefined,
+                    owner: newRequirement.owner || undefined,
+                    status: newRequirement.status || undefined,
+                    priority: newRequirement.priority || undefined,
                     type: newRequirement.type || undefined,
-                    category: newRequirement.category || undefined
+                    category: newRequirement.category || undefined,
+                    sourceType: newRequirement.sourceType || undefined,
+                    refSource: newRequirement.refSource || undefined,
                   });
                 }
               }}
               disabled={!newRequirement.description.trim() || !currentProjectId || createRequirementMutation.isPending}
             >
               {createRequirementMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Creating...</> : 'Create'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Deliverable Dialog */}
+      <Dialog open={addDeliverableDialogOpen} onOpenChange={setAddDeliverableDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New Deliverable</DialogTitle>
+            <DialogDescription>
+              Create a new deliverable to link with this task.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Description *</Label>
+              <Textarea
+                value={newDeliverable.description}
+                onChange={(e) => setNewDeliverable({ ...newDeliverable, description: e.target.value })}
+                placeholder="Enter deliverable description"
+                rows={3}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Input
+                  value={newDeliverable.status}
+                  onChange={(e) => setNewDeliverable({ ...newDeliverable, status: e.target.value })}
+                  placeholder="e.g., Pending, In Progress, Completed"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Due Date</Label>
+                <Input
+                  type="date"
+                  value={newDeliverable.dueDate}
+                  onChange={(e) => setNewDeliverable({ ...newDeliverable, dueDate: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setAddDeliverableDialogOpen(false);
+              setNewDeliverable({ description: '', status: 'Pending', dueDate: '' });
+            }}>Cancel</Button>
+            <Button
+              onClick={() => {
+                if (newDeliverable.description.trim() && currentProjectId) {
+                  createDeliverableMutation.mutate({
+                    projectId: currentProjectId,
+                    description: newDeliverable.description.trim(),
+                    status: newDeliverable.status || 'Pending',
+                    dueDate: newDeliverable.dueDate || undefined,
+                  });
+                }
+              }}
+              disabled={!newDeliverable.description.trim() || !currentProjectId || createDeliverableMutation.isPending}
+            >
+              {createDeliverableMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Creating...</> : 'Create'}
             </Button>
           </DialogFooter>
         </DialogContent>

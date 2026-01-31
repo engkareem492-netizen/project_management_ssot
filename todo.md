@@ -281,3 +281,21 @@
 - [x] Add createRequirementMutation to handle requirement creation
 - [x] Refresh requirement list after creation
 - [x] Auto-select newly created requirement
+
+
+## Enhancement (Jan 31, 2026 - Batch 24)
+
+### Enhance Requirement Creation Dialog
+- [x] Check Requirements page for all required fields
+- [x] Add all requirement fields to creation dialog (Task Group, Issue Group, Priority, Type, Category, Owner, Source Type, Ref Source, Status, Creation Date)
+- [x] Use SelectWithCreate for dropdown fields
+- [x] Update mutation to pass all fields
+- [ ] Test requirement creation with all fields
+
+### Add Deliverable Linking to Tasks
+- [x] Add Deliverable dropdown to task creation dialog
+- [x] Add + button beside Deliverable dropdown
+- [x] Create deliverable creation dialog with description, status, due date
+- [x] Add deliverables query to Tasks page
+- [x] Create deliverable mutation with auto-select
+- [ ] Test deliverable creation and linking
