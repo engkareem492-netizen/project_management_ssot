@@ -383,7 +383,7 @@ export default function Today() {
           <CardContent>
             <div className="space-y-3">
               {tasksUpcoming.map((task) => (
-                <Card key={task.id} className="p-4 bg-amber-50">
+                <Card key={task.id} className="p-4 bg-amber-50" style={{backgroundColor: '#ffd6d6'}}>
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
