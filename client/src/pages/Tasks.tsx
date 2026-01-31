@@ -487,59 +487,20 @@ export default function Tasks() {
               </TableHeader>
               <TableBody>
                 {filteredTasks?.map((task) => (
-                  <TableRow key={task.id}>
-                    <TableCell className="font-medium">{task.taskId}</TableCell>
-                    <TableCell>{task.taskGroup || 'N/A'}</TableCell>
-                    <TableCell className="max-w-xs truncate">{task.description}</TableCell>
-                    <TableCell>
-                      {task.requirementId ? (
-                        <div className="flex items-center gap-2">
-                          <span>{task.requirementId}</span>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-6 w-6 p-0"
-                            onClick={() => task.requirementId && handleViewRequirementDetails(task.requirementId)}
-                            title="View requirement details"
-                          >
-                            <Info className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground">N/A</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {task.deliverableId ? (
-                        <div className="flex items-center gap-2">
-                          <span>DL-{String(task.deliverableId).padStart(4, '0')}</span>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-6 w-6 p-0"
-                            onClick={() => task.deliverableId && handleViewDeliverableDetails(task.deliverableId)}
-                            title="View deliverable details"
-                          >
-                            <Info className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground">N/A</span>
-                      )}
-                    </TableCell>
-                    <TableCell>{task.responsible}</TableCell>
-                    <TableCell>{task.dueDate || 'N/A'}</TableCell>
-                    <TableCell>
-                      <div className="max-w-xs">
-                        <div className="text-sm font-medium">{task.currentStatus || 'N/A'}</div>
-                        {task.statusUpdate && (
-                          <div className="text-xs text-muted-foreground mt-1">{task.statusUpdate}</div>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        {editingId === task.id ? (
+                  <TableRow key={task.id} className="hover:bg-muted/50">
+                    <TableCell colSpan={9} className="p-0">
+                      <div className="p-4 space-y-2">
+                        {/* Line 1: Task ID, Description, Actions */}
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-3">
+                              <span className="font-bold text-base">{task.taskId}</span>
+                              <span className="text-xs px-2 py-0.5 rounded bg-muted">{task.taskGroup || 'N/A'}</span>
+                            </div>
+                            <p className="mt-1 text-sm">{task.description}</p>
+                          </div>
+                          <div className="flex gap-2 flex-shrink-0">
+                            {editingId === task.id ? (
                           <>
                             <Button size="sm" onClick={() => handleSave(task)} disabled={updateMutation.isPending}>
                               Save
@@ -573,9 +534,65 @@ export default function Tasks() {
                             </Button>
                             <Button size="sm" variant="destructive" onClick={() => handleDelete(task.id)} title="Delete">
                               <Trash2 className="w-3 h-3" />
-                            </Button>
-                          </>
-                        )}
+                            </Button>                          </>
+
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Line 2: Requirement, Deliverable, Responsible, Due Date, Status */}
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">Req:</span>
+                            {task.requirementId ? (
+                              <div className="flex items-center gap-1">
+                                <Badge variant="secondary" className="text-xs">{task.requirementId}</Badge>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-5 w-5 p-0"
+                                  onClick={() => task.requirementId && handleViewRequirementDetails(task.requirementId)}
+                                  title="View requirement details"
+                                >
+                                  <Info className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <span>N/A</span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">Del:</span>
+                            {task.deliverableId ? (
+                              <div className="flex items-center gap-1">
+                                <Badge variant="secondary" className="text-xs">DL-{String(task.deliverableId).padStart(4, '0')}</Badge>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-5 w-5 p-0"
+                                  onClick={() => task.deliverableId && handleViewDeliverableDetails(task.deliverableId)}
+                                  title="View deliverable details"
+                                >
+                                  <Info className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <span>N/A</span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">Responsible:</span>
+                            <span>{task.responsible || 'N/A'}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">Due:</span>
+                            <span>{task.dueDate || 'N/A'}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">Status:</span>
+                            <Badge>{task.currentStatus || 'No updates'}</Badge>
+                          </div>
+                        </div>
                       </div>
                     </TableCell>
                   </TableRow>

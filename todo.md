@@ -396,3 +396,14 @@
 - [x] Display requirement details in dialog (ID, description, type, category, status, priority, owner, source type, ref source)
 - [x] Display deliverable details in dialog (ID, description, status, due date)
 - [ ] Test requirement and deliverable info dialogs
+
+
+## UI/UX Improvement (Jan 31, 2026 - Task Table Readability)
+
+### Restructure Task Table for Better Readability
+- [x] Change table layout from single-row to two-line per task
+- [x] Line 1: Task ID (bold), Task Group badge, Description (full text), Action buttons
+- [x] Line 2: Requirement badge with info button, Deliverable badge with info button, Responsible, Due Date, Status badge
+- [x] Add proper text wrapping - description shows full text without truncation
+- [x] Ensure Current Status displays as badge without overflow
+- [ ] Test table responsiveness and readability
