@@ -94,7 +94,7 @@ export function SelectWithCreate({ type, value, onValueChange, placeholder, cate
       utils.stakeholders.list.invalidate();
       setNewStakeholder({ fullName: '', position: '', role: '' });
       setCreateDialogOpen(false);
-      if (data?.fullName) onValueChange(data.fullName);
+      if (data?.id) onValueChange(data.id.toString());
       toast.success("Stakeholder added successfully");
     },
     onError: (error: any) => {
@@ -145,8 +145,8 @@ export function SelectWithCreate({ type, value, onValueChange, placeholder, cate
         </SelectTrigger>
         <SelectContent>
           {type === "stakeholder" ? (
-            (options as any[])?.map((s: any) => (
-              <SelectItem key={s.id} value={s.fullName}>{s.fullName}</SelectItem>
+            (options as any[])?.map((stakeholder: any) => (
+              <SelectItem key={stakeholder.id} value={stakeholder.id.toString()}>{stakeholder.fullName}</SelectItem>
             ))
           ) : (
             (options as any[])?.map((opt: any) => (

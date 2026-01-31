@@ -37,17 +37,19 @@ export default function Tasks() {
   const [newStakeholder, setNewStakeholder] = useState({ fullName: '', position: '', role: '' });
   const [addTaskGroupDialogOpen, setAddTaskGroupDialogOpen] = useState(false);
   const [newTaskGroupName, setNewTaskGroupName] = useState('');
+  const [addRequirementDialogOpen, setAddRequirementDialogOpen] = useState(false);
+  const [newRequirement, setNewRequirement] = useState({ description: '', type: '', category: '' });
   const [statusUpdateDialogOpen, setStatusUpdateDialogOpen] = useState(false);
   const [selectedTaskForStatus, setSelectedTaskForStatus] = useState<any>(null);
   const [statusUpdateText, setStatusUpdateText] = useState('');
   const [newTask, setNewTask] = useState<any>({
     taskGroup: '',
     description: '',
-    responsible: '',
-    accountable: '',
-    consulted: '',
-    informed: '',
-    owner: '',
+    responsibleId: undefined,
+    accountableId: undefined,
+    consultedId: undefined,
+    informedId: undefined,
+    ownerId: undefined,
     status: 'Not Started',
     priority: 'Medium',
     requirementId: '',
@@ -83,6 +85,19 @@ export default function Tasks() {
     },
     onError: (error) => {
       toast.error(`Failed to create task group: ${error.message}`);
+    },
+  });
+
+  const createRequirementMutation = trpc.requirements.create.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Requirement "${data.idCode}" created successfully`);
+      setNewTask({ ...newTask, requirementId: data.idCode });
+      utils.requirements.list.invalidate();
+      setAddRequirementDialogOpen(false);
+      setNewRequirement({ description: '', type: '', category: '' });
+    },
+    onError: (error) => {
+      toast.error(`Failed to create requirement: ${error.message}`);
     },
   });
 
@@ -224,8 +239,6 @@ export default function Tasks() {
       requirementId: newTask.requirementId === "none" ? undefined : newTask.requirementId,
       dueDate: newTask.dueDate || undefined,
       assignDate: newTask.assignDate || undefined,
-      consulted: newTask.consulted || undefined,
-      informed: newTask.informed || undefined,
     };
     createMutation.mutate(taskData);
   };
@@ -585,22 +598,34 @@ export default function Tasks() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="requirementId">Requirement ID</Label>
-                  <Select
-                    value={newTask.requirementId}
-                    onValueChange={(value) => setNewTask({ ...newTask, requirementId: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select requirement..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
-                      {requirements?.map((req) => (
-                        <SelectItem key={req.id} value={req.idCode}>
-                          {req.idCode} - {req.description?.substring(0, 50) || 'No description'}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex gap-2">
+                    <Select
+                      value={newTask.requirementId}
+                      onValueChange={(value) => setNewTask({ ...newTask, requirementId: value })}
+                    >
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Select requirement..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {requirements?.map((req) => (
+                          <SelectItem key={req.id} value={req.idCode}>
+                            {req.idCode} - {req.description?.substring(0, 50) || 'No description'}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      onClick={() => setAddRequirementDialogOpen(true)}
+                      title="Add new requirement"
+                      disabled={createRequirementMutation.isPending}
+                    >
+                      {createRequirementMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -613,8 +638,8 @@ export default function Tasks() {
                   <Label htmlFor="responsible">Responsible (R)</Label>
                   <SelectWithCreate
                     type="stakeholder"
-                    value={newTask.responsible}
-                    onValueChange={(value) => setNewTask({ ...newTask, responsible: value })}
+                    value={newTask.responsibleId?.toString() || ''}
+                    onValueChange={(value) => setNewTask({ ...newTask, responsibleId: value ? parseInt(value) : undefined })}
                     placeholder="Select responsible person..."
                     projectId={currentProjectId || undefined}
                   />
@@ -623,8 +648,8 @@ export default function Tasks() {
                   <Label htmlFor="accountable">Accountable (A)</Label>
                   <SelectWithCreate
                     type="stakeholder"
-                    value={newTask.accountable}
-                    onValueChange={(value) => setNewTask({ ...newTask, accountable: value })}
+                    value={newTask.accountableId?.toString() || ''}
+                    onValueChange={(value) => setNewTask({ ...newTask, accountableId: value ? parseInt(value) : undefined })}
                     placeholder="Select accountable person..."
                     projectId={currentProjectId || undefined}
                   />
@@ -633,8 +658,8 @@ export default function Tasks() {
                   <Label htmlFor="consulted">Consulted (C)</Label>
                   <SelectWithCreate
                     type="stakeholder"
-                    value={newTask.consulted}
-                    onValueChange={(value) => setNewTask({ ...newTask, consulted: value })}
+                    value={newTask.consultedId?.toString() || ''}
+                    onValueChange={(value) => setNewTask({ ...newTask, consultedId: value ? parseInt(value) : undefined })}
                     placeholder="Select consulted person..."
                     projectId={currentProjectId || undefined}
                   />
@@ -643,8 +668,8 @@ export default function Tasks() {
                   <Label htmlFor="informed">Informed (I)</Label>
                   <SelectWithCreate
                     type="stakeholder"
-                    value={newTask.informed}
-                    onValueChange={(value) => setNewTask({ ...newTask, informed: value })}
+                    value={newTask.informedId?.toString() || ''}
+                    onValueChange={(value) => setNewTask({ ...newTask, informedId: value ? parseInt(value) : undefined })}
                     placeholder="Select informed person..."
                     projectId={currentProjectId || undefined}
                   />
@@ -998,6 +1023,71 @@ export default function Tasks() {
               disabled={!newTaskGroupName.trim() || !currentProjectId || createTaskGroupMutation.isPending}
             >
               {createTaskGroupMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Creating...</> : 'Create'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Requirement Dialog */}
+      <Dialog open={addRequirementDialogOpen} onOpenChange={setAddRequirementDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New Requirement</DialogTitle>
+            <DialogDescription>
+              Create a new requirement to link with this task.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="reqDescription">Description *</Label>
+              <Textarea
+                id="reqDescription"
+                value={newRequirement.description}
+                onChange={(e) => setNewRequirement({ ...newRequirement, description: e.target.value })}
+                placeholder="Enter requirement description..."
+                rows={3}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="reqType">Type</Label>
+                <Input
+                  id="reqType"
+                  value={newRequirement.type}
+                  onChange={(e) => setNewRequirement({ ...newRequirement, type: e.target.value })}
+                  placeholder="e.g., Functional, Non-Functional"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="reqCategory">Category</Label>
+                <Input
+                  id="reqCategory"
+                  value={newRequirement.category}
+                  onChange={(e) => setNewRequirement({ ...newRequirement, category: e.target.value })}
+                  placeholder="e.g., UI, Backend, Security"
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setAddRequirementDialogOpen(false);
+              setNewRequirement({ description: '', type: '', category: '' });
+            }}>Cancel</Button>
+            <Button
+              onClick={() => {
+                if (newRequirement.description.trim() && currentProjectId) {
+                  createRequirementMutation.mutate({ 
+                    projectId: currentProjectId, 
+                    description: newRequirement.description.trim(),
+                    type: newRequirement.type || undefined,
+                    category: newRequirement.category || undefined
+                  });
+                }
+              }}
+              disabled={!newRequirement.description.trim() || !currentProjectId || createRequirementMutation.isPending}
+            >
+              {createRequirementMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Creating...</> : 'Create'}
             </Button>
           </DialogFooter>
         </DialogContent>

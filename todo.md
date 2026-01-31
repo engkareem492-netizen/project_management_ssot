@@ -264,3 +264,20 @@
 - [x] Updated Tasks.tsx to pass projectId parameter to tasks.list query
 - [x] Fixed duplicate currentProjectId declaration error
 - [x] Tasks page now properly filters by current project
+
+
+## Bug Fix (Jan 31, 2026 - Batch 23)
+
+### Task Creation Error - Stakeholder Names vs IDs
+- [x] Fix Tasks.tsx create mutation to send stakeholder IDs instead of names
+- [x] Update SelectWithCreate component to return stakeholder IDs
+- [x] Update newTask state to use ID fields (responsibleId, accountableId, etc.)
+- [x] Remove name-to-ID conversion logic from handleCreate
+- [ ] Test task creation with RACI fields (Responsible, Accountable, Informed, Consulted)
+
+### Add Requirement Creation from Task Dialog
+- [x] Add + button beside Requirement dropdown in task creation dialog
+- [x] Create inline requirement creation dialog with description, type, category fields
+- [x] Add createRequirementMutation to handle requirement creation
+- [x] Refresh requirement list after creation
+- [x] Auto-select newly created requirement

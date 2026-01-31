@@ -1,0 +1,50 @@
+{
+  "query": "SHOW COLUMNS FROM tasks WHERE Field IN ('responsible', 'accountable', 'consulted', 'informed', 'owner');",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4FzqaZAU5mRtC.root --database j37MQHBuWbY6PMBApJWnKm --execute SHOW COLUMNS FROM tasks WHERE Field IN ('responsible', 'accountable', 'consulted', 'informed', 'owner');",
+  "rows": [
+    {
+      "Field": "responsible",
+      "Type": "varchar(200)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "accountable",
+      "Type": "varchar(200)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "informed",
+      "Type": "varchar(200)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "consulted",
+      "Type": "varchar(200)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "owner",
+      "Type": "varchar(200)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    }
+  ],
+  "messages": [],
+  "stdout": "Field\tType\tNull\tKey\tDefault\tExtra\nresponsible\tvarchar(200)\tYES\t\tNULL\t\naccountable\tvarchar(200)\tYES\t\tNULL\t\ninformed\tvarchar(200)\tYES\t\tNULL\t\nconsulted\tvarchar(200)\tYES\t\tNULL\t\nowner\tvarchar(200)\tYES\t\tNULL\t\n",
+  "stderr": "",
+  "execution_time_ms": 1517
+}
