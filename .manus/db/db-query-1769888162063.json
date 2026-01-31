@@ -1,0 +1,9 @@
+{
+  "query": "INSERT INTO `idSequences` (`projectId`, `entityType`, `prefix`, `currentNumber`, `minNumber`, `maxNumber`, `padLength`) VALUES\n(1, 'Requirement', 'Q', 1, 1, 9999, 4),\n(1, 'Task', 'T', 1, 1, 9999, 4),\n(1, 'Issue', 'I', 1, 1, 9999, 4),\n(1, 'Dependency', 'D', 1, 1, 9999, 4),\n(1, 'Deliverable', 'DL', 1, 1, 9999, 4),\n(1, 'Task Group', 'TG', 1, 1, 999, 3),\n(1, 'Issue Group', 'IG', 1, 1, 999, 3)\nON DUPLICATE KEY UPDATE `currentNumber` = `currentNumber`;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4FzqaZAU5mRtC.root --database j37MQHBuWbY6PMBApJWnKm --execute INSERT INTO `idSequences` (`projectId`, `entityType`, `prefix`, `currentNumber`, `minNumber`, `maxNumber`, `padLength`) VALUES\n(1, 'Requirement', 'Q', 1, 1, 9999, 4),\n(1, 'Task', 'T', 1, 1, 9999, 4),\n(1, 'Issue', 'I', 1, 1, 9999, 4),\n(1, 'Dependency', 'D', 1, 1, 9999, 4),\n(1, 'Deliverable', 'DL', 1, 1, 9999, 4),\n(1, 'Task Group', 'TG', 1, 1, 999, 3),\n(1, 'Issue Group', 'IG', 1, 1, 999, 3)\nON DUPLICATE KEY UPDATE `currentNumber` = `currentNumber`;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1549
+}

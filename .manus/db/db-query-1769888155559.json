@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE `idSequences` DROP INDEX `idSequences_entityType_unique`;\nALTER TABLE `idSequences` ADD UNIQUE KEY `unique_entityType_project` (`entityType`, `projectId`);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4FzqaZAU5mRtC.root --database j37MQHBuWbY6PMBApJWnKm --execute ALTER TABLE `idSequences` DROP INDEX `idSequences_entityType_unique`;\nALTER TABLE `idSequences` ADD UNIQUE KEY `unique_entityType_project` (`entityType`, `projectId`);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 3096
+}

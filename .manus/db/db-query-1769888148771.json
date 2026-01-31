@@ -1,0 +1,30 @@
+{
+  "query": "SHOW CREATE TABLE idSequences;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4FzqaZAU5mRtC.root --database j37MQHBuWbY6PMBApJWnKm --execute SHOW CREATE TABLE idSequences;",
+  "rows": [
+    {
+      "Table": "idSequences",
+      "Create Table": "CREATE TABLE `idSequences` ("
+    }
+  ],
+  "messages": [
+    "  `id` int(11) NOT NULL AUTO_INCREMENT,",
+    "  `projectId` int(11) NOT NULL DEFAULT '1',",
+    "  `entityType` varchar(50) NOT NULL,",
+    "  `prefix` varchar(20) NOT NULL,",
+    "  `currentNumber` int(11) NOT NULL DEFAULT '0',",
+    "  `minNumber` int(11) NOT NULL DEFAULT '1',",
+    "  `maxNumber` int(11) NOT NULL DEFAULT '9999',",
+    "  `padLength` int(11) NOT NULL DEFAULT '4',",
+    "  `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,",
+    "  `entityLabel` varchar(100) DEFAULT NULL,",
+    "  `padding` int(11) NOT NULL DEFAULT '4',",
+    "  `startNumber` int(11) NOT NULL DEFAULT '1',",
+    "  PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */,",
+    "  UNIQUE KEY `idSequences_entityType_unique` (`entityType`)",
+    ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin AUTO_INCREMENT=90001"
+  ],
+  "stdout": "Table\tCreate Table\nidSequences\tCREATE TABLE `idSequences` (\n  `id` int(11) NOT NULL AUTO_INCREMENT,\n  `projectId` int(11) NOT NULL DEFAULT '1',\n  `entityType` varchar(50) NOT NULL,\n  `prefix` varchar(20) NOT NULL,\n  `currentNumber` int(11) NOT NULL DEFAULT '0',\n  `minNumber` int(11) NOT NULL DEFAULT '1',\n  `maxNumber` int(11) NOT NULL DEFAULT '9999',\n  `padLength` int(11) NOT NULL DEFAULT '4',\n  `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  `entityLabel` varchar(100) DEFAULT NULL,\n  `padding` int(11) NOT NULL DEFAULT '4',\n  `startNumber` int(11) NOT NULL DEFAULT '1',\n  PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */,\n  UNIQUE KEY `idSequences_entityType_unique` (`entityType`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin AUTO_INCREMENT=90001\n",
+  "stderr": "",
+  "execution_time_ms": 1510
+}

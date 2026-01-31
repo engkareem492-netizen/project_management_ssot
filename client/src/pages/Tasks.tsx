@@ -55,14 +55,17 @@ export default function Tasks() {
     assignDate: new Date().toISOString().split('T')[0],
   });
 
-  const { data: tasks, isLoading, refetch } = trpc.tasks.list.useQuery();
+  const { currentProjectId } = useProject();
+  const { data: tasks, isLoading, refetch } = trpc.tasks.list.useQuery(
+    { projectId: currentProjectId || 0 },
+    { enabled: !!currentProjectId }
+  );
   const { data: stakeholders } = trpc.stakeholders.list.useQuery();
   const { data: requirements } = trpc.requirements.list.useQuery();
   const { data: actionLogs } = trpc.actionLogs.getByEntity.useQuery(
     { entityType: "task", entityId: selectedEntityId },
     { enabled: historyDialogOpen && !!selectedEntityId }
   );
-  const { currentProjectId } = useProject();
   const { data: taskGroups } = trpc.dropdownOptions.taskGroups.getAll.useQuery(
     { projectId: currentProjectId || 0 },
     { enabled: !!currentProjectId }

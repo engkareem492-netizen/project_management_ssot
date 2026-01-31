@@ -239,3 +239,28 @@
 - [x] Add projectId column to deliverables table
 - [x] Add projectId column to stakeholders table
 - [x] Test all queries after adding projectId columns
+
+
+## idSequences Initialization Fix (Jan 31, 2026 - Batch 22)
+
+### Initialize idSequences for All Entity Types
+- [x] Add missing columns (minNumber, maxNumber, padLength) to idSequences table
+- [x] Insert idSequences records for Task Group entity type
+- [x] Insert idSequences records for Issue Group entity type
+- [x] Insert idSequences records for all other entity types (Requirement, Task, Issue, Dependency, Deliverable)
+- [x] Test Task Group creation after initialization
+
+### Create Missing Tables
+- [x] Create taskGroups table with proper schema (id, projectId, idCode, name, description, timestamps)
+- [x] Create issueGroups table with proper schema (id, projectId, idCode, name, description, timestamps)
+
+### Fix Unique Constraint Issue
+- [x] Drop old unique constraint on entityType only
+- [x] Add composite unique constraint on (entityType, projectId)
+- [x] Insert idSequences records for project 1 (Finance Project)
+
+
+### Fix Tasks Page Query
+- [x] Updated Tasks.tsx to pass projectId parameter to tasks.list query
+- [x] Fixed duplicate currentProjectId declaration error
+- [x] Tasks page now properly filters by current project

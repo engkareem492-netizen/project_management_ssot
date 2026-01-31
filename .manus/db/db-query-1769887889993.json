@@ -1,0 +1,26 @@
+{
+  "query": "SHOW COLUMNS FROM `idSequences` WHERE Field LIKE '%Number%';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4FzqaZAU5mRtC.root --database j37MQHBuWbY6PMBApJWnKm --execute SHOW COLUMNS FROM `idSequences` WHERE Field LIKE '%Number%';",
+  "rows": [
+    {
+      "Field": "currentNumber",
+      "Type": "int(11)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "startNumber",
+      "Type": "int(11)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "1",
+      "Extra": ""
+    }
+  ],
+  "messages": [],
+  "stdout": "Field\tType\tNull\tKey\tDefault\tExtra\ncurrentNumber\tint(11)\tNO\t\t0\t\nstartNumber\tint(11)\tNO\t\t1\t\n",
+  "stderr": "",
+  "execution_time_ms": 1490
+}

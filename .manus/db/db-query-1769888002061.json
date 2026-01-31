@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `issueGroups` (\n  `id` INT AUTO_INCREMENT PRIMARY KEY,\n  `projectId` INT NOT NULL DEFAULT 1,\n  `idCode` VARCHAR(20) NOT NULL,\n  `name` VARCHAR(255) NOT NULL,\n  `description` TEXT,\n  `createdAt` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n  `updatedAt` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  UNIQUE KEY `unique_idCode_project` (`idCode`, `projectId`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4FzqaZAU5mRtC.root --database j37MQHBuWbY6PMBApJWnKm --execute CREATE TABLE IF NOT EXISTS `issueGroups` (\n  `id` INT AUTO_INCREMENT PRIMARY KEY,\n  `projectId` INT NOT NULL DEFAULT 1,\n  `idCode` VARCHAR(20) NOT NULL,\n  `name` VARCHAR(255) NOT NULL,\n  `description` TEXT,\n  `createdAt` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n  `updatedAt` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  UNIQUE KEY `unique_idCode_project` (`idCode`, `projectId`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1631
+}

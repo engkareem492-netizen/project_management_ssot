@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE `idSequences` ADD COLUMN IF NOT EXISTS `minNumber` INT NOT NULL DEFAULT 1 AFTER `currentNumber`;\nALTER TABLE `idSequences` ADD COLUMN IF NOT EXISTS `maxNumber` INT NOT NULL DEFAULT 9999 AFTER `minNumber`;\nALTER TABLE `idSequences` ADD COLUMN IF NOT EXISTS `padLength` INT NOT NULL DEFAULT 4 AFTER `maxNumber`;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4FzqaZAU5mRtC.root --database j37MQHBuWbY6PMBApJWnKm --execute ALTER TABLE `idSequences` ADD COLUMN IF NOT EXISTS `minNumber` INT NOT NULL DEFAULT 1 AFTER `currentNumber`;\nALTER TABLE `idSequences` ADD COLUMN IF NOT EXISTS `maxNumber` INT NOT NULL DEFAULT 9999 AFTER `minNumber`;\nALTER TABLE `idSequences` ADD COLUMN IF NOT EXISTS `padLength` INT NOT NULL DEFAULT 4 AFTER `maxNumber`;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 3914
+}
