@@ -1,0 +1,91 @@
+{
+  "query": "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'tasks' ORDER BY ORDINAL_POSITION;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4FzqaZAU5mRtC.root --database j37MQHBuWbY6PMBApJWnKm --execute SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'tasks' ORDER BY ORDINAL_POSITION;",
+  "rows": [
+    {
+      "COLUMN_NAME": "id"
+    },
+    {
+      "COLUMN_NAME": "projectId"
+    },
+    {
+      "COLUMN_NAME": "taskId"
+    },
+    {
+      "COLUMN_NAME": "taskGroup"
+    },
+    {
+      "COLUMN_NAME": "dependencyId"
+    },
+    {
+      "COLUMN_NAME": "requirementId"
+    },
+    {
+      "COLUMN_NAME": "description"
+    },
+    {
+      "COLUMN_NAME": "responsible"
+    },
+    {
+      "COLUMN_NAME": "accountable"
+    },
+    {
+      "COLUMN_NAME": "informed"
+    },
+    {
+      "COLUMN_NAME": "consulted"
+    },
+    {
+      "COLUMN_NAME": "dueDate"
+    },
+    {
+      "COLUMN_NAME": "currentStatus"
+    },
+    {
+      "COLUMN_NAME": "statusUpdate"
+    },
+    {
+      "COLUMN_NAME": "importedAt"
+    },
+    {
+      "COLUMN_NAME": "updatedAt"
+    },
+    {
+      "COLUMN_NAME": "responsibleId"
+    },
+    {
+      "COLUMN_NAME": "accountableId"
+    },
+    {
+      "COLUMN_NAME": "informedId"
+    },
+    {
+      "COLUMN_NAME": "consultedId"
+    },
+    {
+      "COLUMN_NAME": "owner"
+    },
+    {
+      "COLUMN_NAME": "ownerId"
+    },
+    {
+      "COLUMN_NAME": "status"
+    },
+    {
+      "COLUMN_NAME": "priority"
+    },
+    {
+      "COLUMN_NAME": "lastUpdate"
+    },
+    {
+      "COLUMN_NAME": "deliverableId"
+    },
+    {
+      "COLUMN_NAME": "assignDate"
+    }
+  ],
+  "messages": [],
+  "stdout": "COLUMN_NAME\nid\nprojectId\ntaskId\ntaskGroup\ndependencyId\nrequirementId\ndescription\nresponsible\naccountable\ninformed\nconsulted\ndueDate\ncurrentStatus\nstatusUpdate\nimportedAt\nupdatedAt\nresponsibleId\naccountableId\ninformedId\nconsultedId\nowner\nownerId\nstatus\npriority\nlastUpdate\ndeliverableId\nassignDate\n",
+  "stderr": "",
+  "execution_time_ms": 1563
+}

@@ -315,8 +315,9 @@
 ## Bug Fix (Jan 31, 2026 - Persistent Task Creation Error)
 
 ### Task Insertion Still Failing
-- [x] Check actual database column names and types for tasks table - CONFIRMED: structure is correct
-- [x] Compare database structure with Drizzle schema definition - MATCH CONFIRMED
-- [x] Identify why INSERT query is still failing - Drizzle was trying to use DEFAULT keyword for undefined values
-- [x] Fix by filtering out undefined values before insertion
+- [x] Check actual database column names and types for tasks table - FOUND: missing columns
+- [x] Compare database structure with Drizzle schema definition - MISMATCH FOUND
+- [x] Add missing assignDate column to tasks table
+- [x] Add missing updateDate column to tasks table
+- [x] Verify SELECT query works after adding columns
 - [ ] Test task creation after fix

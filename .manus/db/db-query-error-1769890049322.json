@@ -1,0 +1,8 @@
+{
+  "query": "SELECT id, projectId, taskId, taskGroup, dependencyId, requirementId, deliverableId, description, responsible, responsibleId, accountable, accountableId, informed, informedId, consulted, consultedId, dueDate, assignDate, currentStatus, statusUpdate, owner, ownerId, status, priority, lastUpdate, updateDate, importedAt, updatedAt FROM tasks WHERE projectId = 2 ORDER BY taskId LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4FzqaZAU5mRtC.root --database j37MQHBuWbY6PMBApJWnKm --execute SELECT id, projectId, taskId, taskGroup, dependencyId, requirementId, deliverableId, description, responsible, responsibleId, accountable, accountableId, informed, informedId, consulted, consultedId, dueDate, assignDate, currentStatus, statusUpdate, owner, ownerId, status, priority, lastUpdate, updateDate, importedAt, updatedAt FROM tasks WHERE projectId = 2 ORDER BY taskId LIMIT 5;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 1: Unknown column 'updatedate' in 'field list'"
+  ]
+}
