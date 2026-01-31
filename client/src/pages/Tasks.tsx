@@ -528,7 +528,7 @@ export default function Tasks() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-3">
                               <span className="font-bold text-base">{task.taskId}</span>
-                              <span className="text-xs px-2 py-0.5 rounded bg-muted">{task.taskGroup || 'N/A'}</span>
+                              <span className="text-xs px-2 py-0.5 rounded bg-muted">{task.taskGroup || '-'}</span>
                             </div>
                             <p className="mt-1 text-sm">{task.description}</p>
                           </div>
@@ -591,7 +591,7 @@ export default function Tasks() {
                                 </Button>
                               </div>
                             ) : (
-                              <span>N/A</span>
+                              <span>-</span>
                             )}
                           </div>
                           <div className="flex items-center gap-2">
@@ -610,16 +610,16 @@ export default function Tasks() {
                                 </Button>
                               </div>
                             ) : (
-                              <span>N/A</span>
+                              <span>-</span>
                             )}
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="font-medium min-w-[100px]">Responsible:</span>
-                            <span>{task.responsible || 'N/A'}</span>
+                            <span>{task.responsible || '-'}</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="font-medium min-w-[100px]">Due Date:</span>
-                            <span>{task.dueDate || 'N/A'}</span>
+                            <span>{task.dueDate || '-'}</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="font-medium min-w-[100px]">Status:</span>
@@ -1036,7 +1036,7 @@ export default function Tasks() {
                 {isEditMode ? (
                   <Input value={editFormData.status} onChange={(e) => setEditFormData({...editFormData, status: e.target.value})} className="h-8" />
                 ) : (
-                  <Badge variant={getStatusColor(selectedTask?.status)}>{selectedTask?.status || 'N/A'}</Badge>
+                  <Badge variant={getStatusColor(selectedTask?.status)}>{selectedTask?.status || '-'}</Badge>
                 )}
               </div>
               <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
@@ -1044,7 +1044,7 @@ export default function Tasks() {
                 {isEditMode ? (
                   <Input value={editFormData.priority} onChange={(e) => setEditFormData({...editFormData, priority: e.target.value})} className="h-8" />
                 ) : (
-                  <Badge variant={getPriorityColor(selectedTask?.priority)}>{selectedTask?.priority || 'N/A'}</Badge>
+                  <Badge variant={getPriorityColor(selectedTask?.priority)}>{selectedTask?.priority || '-'}</Badge>
                 )}
               </div>
               <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
@@ -1573,7 +1573,7 @@ export default function Tasks() {
               <p className="text-xs text-muted-foreground">Press Ctrl+Enter to submit</p>
             </div>
             <div className="text-sm text-muted-foreground">
-              <div><strong>Current Status:</strong> {selectedTaskForStatus?.currentStatus || 'N/A'}</div>
+              <div><strong>Current Status:</strong> {selectedTaskForStatus?.currentStatus || '-'}</div>
               {selectedTaskForStatus?.statusUpdate && (
                 <div className="mt-2"><strong>Previous Update:</strong> {selectedTaskForStatus.statusUpdate}</div>
               )}
@@ -1613,31 +1613,31 @@ export default function Tasks() {
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Status</Label>
-                  <Badge>{selectedRequirement.status || 'N/A'}</Badge>
+                  <Badge>{selectedRequirement.status || '-'}</Badge>
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Priority</Label>
-                  <Badge variant="outline">{selectedRequirement.priority || 'N/A'}</Badge>
+                  <Badge variant="outline">{selectedRequirement.priority || '-'}</Badge>
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Type</Label>
-                  <p>{selectedRequirement.type || 'N/A'}</p>
+                  <p>{selectedRequirement.type || '-'}</p>
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Category</Label>
-                  <p>{selectedRequirement.category || 'N/A'}</p>
+                  <p>{selectedRequirement.category || '-'}</p>
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Owner</Label>
-                  <p>{selectedRequirement.owner || 'N/A'}</p>
+                  <p>{selectedRequirement.owner || '-'}</p>
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Source Type</Label>
-                  <p>{selectedRequirement.sourceType || 'N/A'}</p>
+                  <p>{selectedRequirement.sourceType || '-'}</p>
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Ref Source</Label>
-                  <p>{selectedRequirement.refSource || 'N/A'}</p>
+                  <p>{selectedRequirement.refSource || '-'}</p>
                 </div>
               </div>
               <div>
@@ -1667,11 +1667,11 @@ export default function Tasks() {
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Status</Label>
-                  <Badge>{selectedDeliverable.status || 'N/A'}</Badge>
+                  <Badge>{selectedDeliverable.status || '-'}</Badge>
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Due Date</Label>
-                  <p>{selectedDeliverable.dueDate || 'N/A'}</p>
+                  <p>{selectedDeliverable.dueDate || '-'}</p>
                 </div>
               </div>
               <div>

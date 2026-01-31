@@ -601,7 +601,7 @@ export default function Issues() {
                                 </Button>
                               </div>
                             ) : (
-                              <span>N/A</span>
+                              <span>-</span>
                             )}
                           </div>
                           <div className="flex items-center gap-2">
@@ -609,7 +609,7 @@ export default function Issues() {
                             {issue.deliverableId ? (
                               <div className="flex items-center gap-1">
                                 <Badge variant="secondary">
-                                  {deliverables?.find(d => d.id === issue.deliverableId)?.deliverableId || (issue.deliverableId ? `DL-${issue.deliverableId}` : 'N/A')}
+                                  {deliverables?.find(d => d.id === issue.deliverableId)?.deliverableId || (issue.deliverableId ? `DL-${issue.deliverableId}` : '-')}
                                 </Badge>
                                 <Button
                                   size="sm"
@@ -622,7 +622,7 @@ export default function Issues() {
                                 </Button>
                               </div>
                             ) : (
-                              <span>N/A</span>
+                              <span>-</span>
                             )}
                           </div>
                           <div className="flex items-center gap-2">
@@ -641,20 +641,20 @@ export default function Issues() {
                                 </Button>
                               </div>
                             ) : (
-                              <span>N/A</span>
+                              <span>-</span>
                             )}
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="font-medium min-w-[100px]">Owner:</span>
-                            <span>{issue.owner || 'N/A'}</span>
+                            <span>{issue.owner || '-'}</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="font-medium min-w-[100px]">Priority:</span>
-                            <Badge variant={getPriorityColor(issue.priority)}>{issue.priority || 'N/A'}</Badge>
+                            <Badge variant={getPriorityColor(issue.priority)}>{issue.priority || '-'}</Badge>
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="font-medium min-w-[100px]">Status:</span>
-                            <Badge variant={getStatusColor(issue.status)}>{issue.status || 'N/A'}</Badge>
+                            <Badge variant={getStatusColor(issue.status)}>{issue.status || '-'}</Badge>
                           </div>
                         </div>
                       </div>
@@ -1063,7 +1063,7 @@ export default function Issues() {
                 {isEditMode ? (
                   <Input value={editFormData.status} onChange={(e) => setEditFormData({...editFormData, status: e.target.value})} className="h-8" />
                 ) : (
-                  <Badge variant={getStatusColor(selectedIssue?.status)}>{selectedIssue?.status || 'N/A'}</Badge>
+                  <Badge variant={getStatusColor(selectedIssue?.status)}>{selectedIssue?.status || '-'}</Badge>
                 )}
               </div>
               <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
@@ -1071,7 +1071,7 @@ export default function Issues() {
                 {isEditMode ? (
                   <Input value={editFormData.priority} onChange={(e) => setEditFormData({...editFormData, priority: e.target.value})} className="h-8" />
                 ) : (
-                  <Badge variant={getPriorityColor(selectedIssue?.priority)}>{selectedIssue?.priority || 'N/A'}</Badge>
+                  <Badge variant={getPriorityColor(selectedIssue?.priority)}>{selectedIssue?.priority || '-'}</Badge>
                 )}
               </div>
               <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
@@ -1540,36 +1540,36 @@ export default function Issues() {
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Type</Label>
-                <p className="font-medium">{selectedRequirement?.type || 'N/A'}</p>
+                <p className="font-medium">{selectedRequirement?.type || '-'}</p>
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Category</Label>
-                <p className="font-medium">{selectedRequirement?.category || 'N/A'}</p>
+                <p className="font-medium">{selectedRequirement?.category || '-'}</p>
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Status</Label>
-                <Badge>{selectedRequirement?.status || 'N/A'}</Badge>
+                <Badge>{selectedRequirement?.status || '-'}</Badge>
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Priority</Label>
-                <Badge>{selectedRequirement?.priority || 'N/A'}</Badge>
+                <Badge>{selectedRequirement?.priority || '-'}</Badge>
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Owner</Label>
-                <p className="font-medium">{selectedRequirement?.owner || 'N/A'}</p>
+                <p className="font-medium">{selectedRequirement?.owner || '-'}</p>
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Source Type</Label>
-                <p className="font-medium">{selectedRequirement?.sourceType || 'N/A'}</p>
+                <p className="font-medium">{selectedRequirement?.sourceType || '-'}</p>
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Ref Source</Label>
-                <p className="font-medium">{selectedRequirement?.refSource || 'N/A'}</p>
+                <p className="font-medium">{selectedRequirement?.refSource || '-'}</p>
               </div>
             </div>
             <div className="space-y-1">
               <Label className="text-xs text-muted-foreground">Description</Label>
-              <p className="font-medium whitespace-pre-wrap">{selectedRequirement?.description || 'N/A'}</p>
+              <p className="font-medium whitespace-pre-wrap">{selectedRequirement?.description || '-'}</p>
             </div>
           </div>
           <DialogFooter>
@@ -1595,16 +1595,16 @@ export default function Issues() {
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Status</Label>
-                <Badge>{selectedDeliverable?.status || 'N/A'}</Badge>
+                <Badge>{selectedDeliverable?.status || '-'}</Badge>
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Due Date</Label>
-                <p className="font-medium">{selectedDeliverable?.dueDate || 'N/A'}</p>
+                <p className="font-medium">{selectedDeliverable?.dueDate || '-'}</p>
               </div>
             </div>
             <div className="space-y-1">
               <Label className="text-xs text-muted-foreground">Description</Label>
-              <p className="font-medium whitespace-pre-wrap">{selectedDeliverable?.description || 'N/A'}</p>
+              <p className="font-medium whitespace-pre-wrap">{selectedDeliverable?.description || '-'}</p>
             </div>
           </div>
           <DialogFooter>
@@ -1851,47 +1851,47 @@ export default function Issues() {
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Task Group</Label>
-                <p className="font-medium">{selectedTask?.taskGroup || 'N/A'}</p>
+                <p className="font-medium">{selectedTask?.taskGroup || '-'}</p>
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Status</Label>
-                <Badge>{selectedTask?.status || 'N/A'}</Badge>
+                <Badge>{selectedTask?.status || '-'}</Badge>
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Priority</Label>
-                <Badge>{selectedTask?.priority || 'N/A'}</Badge>
+                <Badge>{selectedTask?.priority || '-'}</Badge>
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Assign Date</Label>
-                <p className="font-medium">{selectedTask?.assignDate || 'N/A'}</p>
+                <p className="font-medium">{selectedTask?.assignDate || '-'}</p>
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Due Date</Label>
-                <p className="font-medium">{selectedTask?.dueDate || 'N/A'}</p>
+                <p className="font-medium">{selectedTask?.dueDate || '-'}</p>
               </div>
             </div>
             <div className="space-y-1">
               <Label className="text-xs text-muted-foreground">Description</Label>
-              <p className="font-medium whitespace-pre-wrap">{selectedTask?.description || 'N/A'}</p>
+              <p className="font-medium whitespace-pre-wrap">{selectedTask?.description || '-'}</p>
             </div>
             <div className="border-t pt-4">
               <h4 className="font-medium mb-3">RACI Assignment</h4>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground">Responsible (R)</Label>
-                  <p className="font-medium">{stakeholders?.find(s => s.id === selectedTask?.responsibleId)?.fullName || 'N/A'}</p>
+                  <p className="font-medium">{stakeholders?.find(s => s.id === selectedTask?.responsibleId)?.fullName || '-'}</p>
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground">Accountable (A)</Label>
-                  <p className="font-medium">{stakeholders?.find(s => s.id === selectedTask?.accountableId)?.fullName || 'N/A'}</p>
+                  <p className="font-medium">{stakeholders?.find(s => s.id === selectedTask?.accountableId)?.fullName || '-'}</p>
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground">Consulted (C)</Label>
-                  <p className="font-medium">{stakeholders?.find(s => s.id === selectedTask?.consultedId)?.fullName || 'N/A'}</p>
+                  <p className="font-medium">{stakeholders?.find(s => s.id === selectedTask?.consultedId)?.fullName || '-'}</p>
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground">Informed (I)</Label>
-                  <p className="font-medium">{stakeholders?.find(s => s.id === selectedTask?.informedId)?.fullName || 'N/A'}</p>
+                  <p className="font-medium">{stakeholders?.find(s => s.id === selectedTask?.informedId)?.fullName || '-'}</p>
                 </div>
               </div>
             </div>

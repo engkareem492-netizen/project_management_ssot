@@ -500,6 +500,8 @@
 
 ## UI/UX Improvement (Feb 1, 2026 - Text Formatting Consistency)
 
-### Replace N/A with Dashes in Requirements Table
+### Replace N/A with Dashes Across All Pages
 - [x] Replace all "N/A" text with "-" in Requirements table display
-- [x] Ensure consistency with Tasks and Issues pages formatting
+- [x] Replace all "N/A" text with "-" in Tasks page display
+- [x] Replace all "N/A" text with "-" in Issues page display
+- [x] Ensure consistency across all data tables
