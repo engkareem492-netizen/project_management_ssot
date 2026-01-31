@@ -346,3 +346,15 @@
 - [x] Auto-populate currentStatus from action log's changedFields.currentStatus.newValue
 - [x] Fallback to task.currentStatus or 'No updates' if no action log exists
 - [ ] Test status display after creating and updating tasks
+
+
+## Feature Enhancement (Jan 31, 2026 - Optional Requirement Linking)
+
+### Add Checkbox to Control Requirement Linking
+- [x] Add "Link to Requirement" checkbox in task creation form
+- [x] When unchecked, disable/dim the requirement dropdown and + button
+- [x] When checked, enable requirement dropdown and + button
+- [x] Default checkbox to unchecked (no requirement linking by default)
+- [x] Update handleCreate to only include requirementId when checkbox is checked
+- [x] Reset linkRequirement checkbox after successful task creation
+- [ ] Test task creation with and without requirement linking

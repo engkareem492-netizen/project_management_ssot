@@ -10,6 +10,7 @@ import { Search, Edit, History, Loader2, Plus, Trash2, Settings, Eye, Save, X, C
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -56,6 +57,7 @@ export default function Tasks() {
   const [statusUpdateDialogOpen, setStatusUpdateDialogOpen] = useState(false);
   const [selectedTaskForStatus, setSelectedTaskForStatus] = useState<any>(null);
   const [statusUpdateText, setStatusUpdateText] = useState('');
+  const [linkRequirement, setLinkRequirement] = useState(false);
   const [newTask, setNewTask] = useState<any>({
     taskGroup: '',
     description: '',
@@ -160,6 +162,7 @@ export default function Tasks() {
     onSuccess: (data) => {
       toast.success(`Task ${data.taskId} created successfully`);
       setCreateDialogOpen(false);
+      setLinkRequirement(false);
       setNewTask({
         taskGroup: '',
         description: '',
@@ -276,11 +279,11 @@ export default function Tasks() {
       toast.error('Description is required');
       return;
     }
-    // Convert "none" to undefined for optional requirementId
+    // Only include requirementId if linkRequirement checkbox is checked
     const taskData = {
       ...newTask,
       projectId: currentProjectId!,
-      requirementId: newTask.requirementId === "none" ? undefined : newTask.requirementId,
+      requirementId: linkRequirement && newTask.requirementId && newTask.requirementId !== "none" ? newTask.requirementId : undefined,
       dueDate: newTask.dueDate || undefined,
       assignDate: newTask.assignDate || undefined,
     };
@@ -635,11 +638,24 @@ export default function Tasks() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="requirementId">Requirement ID</Label>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Checkbox
+                      id="linkRequirement"
+                      checked={linkRequirement}
+                      onCheckedChange={(checked) => {
+                        setLinkRequirement(checked as boolean);
+                        if (!checked) {
+                          setNewTask({ ...newTask, requirementId: '' });
+                        }
+                      }}
+                    />
+                    <Label htmlFor="linkRequirement" className="cursor-pointer">Link to Requirement</Label>
+                  </div>
                   <div className="flex gap-2">
                     <Select
                       value={newTask.requirementId}
                       onValueChange={(value) => setNewTask({ ...newTask, requirementId: value })}
+                      disabled={!linkRequirement}
                     >
                       <SelectTrigger className="flex-1">
                         <SelectValue placeholder="Select requirement..." />
@@ -659,7 +675,7 @@ export default function Tasks() {
                       variant="outline"
                       onClick={() => setAddRequirementDialogOpen(true)}
                       title="Add new requirement"
-                      disabled={createRequirementMutation.isPending}
+                      disabled={!linkRequirement || createRequirementMutation.isPending}
                     >
                       {createRequirementMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                     </Button>
