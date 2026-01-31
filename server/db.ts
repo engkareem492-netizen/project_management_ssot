@@ -180,7 +180,7 @@ export async function createTask(data: InsertTask) {
   if (!db) throw new Error("Database not available");
   
   // Populate stakeholder name fields from IDs
-  const enrichedData = { ...data };
+  const enrichedData: any = { ...data };
   
   if (data.responsibleId) {
     const stakeholder = await getStakeholderById(data.responsibleId);
@@ -203,7 +203,15 @@ export async function createTask(data: InsertTask) {
     if (stakeholder) enrichedData.owner = stakeholder.fullName;
   }
   
-  const result = await db.insert(tasks).values(enrichedData);
+  // Remove undefined values to prevent Drizzle from using DEFAULT keyword
+  const cleanedData: any = {};
+  for (const [key, value] of Object.entries(enrichedData)) {
+    if (value !== undefined) {
+      cleanedData[key] = value;
+    }
+  }
+  
+  const result = await db.insert(tasks).values(cleanedData);
   return result;
 }
 
