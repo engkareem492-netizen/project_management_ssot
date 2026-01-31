@@ -308,9 +308,6 @@ export default function Tasks() {
       requirementId: task.requirementId || '',
       dueDate: task.dueDate || '',
       assignDate: task.assignDate || '',
-      currentStatus: task.currentStatus || '',
-      lastUpdate: task.lastUpdate || '',
-      statusUpdate: task.statusUpdate || '',
     });
     setViewDialogOpen(true);
   };
@@ -331,9 +328,6 @@ export default function Tasks() {
       requirementId: task.requirementId || '',
       dueDate: task.dueDate || '',
       assignDate: task.assignDate || '',
-      currentStatus: task.currentStatus || '',
-      lastUpdate: task.lastUpdate || '',
-      statusUpdate: task.statusUpdate || '',
     });
     setViewDialogOpen(true);
   };
@@ -1009,32 +1003,10 @@ export default function Tasks() {
 
             {/* Status Updates */}
             <div className="border-t pt-4">
-              <h4 className="font-medium mb-3">Status Updates</h4>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
-                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Current Status</Label>
-                  {isEditMode ? (
-                    <Textarea value={editFormData.currentStatus} onChange={(e) => setEditFormData({...editFormData, currentStatus: e.target.value})} className="min-h-[60px]" />
-                  ) : (
-                    <p className="font-medium whitespace-pre-wrap">{selectedTask?.currentStatus || '-'}</p>
-                  )}
-                </div>
-                <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
-                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Last Update</Label>
-                  {isEditMode ? (
-                    <Textarea value={editFormData.lastUpdate} onChange={(e) => setEditFormData({...editFormData, lastUpdate: e.target.value})} className="min-h-[60px]" />
-                  ) : (
-                    <p className="font-medium whitespace-pre-wrap">{selectedTask?.lastUpdate || '-'}</p>
-                  )}
-                </div>
-                <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
-                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Status Update</Label>
-                  {isEditMode ? (
-                    <Textarea value={editFormData.statusUpdate} onChange={(e) => setEditFormData({...editFormData, statusUpdate: e.target.value})} className="min-h-[60px]" />
-                  ) : (
-                    <p className="font-medium whitespace-pre-wrap">{selectedTask?.statusUpdate || '-'}</p>
-                  )}
-                </div>
+              <h4 className="font-medium mb-3">Current Status</h4>
+              <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Status (Read-only - from latest history)</Label>
+                <p className="font-medium whitespace-pre-wrap">{selectedTask?.currentStatus || 'No status updates yet'}</p>
               </div>
             </div>
           </div>

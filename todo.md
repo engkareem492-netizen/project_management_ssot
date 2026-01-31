@@ -334,3 +334,15 @@
 - [x] Check requirements table for missing columns - CONFIRMED: all columns exist
 - [x] Apply same undefined value filtering fix to createRequirement function
 - [ ] Test requirement creation from task dialog
+
+
+## Feature Enhancement (Jan 31, 2026 - Simplify Status Tracking)
+
+### Make Current Status Read-Only and Auto-Populated
+- [x] Remove "Last Update" and "Status Update" fields from task detail view
+- [x] Make "Current Status" field read-only in task view
+- [x] Remove currentStatus, lastUpdate, statusUpdate from editFormData
+- [x] Update getAllTasksSorted to fetch latest action log for each task
+- [x] Auto-populate currentStatus from action log's changedFields.currentStatus.newValue
+- [x] Fallback to task.currentStatus or 'No updates' if no action log exists
+- [ ] Test status display after creating and updating tasks

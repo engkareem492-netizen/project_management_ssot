@@ -687,11 +687,30 @@ export async function getAllRequirementsSorted(projectId?: number) {
 export async function getAllTasksSorted(projectId?: number) {
   const db = await getDb();
   if (!db) return [];
+  
+  // Get all tasks
   let query = db.select().from(tasks);
   if (projectId) {
     query = query.where(eq(tasks.projectId, projectId)) as any;
   }
-  return await query.orderBy(tasks.taskId);
+  const allTasks = await query.orderBy(tasks.taskId);
+  
+  // For each task, get the latest action log entry to populate currentStatus
+  const tasksWithStatus = await Promise.all(allTasks.map(async (task) => {
+    const latestLog = await db.select().from(actionLogs)
+      .where(and(eq(actionLogs.entityType, 'task'), eq(actionLogs.entityId, task.taskId)))
+      .orderBy(desc(actionLogs.changedAt))
+      .limit(1);
+    
+    const currentStatus = latestLog[0]?.changedFields?.currentStatus?.newValue || task.currentStatus || 'No updates';
+    
+    return {
+      ...task,
+      currentStatus,
+    };
+  }));
+  
+  return tasksWithStatus;
 }
 
 export async function getAllIssuesSorted() {
