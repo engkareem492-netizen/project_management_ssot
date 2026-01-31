@@ -178,7 +178,32 @@ export async function getTaskByTaskId(taskId: string) {
 export async function createTask(data: InsertTask) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(tasks).values(data);
+  
+  // Populate stakeholder name fields from IDs
+  const enrichedData = { ...data };
+  
+  if (data.responsibleId) {
+    const stakeholder = await getStakeholderById(data.responsibleId);
+    if (stakeholder) enrichedData.responsible = stakeholder.fullName;
+  }
+  if (data.accountableId) {
+    const stakeholder = await getStakeholderById(data.accountableId);
+    if (stakeholder) enrichedData.accountable = stakeholder.fullName;
+  }
+  if (data.informedId) {
+    const stakeholder = await getStakeholderById(data.informedId);
+    if (stakeholder) enrichedData.informed = stakeholder.fullName;
+  }
+  if (data.consultedId) {
+    const stakeholder = await getStakeholderById(data.consultedId);
+    if (stakeholder) enrichedData.consulted = stakeholder.fullName;
+  }
+  if (data.ownerId) {
+    const stakeholder = await getStakeholderById(data.ownerId);
+    if (stakeholder) enrichedData.owner = stakeholder.fullName;
+  }
+  
+  const result = await db.insert(tasks).values(enrichedData);
   return result;
 }
 

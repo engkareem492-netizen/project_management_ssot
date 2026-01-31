@@ -1,0 +1,25 @@
+{
+  "query": "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'tasks' AND COLUMN_NAME IN ('responsible', 'accountable', 'informed', 'consulted', 'owner');",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4FzqaZAU5mRtC.root --database j37MQHBuWbY6PMBApJWnKm --execute SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'tasks' AND COLUMN_NAME IN ('responsible', 'accountable', 'informed', 'consulted', 'owner');",
+  "rows": [
+    {
+      "COLUMN_NAME": "responsible"
+    },
+    {
+      "COLUMN_NAME": "accountable"
+    },
+    {
+      "COLUMN_NAME": "informed"
+    },
+    {
+      "COLUMN_NAME": "consulted"
+    },
+    {
+      "COLUMN_NAME": "owner"
+    }
+  ],
+  "messages": [],
+  "stdout": "COLUMN_NAME\nresponsible\naccountable\ninformed\nconsulted\nowner\n",
+  "stderr": "",
+  "execution_time_ms": 1518
+}

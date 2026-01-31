@@ -299,3 +299,14 @@
 - [x] Add deliverables query to Tasks page
 - [x] Create deliverable mutation with auto-select
 - [ ] Test deliverable creation and linking
+
+
+## Bug Fix (Jan 31, 2026 - Database Schema Mismatch)
+
+### Tasks Table Schema Error
+- [x] Check if tasks table has stakeholder name columns (responsible, accountable, informed, consulted, owner) - CONFIRMED: columns exist
+- [x] Verify database schema matches Drizzle schema definition - MATCH CONFIRMED
+- [x] Fix createTask function to populate stakeholder names from IDs before insertion
+- [x] Restart server to apply fix
+- [ ] Test task creation with RACI assignments
+- [ ] Test task listing after fix
