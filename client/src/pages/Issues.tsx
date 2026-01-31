@@ -48,6 +48,23 @@ export default function Issues() {
   const [newTaskGroup, setNewTaskGroup] = useState({ name: '', description: '' });
   const [newIssueGroup, setNewIssueGroup] = useState({ name: '', description: '' });
   const [linkRequirement, setLinkRequirement] = useState(false);
+  const [addTaskDialogOpen, setAddTaskDialogOpen] = useState(false);
+  const [taskDetailDialogOpen, setTaskDetailDialogOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<any>(null);
+  const [newTask, setNewTask] = useState({
+    taskGroup: '',
+    description: '',
+    responsibleId: undefined as number | undefined,
+    accountableId: undefined as number | undefined,
+    consultedId: undefined as number | undefined,
+    informedId: undefined as number | undefined,
+    assignDate: '',
+    dueDate: '',
+    status: 'Not Started',
+    priority: 'Medium',
+    requirementId: '',
+    deliverableId: undefined as number | undefined,
+  });
   const [newDeliverable, setNewDeliverable] = useState({ description: '', status: 'Pending', dueDate: '' });
   const [newRequirement, setNewRequirement] = useState({
     description: '',
@@ -71,12 +88,14 @@ export default function Issues() {
     priority: 'Medium',
     requirementId: '',
     deliverableId: undefined,
+    taskId: '',
   });
 
   const { data: issues, isLoading, refetch } = trpc.issues.list.useQuery();
   const { data: stakeholders } = trpc.stakeholders.list.useQuery();
   const { data: requirements } = trpc.requirements.list.useQuery();
   const { data: deliverables } = trpc.deliverables.list.useQuery();
+  const { data: tasks } = trpc.tasks.list.useQuery();
   const { data: actionLogs } = trpc.actionLogs.getByEntity.useQuery(
     { entityType: "issue", entityId: selectedEntityId },
     { enabled: historyDialogOpen && !!selectedEntityId }
@@ -141,6 +160,32 @@ export default function Issues() {
     },
     onError: (error) => {
       toast.error(`Failed to create deliverable: ${error.message}`);
+    },
+  });
+
+  const createTaskMutation = trpc.tasks.create.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Task ${data.taskId} created successfully`);
+      setNewIssue({ ...newIssue, taskId: data.taskId });
+      utils.tasks.list.invalidate();
+      setAddTaskDialogOpen(false);
+      setNewTask({
+        taskGroup: '',
+        description: '',
+        responsibleId: undefined,
+        accountableId: undefined,
+        consultedId: undefined,
+        informedId: undefined,
+        assignDate: '',
+        dueDate: '',
+        status: 'Not Started',
+        priority: 'Medium',
+        requirementId: '',
+        deliverableId: undefined,
+      });
+    },
+    onError: (error) => {
+      toast.error(`Failed to create task: ${error.message}`);
     },
   });
 
@@ -282,6 +327,7 @@ export default function Issues() {
       projectId: currentProjectId!,
       requirementId: (linkRequirement && newIssue.requirementId && newIssue.requirementId !== "none") ? newIssue.requirementId : undefined,
       deliverableId: newIssue.deliverableId ? parseInt(newIssue.deliverableId) : undefined,
+      taskId: (newIssue.taskId && newIssue.taskId !== "none") ? newIssue.taskId : undefined,
     };
     createMutation.mutate(issueData);
   };
@@ -421,6 +467,29 @@ export default function Issues() {
     });
   };
 
+  const handleCreateTask = () => {
+    if (!newTask.description) {
+      toast.error('Description is required');
+      return;
+    }
+    if (!currentProjectId) {
+      toast.error('No project selected');
+      return;
+    }
+    createTaskMutation.mutate({
+      ...newTask,
+      projectId: currentProjectId,
+    });
+  };
+
+  const handleViewTaskDetails = (taskId: string) => {
+    const task = tasks?.find(t => t.taskId === taskId);
+    if (task) {
+      setSelectedTask(task);
+      setTaskDetailDialogOpen(true);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -545,6 +614,25 @@ export default function Issues() {
                                   className="h-5 w-5 p-0"
                                   onClick={() => issue.deliverableId && handleViewDeliverableDetails(issue.deliverableId)}
                                   title="View deliverable details"
+                                >
+                                  <Info className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <span>N/A</span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium min-w-[100px]">Task:</span>
+                            {issue.taskId ? (
+                              <div className="flex items-center gap-1">
+                                <Badge variant="secondary">{issue.taskId}</Badge>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-5 w-5 p-0"
+                                  onClick={() => issue.taskId && handleViewTaskDetails(issue.taskId)}
+                                  title="View task details"
                                 >
                                   <Info className="w-3 h-3" />
                                 </Button>
@@ -774,6 +862,37 @@ export default function Issues() {
                       disabled={createDeliverableMutation.isPending}
                     >
                       {createDeliverableMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="taskId">Task</Label>
+                  <div className="flex gap-2">
+                    <Select
+                      value={newIssue.taskId}
+                      onValueChange={(value) => setNewIssue({ ...newIssue, taskId: value })}
+                    >
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Select task..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {tasks?.map((task) => (
+                          <SelectItem key={task.id} value={task.taskId}>
+                            {task.taskId} - {task.description?.substring(0, 50) || 'No description'}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      onClick={() => setAddTaskDialogOpen(true)}
+                      title="Add new task"
+                      disabled={createTaskMutation.isPending}
+                    >
+                      {createTaskMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                     </Button>
                   </div>
                 </div>
@@ -1487,6 +1606,295 @@ export default function Issues() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeliverableDetailDialogOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Task Dialog */}
+      <Dialog open={addTaskDialogOpen} onOpenChange={setAddTaskDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create New Task</DialogTitle>
+            <DialogDescription>
+              Add a new task to link with this issue. Task ID will be auto-generated (T-XXXX format).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6 py-4">
+            {/* Basic Information Section */}
+            <div className="space-y-4">
+              <h4 className="text-sm font-semibold border-b pb-2">Basic Information</h4>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="taskGroup">Task Group *</Label>
+                  <div className="flex gap-2">
+                    <Select
+                      value={newTask.taskGroup}
+                      onValueChange={(value) => setNewTask({ ...newTask, taskGroup: value })}
+                    >
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Select task group..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {taskGroups?.map((group) => (
+                          <SelectItem key={group.id} value={group.name}>
+                            {group.idCode ? `${group.idCode} - ${group.name}` : group.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      onClick={() => setTaskGroupDialogOpen(true)}
+                      title="Add new task group"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="taskDescription">Description *</Label>
+                  <Input
+                    id="taskDescription"
+                    value={newTask.description}
+                    onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
+                    placeholder="Task description..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="taskRequirementId">Requirement</Label>
+                  <div className="flex gap-2">
+                    <Select
+                      value={newTask.requirementId}
+                      onValueChange={(value) => setNewTask({ ...newTask, requirementId: value })}
+                    >
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Select requirement..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {requirements?.map((req) => (
+                          <SelectItem key={req.id} value={req.idCode}>
+                            {req.idCode} - {req.description?.substring(0, 50) || 'No description'}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      onClick={() => setAddRequirementDialogOpen(true)}
+                      title="Add new requirement"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="taskDeliverableId">Deliverable</Label>
+                  <div className="flex gap-2">
+                    <Select
+                      value={newTask.deliverableId?.toString() || ''}
+                      onValueChange={(value) => setNewTask({ ...newTask, deliverableId: value ? parseInt(value) : undefined })}
+                    >
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Select deliverable..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {deliverables?.map((del) => (
+                          <SelectItem key={del.id} value={del.id.toString()}>
+                            {del.deliverableId} - {del.description?.substring(0, 50) || 'No description'}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      onClick={() => setAddDeliverableDialogOpen(true)}
+                      title="Add new deliverable"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* RACI Assignment Section */}
+            <div className="space-y-4">
+              <h4 className="text-sm font-semibold border-b pb-2">RACI Assignment</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="responsible">Responsible (R)</Label>
+                  <SelectWithCreate
+                    type="stakeholder"
+                    value={newTask.responsibleId?.toString() || ''}
+                    onValueChange={(value) => setNewTask({ ...newTask, responsibleId: value ? parseInt(value) : undefined })}
+                    placeholder="Select responsible person..."
+                    projectId={currentProjectId || undefined}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="accountable">Accountable (A)</Label>
+                  <SelectWithCreate
+                    type="stakeholder"
+                    value={newTask.accountableId?.toString() || ''}
+                    onValueChange={(value) => setNewTask({ ...newTask, accountableId: value ? parseInt(value) : undefined })}
+                    placeholder="Select accountable person..."
+                    projectId={currentProjectId || undefined}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="consulted">Consulted (C)</Label>
+                  <SelectWithCreate
+                    type="stakeholder"
+                    value={newTask.consultedId?.toString() || ''}
+                    onValueChange={(value) => setNewTask({ ...newTask, consultedId: value ? parseInt(value) : undefined })}
+                    placeholder="Select consulted person..."
+                    projectId={currentProjectId || undefined}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="informed">Informed (I)</Label>
+                  <SelectWithCreate
+                    type="stakeholder"
+                    value={newTask.informedId?.toString() || ''}
+                    onValueChange={(value) => setNewTask({ ...newTask, informedId: value ? parseInt(value) : undefined })}
+                    placeholder="Select informed person..."
+                    projectId={currentProjectId || undefined}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Dates Section */}
+            <div className="space-y-4">
+              <h4 className="text-sm font-semibold border-b pb-2">Dates</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="assignDate">Assign Date</Label>
+                  <Input
+                    id="assignDate"
+                    type="date"
+                    value={newTask.assignDate}
+                    onChange={(e) => setNewTask({ ...newTask, assignDate: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="dueDate">Due Date (ETD)</Label>
+                  <Input
+                    id="dueDate"
+                    type="date"
+                    value={newTask.dueDate}
+                    onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Status & Priority Section */}
+            <div className="space-y-4">
+              <h4 className="text-sm font-semibold border-b pb-2">Status & Priority</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="taskStatus">Status</Label>
+                  <SelectWithCreate
+                    type="status"
+                    value={newTask.status}
+                    onValueChange={(value) => setNewTask({ ...newTask, status: value })}
+                    placeholder="Select status"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="taskPriority">Priority</Label>
+                  <SelectWithCreate
+                    type="priority"
+                    value={newTask.priority}
+                    onValueChange={(value) => setNewTask({ ...newTask, priority: value })}
+                    placeholder="Select priority"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddTaskDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleCreateTask} disabled={createTaskMutation.isPending}>
+              {createTaskMutation.isPending ? 'Creating...' : 'Create'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Task Detail Dialog */}
+      <Dialog open={taskDetailDialogOpen} onOpenChange={setTaskDetailDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Task Details</DialogTitle>
+            <DialogDescription>
+              View full details of the linked task
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">ID</Label>
+                <p className="font-medium">{selectedTask?.taskId}</p>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Task Group</Label>
+                <p className="font-medium">{selectedTask?.taskGroup || 'N/A'}</p>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Status</Label>
+                <Badge>{selectedTask?.status || 'N/A'}</Badge>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Priority</Label>
+                <Badge>{selectedTask?.priority || 'N/A'}</Badge>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Assign Date</Label>
+                <p className="font-medium">{selectedTask?.assignDate || 'N/A'}</p>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Due Date</Label>
+                <p className="font-medium">{selectedTask?.dueDate || 'N/A'}</p>
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Description</Label>
+              <p className="font-medium whitespace-pre-wrap">{selectedTask?.description || 'N/A'}</p>
+            </div>
+            <div className="border-t pt-4">
+              <h4 className="font-medium mb-3">RACI Assignment</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Responsible (R)</Label>
+                  <p className="font-medium">{stakeholders?.find(s => s.id === selectedTask?.responsibleId)?.fullName || 'N/A'}</p>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Accountable (A)</Label>
+                  <p className="font-medium">{stakeholders?.find(s => s.id === selectedTask?.accountableId)?.fullName || 'N/A'}</p>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Consulted (C)</Label>
+                  <p className="font-medium">{stakeholders?.find(s => s.id === selectedTask?.consultedId)?.fullName || 'N/A'}</p>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Informed (I)</Label>
+                  <p className="font-medium">{stakeholders?.find(s => s.id === selectedTask?.informedId)?.fullName || 'N/A'}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTaskDetailDialogOpen(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

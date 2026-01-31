@@ -57,6 +57,13 @@
       "when": 1769896978962,
       "tag": "0007_cooing_anthem",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1769897482046,
+      "tag": "0008_talented_timeslip",
+      "breakpoints": true
     }
   ]
 }

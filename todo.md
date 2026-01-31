@@ -448,3 +448,16 @@
 - [x] Add deliverable dropdown and linking to Issues
 - [x] Add deliverableId column to issues table in database
 - [ ] Test all features on Issues page
+
+
+## Feature Enhancement (Feb 1, 2026 - Task Creation from Issues)
+
+### Add Task Creation and Linking to Issues Page
+- [x] Add taskId field to issues table schema and database
+- [x] Add task dropdown to Issue creation dialog
+- [x] Add + button for inline Task creation from Issue dialog
+- [x] Create comprehensive task creation dialog with all fields (Task Group, Description, RACI, Dates, Status, Priority)
+- [x] Auto-select newly created task in issue form
+- [x] Add task field display in Issues table with info button
+- [x] Add task detail dialog to view full task information
+- [ ] Test task creation and linking from Issues page
