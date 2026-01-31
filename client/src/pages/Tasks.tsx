@@ -285,7 +285,8 @@ export default function Tasks() {
       projectId: currentProjectId!,
       requirementId: linkRequirement && newTask.requirementId && newTask.requirementId !== "none" ? newTask.requirementId : undefined,
       dueDate: newTask.dueDate || undefined,
-      assignDate: newTask.assignDate || undefined,
+      // Preserve assignDate default value (today's date) if not changed
+      assignDate: newTask.assignDate,
     };
     createMutation.mutate(taskData);
   };

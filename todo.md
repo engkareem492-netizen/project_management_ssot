@@ -358,3 +358,27 @@
 - [x] Update handleCreate to only include requirementId when checkbox is checked
 - [x] Reset linkRequirement checkbox after successful task creation
 - [ ] Test task creation with and without requirement linking
+
+
+## Bug Fixes & Enhancements (Jan 31, 2026 - Today Dashboard & Assign Date)
+
+### Fix Assign Date Not Saving Default Value
+- [x] Investigate why assign date defaults to today but saves as empty when not changed - Found: `|| undefined` was converting value to undefined
+- [x] Ensure default assign date value is included in task creation mutation - Removed `|| undefined` logic
+- [ ] Test task creation with default assign date (not manually changed)
+
+### Adjust Card Colors for Dark/Light Mode
+- [x] Update upcoming tasks card background color for visibility in both modes
+- [x] Use semantic Tailwind color tokens (amber-50/50 for light, amber-950/30 for dark)
+- [x] Remove conflicting className and inline style - replaced with theme-aware classes
+- [ ] Test visibility in both dark and light themes
+
+### Enhance Today Dashboard with Filtering
+- [x] Add filter controls for Responsible, Status, Priority
+- [x] Add grouping options dropdown (by Responsible, by Status, by Priority, or None)
+- [x] Implement filtering logic that applies to all task categories (Today, Overdue, Upcoming)
+- [x] Add Clear Filters button that appears when filters are active
+- [x] Extract unique values from tasks for filter dropdowns
+- [ ] Implement grouping display logic (currently dropdown exists but grouping not applied)
+- [ ] Show task counts per group/filter
+- [ ] Persist filter/group preferences in local storage

@@ -14,6 +14,12 @@ export default function Today() {
   const [editingTaskStatus, setEditingTaskStatus] = useState("");
   const [editingRequirementId, setEditingRequirementId] = useState<number | null>(null);
   const [editingRequirementStatus, setEditingRequirementStatus] = useState("");
+  
+  // Filtering and grouping state
+  const [filterResponsible, setFilterResponsible] = useState<string>("all");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filterPriority, setFilterPriority] = useState<string>("all");
+  const [groupBy, setGroupBy] = useState<string>("none");
 
   const utils = trpc.useUtils();
   const { data: tasks, isLoading: tasksLoading } = trpc.tasks.list.useQuery();
@@ -62,27 +68,56 @@ export default function Today() {
     return date;
   };
 
+  // Apply filters to tasks
+  const applyFilters = (taskList: any[]) => {
+    return taskList.filter(t => {
+      if (filterResponsible !== "all" && t.responsible !== filterResponsible) return false;
+      if (filterStatus !== "all" && t.status !== filterStatus) return false;
+      if (filterPriority !== "all" && t.priority !== filterPriority) return false;
+      return true;
+    });
+  };
+
+  // Get unique values for filters
+  const uniqueResponsibles = useMemo(() => {
+    const responsibles = tasks?.map(t => t.responsible).filter((r): r is string => Boolean(r)) || [];
+    return Array.from(new Set(responsibles));
+  }, [tasks]);
+
+  const uniqueStatuses = useMemo(() => {
+    const statuses = tasks?.map(t => t.status).filter((s): s is string => Boolean(s)) || [];
+    return Array.from(new Set(statuses));
+  }, [tasks]);
+
+  const uniquePriorities = useMemo(() => {
+    const priorities = tasks?.map(t => t.priority).filter((p): p is string => Boolean(p)) || [];
+    return Array.from(new Set(priorities));
+  }, [tasks]);
+
   // Categorize tasks
   const tasksToday = useMemo(() => {
-    return tasks?.filter(t => {
+    const filtered = tasks?.filter(t => {
       const dueDate = parseDate(t.dueDate);
       return dueDate && dueDate.getTime() === today.getTime();
     }) || [];
-  }, [tasks, today]);
+    return applyFilters(filtered);
+  }, [tasks, today, filterResponsible, filterStatus, filterPriority]);
 
   const tasksOverdue = useMemo(() => {
-    return tasks?.filter(t => {
+    const filtered = tasks?.filter(t => {
       const dueDate = parseDate(t.dueDate);
       return dueDate && dueDate.getTime() < today.getTime() && t.currentStatus !== "Completed";
     }) || [];
-  }, [tasks, today]);
+    return applyFilters(filtered);
+  }, [tasks, today, filterResponsible, filterStatus, filterPriority]);
 
   const tasksUpcoming = useMemo(() => {
-    return tasks?.filter(t => {
+    const filtered = tasks?.filter(t => {
       const dueDate = parseDate(t.dueDate);
       return dueDate && dueDate.getTime() > today.getTime() && dueDate.getTime() <= sevenDaysLater.getTime();
     }) || [];
-  }, [tasks, today, sevenDaysLater]);
+    return applyFilters(filtered);
+  }, [tasks, today, sevenDaysLater, filterResponsible, filterStatus, filterPriority]);
 
   // Categorize requirements
   const requirementsToday = useMemo(() => {
@@ -168,6 +203,88 @@ export default function Today() {
 
   return (
     <div className="space-y-6 p-6">
+      {/* Filter Controls */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Filter & Group Tasks</CardTitle>
+          <CardDescription>Customize your view to track tasks more effectively</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="space-y-2">
+              <Label>Responsible</Label>
+              <Select value={filterResponsible} onValueChange={setFilterResponsible}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  {uniqueResponsibles.map(r => (
+                    <SelectItem key={r} value={r}>{r}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  {uniqueStatuses.map(s => (
+                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Priority</Label>
+              <Select value={filterPriority} onValueChange={setFilterPriority}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  {uniquePriorities.map(p => (
+                    <SelectItem key={p} value={p}>{p}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Group By</Label>
+              <Select value={groupBy} onValueChange={setGroupBy}>
+                <SelectTrigger>
+                  <SelectValue placeholder="None" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  <SelectItem value="responsible">Responsible</SelectItem>
+                  <SelectItem value="status">Status</SelectItem>
+                  <SelectItem value="priority">Priority</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          {(filterResponsible !== "all" || filterStatus !== "all" || filterPriority !== "all") && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-4"
+              onClick={() => {
+                setFilterResponsible("all");
+                setFilterStatus("all");
+                setFilterPriority("all");
+              }}
+            >
+              Clear Filters
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
@@ -383,7 +500,7 @@ export default function Today() {
           <CardContent>
             <div className="space-y-3">
               {tasksUpcoming.map((task) => (
-                <Card key={task.id} className="p-4 bg-amber-50" style={{backgroundColor: '#ffd6d6'}}>
+                <Card key={task.id} className="p-4 border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/30">
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
