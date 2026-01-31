@@ -632,16 +632,24 @@ export async function getRequirementWithLinkedItems(requirementId: string) {
 }
 
 // Get sorted lists by ID
-export async function getAllRequirementsSorted() {
+export async function getAllRequirementsSorted(projectId?: number) {
   const db = await getDb();
   if (!db) return [];
-  return await db.select().from(requirements).orderBy(requirements.idCode);
+  let query = db.select().from(requirements);
+  if (projectId) {
+    query = query.where(eq(requirements.projectId, projectId)) as any;
+  }
+  return await query.orderBy(requirements.idCode);
 }
 
-export async function getAllTasksSorted() {
+export async function getAllTasksSorted(projectId?: number) {
   const db = await getDb();
   if (!db) return [];
-  return await db.select().from(tasks).orderBy(tasks.taskId);
+  let query = db.select().from(tasks);
+  if (projectId) {
+    query = query.where(eq(tasks.projectId, projectId)) as any;
+  }
+  return await query.orderBy(tasks.taskId);
 }
 
 export async function getAllIssuesSorted() {

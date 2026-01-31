@@ -345,9 +345,11 @@ export const appRouter = router({
 
   // Requirements
   requirements: router({
-    list: protectedProcedure.query(async () => {
-      return await db.getAllRequirementsSorted();
-    }),
+    list: protectedProcedure
+      .input(z.object({ projectId: z.number() }).optional())
+      .query(async ({ input }) => {
+        return await db.getAllRequirementsSorted(input?.projectId);
+      }),
 
     get: protectedProcedure
       .input(z.object({ idCode: z.string() }))
@@ -504,9 +506,11 @@ export const appRouter = router({
 
   // Tasks
   tasks: router({
-    list: protectedProcedure.query(async () => {
-      return await db.getAllTasksSorted();
-    }),
+    list: protectedProcedure
+      .input(z.object({ projectId: z.number() }).optional())
+      .query(async ({ input }) => {
+        return await db.getAllTasksSorted(input?.projectId);
+      }),
 
     get: protectedProcedure
       .input(z.object({ taskId: z.string() }))
@@ -817,9 +821,11 @@ export const appRouter = router({
 
   // Stakeholders
   stakeholders: router({
-    list: protectedProcedure.query(async () => {
-      return await db.getAllStakeholders();
-    }),
+    list: protectedProcedure
+      .input(z.object({ projectId: z.number() }).optional())
+      .query(async ({ input }) => {
+        return await db.getAllStakeholders(input?.projectId);
+      }),
 
     get: protectedProcedure
       .input(z.object({ id: z.number() }))

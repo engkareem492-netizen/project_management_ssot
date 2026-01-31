@@ -216,3 +216,14 @@
 - [x] Show breakdown by Status (Open, In Progress, Completed, etc.)
 - [x] Add charts/visualizations for task distribution (bar chart and pie chart)
 - [ ] Link to filter tasks by Responsible person (future enhancement)
+
+
+## Critical Bug Fix (Jan 31, 2026 - Batch 20)
+
+### Router projectId Parameter Issue
+- [ ] Fix all tRPC routers to pass projectId from context to database functions
+- [ ] Update stakeholders.list router to pass projectId
+- [ ] Update requirements.list router to pass projectId
+- [ ] Update tasks.list router to pass projectId
+- [ ] Update idSequences queries to use projectId from context
+- [ ] Test all routers with projectId filtering
