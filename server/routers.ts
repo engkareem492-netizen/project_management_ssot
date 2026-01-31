@@ -520,6 +520,7 @@ export const appRouter = router({
         taskGroup: z.string().optional(),
         dependencyId: z.string().optional(),
         requirementId: z.string().optional(),
+        deliverableId: z.number().optional(),
         description: z.string().optional(),
         responsible: z.string().optional(),
         responsibleId: z.number().optional(),
@@ -538,10 +539,25 @@ export const appRouter = router({
         priority: z.string().optional(),
       }))
       .mutation(async ({ input }) => {
-        // Generate auto ID
+        // Generate auto ID for task
         const taskId = await db.getNextId('task', 'T', input.projectId);
         await db.createTask({ ...input, taskId, projectId: input.projectId });
-        return { success: true, taskId };
+        
+        // Auto-create Requirement linked to this Task
+        const requirementIdCode = await db.getNextId('requirement', 'Q', input.projectId);
+        await db.createRequirement({
+          projectId: input.projectId,
+          idCode: requirementIdCode,
+          taskGroup: input.taskGroup,
+          description: input.description,
+          owner: input.responsible || input.owner,
+          ownerId: input.responsibleId || input.ownerId,
+          status: input.status,
+          priority: input.priority,
+          lastUpdate: input.statusUpdate,
+        });
+        
+        return { success: true, taskId, requirementIdCode };
       }),
 
     update: protectedProcedure

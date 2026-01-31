@@ -185,3 +185,34 @@
 ## Bug Fixes (Jan 31, 2026 - Batch 18)
 
 - [x] Fix Issues page mutation error - projectId is undefined when creating issues
+
+
+## Feature Requests (Jan 31, 2026 - Batch 19 - V5.0)
+
+### Requirements Auto-Creation from Tasks
+- [x] When creating a Task, automatically create a linked Requirement
+- [x] Requirement should be created with Task description and inherit Task Group
+- [x] Requirement should be linked to the Task that created it
+
+### Deliverable-Task Linking
+- [x] Add deliverableId field to tasks table
+- [ ] Add dropdown in Task edit dialog to select/link a Deliverable (UI enhancement)
+- [ ] Display linked Deliverable in Task view (UI enhancement)
+
+### Task Status Management
+- [ ] Enable Status update directly in Task edit dialog
+- [ ] Status should be editable alongside other Task fields
+- [ ] Save status changes to action history
+
+### Simplify Status Display
+- [ ] Remove "Last Update" and "Status Update" columns from Tasks table
+- [ ] Keep only "Current Status" column (read-only)
+- [ ] Display Last Update text from the last history entry in the detail view
+- [ ] Show history of all status changes in the detail dialog
+
+### Task Dashboard with Responsible Segregation
+- [x] Create new Task Dashboard page showing task distribution by Responsible
+- [x] Display count of tasks per Responsible person
+- [x] Show breakdown by Status (Open, In Progress, Completed, etc.)
+- [x] Add charts/visualizations for task distribution (bar chart and pie chart)
+- [ ] Link to filter tasks by Responsible person (future enhancement)

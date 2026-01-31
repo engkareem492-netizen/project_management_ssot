@@ -148,6 +148,7 @@ export const tasks = mysqlTable("tasks", {
   taskGroup: varchar("taskGroup", { length: 100 }),
   dependencyId: varchar("dependencyId", { length: 50 }),
   requirementId: varchar("requirementId", { length: 50 }),
+  deliverableId: int("deliverableId"),
   description: text("description"),
   responsible: varchar("responsible", { length: 200 }),
   responsibleId: int("responsibleId"),

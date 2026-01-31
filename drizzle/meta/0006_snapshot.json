@@ -1,8 +1,8 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "5f93f326-1e75-483e-9609-1a9238b01bc4",
-  "prevId": "ac9287cf-28d8-4416-aa6a-f2966330cf4e",
+  "id": "35e009b6-1a69-421a-9ffb-37cb7487d04c",
+  "prevId": "5f93f326-1e75-483e-9609-1a9238b01bc4",
   "tables": {
     "actionLogs": {
       "name": "actionLogs",
@@ -1547,6 +1547,13 @@
         "requirementId": {
           "name": "requirementId",
           "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "deliverableId": {
+          "name": "deliverableId",
+          "type": "int",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
