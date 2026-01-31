@@ -382,3 +382,17 @@
 - [ ] Implement grouping display logic (currently dropdown exists but grouping not applied)
 - [ ] Show task counts per group/filter
 - [ ] Persist filter/group preferences in local storage
+
+
+## Feature Enhancement (Jan 31, 2026 - Display Requirement & Deliverable in Tasks)
+
+### Show Requirement and Deliverable in Task Table
+- [x] Add Requirement column to task table showing requirement ID code
+- [x] Add Deliverable column to task table showing deliverable ID (formatted as DL-XXXX)
+- [x] Add info icon button ("i") next to requirement that opens detail dialog
+- [x] Add info icon button ("i") next to deliverable that opens detail dialog
+- [x] Create handleViewRequirementDetails handler to find and display requirement
+- [x] Create handleViewDeliverableDetails handler to find and display deliverable
+- [x] Display requirement details in dialog (ID, description, type, category, status, priority, owner, source type, ref source)
+- [x] Display deliverable details in dialog (ID, description, status, due date)
+- [ ] Test requirement and deliverable info dialogs

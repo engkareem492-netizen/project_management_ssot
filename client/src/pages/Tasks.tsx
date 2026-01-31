@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Search, Edit, History, Loader2, Plus, Trash2, Settings, Eye, Save, X, CheckSquare } from "lucide-react";
+import { Search, Edit, History, Loader2, Plus, Trash2, Settings, Eye, Save, X, CheckSquare, Info } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -57,6 +57,10 @@ export default function Tasks() {
   const [statusUpdateDialogOpen, setStatusUpdateDialogOpen] = useState(false);
   const [selectedTaskForStatus, setSelectedTaskForStatus] = useState<any>(null);
   const [statusUpdateText, setStatusUpdateText] = useState('');
+  const [requirementDetailDialogOpen, setRequirementDetailDialogOpen] = useState(false);
+  const [selectedRequirement, setSelectedRequirement] = useState<any>(null);
+  const [deliverableDetailDialogOpen, setDeliverableDetailDialogOpen] = useState(false);
+  const [selectedDeliverable, setSelectedDeliverable] = useState<any>(null);
   const [linkRequirement, setLinkRequirement] = useState(false);
   const [newTask, setNewTask] = useState<any>({
     taskGroup: '',
@@ -296,6 +300,22 @@ export default function Tasks() {
     setDeleteDialogOpen(true);
   };
 
+  const handleViewRequirementDetails = (requirementId: string | number) => {
+    const requirement = requirements?.find(r => r.idCode === requirementId || r.id === requirementId);
+    if (requirement) {
+      setSelectedRequirement(requirement);
+      setRequirementDetailDialogOpen(true);
+    }
+  };
+
+  const handleViewDeliverableDetails = (deliverableId: number) => {
+    const deliverable = deliverables?.find(d => d.id === deliverableId);
+    if (deliverable) {
+      setSelectedDeliverable(deliverable);
+      setDeliverableDetailDialogOpen(true);
+    }
+  };
+
   const handleViewDetails = (task: any) => {
     setSelectedTask(task);
     setIsEditMode(false);
@@ -457,8 +477,8 @@ export default function Tasks() {
                   <TableHead className="w-[100px]">Task ID</TableHead>
                   <TableHead className="w-[120px]">Task Group</TableHead>
                   <TableHead>Description</TableHead>
-                  <TableHead>Requirement ID</TableHead>
-                  <TableHead>Req Status</TableHead>
+                  <TableHead>Requirement</TableHead>
+                  <TableHead>Deliverable</TableHead>
                   <TableHead>Responsible</TableHead>
                   <TableHead>Due Date</TableHead>
                   <TableHead>Current Status</TableHead>
@@ -471,10 +491,38 @@ export default function Tasks() {
                     <TableCell className="font-medium">{task.taskId}</TableCell>
                     <TableCell>{task.taskGroup || 'N/A'}</TableCell>
                     <TableCell className="max-w-xs truncate">{task.description}</TableCell>
-                    <TableCell>{task.requirementId || 'N/A'}</TableCell>
                     <TableCell>
-                      {getRequirementStatus(task.requirementId) ? (
-                        <Badge variant="outline">{getRequirementStatus(task.requirementId)}</Badge>
+                      {task.requirementId ? (
+                        <div className="flex items-center gap-2">
+                          <span>{task.requirementId}</span>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 w-6 p-0"
+                            onClick={() => task.requirementId && handleViewRequirementDetails(task.requirementId)}
+                            title="View requirement details"
+                          >
+                            <Info className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">N/A</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {task.deliverableId ? (
+                        <div className="flex items-center gap-2">
+                          <span>DL-{String(task.deliverableId).padStart(4, '0')}</span>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 w-6 p-0"
+                            onClick={() => task.deliverableId && handleViewDeliverableDetails(task.deliverableId)}
+                            title="View deliverable details"
+                          >
+                            <Info className="w-3 h-3" />
+                          </Button>
+                        </div>
                       ) : (
                         <span className="text-muted-foreground">N/A</span>
                       )}
@@ -1370,6 +1418,94 @@ export default function Tasks() {
               {updateMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Updating...</> : 'Update Status'}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Requirement Detail Dialog */}
+      <Dialog open={requirementDetailDialogOpen} onOpenChange={setRequirementDetailDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Requirement Details</DialogTitle>
+            <DialogDescription>
+              Full details for requirement {selectedRequirement?.idCode}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedRequirement && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs text-muted-foreground">ID Code</Label>
+                  <p className="font-medium">{selectedRequirement.idCode}</p>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Status</Label>
+                  <Badge>{selectedRequirement.status || 'N/A'}</Badge>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Priority</Label>
+                  <Badge variant="outline">{selectedRequirement.priority || 'N/A'}</Badge>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Type</Label>
+                  <p>{selectedRequirement.type || 'N/A'}</p>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Category</Label>
+                  <p>{selectedRequirement.category || 'N/A'}</p>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Owner</Label>
+                  <p>{selectedRequirement.owner || 'N/A'}</p>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Source Type</Label>
+                  <p>{selectedRequirement.sourceType || 'N/A'}</p>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Ref Source</Label>
+                  <p>{selectedRequirement.refSource || 'N/A'}</p>
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Description</Label>
+                <p className="mt-1">{selectedRequirement.description || 'No description'}</p>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Deliverable Detail Dialog */}
+      <Dialog open={deliverableDetailDialogOpen} onOpenChange={setDeliverableDetailDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Deliverable Details</DialogTitle>
+            <DialogDescription>
+              Full details for deliverable DL-{String(selectedDeliverable?.id).padStart(4, '0')}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedDeliverable && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs text-muted-foreground">ID</Label>
+                  <p className="font-medium">DL-{String(selectedDeliverable.id).padStart(4, '0')}</p>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Status</Label>
+                  <Badge>{selectedDeliverable.status || 'N/A'}</Badge>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Due Date</Label>
+                  <p>{selectedDeliverable.dueDate || 'N/A'}</p>
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Description</Label>
+                <p className="mt-1">{selectedDeliverable.description || 'No description'}</p>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
