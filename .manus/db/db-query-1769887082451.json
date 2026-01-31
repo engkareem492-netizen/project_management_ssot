@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE `requirements` ADD COLUMN `projectId` INT NOT NULL DEFAULT 1 AFTER `id`;\nALTER TABLE `tasks` ADD COLUMN `projectId` INT NOT NULL DEFAULT 1 AFTER `id`;\nALTER TABLE `issues` ADD COLUMN `projectId` INT NOT NULL DEFAULT 1 AFTER `id`;\nALTER TABLE `dependencies` ADD COLUMN `projectId` INT NOT NULL DEFAULT 1 AFTER `id`;\nALTER TABLE `deliverables` ADD COLUMN `projectId` INT NOT NULL DEFAULT 1 AFTER `id`;\nALTER TABLE `stakeholders` ADD COLUMN `projectId` INT NOT NULL DEFAULT 1 AFTER `id`;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4FzqaZAU5mRtC.root --database j37MQHBuWbY6PMBApJWnKm --execute ALTER TABLE `requirements` ADD COLUMN `projectId` INT NOT NULL DEFAULT 1 AFTER `id`;\nALTER TABLE `tasks` ADD COLUMN `projectId` INT NOT NULL DEFAULT 1 AFTER `id`;\nALTER TABLE `issues` ADD COLUMN `projectId` INT NOT NULL DEFAULT 1 AFTER `id`;\nALTER TABLE `dependencies` ADD COLUMN `projectId` INT NOT NULL DEFAULT 1 AFTER `id`;\nALTER TABLE `deliverables` ADD COLUMN `projectId` INT NOT NULL DEFAULT 1 AFTER `id`;\nALTER TABLE `stakeholders` ADD COLUMN `projectId` INT NOT NULL DEFAULT 1 AFTER `id`;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 5835
+}

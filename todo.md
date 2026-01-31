@@ -227,3 +227,15 @@
 - [ ] Update tasks.list router to pass projectId
 - [ ] Update idSequences queries to use projectId from context
 - [ ] Test all routers with projectId filtering
+
+
+## Critical Database Schema Fix (Jan 31, 2026 - Batch 21)
+
+### Add projectId Column to All Tables
+- [x] Add projectId column to requirements table
+- [x] Add projectId column to tasks table
+- [x] Add projectId column to issues table
+- [x] Add projectId column to dependencies table
+- [x] Add projectId column to deliverables table
+- [x] Add projectId column to stakeholders table
+- [x] Test all queries after adding projectId columns
