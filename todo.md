@@ -407,3 +407,19 @@
 - [x] Add proper text wrapping - description shows full text without truncation
 - [x] Ensure Current Status displays as badge without overflow
 - [ ] Test table responsiveness and readability
+
+
+## Feature Enhancement (Jan 31, 2026 - Inline Task/Issue Group Creation)
+
+### Add + Buttons for Task Group and Issue Group in Requirement Creation
+- [x] Add + button next to Task Group dropdown in requirement creation dialog (Tasks page)
+- [x] Add + button next to Issue Group dropdown in requirement creation dialog (Tasks page)
+- [x] Create Task Group inline creation dialog with name and description fields
+- [x] Create Issue Group inline creation dialog with name and description fields
+- [x] Add mutations for creating Task Group and Issue Group from requirement dialog
+- [x] Auto-select newly created Task Group/Issue Group in requirement form
+- [x] Apply same functionality to Requirements page requirement creation dialog
+- [x] Replace prompt-based creation with Dialog components
+- [x] Update mutations to close dialogs and reset state
+- [x] Add Task Group and Issue Group creation dialogs to Requirements page
+- [ ] Test Task Group and Issue Group creation from both pages

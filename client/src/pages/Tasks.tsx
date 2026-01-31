@@ -60,6 +60,10 @@ export default function Tasks() {
   const [requirementDetailDialogOpen, setRequirementDetailDialogOpen] = useState(false);
   const [selectedRequirement, setSelectedRequirement] = useState<any>(null);
   const [deliverableDetailDialogOpen, setDeliverableDetailDialogOpen] = useState(false);
+  const [taskGroupDialogOpen, setTaskGroupDialogOpen] = useState(false);
+  const [issueGroupDialogOpen, setIssueGroupDialogOpen] = useState(false);
+  const [newTaskGroup, setNewTaskGroup] = useState({ name: '', description: '' });
+  const [newIssueGroup, setNewIssueGroup] = useState({ name: '', description: '' });
   const [selectedDeliverable, setSelectedDeliverable] = useState<any>(null);
   const [linkRequirement, setLinkRequirement] = useState(false);
   const [newTask, setNewTask] = useState<any>({
@@ -110,6 +114,32 @@ export default function Tasks() {
     },
     onError: (error) => {
       toast.error(`Failed to create task group: ${error.message}`);
+    },
+  });
+
+  const createTaskGroupForRequirementMutation = trpc.dropdownOptions.taskGroups.create.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Task Group "${data.name}" created successfully`);
+      setNewRequirement({ ...newRequirement, taskGroup: data.name });
+      utils.dropdownOptions.taskGroups.getAll.invalidate();
+      setTaskGroupDialogOpen(false);
+      setNewTaskGroup({ name: '', description: '' });
+    },
+    onError: (error) => {
+      toast.error(`Failed to create task group: ${error.message}`);
+    },
+  });
+
+  const createIssueGroupForRequirementMutation = trpc.dropdownOptions.issueGroups.create.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Issue Group "${data.name}" created successfully`);
+      setNewRequirement({ ...newRequirement, issueGroup: data.name });
+      utils.dropdownOptions.issueGroups.getAll.invalidate();
+      setIssueGroupDialogOpen(false);
+      setNewIssueGroup({ name: '', description: '' });
+    },
+    onError: (error) => {
+      toast.error(`Failed to create issue group: ${error.message}`);
     },
   });
 
@@ -1169,39 +1199,61 @@ export default function Tasks() {
           <div className="grid grid-cols-2 gap-4 py-4">
             <div className="space-y-2">
               <Label>Task Group</Label>
-              <Select
-                value={newRequirement.taskGroup}
-                onValueChange={(value) => setNewRequirement({ ...newRequirement, taskGroup: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select task group" />
-                </SelectTrigger>
-                <SelectContent>
-                  {taskGroups?.map((group) => (
-                    <SelectItem key={group.id} value={group.name}>
-                      {group.idCode ? `${group.idCode} - ${group.name}` : group.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex gap-2">
+                <Select
+                  value={newRequirement.taskGroup}
+                  onValueChange={(value) => setNewRequirement({ ...newRequirement, taskGroup: value })}
+                >
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Select task group" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {taskGroups?.map((group) => (
+                      <SelectItem key={group.id} value={group.name}>
+                        {group.idCode ? `${group.idCode} - ${group.name}` : group.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="outline"
+                  onClick={() => setTaskGroupDialogOpen(true)}
+                  title="Create new task group"
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
             <div className="space-y-2">
               <Label>Issue Group</Label>
-              <Select
-                value={newRequirement.issueGroup}
-                onValueChange={(value) => setNewRequirement({ ...newRequirement, issueGroup: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select issue group" />
-                </SelectTrigger>
-                <SelectContent>
-                  {issueGroups?.map((group) => (
-                    <SelectItem key={group.id} value={group.name}>
-                      {group.idCode ? `${group.idCode} - ${group.name}` : group.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex gap-2">
+                <Select
+                  value={newRequirement.issueGroup}
+                  onValueChange={(value) => setNewRequirement({ ...newRequirement, issueGroup: value })}
+                >
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Select issue group" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {issueGroups?.map((group) => (
+                      <SelectItem key={group.id} value={group.name}>
+                        {group.idCode ? `${group.idCode} - ${group.name}` : group.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="outline"
+                  onClick={() => setIssueGroupDialogOpen(true)}
+                  title="Create new issue group"
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
             <div className="space-y-2">
               <Label>Creation Date</Label>
@@ -1383,6 +1435,108 @@ export default function Tasks() {
               disabled={!newDeliverable.description.trim() || !currentProjectId || createDeliverableMutation.isPending}
             >
               {createDeliverableMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Creating...</> : 'Create'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Task Group Creation Dialog (for Requirement) */}
+      <Dialog open={taskGroupDialogOpen} onOpenChange={setTaskGroupDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Task Group</DialogTitle>
+            <DialogDescription>
+              Add a new task group to categorize requirements and tasks.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Name *</Label>
+              <Input
+                value={newTaskGroup.name}
+                onChange={(e) => setNewTaskGroup({ ...newTaskGroup, name: e.target.value })}
+                placeholder="Enter task group name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Textarea
+                value={newTaskGroup.description}
+                onChange={(e) => setNewTaskGroup({ ...newTaskGroup, description: e.target.value })}
+                placeholder="Enter task group description (optional)"
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setTaskGroupDialogOpen(false);
+              setNewTaskGroup({ name: '', description: '' });
+            }}>Cancel</Button>
+            <Button
+              onClick={() => {
+                if (newTaskGroup.name.trim() && currentProjectId) {
+                  createTaskGroupForRequirementMutation.mutate({
+                    projectId: currentProjectId,
+                    name: newTaskGroup.name.trim(),
+                    description: newTaskGroup.description.trim() || undefined,
+                  });
+                }
+              }}
+              disabled={!newTaskGroup.name.trim() || !currentProjectId || createTaskGroupForRequirementMutation.isPending}
+            >
+              {createTaskGroupForRequirementMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Creating...</> : 'Create'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Issue Group Creation Dialog (for Requirement) */}
+      <Dialog open={issueGroupDialogOpen} onOpenChange={setIssueGroupDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Issue Group</DialogTitle>
+            <DialogDescription>
+              Add a new issue group to categorize requirements and issues.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Name *</Label>
+              <Input
+                value={newIssueGroup.name}
+                onChange={(e) => setNewIssueGroup({ ...newIssueGroup, name: e.target.value })}
+                placeholder="Enter issue group name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Textarea
+                value={newIssueGroup.description}
+                onChange={(e) => setNewIssueGroup({ ...newIssueGroup, description: e.target.value })}
+                placeholder="Enter issue group description (optional)"
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setIssueGroupDialogOpen(false);
+              setNewIssueGroup({ name: '', description: '' });
+            }}>Cancel</Button>
+            <Button
+              onClick={() => {
+                if (newIssueGroup.name.trim() && currentProjectId) {
+                  createIssueGroupForRequirementMutation.mutate({
+                    projectId: currentProjectId,
+                    name: newIssueGroup.name.trim(),
+                    description: newIssueGroup.description.trim() || undefined,
+                  });
+                }
+              }}
+              disabled={!newIssueGroup.name.trim() || !currentProjectId || createIssueGroupForRequirementMutation.isPending}
+            >
+              {createIssueGroupForRequirementMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Creating...</> : 'Create'}
             </Button>
           </DialogFooter>
         </DialogContent>
