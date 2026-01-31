@@ -615,7 +615,7 @@ export default function Requirements() {
                         <div className="grid grid-cols-1 gap-1 text-sm text-muted-foreground pl-4 border-l-2 border-muted">
                           <div className="flex items-center gap-2">
                             <span className="font-medium min-w-[120px]">Priority:</span>
-                            <Badge variant={getPriorityColor(req.priority)} className="text-xs">{req.priority || 'N/A'}</Badge>
+                            <Badge variant={getPriorityColor(req.priority)} className="text-xs">{req.priority || '-'}</Badge>
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="font-medium min-w-[120px]">Created:</span>
@@ -623,27 +623,27 @@ export default function Requirements() {
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="font-medium min-w-[120px]">Type:</span>
-                            <span>{req.type || 'N/A'}</span>
+                            <span>{req.type || '-'}</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="font-medium min-w-[120px]">Category:</span>
-                            <span>{req.category || 'N/A'}</span>
+                            <span>{req.category || '-'}</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="font-medium min-w-[120px]">Owner:</span>
-                            <span>{req.owner || 'N/A'}</span>
+                            <span>{req.owner || '-'}</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="font-medium min-w-[120px]">Source Type:</span>
-                            <span>{req.sourceType || 'N/A'}</span>
+                            <span>{req.sourceType || '-'}</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="font-medium min-w-[120px]">External Source:</span>
-                            <span className="truncate max-w-[300px]" title={req.refSource || ''}>{req.refSource || 'N/A'}</span>
+                            <span className="truncate max-w-[300px]" title={req.refSource || ''}>{req.refSource || '-'}</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="font-medium min-w-[120px]">Status:</span>
-                            <Badge variant={getStatusColor(req.status)} className="text-xs">{req.status || 'N/A'}</Badge>
+                            <Badge variant={getStatusColor(req.status)} className="text-xs">{req.status || '-'}</Badge>
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="font-medium min-w-[120px]">Last Update:</span>
@@ -653,7 +653,7 @@ export default function Requirements() {
                                 <span>{req.lastUpdate}</span>
                               </div>
                             ) : (
-                              <span>N/A</span>
+                              <span>-</span>
                             )}
                           </div>
                         </div>

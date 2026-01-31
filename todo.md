@@ -496,3 +496,10 @@
 - [ ] Apply colored header ribbon to Action Log page
 - [ ] Apply colored header ribbon to Relationships page
 - [ ] Ensure consistent color scheme across all pages
+
+
+## UI/UX Improvement (Feb 1, 2026 - Text Formatting Consistency)
+
+### Replace N/A with Dashes in Requirements Table
+- [x] Replace all "N/A" text with "-" in Requirements table display
+- [x] Ensure consistency with Tasks and Issues pages formatting
