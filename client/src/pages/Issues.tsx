@@ -89,6 +89,7 @@ export default function Issues() {
     requirementId: '',
     deliverableId: undefined,
     taskId: '',
+    openDate: new Date().toISOString().split('T')[0],
   });
 
   const { data: issues, isLoading, refetch } = trpc.issues.list.useQuery();
@@ -328,6 +329,8 @@ export default function Issues() {
       requirementId: (linkRequirement && newIssue.requirementId && newIssue.requirementId !== "none") ? newIssue.requirementId : undefined,
       deliverableId: newIssue.deliverableId ? parseInt(newIssue.deliverableId) : undefined,
       taskId: (newIssue.taskId && newIssue.taskId !== "none") ? newIssue.taskId : undefined,
+      // Preserve openDate default value (today's date) if not changed
+      openDate: newIssue.openDate,
     };
     createMutation.mutate(issueData);
   };

@@ -505,3 +505,12 @@
 - [x] Replace all "N/A" text with "-" in Tasks page display
 - [x] Replace all "N/A" text with "-" in Issues page display
 - [x] Ensure consistency across all data tables
+
+
+## Bug Fix (Feb 1, 2026 - Default Date Initialization)
+
+### Fix Assign Date and Open Date Default Values
+- [x] Initialize assignDate with today's date in Tasks creation form state (already present)
+- [x] Initialize openDate with today's date in Issues creation form state
+- [x] Ensure default dates are saved to database when not manually changed (added to handleCreate)
+- [ ] Test that dates persist correctly after creation
