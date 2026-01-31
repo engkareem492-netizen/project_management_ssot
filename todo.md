@@ -173,3 +173,7 @@
 - [x] Fix newly created Task Groups not appearing in dropdown immediately after creation in Tasks page
 - [x] Fix newly created Issue Groups not appearing in dropdown immediately after creation in Issues page
 - [x] Fix newly created Task Groups not appearing in dropdown immediately after creation in Requirements page
+
+## Bug Fixes (Jan 30, 2026 - Batch 16)
+
+- [x] Fix Tasks page mutation error - projectId is undefined when creating Task Groups
