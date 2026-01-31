@@ -196,6 +196,7 @@ export const issues = mysqlTable("issues", {
   refSource: varchar("refSource", { length: 200 }),
   createdAt: varchar("createdAt", { length: 50 }),
   priority: varchar("priority", { length: 100 }),
+  deliverableId: int("deliverableId"),
   deliverables1: text("deliverables1"),
   d1Status: varchar("d1Status", { length: 100 }),
   deliverables2: text("deliverables2"),

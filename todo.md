@@ -434,3 +434,17 @@
 - [x] Set minimum width for labels (100px) for consistent alignment
 - [x] Keep action buttons on the right side
 - [ ] Test vertical layout on different screen sizes
+
+
+## UI/UX Improvement (Feb 1, 2026 - Issues Page Enhancement)
+
+### Apply Tasks Page Features to Issues Page
+- [x] Add two-line vertical field layout to Issues table (same as Tasks)
+- [x] Add optional requirement linking with checkbox control
+- [x] Add + button for inline Issue Group creation
+- [x] Add + button for inline Requirement creation
+- [x] Add + button for inline Deliverable creation
+- [x] Add info buttons (i) to view Requirement and Deliverable details
+- [x] Add deliverable dropdown and linking to Issues
+- [x] Add deliverableId column to issues table in database
+- [ ] Test all features on Issues page
