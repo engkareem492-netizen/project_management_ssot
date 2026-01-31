@@ -1,18 +1,20 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
+import { useProject } from "@/contexts/ProjectContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Search, Edit, History, Loader2, Plus, Trash2, Eye, CheckSquare, Save, X, Link2, Settings } from "lucide-react";
+import { Search, Edit, History, Loader2, Plus, Trash2, Eye, CheckSquare, Save, X, Link2, Settings, Calendar, User, FileText, Tag, Clock } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DropdownOptionsManager } from "@/components/DropdownOptionsManager";
+import { SelectWithCreate } from "@/components/SelectWithCreate";
 import { toast } from "sonner";
 
 export default function Requirements() {
@@ -26,6 +28,8 @@ export default function Requirements() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [selectedRequirement, setSelectedRequirement] = useState<any>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editFormData, setEditFormData] = useState<any>({});
   const [createTaskDialogOpen, setCreateTaskDialogOpen] = useState(false);
   const [createIssueDialogOpen, setCreateIssueDialogOpen] = useState(false);
   const [createDeliverableDialogOpen, setCreateDeliverableDialogOpen] = useState(false);
@@ -53,6 +57,7 @@ export default function Requirements() {
     owner: '',
     status: 'Open',
     priority: 'Medium',
+    issueGroup: '',
   });
   const [newDeliverable, setNewDeliverable] = useState({
     description: '',
@@ -61,13 +66,16 @@ export default function Requirements() {
   });
   const [newRequirement, setNewRequirement] = useState<any>({
     description: '',
-    source: '',
+    taskGroup: '',
+    issueGroup: '',
     owner: '',
     status: 'Open',
     priority: 'Medium',
     type: '',
-    class: '',
     category: '',
+    sourceType: '',
+    refSource: '',
+    createdAt: new Date().toISOString().split('T')[0],
   });
 
   const utils = trpc.useUtils();
@@ -79,6 +87,32 @@ export default function Requirements() {
   const { data: priorityOptions } = trpc.dropdownOptions.priority.getAll.useQuery();
   const { data: typeOptions } = trpc.dropdownOptions.type.getAll.useQuery();
   const { data: categoryOptions } = trpc.dropdownOptions.category.getAll.useQuery();
+  const { currentProjectId } = useProject();
+  const { data: taskGroups, refetch: refetchTaskGroups } = trpc.dropdownOptions.taskGroups.getAll.useQuery(
+    { projectId: currentProjectId! },
+    { enabled: !!currentProjectId }
+  );
+  const { data: issueGroups, refetch: refetchIssueGroups } = trpc.dropdownOptions.issueGroups.getAll.useQuery(
+    { projectId: currentProjectId! },
+    { enabled: !!currentProjectId }
+  );
+
+  const createTaskGroupMutation = trpc.dropdownOptions.taskGroups.create.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Task Group "${data.name}" created`);
+      utils.dropdownOptions.taskGroups.getAll.invalidate();
+      setNewRequirement({ ...newRequirement, taskGroup: data.name });
+    },
+    onError: (error) => toast.error(`Failed to create Task Group: ${error.message}`),
+  });
+  const createIssueGroupMutation = trpc.dropdownOptions.issueGroups.create.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Issue Group "${data.name}" created`);
+      utils.dropdownOptions.issueGroups.getAll.invalidate();
+      setNewRequirement({ ...newRequirement, issueGroup: data.name });
+    },
+    onError: (error) => toast.error(`Failed to create Issue Group: ${error.message}`),
+  });
   const { data: actionLogs } = trpc.actionLogs.getByEntity.useQuery(
     { entityType: "requirement", entityId: selectedEntityId },
     { enabled: historyDialogOpen && !!selectedEntityId }
@@ -105,12 +139,16 @@ export default function Requirements() {
       setCreateDialogOpen(false);
       setNewRequirement({
         description: '',
+        taskGroup: '',
+        issueGroup: '',
         owner: '',
         status: 'Open',
         priority: 'Medium',
         type: '',
-        class: '',
         category: '',
+        sourceType: '',
+        refSource: '',
+        createdAt: new Date().toISOString().split('T')[0],
       });
       refetch();
     },
@@ -162,6 +200,7 @@ export default function Requirements() {
         owner: '',
         status: 'Open',
         priority: 'Medium',
+        issueGroup: '',
       });
       utils.issues.list.invalidate();
     },
@@ -225,7 +264,9 @@ export default function Requirements() {
   const filteredRequirements = requirements?.filter(req =>
     req.idCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
     req.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    req.owner?.toLowerCase().includes(searchTerm.toLowerCase())
+    req.owner?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    req.taskGroup?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    req.issueGroup?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleEdit = (req: any) => {
@@ -257,7 +298,11 @@ export default function Requirements() {
   };
 
   const handleCreate = () => {
-    createMutation.mutate(newRequirement);
+    if (!currentProjectId) {
+      toast.error('No project selected');
+      return;
+    }
+    createMutation.mutate({ ...newRequirement, projectId: currentProjectId });
   };
 
   const handleDelete = (id: number) => {
@@ -273,46 +318,96 @@ export default function Requirements() {
 
   const handleViewDetails = (req: any) => {
     setSelectedRequirement(req);
+    setEditFormData({
+      taskGroup: req.taskGroup || '',
+      issueGroup: req.issueGroup || '',
+      priority: req.priority || 'Medium',
+      type: req.type || '',
+      category: req.category || '',
+      owner: req.owner || '',
+      sourceType: req.sourceType || '',
+      refSource: req.refSource || '',
+      status: req.status || 'Open',
+      description: req.description || '',
+      lastUpdate: req.lastUpdate || '',
+    });
+    setIsEditMode(false);
     setViewDialogOpen(true);
   };
 
+  const handleEditDetails = (req: any) => {
+    setSelectedRequirement(req);
+    setEditFormData({
+      taskGroup: req.taskGroup || '',
+      issueGroup: req.issueGroup || '',
+      priority: req.priority || 'Medium',
+      type: req.type || '',
+      category: req.category || '',
+      owner: req.owner || '',
+      sourceType: req.sourceType || '',
+      refSource: req.refSource || '',
+      status: req.status || 'Open',
+      description: req.description || '',
+      lastUpdate: req.lastUpdate || '',
+    });
+    setIsEditMode(true);
+    setViewDialogOpen(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (!selectedRequirement || !currentProjectId) return;
+    updateMutation.mutate({
+      id: selectedRequirement.id,
+      idCode: selectedRequirement.idCode,
+      data: editFormData,
+    });
+    setIsEditMode(false);
+  };
+
   const handleCreateTaskFromRequirement = () => {
-    if (!selectedRequirement) return;
-    if (!newTask.taskGroup.trim()) {
-      toast.error('Task Group is required');
+    if (!selectedRequirement || !currentProjectId) {
+      toast.error('No project selected');
       return;
     }
     createTaskMutation.mutate({
       ...newTask,
+      projectId: currentProjectId,
       requirementId: selectedRequirement.idCode,
+      taskGroup: newTask.taskGroup || selectedRequirement.taskGroup || '',
     });
   };
 
   const handleCreateIssueFromRequirement = () => {
-    if (!selectedRequirement) return;
+    if (!selectedRequirement || !currentProjectId) {
+      toast.error('No project selected');
+      return;
+    }
     createIssueMutation.mutate({
       ...newIssue,
+      projectId: currentProjectId,
       requirementId: selectedRequirement.idCode,
+      issueGroup: selectedRequirement.issueGroup || '',
     });
   };
 
   const handleCreateDeliverableFromRequirement = () => {
-    if (!selectedRequirement) return;
+    if (!selectedRequirement || !currentProjectId) {
+      toast.error('No project selected');
+      return;
+    }
     createDeliverableMutation.mutate({
       ...newDeliverable,
-      linkedEntities: [{
-        entityType: 'requirement' as const,
-        entityId: selectedRequirement.idCode,
-      }],
+      projectId: currentProjectId,
+      linkedEntities: [{ entityType: 'requirement' as const, entityId: selectedRequirement.idCode }],
     });
   };
 
   const handleCreateStakeholder = () => {
-    if (!newStakeholder.fullName.trim()) {
-      toast.error('Full name is required');
+    if (!currentProjectId) {
+      toast.error('No project selected');
       return;
     }
-    createStakeholderMutation.mutate(newStakeholder);
+    createStakeholderMutation.mutate({ ...newStakeholder, projectId: currentProjectId });
   };
 
   const handleEditDeliverable = (deliverable: any) => {
@@ -347,32 +442,53 @@ export default function Requirements() {
     }
   };
 
-  // Get linked items for selected requirement
+  // Get linked tasks and issues
   const linkedTasks = tasks?.filter(t => t.requirementId === selectedRequirement?.idCode) || [];
   const linkedIssues = issues?.filter(i => i.requirementId === selectedRequirement?.idCode) || [];
-  
-  // Group tasks by Task Group
-  const tasksByGroup = linkedTasks.reduce((acc, task) => {
-    const group = task.taskGroup || 'Ungrouped';
-    if (!acc[group]) acc[group] = [];
-    acc[group].push(task);
-    return acc;
-  }, {} as Record<string, typeof linkedTasks>);
 
-  const getPriorityColor = (priority: string | null) => {
-    if (!priority) return "secondary";
-    if (priority.includes("Very High")) return "destructive";
-    if (priority.includes("High")) return "default";
-    if (priority.includes("Medium")) return "outline";
-    return "secondary";
+  // Status and Priority color helpers - Oracle theme colors
+  const getStatusColor = (status: string | null | undefined): "default" | "secondary" | "destructive" | "outline" => {
+    switch (status?.toLowerCase()) {
+      case 'open':
+      case 'new':
+        return 'default';
+      case 'in progress':
+      case 'active':
+        return 'secondary';
+      case 'closed':
+      case 'completed':
+      case 'done':
+        return 'outline';
+      case 'blocked':
+      case 'on hold':
+        return 'destructive';
+      default:
+        return 'outline';
+    }
   };
 
-  const getStatusColor = (status: string | null) => {
-    if (!status) return "secondary";
-    if (status === "Closed" || status === "Solved" || status === "Completed") return "default";
-    if (status === "Pending" || status === "Open") return "outline";
-    if (status === "In Progress") return "secondary";
-    return "secondary";
+  const getPriorityColor = (priority: string | null | undefined): "default" | "secondary" | "destructive" | "outline" => {
+    switch (priority?.toLowerCase()) {
+      case 'critical':
+      case 'high':
+        return 'destructive';
+      case 'medium':
+        return 'default';
+      case 'low':
+        return 'secondary';
+      default:
+        return 'outline';
+    }
+  };
+
+  const formatDate = (dateStr: string | null | undefined) => {
+    if (!dateStr) return '-';
+    try {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    } catch {
+      return dateStr;
+    }
   };
 
   if (isLoading) {
@@ -385,17 +501,20 @@ export default function Requirements() {
 
   return (
     <div className="space-y-6 p-6">
-      <Card>
-        <CardHeader>
+      <Card className="border-primary/20">
+        <CardHeader className="bg-gradient-to-r from-primary/10 to-primary/5 border-b border-primary/20">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Requirements Management</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-xl flex items-center gap-2">
+                <FileText className="w-5 h-5 text-primary" />
+                Requirements Management
+              </CardTitle>
+              <CardDescription className="mt-1">
                 View, edit, and track changes to project requirements. IDs are auto-generated.
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-sm">
+              <Badge variant="outline" className="text-sm border-primary/30 bg-primary/5">
                 {requirements?.length || 0} Requirements
               </Badge>
               <Button
@@ -406,6 +525,7 @@ export default function Requirements() {
                   setSettingsOpen(true);
                 }}
                 title="Manage Status Options"
+                className="border-primary/30 hover:bg-primary/10"
               >
                 <Settings className="w-4 h-4 mr-1" />
                 Status
@@ -418,6 +538,7 @@ export default function Requirements() {
                   setSettingsOpen(true);
                 }}
                 title="Manage Priority Options"
+                className="border-primary/30 hover:bg-primary/10"
               >
                 <Settings className="w-4 h-4 mr-1" />
                 Priority
@@ -425,62 +546,97 @@ export default function Requirements() {
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <div className="flex items-center gap-4 mb-6">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
               <Input
-                placeholder="Search by ID, description, or owner..."
+                placeholder="Search by ID, description, owner, task group, or issue group..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
+                className="pl-10 border-primary/20 focus:border-primary"
               />
             </div>
-            <Button onClick={() => setCreateDialogOpen(true)}>
+            <Button onClick={() => setCreateDialogOpen(true)} className="bg-primary hover:bg-primary/90">
               <Plus className="w-4 h-4 mr-2" />
               Create New
             </Button>
           </div>
 
-          <div className="rounded-md border overflow-x-auto">
+          {/* Requirements Table with New Field Order */}
+          <div className="rounded-md border border-primary/20 overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[100px]">ID</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Owner</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Priority</TableHead>
-                  <TableHead>Last Update</TableHead>
-                  <TableHead className="w-[180px]">Actions</TableHead>
+                <TableRow className="bg-primary/5 hover:bg-primary/10">
+                  <TableHead className="w-[90px] font-semibold text-primary">ID</TableHead>
+                  <TableHead className="w-[100px] font-semibold">Task Group</TableHead>
+                  <TableHead className="w-[100px] font-semibold">Issue Group</TableHead>
+                  <TableHead className="w-[80px] font-semibold">Priority</TableHead>
+                  <TableHead className="w-[100px] font-semibold">Created</TableHead>
+                  <TableHead className="w-[80px] font-semibold">Type</TableHead>
+                  <TableHead className="w-[90px] font-semibold">Category</TableHead>
+                  <TableHead className="w-[100px] font-semibold">Owner</TableHead>
+                  <TableHead className="min-w-[150px] font-semibold">Description</TableHead>
+                  <TableHead className="w-[90px] font-semibold">Source Type</TableHead>
+                  <TableHead className="w-[100px] font-semibold">Ext. Source</TableHead>
+                  <TableHead className="w-[80px] font-semibold">Status</TableHead>
+                  <TableHead className="min-w-[120px] font-semibold">Last Update</TableHead>
+                  <TableHead className="w-[140px] font-semibold">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredRequirements?.map((req) => (
-                  <TableRow key={req.id}>
-                    <TableCell className="font-mono font-medium">{req.idCode}</TableCell>
-                    <TableCell className="max-w-[200px] truncate">{req.description}</TableCell>
-                    <TableCell>{req.owner}</TableCell>
+                  <TableRow key={req.id} className="hover:bg-primary/5">
+                    <TableCell className="font-mono font-medium text-primary">{req.idCode}</TableCell>
+                    <TableCell className="text-sm">{req.taskGroup || '-'}</TableCell>
+                    <TableCell className="text-sm">{req.issueGroup || '-'}</TableCell>
                     <TableCell>
                       {editingId === req.id ? (
-                        <Input
-                          value={editData.status}
-                          onChange={(e) => setEditData({ ...editData, status: e.target.value })}
-                          className="w-24 h-8"
-                        />
+                        <Select
+                          value={editData.priority}
+                          onValueChange={(value) => setEditData({ ...editData, priority: value })}
+                        >
+                          <SelectTrigger className="w-24 h-8">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {priorityOptions?.map((opt) => (
+                              <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       ) : (
-                        <Badge variant={getStatusColor(req.status)}>{req.status || 'N/A'}</Badge>
+                        <Badge variant={getPriorityColor(req.priority)} className="text-xs">{req.priority || 'N/A'}</Badge>
                       )}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{formatDate(req.createdAt)}</TableCell>
+                    <TableCell className="text-sm">{req.type || '-'}</TableCell>
+                    <TableCell className="text-sm">{req.category || '-'}</TableCell>
+                    <TableCell className="text-sm">{req.owner || '-'}</TableCell>
+                    <TableCell className="max-w-[200px] truncate text-sm" title={req.description || ''}>
+                      {req.description || '-'}
+                    </TableCell>
+                    <TableCell className="text-sm">{req.sourceType || '-'}</TableCell>
+                    <TableCell className="text-sm max-w-[100px] truncate" title={req.refSource || ''}>
+                      {req.refSource || '-'}
                     </TableCell>
                     <TableCell>
                       {editingId === req.id ? (
-                        <Input
-                          value={editData.priority}
-                          onChange={(e) => setEditData({ ...editData, priority: e.target.value })}
-                          className="w-24 h-8"
-                        />
+                        <Select
+                          value={editData.status}
+                          onValueChange={(value) => setEditData({ ...editData, status: value })}
+                        >
+                          <SelectTrigger className="w-24 h-8">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {statusOptions?.map((opt) => (
+                              <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       ) : (
-                        <Badge variant={getPriorityColor(req.priority)}>{req.priority || 'N/A'}</Badge>
+                        <Badge variant={getStatusColor(req.status)} className="text-xs">{req.status || 'N/A'}</Badge>
                       )}
                     </TableCell>
                     <TableCell>
@@ -488,36 +644,43 @@ export default function Requirements() {
                         <Input
                           value={editData.lastUpdate}
                           onChange={(e) => setEditData({ ...editData, lastUpdate: e.target.value })}
-                          className="w-full h-8"
+                          className="w-full h-8 text-sm"
                           placeholder="Enter update..."
                         />
                       ) : (
-                        req.lastUpdate || '-'
+                        <div className="text-sm">
+                          {req.lastUpdate ? (
+                            <div className="flex items-center gap-1">
+                              <Clock className="w-3 h-3 text-muted-foreground" />
+                              <span className="truncate max-w-[100px]" title={req.lastUpdate}>{req.lastUpdate}</span>
+                            </div>
+                          ) : '-'}
+                        </div>
                       )}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
                         {editingId === req.id ? (
                           <>
-                            <Button size="sm" variant="default" onClick={() => handleSave(req)} disabled={updateMutation.isPending}>
+                            <Button size="sm" variant="default" onClick={() => handleSave(req)} disabled={updateMutation.isPending} className="h-7 w-7 p-0">
                               <Save className="w-3 h-3" />
                             </Button>
-                            <Button size="sm" variant="outline" onClick={handleCancel}>
+                            <Button size="sm" variant="outline" onClick={handleCancel} className="h-7 w-7 p-0">
                               <X className="w-3 h-3" />
                             </Button>
                           </>
                         ) : (
                           <>
-                            <Button size="sm" variant="ghost" onClick={() => handleViewDetails(req)} title="View Details">
+                            <Button size="sm" variant="ghost" onClick={() => handleViewDetails(req)} title="View Details" className="h-7 w-7 p-0 hover:bg-primary/10">
                               <Eye className="w-3 h-3" />
                             </Button>
-                            <Button size="sm" variant="ghost" onClick={() => handleEdit(req)} title="Edit">
+                            <Button size="sm" variant="ghost" onClick={() => handleEditDetails(req)} title="Edit" className="h-7 w-7 p-0 hover:bg-primary/10">
                               <Edit className="w-3 h-3" />
                             </Button>
-                            <Button size="sm" variant="ghost" onClick={() => showHistory(req.idCode)} title="History">
+                            <Button size="sm" variant="ghost" onClick={() => showHistory(req.idCode)} title="History" className="h-7 w-7 p-0 hover:bg-primary/10">
                               <History className="w-3 h-3" />
                             </Button>
-                            <Button size="sm" variant="destructive" onClick={() => handleDelete(req.id)} title="Delete">
+                            <Button size="sm" variant="destructive" onClick={() => handleDelete(req.id)} title="Delete" className="h-7 w-7 p-0">
                               <Trash2 className="w-3 h-3" />
                             </Button>
                           </>
@@ -531,81 +694,268 @@ export default function Requirements() {
           </div>
 
           {filteredRequirements?.length === 0 && (
-            <div className="text-center py-12 text-muted-foreground">
+            <div className="text-center py-12 text-muted-foreground border border-dashed border-primary/20 rounded-lg mt-4">
               No requirements found. Create a new requirement or import an Excel file to get started.
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* View Details Dialog with Linked Items */}
-      <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <span className="font-mono bg-muted px-2 py-1 rounded">{selectedRequirement?.idCode}</span>
-              Requirement Details
-            </DialogTitle>
+      {/* View/Edit Details Dialog with Linked Items */}
+      <Dialog open={viewDialogOpen} onOpenChange={(open) => { setViewDialogOpen(open); if (!open) setIsEditMode(false); }}>
+        <DialogContent className="w-[95vw] max-w-[95vw] h-[90vh] max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader className="border-b pb-4 flex-shrink-0">
+            <div className="flex items-center justify-between">
+              <DialogTitle className="flex items-center gap-2 text-xl">
+                <span className="font-mono bg-primary/10 text-primary px-3 py-1 rounded">{selectedRequirement?.idCode}</span>
+                {isEditMode ? 'Edit Requirement' : 'Requirement Details'}
+              </DialogTitle>
+              <div className="flex items-center gap-2">
+                {isEditMode ? (
+                  <>
+                    <Button onClick={handleSaveEdit} disabled={updateMutation.isPending} className="bg-primary hover:bg-primary/90">
+                      <Save className="w-4 h-4 mr-2" />
+                      {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
+                    </Button>
+                    <Button variant="outline" onClick={() => setIsEditMode(false)}>
+                      <X className="w-4 h-4 mr-2" />
+                      Cancel
+                    </Button>
+                  </>
+                ) : (
+                  <Button onClick={() => setIsEditMode(true)} variant="outline">
+                    <Edit className="w-4 h-4 mr-2" />
+                    Edit
+                  </Button>
+                )}
+              </div>
+            </div>
             <DialogDescription>
-              View all details and linked items for this requirement
+              {isEditMode ? 'Edit the requirement details below' : 'View all details and linked items for this requirement'}
             </DialogDescription>
           </DialogHeader>
           
-          <Tabs defaultValue="details" className="mt-4">
-            <TabsList className="grid w-full grid-cols-3">
+          <Tabs defaultValue="details" className="mt-4 flex-1 flex flex-col overflow-hidden">
+            <TabsList className="grid w-full grid-cols-4 flex-shrink-0">
               <TabsTrigger value="details">Details</TabsTrigger>
               <TabsTrigger value="tasks">
-                Linked Tasks ({linkedTasks.length})
+                Tasks ({linkedTasks.length})
               </TabsTrigger>
               <TabsTrigger value="issues">
-                Linked Issues ({linkedIssues.length})
+                Issues ({linkedIssues.length})
+              </TabsTrigger>
+              <TabsTrigger value="history">
+                History
               </TabsTrigger>
             </TabsList>
             
-            <TabsContent value="details" className="space-y-4 mt-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground">Description</Label>
-                  <p className="font-medium">{selectedRequirement?.description || '-'}</p>
+            <TabsContent value="details" className="space-y-4 mt-4 flex-1 overflow-y-auto">
+              {/* Main Details Grid */}
+              <div className="grid grid-cols-3 gap-4">
+                {/* Task Group */}
+                <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Task Group</Label>
+                  {isEditMode ? (
+                    <div className="flex gap-2">
+                      <Select value={editFormData.taskGroup} onValueChange={(v) => setEditFormData({...editFormData, taskGroup: v})}>
+                        <SelectTrigger className="h-8">
+                          <SelectValue placeholder="Select task group" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {taskGroups?.map((g) => (
+                            <SelectItem key={g.id} value={g.name}>{g.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : (
+                    <p className="font-medium">{selectedRequirement?.taskGroup || '-'}</p>
+                  )}
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground">Owner</Label>
-                  <p className="font-medium">{selectedRequirement?.owner || '-'}</p>
+                {/* Issue Group */}
+                <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Issue Group</Label>
+                  {isEditMode ? (
+                    <Select value={editFormData.issueGroup} onValueChange={(v) => setEditFormData({...editFormData, issueGroup: v})}>
+                      <SelectTrigger className="h-8">
+                        <SelectValue placeholder="Select issue group" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {issueGroups?.map((g) => (
+                          <SelectItem key={g.id} value={g.name}>{g.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="font-medium">{selectedRequirement?.issueGroup || '-'}</p>
+                  )}
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground">Status</Label>
-                  <Badge variant={getStatusColor(selectedRequirement?.status)}>
-                    {selectedRequirement?.status || 'N/A'}
-                  </Badge>
+                {/* Priority */}
+                <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Priority</Label>
+                  {isEditMode ? (
+                    <Select value={editFormData.priority} onValueChange={(v) => setEditFormData({...editFormData, priority: v})}>
+                      <SelectTrigger className="h-8">
+                        <SelectValue placeholder="Select priority" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {priorityOptions?.map((opt) => (
+                          <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Badge variant={getPriorityColor(selectedRequirement?.priority)}>
+                      {selectedRequirement?.priority || 'N/A'}
+                    </Badge>
+                  )}
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground">Priority</Label>
-                  <Badge variant={getPriorityColor(selectedRequirement?.priority)}>
-                    {selectedRequirement?.priority || 'N/A'}
-                  </Badge>
+                {/* Creation Date */}
+                <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Creation Date</Label>
+                  <p className="font-medium">{formatDate(selectedRequirement?.createdAt)}</p>
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground">Type</Label>
-                  <p className="font-medium">{selectedRequirement?.type || '-'}</p>
+                {/* Type */}
+                <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Type</Label>
+                  {isEditMode ? (
+                    <Select value={editFormData.type} onValueChange={(v) => setEditFormData({...editFormData, type: v})}>
+                      <SelectTrigger className="h-8">
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {typeOptions?.map((opt) => (
+                          <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="font-medium">{selectedRequirement?.type || '-'}</p>
+                  )}
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground">Class</Label>
-                  <p className="font-medium">{selectedRequirement?.class || '-'}</p>
+                {/* Category */}
+                <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Category</Label>
+                  {isEditMode ? (
+                    <Select value={editFormData.category} onValueChange={(v) => setEditFormData({...editFormData, category: v})}>
+                      <SelectTrigger className="h-8">
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categoryOptions?.map((opt) => (
+                          <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="font-medium">{selectedRequirement?.category || '-'}</p>
+                  )}
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground">Category</Label>
-                  <p className="font-medium">{selectedRequirement?.category || '-'}</p>
+                {/* Owner */}
+                <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Owner</Label>
+                  {isEditMode ? (
+                    <Select value={editFormData.owner} onValueChange={(v) => setEditFormData({...editFormData, owner: v})}>
+                      <SelectTrigger className="h-8">
+                        <SelectValue placeholder="Select owner" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {stakeholders?.map((s) => (
+                          <SelectItem key={s.id} value={s.fullName}>{s.fullName}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="font-medium">{selectedRequirement?.owner || '-'}</p>
+                  )}
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground">Created At</Label>
-                  <p className="font-medium">{selectedRequirement?.createdAt || '-'}</p>
+                {/* Source Type */}
+                <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Source Type</Label>
+                  {isEditMode ? (
+                    <Input
+                      value={editFormData.sourceType}
+                      onChange={(e) => setEditFormData({...editFormData, sourceType: e.target.value})}
+                      className="h-8"
+                      placeholder="Enter source type"
+                    />
+                  ) : (
+                    <p className="font-medium">{selectedRequirement?.sourceType || '-'}</p>
+                  )}
+                </div>
+                {/* External Source */}
+                <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">External Source</Label>
+                  {isEditMode ? (
+                    <Input
+                      value={editFormData.refSource}
+                      onChange={(e) => setEditFormData({...editFormData, refSource: e.target.value})}
+                      className="h-8"
+                      placeholder="Enter external source"
+                    />
+                  ) : (
+                    <p className="font-medium">{selectedRequirement?.refSource || '-'}</p>
+                  )}
+                </div>
+                {/* Status */}
+                <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Status</Label>
+                  {isEditMode ? (
+                    <Select value={editFormData.status} onValueChange={(v) => setEditFormData({...editFormData, status: v})}>
+                      <SelectTrigger className="h-8">
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {statusOptions?.map((opt) => (
+                          <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Badge variant={getStatusColor(selectedRequirement?.status)}>
+                      {selectedRequirement?.status || 'N/A'}
+                    </Badge>
+                  )}
+                </div>
+                {/* Last Update */}
+                <div className="col-span-2 space-y-1 p-3 bg-muted/50 rounded-lg">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Last Update</Label>
+                  {isEditMode ? (
+                    <Textarea
+                      value={editFormData.lastUpdate}
+                      onChange={(e) => setEditFormData({...editFormData, lastUpdate: e.target.value})}
+                      className="min-h-[60px]"
+                      placeholder="Enter update notes"
+                    />
+                  ) : (
+                    <p className="font-medium">{selectedRequirement?.lastUpdate || '-'}</p>
+                  )}
                 </div>
               </div>
               
+              {/* Description */}
+              <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Description</Label>
+                {isEditMode ? (
+                  <Textarea
+                    value={editFormData.description}
+                    onChange={(e) => setEditFormData({...editFormData, description: e.target.value})}
+                    className="min-h-[100px]"
+                    placeholder="Enter description"
+                  />
+                ) : (
+                  <p className="font-medium whitespace-pre-wrap">{selectedRequirement?.description || '-'}</p>
+                )}
+              </div>
+              
+              {/* Linked Deliverables Section */}
               <div className="border-t pt-4 mt-4">
                 <div className="flex items-center justify-between mb-3">
-                  <h4 className="font-medium">Linked Deliverables</h4>
-                  <Button size="sm" onClick={() => setCreateDeliverableDialogOpen(true)}>
+                  <h4 className="font-medium flex items-center gap-2">
+                    <CheckSquare className="w-4 h-4 text-primary" />
+                    Linked Deliverables
+                  </h4>
+                  <Button size="sm" onClick={() => setCreateDeliverableDialogOpen(true)} className="bg-primary hover:bg-primary/90">
                     <Plus className="w-4 h-4 mr-2" />
                     Create Deliverable
                   </Button>
@@ -613,10 +963,10 @@ export default function Requirements() {
                 {linkedDeliverables && linkedDeliverables.length > 0 ? (
                   <div className="space-y-2">
                     {linkedDeliverables.map((deliverable) => (
-                      <Card key={deliverable.id} className="p-3">
+                      <Card key={deliverable.id} className="p-3 border-primary/20">
                         <div className="flex items-center justify-between">
                           <div className="flex-1">
-                            <span className="font-mono text-sm font-medium">{deliverable.deliverableId}</span>
+                            <span className="font-mono text-sm font-medium text-primary">{deliverable.deliverableId}</span>
                             {editingDeliverableId === deliverable.id ? (
                               <div className="mt-2 space-y-2">
                                 <Textarea
@@ -674,7 +1024,7 @@ export default function Requirements() {
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-4 text-muted-foreground border rounded-lg">
+                  <div className="text-center py-4 text-muted-foreground border border-dashed border-primary/20 rounded-lg">
                     No deliverables linked yet.
                   </div>
                 )}
@@ -686,42 +1036,31 @@ export default function Requirements() {
                 <p className="text-sm text-muted-foreground">
                   Tasks linked to this requirement
                 </p>
-                <Button size="sm" onClick={() => setCreateTaskDialogOpen(true)}>
+                <Button size="sm" onClick={() => setCreateTaskDialogOpen(true)} className="bg-primary hover:bg-primary/90">
                   <Plus className="w-4 h-4 mr-2" />
                   Create Task
                 </Button>
               </div>
               
               {linkedTasks.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground border rounded-lg">
+                <div className="text-center py-8 text-muted-foreground border border-dashed border-primary/20 rounded-lg">
                   No tasks linked to this requirement yet.
                 </div>
               ) : (
-                <div className="space-y-4">
-                  {Object.entries(tasksByGroup).map(([group, groupTasks]) => (
-                    <div key={group} className="space-y-2">
-                      <div className="flex items-center gap-2 mb-2">
-                        <h4 className="font-semibold text-sm">{group}</h4>
-                        <Badge variant="outline" className="text-xs">{groupTasks.length} task{groupTasks.length !== 1 ? 's' : ''}</Badge>
+                <div className="space-y-2">
+                  {linkedTasks.map((task) => (
+                    <Card key={task.id} className="p-3 border-primary/20">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="font-mono text-sm font-medium text-primary">{task.taskId}</span>
+                          <p className="text-sm text-muted-foreground mt-1">{task.description || 'No description'}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant={getStatusColor(task.status)}>{task.status || 'N/A'}</Badge>
+                          <Badge variant={getPriorityColor(task.priority)}>{task.priority || 'N/A'}</Badge>
+                        </div>
                       </div>
-                      <div className="space-y-2 pl-4">
-                        {groupTasks.map((task) => (
-                          <Card key={task.id} className="p-4">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <CheckSquare className="w-4 h-4 text-muted-foreground" />
-                                <span className="font-mono text-sm">{task.taskId}</span>
-                                <span className="text-sm">{task.description || 'No description'}</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Badge variant={getStatusColor(task.status)}>{task.status || 'N/A'}</Badge>
-                                <Badge variant={getPriorityColor(task.priority)}>{task.priority || 'N/A'}</Badge>
-                              </div>
-                            </div>
-                          </Card>
-                        ))}
-                      </div>
-                    </div>
+                    </Card>
                   ))}
                 </div>
               )}
@@ -732,28 +1071,28 @@ export default function Requirements() {
                 <p className="text-sm text-muted-foreground">
                   Issues linked to this requirement
                 </p>
-                <Button size="sm" onClick={() => setCreateIssueDialogOpen(true)}>
+                <Button size="sm" onClick={() => setCreateIssueDialogOpen(true)} className="bg-primary hover:bg-primary/90">
                   <Plus className="w-4 h-4 mr-2" />
                   Create Issue
                 </Button>
               </div>
               
               {linkedIssues.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground border rounded-lg">
+                <div className="text-center py-8 text-muted-foreground border border-dashed border-primary/20 rounded-lg">
                   No issues linked to this requirement yet.
                 </div>
               ) : (
                 <div className="space-y-2">
                   {linkedIssues.map((issue) => (
-                    <Card key={issue.id} className="p-4">
+                    <Card key={issue.id} className="p-3 border-primary/20">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <Link2 className="w-4 h-4 text-muted-foreground" />
-                          <span className="font-mono text-sm">{issue.issueId}</span>
-                          <span className="text-sm">{issue.description || 'No description'}</span>
+                        <div>
+                          <span className="font-mono text-sm font-medium text-primary">{issue.issueId}</span>
+                          <p className="text-sm text-muted-foreground mt-1">{issue.description || 'No description'}</p>
                         </div>
                         <div className="flex items-center gap-2">
                           <Badge variant={getStatusColor(issue.status)}>{issue.status || 'N/A'}</Badge>
+                          <Badge variant={getPriorityColor(issue.priority)}>{issue.priority || 'N/A'}</Badge>
                         </div>
                       </div>
                     </Card>
@@ -761,195 +1100,512 @@ export default function Requirements() {
                 </div>
               )}
             </TabsContent>
+
+            <TabsContent value="history" className="mt-4">
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground mb-4">
+                  Modification history for this requirement
+                </p>
+                {actionLogs && actionLogs.length > 0 ? (
+                  <div className="space-y-2">
+                    {actionLogs.map((log) => {
+                      const changedFieldNames = Object.keys(log.changedFields || {}).join(', ');
+                      const oldValues = Object.entries(log.changedFields || {}).map(([k, v]) => `${k}: ${v.oldValue}`).join(', ');
+                      const newValues = Object.entries(log.changedFields || {}).map(([k, v]) => `${k}: ${v.newValue}`).join(', ');
+                      return (
+                        <Card key={log.id} className="p-3 border-primary/20">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline" className="text-xs">Update</Badge>
+                                <span className="text-xs text-muted-foreground">
+                                  {new Date(log.changedAt).toLocaleString()}
+                                </span>
+                              </div>
+                              {changedFieldNames && (
+                                <p className="text-sm mt-1">
+                                  <span className="text-muted-foreground">Changed: </span>
+                                  {changedFieldNames}
+                                </p>
+                              )}
+                              {oldValues && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Old: {oldValues}
+                                </p>
+                              )}
+                              {newValues && (
+                                <p className="text-xs text-primary mt-1">
+                                  New: {newValues}
+                                </p>
+                              )}
+                            </div>
+                            <span className="text-xs text-muted-foreground">User #{log.changedBy}</span>
+                          </div>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground border border-dashed border-primary/20 rounded-lg">
+                    No history records found.
+                  </div>
+                )}
+              </div>
+            </TabsContent>
           </Tabs>
-          
-          <DialogFooter className="mt-6">
-            <Button variant="outline" onClick={() => setViewDialogOpen(false)}>Close</Button>
-            <Button onClick={() => showHistory(selectedRequirement?.idCode)}>
-              <History className="w-4 h-4 mr-2" />
-              View History
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Requirement Dialog */}
+      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="border-b pb-4">
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="w-5 h-5 text-primary" />
+              Create New Requirement
+            </DialogTitle>
+            <DialogDescription>
+              Fill in the details below. ID will be auto-generated.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4 py-4">
+            <div className="space-y-2">
+              <Label>Task Group</Label>
+              <div className="flex gap-2">
+                <Select
+                  value={newRequirement.taskGroup}
+                  onValueChange={(value) => setNewRequirement({ ...newRequirement, taskGroup: value })}
+                >
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Select task group..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {taskGroups?.map((group) => (
+                      <SelectItem key={group.id} value={group.name}>
+                        {group.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="outline"
+                  onClick={() => {
+                    const newGroup = prompt('Enter new Task Group name:');
+                    if (newGroup && newGroup.trim() && currentProjectId) {
+                      createTaskGroupMutation.mutate({ projectId: currentProjectId, name: newGroup.trim() });
+                    }
+                  }}
+                  title="Add new task group"
+                  disabled={createTaskGroupMutation.isPending}
+                >
+                  {createTaskGroupMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                </Button>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Issue Group</Label>
+              <div className="flex gap-2">
+                <Select
+                  value={newRequirement.issueGroup}
+                  onValueChange={(value) => setNewRequirement({ ...newRequirement, issueGroup: value })}
+                >
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Select issue group..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {issueGroups?.map((group) => (
+                      <SelectItem key={group.id} value={group.name}>
+                        {group.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="outline"
+                  onClick={() => {
+                    const newGroup = prompt('Enter new Issue Group name:');
+                    if (newGroup && newGroup.trim() && currentProjectId) {
+                      createIssueGroupMutation.mutate({ projectId: currentProjectId, name: newGroup.trim() });
+                    }
+                  }}
+                  title="Add new issue group"
+                  disabled={createIssueGroupMutation.isPending}
+                >
+                  {createIssueGroupMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                </Button>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Creation Date</Label>
+              <Input
+                type="date"
+                value={newRequirement.createdAt}
+                onChange={(e) => setNewRequirement({ ...newRequirement, createdAt: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Priority</Label>
+              <SelectWithCreate
+                type="priority"
+                value={newRequirement.priority}
+                onValueChange={(value) => setNewRequirement({ ...newRequirement, priority: value })}
+                placeholder="Select priority"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Type</Label>
+              <SelectWithCreate
+                type="type"
+                value={newRequirement.type}
+                onValueChange={(value) => setNewRequirement({ ...newRequirement, type: value })}
+                placeholder="Select type"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Category</Label>
+              <SelectWithCreate
+                type="category"
+                value={newRequirement.category}
+                onValueChange={(value) => setNewRequirement({ ...newRequirement, category: value })}
+                placeholder="Select category"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Owner (Stakeholder)</Label>
+              <SelectWithCreate
+                type="stakeholder"
+                value={newRequirement.owner}
+                onValueChange={(value) => setNewRequirement({ ...newRequirement, owner: value })}
+                placeholder="Select owner"
+                projectId={currentProjectId || undefined}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Source Type</Label>
+              <Input
+                value={newRequirement.sourceType}
+                onChange={(e) => setNewRequirement({ ...newRequirement, sourceType: e.target.value })}
+                placeholder="e.g., Internal, External, Customer"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>External Source</Label>
+              <Input
+                value={newRequirement.refSource}
+                onChange={(e) => setNewRequirement({ ...newRequirement, refSource: e.target.value })}
+                placeholder="Reference source URL or name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <SelectWithCreate
+                type="status"
+                value={newRequirement.status}
+                onValueChange={(value) => setNewRequirement({ ...newRequirement, status: value })}
+                placeholder="Select status"
+              />
+            </div>
+            <div className="col-span-2 space-y-2">
+              <Label>Description</Label>
+              <Textarea
+                value={newRequirement.description}
+                onChange={(e) => setNewRequirement({ ...newRequirement, description: e.target.value })}
+                placeholder="Enter requirement description"
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleCreate} disabled={createMutation.isPending} className="bg-primary hover:bg-primary/90">
+              {createMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
+              Create Requirement
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Create Task from Requirement Dialog */}
+      {/* Create Task Dialog */}
       <Dialog open={createTaskDialogOpen} onOpenChange={setCreateTaskDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Create Task for {selectedRequirement?.idCode}</DialogTitle>
             <DialogDescription>
-              Create a new task linked to this requirement. Task ID will be auto-generated.
+              Create a new task linked to this requirement
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Task Group *</Label>
-              <Input
-                value={newTask.taskGroup}
-                onChange={(e) => setNewTask({ ...newTask, taskGroup: e.target.value })}
-                placeholder="Enter task group name..."
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Description</Label>
-              <Textarea
-                value={newTask.description}
-                onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
-                placeholder="Task description..."
-                rows={3}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Owner</Label>
-                <Select
-                  value={newTask.owner}
-                  onValueChange={(value) => setNewTask({ ...newTask, owner: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select owner..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {stakeholders?.map((s) => (
-                      <SelectItem key={s.id} value={s.fullName}>{s.fullName}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Status</Label>
-                <Select
-                  value={newTask.status}
-                  onValueChange={(value) => setNewTask({ ...newTask, status: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Open">Open</SelectItem>
-                    <SelectItem value="In Progress">In Progress</SelectItem>
-                    <SelectItem value="Completed">Completed</SelectItem>
-                    <SelectItem value="Blocked">Blocked</SelectItem>
-                  </SelectContent>
-                </Select>
+          <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
+            {/* Basic Information */}
+            <div className="space-y-4">
+              <h4 className="font-semibold text-sm border-b pb-2">Basic Information</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Task Group *</Label>
+                  <div className="flex gap-2">
+                    <Select
+                      value={newTask.taskGroup}
+                      onValueChange={(value) => setNewTask({ ...newTask, taskGroup: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select task group..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {taskGroups?.map((group) => (
+                          <SelectItem key={group.id} value={group.name}>
+                            {group.idCode ? `${group.idCode} - ${group.name}` : group.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => {
+                        const name = prompt('Enter new Task Group name:');
+                        if (name && currentProjectId) {
+                          createTaskGroupMutation.mutate({ projectId: currentProjectId, name });
+                        }
+                      }}
+                    >
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Description *</Label>
+                  <Input
+                    value={newTask.description}
+                    onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
+                    placeholder="Task description..."
+                  />
+                </div>
               </div>
             </div>
-            <div className="space-y-2">
-              <Label>Priority</Label>
-              <Select
-                value={newTask.priority}
-                onValueChange={(value) => setNewTask({ ...newTask, priority: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Low">Low</SelectItem>
-                  <SelectItem value="Medium">Medium</SelectItem>
-                  <SelectItem value="High">High</SelectItem>
-                  <SelectItem value="Very High">Very High</SelectItem>
-                </SelectContent>
-              </Select>
+
+            {/* RACI Assignment */}
+            <div className="space-y-4">
+              <h4 className="font-semibold text-sm border-b pb-2">RACI Assignment</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Responsible (R)</Label>
+                  <Select
+                    value={newTask.responsible}
+                    onValueChange={(value) => setNewTask({ ...newTask, responsible: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select responsible..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {stakeholders?.map((s) => (
+                        <SelectItem key={s.id} value={s.fullName}>{s.fullName}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Accountable (A)</Label>
+                  <Select
+                    value={newTask.accountable}
+                    onValueChange={(value) => setNewTask({ ...newTask, accountable: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select accountable..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {stakeholders?.map((s) => (
+                        <SelectItem key={s.id} value={s.fullName}>{s.fullName}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Consulted (C)</Label>
+                  <Select
+                    value={newTask.consulted}
+                    onValueChange={(value) => setNewTask({ ...newTask, consulted: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select consulted..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {stakeholders?.map((s) => (
+                        <SelectItem key={s.id} value={s.fullName}>{s.fullName}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Informed (I)</Label>
+                  <Select
+                    value={newTask.informed}
+                    onValueChange={(value) => setNewTask({ ...newTask, informed: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select informed..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {stakeholders?.map((s) => (
+                        <SelectItem key={s.id} value={s.fullName}>{s.fullName}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Responsible</Label>
-                <Select
-                  value={newTask.responsible}
-                  onValueChange={(value) => setNewTask({ ...newTask, responsible: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select responsible..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {stakeholders?.map((s) => (
-                      <SelectItem key={s.id} value={s.fullName}>{s.fullName}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Accountable</Label>
-                <Select
-                  value={newTask.accountable}
-                  onValueChange={(value) => setNewTask({ ...newTask, accountable: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select accountable..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {stakeholders?.map((s) => (
-                      <SelectItem key={s.id} value={s.fullName}>{s.fullName}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Informed</Label>
-                <Select
-                  value={newTask.informed}
-                  onValueChange={(value) => setNewTask({ ...newTask, informed: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select informed..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {stakeholders?.map((s) => (
-                      <SelectItem key={s.id} value={s.fullName}>{s.fullName}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Consulted</Label>
-                <Select
-                  value={newTask.consulted}
-                  onValueChange={(value) => setNewTask({ ...newTask, consulted: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select consulted..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {stakeholders?.map((s) => (
-                      <SelectItem key={s.id} value={s.fullName}>{s.fullName}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+
+            {/* Status & Priority */}
+            <div className="space-y-4">
+              <h4 className="font-semibold text-sm border-b pb-2">Status & Priority</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <Select
+                    value={newTask.status}
+                    onValueChange={(value) => setNewTask({ ...newTask, status: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {statusOptions?.map((opt) => (
+                        <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Priority</Label>
+                  <Select
+                    value={newTask.priority}
+                    onValueChange={(value) => setNewTask({ ...newTask, priority: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {priorityOptions?.map((opt) => (
+                        <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateTaskDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleCreateTaskFromRequirement} disabled={createTaskMutation.isPending}>
-              {createTaskMutation.isPending ? 'Creating...' : 'Create Task'}
+            <Button onClick={handleCreateTaskFromRequirement} disabled={createTaskMutation.isPending} className="bg-primary hover:bg-primary/90">
+              Create Task
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Create Issue from Requirement Dialog */}
+      {/* Create Issue Dialog */}
       <Dialog open={createIssueDialogOpen} onOpenChange={setCreateIssueDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Create Issue for {selectedRequirement?.idCode}</DialogTitle>
             <DialogDescription>
-              Create a new issue linked to this requirement. Issue ID will be auto-generated.
+              Create a new issue linked to this requirement
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Description</Label>
-              <Textarea
-                value={newIssue.description}
-                onChange={(e) => setNewIssue({ ...newIssue, description: e.target.value })}
-                placeholder="Issue description..."
-                rows={3}
-              />
+          <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
+            {/* Basic Information */}
+            <div className="space-y-4">
+              <h4 className="font-semibold text-sm border-b pb-2">Basic Information</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Issue Group *</Label>
+                  <div className="flex gap-2">
+                    <Select
+                      value={newIssue.issueGroup || ''}
+                      onValueChange={(value) => setNewIssue({ ...newIssue, issueGroup: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select issue group..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {issueGroups?.map((group) => (
+                          <SelectItem key={group.id} value={group.name}>
+                            {group.idCode ? `${group.idCode} - ${group.name}` : group.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => {
+                        const name = prompt('Enter new Issue Group name:');
+                        if (name && currentProjectId) {
+                          createIssueGroupMutation.mutate({ projectId: currentProjectId, name });
+                        }
+                      }}
+                    >
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Description *</Label>
+                  <Input
+                    value={newIssue.description}
+                    onChange={(e) => setNewIssue({ ...newIssue, description: e.target.value })}
+                    placeholder="Issue description..."
+                  />
+                </div>
+              </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+
+            {/* Status & Priority */}
+            <div className="space-y-4">
+              <h4 className="font-semibold text-sm border-b pb-2">Status & Priority</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <Select
+                    value={newIssue.status}
+                    onValueChange={(value) => setNewIssue({ ...newIssue, status: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {statusOptions?.map((opt) => (
+                        <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Priority</Label>
+                  <Select
+                    value={newIssue.priority}
+                    onValueChange={(value) => setNewIssue({ ...newIssue, priority: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {priorityOptions?.map((opt) => (
+                        <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+
+            {/* Owner */}
+            <div className="space-y-4">
+              <h4 className="font-semibold text-sm border-b pb-2">Assignment</h4>
               <div className="space-y-2">
                 <Label>Owner</Label>
                 <Select
@@ -957,7 +1613,7 @@ export default function Requirements() {
                   onValueChange={(value) => setNewIssue({ ...newIssue, owner: value })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select owner..." />
+                    <SelectValue placeholder="Select owner" />
                   </SelectTrigger>
                   <SelectContent>
                     {stakeholders?.map((s) => (
@@ -966,100 +1622,44 @@ export default function Requirements() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label>Status</Label>
-                <Select
-                  value={newIssue.status}
-                  onValueChange={(value) => setNewIssue({ ...newIssue, status: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Open">Open</SelectItem>
-                    <SelectItem value="In Progress">In Progress</SelectItem>
-                    <SelectItem value="Resolved">Resolved</SelectItem>
-                    <SelectItem value="Closed">Closed</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Priority</Label>
-              <Select
-                value={newIssue.priority}
-                onValueChange={(value) => setNewIssue({ ...newIssue, priority: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Low">Low</SelectItem>
-                  <SelectItem value="Medium">Medium</SelectItem>
-                  <SelectItem value="High">High</SelectItem>
-                  <SelectItem value="Very High">Very High</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateIssueDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleCreateIssueFromRequirement} disabled={createIssueMutation.isPending}>
-              {createIssueMutation.isPending ? 'Creating...' : 'Create Issue'}
+            <Button onClick={handleCreateIssueFromRequirement} disabled={createIssueMutation.isPending} className="bg-primary hover:bg-primary/90">
+              Create Issue
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Create Deliverable from Requirement Dialog */}
+      {/* Create Deliverable Dialog */}
       <Dialog open={createDeliverableDialogOpen} onOpenChange={setCreateDeliverableDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Create Deliverable for {selectedRequirement?.idCode}</DialogTitle>
             <DialogDescription>
-              Create a new deliverable linked to this requirement. Deliverable ID will be auto-generated.
+              Create a new deliverable linked to this requirement
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Description *</Label>
+              <Label>Description</Label>
               <Textarea
                 value={newDeliverable.description}
                 onChange={(e) => setNewDeliverable({ ...newDeliverable, description: e.target.value })}
-                placeholder="Deliverable description..."
+                placeholder="Enter deliverable description"
                 rows={3}
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label>Status</Label>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => {
-                      setSettingsType('status');
-                      setSettingsOpen(true);
-                    }}
-                    className="h-6 px-2"
-                  >
-                    <Settings className="w-3 h-3" />
-                  </Button>
-                </div>
-                <Select
+                <Label>Status</Label>
+                <Input
                   value={newDeliverable.status}
-                  onValueChange={(value) => setNewDeliverable({ ...newDeliverable, status: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Pending">Pending</SelectItem>
-                    <SelectItem value="In Progress">In Progress</SelectItem>
-                    <SelectItem value="Completed">Completed</SelectItem>
-                    <SelectItem value="Delivered">Delivered</SelectItem>
-                  </SelectContent>
-                </Select>
+                  onChange={(e) => setNewDeliverable({ ...newDeliverable, status: e.target.value })}
+                  placeholder="e.g., Pending, In Progress, Completed"
+                />
               </div>
               <div className="space-y-2">
                 <Label>Due Date</Label>
@@ -1073,8 +1673,8 @@ export default function Requirements() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateDeliverableDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleCreateDeliverableFromRequirement} disabled={createDeliverableMutation.isPending}>
-              {createDeliverableMutation.isPending ? 'Creating...' : 'Create Deliverable'}
+            <Button onClick={handleCreateDeliverableFromRequirement} disabled={createDeliverableMutation.isPending} className="bg-primary hover:bg-primary/90">
+              Create Deliverable
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1082,298 +1682,162 @@ export default function Requirements() {
 
       {/* History Dialog */}
       <Dialog open={historyDialogOpen} onOpenChange={setHistoryDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-[95vw] w-full h-[85vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle>Change History - {selectedEntityId}</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="w-5 h-5 text-primary" />
+              Change History for {selectedEntityId}
+            </DialogTitle>
             <DialogDescription>
-              Timeline of all changes made to this requirement
+              View all modifications made to this requirement
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            {actionLogs?.map((log) => (
-              <Card key={log.id}>
-                <CardHeader className="py-3">
-                  <CardTitle className="text-sm font-medium">
-                    {new Date(log.changedAt).toLocaleString()}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="py-2">
-                  <div className="space-y-2">
-                    {Object.entries(log.changedFields as Record<string, { oldValue: any; newValue: any }>).map(([field, change]) => (
-                      <div key={field} className="grid grid-cols-3 gap-4 text-sm">
-                        <div className="font-medium">{field}</div>
-                        <div className="text-muted-foreground">
-                          <span className="line-through">{change.oldValue || 'empty'}</span>
-                        </div>
-                        <div className="text-green-600 font-medium">
-                          {change.newValue || 'empty'}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-            {actionLogs?.length === 0 && (
+          <div className="flex-1 overflow-auto py-4">
+            {actionLogs && actionLogs.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead className="w-[140px] font-semibold">Update</TableHead>
+                    <TableHead className="w-[180px] font-semibold">Date & Time</TableHead>
+                    <TableHead className="font-semibold">Changed</TableHead>
+                    <TableHead className="font-semibold">Old</TableHead>
+                    <TableHead className="font-semibold">New</TableHead>
+                    <TableHead className="w-[100px] font-semibold">User</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {actionLogs.map((log) => {
+                    const changedFields = Object.entries(log.changedFields || {});
+                    return changedFields.map(([fieldName, values], idx) => (
+                      <TableRow key={`${log.id}-${idx}`} className="hover:bg-muted/30">
+                        {idx === 0 && (
+                          <>
+                            <TableCell rowSpan={changedFields.length} className="align-top">
+                              <Badge variant="outline" className="text-xs">Update</Badge>
+                            </TableCell>
+                            <TableCell rowSpan={changedFields.length} className="text-xs text-muted-foreground align-top">
+                              {new Date(log.changedAt).toLocaleString()}
+                            </TableCell>
+                          </>
+                        )}
+                        <TableCell className="text-sm font-medium">{fieldName}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{values.oldValue || '-'}</TableCell>
+                        <TableCell className="text-sm text-primary font-medium">{values.newValue || '-'}</TableCell>
+                        {idx === 0 && (
+                          <TableCell rowSpan={changedFields.length} className="text-xs text-muted-foreground align-top">
+                            User #{log.changedBy}
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    ));
+                  })}
+                </TableBody>
+              </Table>
+            ) : (
               <div className="text-center py-8 text-muted-foreground">
-                No changes recorded yet
+                No history records found for this requirement.
               </div>
             )}
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Create Requirement Dialog - Auto ID */}
-      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Create New Requirement</DialogTitle>
-            <DialogDescription>
-              Add a new requirement to the project. ID will be auto-generated (Q-XXXX format).
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="description" className="text-right">Description *</Label>
-              <Textarea
-                id="description"
-                value={newRequirement.description}
-                onChange={(e) => setNewRequirement({ ...newRequirement, description: e.target.value })}
-                className="col-span-3"
-                placeholder="Describe the requirement..."
-                rows={3}
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="source" className="text-right">Source</Label>
-              <Input
-                id="source"
-                value={newRequirement.source}
-                onChange={(e) => setNewRequirement({ ...newRequirement, source: e.target.value })}
-                className="col-span-3"
-                placeholder="Source (max 20 characters)..."
-                maxLength={20}
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="owner" className="text-right">Owner</Label>
-              <div className="col-span-3 flex gap-2">
-                <Select
-                  value={newRequirement.owner}
-                  onValueChange={(value) => setNewRequirement({ ...newRequirement, owner: value })}
-                >
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Select owner from stakeholders..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {stakeholders?.map((s) => (
-                      <SelectItem key={s.id} value={s.fullName}>{s.fullName} - {s.position || s.role || 'N/A'}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setAddStakeholderDialogOpen(true)}
-                >
-                  <Plus className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="status" className="text-right">Status</Label>
-              <div className="col-span-3 flex gap-2">
-                <Select
-                  value={newRequirement.status}
-                  onValueChange={(value) => setNewRequirement({ ...newRequirement, status: value })}
-                >
-                  <SelectTrigger className="flex-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {statusOptions?.map((opt) => (
-                      <SelectItem key={opt.id} value={opt.value}>
-                        {opt.label || opt.value}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <DropdownOptionsManager type="status" />
-              </div>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="priority" className="text-right">Priority</Label>
-              <div className="col-span-3 flex gap-2">
-                <Select
-                  value={newRequirement.priority}
-                  onValueChange={(value) => setNewRequirement({ ...newRequirement, priority: value })}
-                >
-                  <SelectTrigger className="flex-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {priorityOptions?.map((opt) => (
-                      <SelectItem key={opt.id} value={opt.value}>
-                        {opt.label || opt.value}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <DropdownOptionsManager type="priority" />
-              </div>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="type" className="text-right">Type</Label>
-              <div className="col-span-3 flex gap-2">
-                <Select
-                  value={newRequirement.type}
-                  onValueChange={(value) => setNewRequirement({ ...newRequirement, type: value })}
-                >
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Select type..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {typeOptions?.map((opt) => (
-                      <SelectItem key={opt.id} value={opt.value}>
-                        {opt.label || opt.value}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <DropdownOptionsManager type="type" />
-              </div>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="category" className="text-right">Category</Label>
-              <div className="col-span-3 flex gap-2">
-                <Select
-                  value={newRequirement.category}
-                  onValueChange={(value) => setNewRequirement({ ...newRequirement, category: value })}
-                >
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Select category..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categoryOptions?.map((opt) => (
-                      <SelectItem key={opt.id} value={opt.value}>
-                        {opt.label || opt.value}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <DropdownOptionsManager type="category" />
-              </div>
-            </div>
-
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleCreate} disabled={createMutation.isPending}>
-              {createMutation.isPending ? 'Creating...' : 'Create'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Settings Dialog */}
-      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Manage {settingsType === 'status' ? 'Status' : settingsType === 'priority' ? 'Priority' : settingsType === 'type' ? 'Type' : 'Category'} Options</DialogTitle>
-            <DialogDescription>
-              Add, edit, or delete {settingsType} options for requirements
-            </DialogDescription>
-          </DialogHeader>
-          <DropdownOptionsManager type={settingsType} />
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSettingsOpen(false)}>Close</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Add Stakeholder Dialog */}
-      <Dialog open={addStakeholderDialogOpen} onOpenChange={setAddStakeholderDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Add New Stakeholder</DialogTitle>
-            <DialogDescription>
-              Create a new stakeholder to use in dropdowns
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="fullName">Full Name *</Label>
-              <Input
-                id="fullName"
-                value={newStakeholder.fullName}
-                onChange={(e) => setNewStakeholder({ ...newStakeholder, fullName: e.target.value })}
-                placeholder="Enter full name..."
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="position">Position</Label>
-              <Input
-                id="position"
-                value={newStakeholder.position}
-                onChange={(e) => setNewStakeholder({ ...newStakeholder, position: e.target.value })}
-                placeholder="Enter position..."
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="role">Role</Label>
-              <Input
-                id="role"
-                value={newStakeholder.role}
-                onChange={(e) => setNewStakeholder({ ...newStakeholder, role: e.target.value })}
-                placeholder="Enter role..."
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAddStakeholderDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleCreateStakeholder} disabled={createStakeholderMutation.isPending}>
-              {createStakeholderMutation.isPending ? 'Creating...' : 'Create'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Deliverable Confirmation */}
-      <AlertDialog open={deleteDeliverableDialogOpen} onOpenChange={setDeleteDeliverableDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Deliverable?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the deliverable.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDeleteDeliverable} disabled={deleteDeliverableMutation.isPending}>
-              {deleteDeliverableMutation.isPending ? 'Deleting...' : 'Delete'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Delete Confirmation */}
+      {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the requirement.
+              This action cannot be undone. This will permanently delete the requirement
+              and all associated data.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} disabled={deleteMutation.isPending}>
-              {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90">
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Delete Deliverable Confirmation Dialog */}
+      <AlertDialog open={deleteDeliverableDialogOpen} onOpenChange={setDeleteDeliverableDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Deliverable?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete this deliverable.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteDeliverable} className="bg-destructive hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Dropdown Options Manager Dialog */}
+      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="capitalize flex items-center gap-2">
+              <Settings className="w-5 h-5 text-primary" />
+              Manage {settingsType} Options
+            </DialogTitle>
+            <DialogDescription>
+              Add, edit, or remove {settingsType} options used across the system
+            </DialogDescription>
+          </DialogHeader>
+          <DropdownOptionsManager type={settingsType} />
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Stakeholder Dialog */}
+      <Dialog open={addStakeholderDialogOpen} onOpenChange={setAddStakeholderDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New Stakeholder</DialogTitle>
+            <DialogDescription>
+              Create a new stakeholder to assign as owner
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Full Name</Label>
+              <Input
+                value={newStakeholder.fullName}
+                onChange={(e) => setNewStakeholder({ ...newStakeholder, fullName: e.target.value })}
+                placeholder="Enter full name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Position</Label>
+              <Input
+                value={newStakeholder.position}
+                onChange={(e) => setNewStakeholder({ ...newStakeholder, position: e.target.value })}
+                placeholder="Enter position"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Role</Label>
+              <Input
+                value={newStakeholder.role}
+                onChange={(e) => setNewStakeholder({ ...newStakeholder, role: e.target.value })}
+                placeholder="Enter role"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddStakeholderDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleCreateStakeholder} disabled={createStakeholderMutation.isPending} className="bg-primary hover:bg-primary/90">
+              Add Stakeholder
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

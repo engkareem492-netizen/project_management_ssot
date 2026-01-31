@@ -15,3 +15,9 @@ export const getLoginUrl = () => {
 
   return url.toString();
 };
+
+// Generate password reset URL that redirects to Manus OAuth password reset page
+export const getPasswordResetUrl = () => {
+  const oauthPortalUrl = import.meta.env.VITE_OAUTH_PORTAL_URL;
+  return `${oauthPortalUrl}/reset-password`;
+};

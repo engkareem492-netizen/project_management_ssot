@@ -1,0 +1,1 @@
+ALTER TABLE `tasks` ADD `assignDate` varchar(50);

@@ -35,12 +35,19 @@ import {
   Package,
   FileCheck,
   Settings as SettingsIcon,
-  Calendar
+  Calendar,
+  Upload,
+  Download,
+  Database
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
+import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
+import { useProject } from "@/contexts/ProjectContext";
+import { ThemeSelector } from "./ThemeSelector";
 
 const menuItems = [
   { icon: Calendar, label: "Today", path: "/today" },
@@ -138,6 +145,61 @@ function DashboardLayoutContent({
   const sidebarRef = useRef<HTMLDivElement>(null);
   const activeMenuItem = menuItems.find(item => item.path === location);
   const isMobile = useIsMobile();
+  const [uploading, setUploading] = useState(false);
+  const { currentProjectId, setCurrentProjectId } = useProject();
+
+  const importMutation = trpc.excel.import.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Import successful! Imported ${data.imported.requirements} requirements, ${data.imported.tasks} tasks, ${data.imported.issues} issues`);
+      setLocation("/requirements");
+    },
+    onError: (error) => {
+      toast.error(`Import failed: ${error.message}`);
+      setUploading(false);
+    },
+  });
+
+  const exportQuery = trpc.excel.export.useQuery(undefined, {
+    enabled: false,
+  });
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!currentProjectId) {
+      toast.error('No project selected');
+      return;
+    }
+
+    setUploading(true);
+    const reader = new FileReader();
+    
+    reader.onload = async (e) => {
+      const base64Data = e.target?.result as string;
+      const base64 = base64Data.split(',')[1];
+      
+      importMutation.mutate({ projectId: currentProjectId, base64Data: base64 });
+    };
+    
+    reader.readAsDataURL(file);
+  };
+
+  const handleExport = async () => {
+    const result = await exportQuery.refetch();
+    if (result.data) {
+      const link = document.createElement('a');
+      link.href = `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${result.data.base64Data}`;
+      link.download = result.data.filename;
+      link.click();
+      toast.success('Excel file exported successfully');
+    }
+  };
+
+  const handleSwitchProject = () => {
+    setCurrentProjectId(null);
+    setLocation("/");
+  };
 
   useEffect(() => {
     if (isCollapsed) {
@@ -223,6 +285,48 @@ function DashboardLayoutContent({
                 );
               })}
             </SidebarMenu>
+
+            {/* Excel Import/Export Section */}
+            <div className="px-2 py-4 border-t mt-4">
+              <div className="px-2 mb-2">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider group-data-[collapsible=icon]:hidden">
+                  Excel Operations
+                </p>
+              </div>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <input
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                    id="sidebar-file-upload"
+                    disabled={uploading}
+                  />
+                  <label htmlFor="sidebar-file-upload" className="cursor-pointer">
+                    <SidebarMenuButton
+                      tooltip="Import Excel"
+                      className="h-10 transition-all font-normal"
+                      disabled={uploading}
+                    >
+                      <Upload className="h-4 w-4" />
+                      <span>{uploading ? "Importing..." : "Import Excel"}</span>
+                    </SidebarMenuButton>
+                  </label>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    onClick={handleExport}
+                    tooltip="Export Excel"
+                    className="h-10 transition-all font-normal"
+                    disabled={exportQuery.isLoading}
+                  >
+                    <Download className="h-4 w-4" />
+                    <span>{exportQuery.isLoading ? "Exporting..." : "Export Excel"}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </div>
           </SidebarContent>
 
           <SidebarFooter className="p-3">
@@ -245,6 +349,13 @@ function DashboardLayoutContent({
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem
+                  onClick={handleSwitchProject}
+                  className="cursor-pointer"
+                >
+                  <Database className="mr-2 h-4 w-4" />
+                  <span>Switch Project</span>
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={logout}
                   className="cursor-pointer text-destructive focus:text-destructive"
@@ -278,6 +389,9 @@ function DashboardLayoutContent({
                   </span>
                 </div>
               </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <ThemeSelector />
             </div>
           </div>
         )}

@@ -3,6 +3,8 @@ import { drizzle } from "drizzle-orm/mysql2";
 import { 
   InsertUser, 
   users, 
+  projects,
+  InsertProject,
   requirements, 
   tasks, 
   issues, 
@@ -21,7 +23,11 @@ import {
   statusOptions,
   priorityOptions,
   typeOptions,
-  categoryOptions
+  categoryOptions,
+  taskGroups,
+  issueGroups,
+  InsertTaskGroup,
+  InsertIssueGroup
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -398,15 +404,15 @@ import {
 } from "../drizzle/schema";
 
 // ID Sequence functions - Auto-generate IDs
-export async function getNextId(entityType: string, prefix: string): Promise<string> {
+export async function getNextId(entityType: string, prefix: string, projectId: number = 1): Promise<string> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  // Try to get existing sequence
+  // Try to get existing sequence for this project
   const existing = await db
     .select()
     .from(idSequences)
-    .where(eq(idSequences.entityType, entityType))
+    .where(and(eq(idSequences.entityType, entityType), eq(idSequences.projectId, projectId)))
     .limit(1);
   
   let nextNumber: number;
@@ -414,6 +420,7 @@ export async function getNextId(entityType: string, prefix: string): Promise<str
   if (existing.length === 0) {
     // Create new sequence starting at 1
     await db.insert(idSequences).values({
+      projectId,
       entityType,
       prefix,
       currentNumber: 1,
@@ -425,25 +432,26 @@ export async function getNextId(entityType: string, prefix: string): Promise<str
     await db
       .update(idSequences)
       .set({ currentNumber: nextNumber })
-      .where(eq(idSequences.entityType, entityType));
+      .where(and(eq(idSequences.entityType, entityType), eq(idSequences.projectId, projectId)));
   }
   
   // Format as prefix + 4-digit number (e.g., Q-0001)
   return `${prefix}-${nextNumber.toString().padStart(4, '0')}`;
 }
 
-export async function initializeIdSequence(entityType: string, prefix: string, startNumber: number) {
+export async function initializeIdSequence(entityType: string, prefix: string, startNumber: number, projectId: number = 1) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
   const existing = await db
     .select()
     .from(idSequences)
-    .where(eq(idSequences.entityType, entityType))
+    .where(and(eq(idSequences.entityType, entityType), eq(idSequences.projectId, projectId)))
     .limit(1);
   
   if (existing.length === 0) {
     await db.insert(idSequences).values({
+      projectId,
       entityType,
       prefix,
       currentNumber: startNumber,
@@ -452,7 +460,7 @@ export async function initializeIdSequence(entityType: string, prefix: string, s
     await db
       .update(idSequences)
       .set({ currentNumber: startNumber })
-      .where(eq(idSequences.entityType, entityType));
+      .where(and(eq(idSequences.entityType, entityType), eq(idSequences.projectId, projectId)));
   }
 }
 
@@ -659,14 +667,16 @@ export async function getIdSequence(entityType: string) {
   return result.length > 0 ? result[0] : null;
 }
 
-export async function updateIdSequence(entityType: string, data: { prefix?: string; startNumber?: number; padding?: number }) {
+export async function updateIdSequence(entityType: string, data: { prefix?: string; startNumber?: number; minNumber?: number; maxNumber?: number; padLength?: number }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
   const updateData: any = {};
   if (data.prefix !== undefined) updateData.prefix = data.prefix;
   if (data.startNumber !== undefined) updateData.currentNumber = data.startNumber - 1; // Set to startNumber - 1 so next ID will be startNumber
-  if (data.padding !== undefined) updateData.padding = data.padding;
+  if (data.minNumber !== undefined) updateData.minNumber = data.minNumber;
+  if (data.maxNumber !== undefined) updateData.maxNumber = data.maxNumber;
+  if (data.padLength !== undefined) updateData.padLength = data.padLength;
   
   await db.update(idSequences)
     .set(updateData)
@@ -783,7 +793,8 @@ export async function getAllTypeOptions() {
 export async function createTypeOption(data: { value: string; label: string; description?: string; isDefault?: boolean }) {
   const db = await getDb();
   if (!db) throw new Error('Database not available');
-  const [created] = await db.insert(typeOptions).values(data);
+  await db.insert(typeOptions).values(data);
+  const [created] = await db.select().from(typeOptions).where(eq(typeOptions.value, data.value));
   return created;
 }
 
@@ -824,7 +835,8 @@ export async function getAllCategoryOptions() {
 export async function createCategoryOption(data: { value: string; label: string; description?: string; isDefault?: boolean }) {
   const db = await getDb();
   if (!db) throw new Error('Database not available');
-  const [created] = await db.insert(categoryOptions).values(data);
+  await db.insert(categoryOptions).values(data);
+  const [created] = await db.select().from(categoryOptions).where(eq(categoryOptions.value, data.value));
   return created;
 }
 
@@ -851,4 +863,201 @@ export async function incrementCategoryUsage(value: string) {
   await db.update(categoryOptions)
     .set({ usageCount: sql`${categoryOptions.usageCount} + 1` })
     .where(eq(categoryOptions.value, value));
+}
+
+// Project functions
+export async function getAllProjects() {
+  const db = await getDb();
+  if (!db) return [];
+  
+  try {
+    const result = await db.select({
+      id: projects.id,
+      name: projects.name,
+      description: projects.description,
+      createdAt: projects.createdAt,
+    }).from(projects);
+    return result;
+  } catch (error) {
+    console.error("[Database] Failed to get projects:", error);
+    return [];
+  }
+}
+
+export async function getProjectById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  
+  try {
+    const result = await db.select().from(projects).where(eq(projects.id, id)).limit(1);
+    return result[0] || null;
+  } catch (error) {
+    console.error("[Database] Failed to get project:", error);
+    return null;
+  }
+}
+
+export async function createProject(data: InsertProject) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  try {
+    const result = await db.insert(projects).values(data);
+    const insertResult = result as any;
+    const insertId = insertResult[0]?.insertId || insertResult.insertId;
+    if (!insertId || isNaN(Number(insertId))) {
+      // Fallback: get the latest created project by name
+      const [created] = await db.select().from(projects)
+        .where(eq(projects.name, data.name))
+        .orderBy(desc(projects.id))
+        .limit(1);
+      return created;
+    }
+    const [created] = await db.select().from(projects).where(eq(projects.id, Number(insertId)));
+    return created;
+  } catch (error) {
+    console.error("[Database] Failed to create project:", error);
+    throw error;
+  }
+}
+
+export async function updateProjectPassword(projectId: number, hashedPassword: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  try {
+    await db.update(projects).set({ password: hashedPassword }).where(eq(projects.id, projectId));
+    return { success: true };
+  } catch (error) {
+    console.error("[Database] Failed to update project password:", error);
+    throw error;
+  }
+}
+
+export async function deleteProject(projectId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  try {
+    // Delete all related data first
+    await db.delete(requirements).where(eq(requirements.projectId, projectId));
+    await db.delete(tasks).where(eq(tasks.projectId, projectId));
+    await db.delete(issues).where(eq(issues.projectId, projectId));
+    await db.delete(stakeholders).where(eq(stakeholders.projectId, projectId));
+    await db.delete(taskGroups).where(eq(taskGroups.projectId, projectId));
+    await db.delete(issueGroups).where(eq(issueGroups.projectId, projectId));
+    
+    // Finally delete the project itself
+    await db.delete(projects).where(eq(projects.id, projectId));
+    return { success: true };
+  } catch (error) {
+    console.error("[Database] Failed to delete project:", error);
+    throw error;
+  }
+}
+
+// Task Groups functions
+export async function getAllTaskGroups(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  try {
+    const result = await db.select().from(taskGroups).where(eq(taskGroups.projectId, projectId)).orderBy(taskGroups.name);
+    return result;
+  } catch (error) {
+    console.error("[Database] Failed to get task groups:", error);
+    return [];
+  }
+}
+
+export async function createTaskGroup(data: { projectId: number; name: string; description?: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  try {
+    // Generate ID code for Task Group
+    const idCode = await getNextId('Task Group', 'TG', data.projectId);
+    const result = await db.insert(taskGroups).values({ ...data, idCode });
+    const insertResult = result as any;
+    const insertId = insertResult[0]?.insertId || insertResult.insertId;
+    if (!insertId || isNaN(Number(insertId))) {
+      // Fallback: get the latest created task group by name
+      const [created] = await db.select().from(taskGroups)
+        .where(and(eq(taskGroups.projectId, data.projectId), eq(taskGroups.name, data.name)))
+        .orderBy(desc(taskGroups.id))
+        .limit(1);
+      return created;
+    }
+    const [created] = await db.select().from(taskGroups).where(eq(taskGroups.id, Number(insertId)));
+    return created;
+  } catch (error) {
+    console.error("[Database] Failed to create task group:", error);
+    throw error;
+  }
+}
+
+export async function updateTaskGroup(id: number, data: { name?: string; description?: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(taskGroups).set(data).where(eq(taskGroups.id, id));
+  return { success: true };
+}
+
+export async function deleteTaskGroup(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(taskGroups).where(eq(taskGroups.id, id));
+}
+
+// Issue Groups functions
+export async function getAllIssueGroups(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  try {
+    const result = await db.select().from(issueGroups).where(eq(issueGroups.projectId, projectId)).orderBy(issueGroups.name);
+    return result;
+  } catch (error) {
+    console.error("[Database] Failed to get issue groups:", error);
+    return [];
+  }
+}
+
+export async function createIssueGroup(data: { projectId: number; name: string; description?: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  try {
+    // Generate ID code for Issue Group
+    const idCode = await getNextId('Issue Group', 'IG', data.projectId);
+    const result = await db.insert(issueGroups).values({ ...data, idCode });
+    const insertResult = result as any;
+    const insertId = insertResult[0]?.insertId || insertResult.insertId;
+    if (!insertId || isNaN(Number(insertId))) {
+      // Fallback: get the latest created issue group by name
+      const [created] = await db.select().from(issueGroups)
+        .where(and(eq(issueGroups.projectId, data.projectId), eq(issueGroups.name, data.name)))
+        .orderBy(desc(issueGroups.id))
+        .limit(1);
+      return created;
+    }
+    const [created] = await db.select().from(issueGroups).where(eq(issueGroups.id, Number(insertId)));
+    return created;
+  } catch (error) {
+    console.error("[Database] Failed to create issue group:", error);
+    throw error;
+  }
+}
+
+export async function updateIssueGroup(id: number, data: { name?: string; description?: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(issueGroups).set(data).where(eq(issueGroups.id, id));
+  return { success: true };
+}
+
+export async function deleteIssueGroup(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(issueGroups).where(eq(issueGroups.id, id));
 }

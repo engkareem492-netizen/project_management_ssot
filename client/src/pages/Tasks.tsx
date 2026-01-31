@@ -1,16 +1,20 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
+import { useProject } from "@/contexts/ProjectContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Search, Edit, History, Loader2, Plus, Trash2, Settings } from "lucide-react";
+import { Search, Edit, History, Loader2, Plus, Trash2, Settings, Eye, Save, X, CheckSquare } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownOptionsManager } from "@/components/DropdownOptionsManager";
+import { SelectWithCreate } from "@/components/SelectWithCreate";
 import { DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 
@@ -25,17 +29,30 @@ export default function Tasks() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsType, setSettingsType] = useState<"status" | "priority">("status");
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<any>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editFormData, setEditFormData] = useState<any>({});
   const [addStakeholderDialogOpen, setAddStakeholderDialogOpen] = useState(false);
   const [newStakeholder, setNewStakeholder] = useState({ fullName: '', position: '', role: '' });
+  const [addTaskGroupDialogOpen, setAddTaskGroupDialogOpen] = useState(false);
+  const [newTaskGroupName, setNewTaskGroupName] = useState('');
+  const [statusUpdateDialogOpen, setStatusUpdateDialogOpen] = useState(false);
+  const [selectedTaskForStatus, setSelectedTaskForStatus] = useState<any>(null);
+  const [statusUpdateText, setStatusUpdateText] = useState('');
   const [newTask, setNewTask] = useState<any>({
     taskGroup: '',
     description: '',
     responsible: '',
     accountable: '',
+    consulted: '',
+    informed: '',
     owner: '',
     status: 'Not Started',
     priority: 'Medium',
     requirementId: '',
+    dueDate: '',
+    assignDate: new Date().toISOString().split('T')[0],
   });
 
   const { data: tasks, isLoading, refetch } = trpc.tasks.list.useQuery();
@@ -45,6 +62,26 @@ export default function Tasks() {
     { entityType: "task", entityId: selectedEntityId },
     { enabled: historyDialogOpen && !!selectedEntityId }
   );
+  const { currentProjectId } = useProject();
+  const { data: taskGroups } = trpc.dropdownOptions.taskGroups.getAll.useQuery(
+    { projectId: currentProjectId || 0 },
+    { enabled: !!currentProjectId }
+  );
+
+  const utils = trpc.useUtils();
+
+  const createTaskGroupMutation = trpc.dropdownOptions.taskGroups.create.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Task Group "${data.name}" created successfully`);
+      setNewTask({ ...newTask, taskGroup: data.name });
+      utils.dropdownOptions.taskGroups.getAll.invalidate();
+      setAddTaskGroupDialogOpen(false);
+      setNewTaskGroupName('');
+    },
+    onError: (error) => {
+      toast.error(`Failed to create task group: ${error.message}`);
+    },
+  });
 
   const updateMutation = trpc.tasks.update.useMutation({
     onSuccess: (data) => {
@@ -66,10 +103,14 @@ export default function Tasks() {
         description: '',
         responsible: '',
         accountable: '',
+        consulted: '',
+        informed: '',
         owner: '',
         status: 'Not Started',
         priority: 'Medium',
         requirementId: '',
+        dueDate: '',
+        assignDate: new Date().toISOString().split('T')[0],
       });
       refetch();
     },
@@ -137,6 +178,28 @@ export default function Tasks() {
     setEditData({});
   };
 
+  const handleStatusUpdate = () => {
+    if (!selectedTaskForStatus || !statusUpdateText.trim()) return;
+    
+    const now = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+    const updateText = `[${now}] ${statusUpdateText.trim()}`;
+    
+    updateMutation.mutate({
+      id: selectedTaskForStatus.id,
+      taskId: selectedTaskForStatus.taskId,
+      data: {
+        currentStatus: statusUpdateText.trim(),
+        statusUpdate: updateText,
+      },
+    }, {
+      onSuccess: () => {
+        setStatusUpdateDialogOpen(false);
+        setStatusUpdateText('');
+        setSelectedTaskForStatus(null);
+      },
+    });
+  };
+
   const showHistory = (taskId: string) => {
     setSelectedEntityId(taskId);
     setHistoryDialogOpen(true);
@@ -154,7 +217,12 @@ export default function Tasks() {
     // Convert "none" to undefined for optional requirementId
     const taskData = {
       ...newTask,
+      projectId: currentProjectId!,
       requirementId: newTask.requirementId === "none" ? undefined : newTask.requirementId,
+      dueDate: newTask.dueDate || undefined,
+      assignDate: newTask.assignDate || undefined,
+      consulted: newTask.consulted || undefined,
+      informed: newTask.informed || undefined,
     };
     createMutation.mutate(taskData);
   };
@@ -162,6 +230,66 @@ export default function Tasks() {
   const handleDelete = (id: number) => {
     setDeletingId(id);
     setDeleteDialogOpen(true);
+  };
+
+  const handleViewDetails = (task: any) => {
+    setSelectedTask(task);
+    setIsEditMode(false);
+    setEditFormData({
+      taskGroup: task.taskGroup || '',
+      description: task.description || '',
+      responsible: task.responsible || '',
+      accountable: task.accountable || '',
+      consulted: task.consulted || '',
+      informed: task.informed || '',
+      owner: task.owner || '',
+      status: task.status || '',
+      priority: task.priority || '',
+      requirementId: task.requirementId || '',
+      dueDate: task.dueDate || '',
+      assignDate: task.assignDate || '',
+      currentStatus: task.currentStatus || '',
+      lastUpdate: task.lastUpdate || '',
+      statusUpdate: task.statusUpdate || '',
+    });
+    setViewDialogOpen(true);
+  };
+
+  const handleEditDetails = (task: any) => {
+    setSelectedTask(task);
+    setIsEditMode(true);
+    setEditFormData({
+      taskGroup: task.taskGroup || '',
+      description: task.description || '',
+      responsible: task.responsible || '',
+      accountable: task.accountable || '',
+      consulted: task.consulted || '',
+      informed: task.informed || '',
+      owner: task.owner || '',
+      status: task.status || '',
+      priority: task.priority || '',
+      requirementId: task.requirementId || '',
+      dueDate: task.dueDate || '',
+      assignDate: task.assignDate || '',
+      currentStatus: task.currentStatus || '',
+      lastUpdate: task.lastUpdate || '',
+      statusUpdate: task.statusUpdate || '',
+    });
+    setViewDialogOpen(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (!selectedTask) return;
+    updateMutation.mutate({
+      id: selectedTask.id,
+      taskId: selectedTask.taskId,
+      data: editFormData,
+    }, {
+      onSuccess: () => {
+        setIsEditMode(false);
+        setViewDialogOpen(false);
+      }
+    });
   };
 
   const confirmDelete = () => {
@@ -175,13 +303,25 @@ export default function Tasks() {
       toast.error('Full name is required');
       return;
     }
-    createStakeholderMutation.mutate(newStakeholder);
+    if (!currentProjectId) {
+      toast.error('No project selected');
+      return;
+    }
+    createStakeholderMutation.mutate({ ...newStakeholder, projectId: currentProjectId });
   };
 
   const getStatusColor = (status: string | null) => {
     if (!status) return "secondary";
     if (status === "Completed" || status === "Done") return "default";
     if (status === "In Progress") return "outline";
+    return "secondary";
+  };
+
+  const getPriorityColor = (priority: string | null | undefined) => {
+    if (!priority) return "secondary";
+    if (priority === "Critical" || priority === "Very High") return "destructive";
+    if (priority === "High") return "default";
+    if (priority === "Medium") return "outline";
     return "secondary";
   };
 
@@ -264,8 +404,6 @@ export default function Tasks() {
                   <TableHead>Responsible</TableHead>
                   <TableHead>Due Date</TableHead>
                   <TableHead>Current Status</TableHead>
-                  <TableHead>Last Update</TableHead>
-                  <TableHead>Status Update</TableHead>
                   <TableHead className="w-[150px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -286,38 +424,12 @@ export default function Tasks() {
                     <TableCell>{task.responsible}</TableCell>
                     <TableCell>{task.dueDate || 'N/A'}</TableCell>
                     <TableCell>
-                      {editingId === task.id ? (
-                        <Input
-                          value={editData.currentStatus}
-                          onChange={(e) => setEditData({ ...editData, currentStatus: e.target.value })}
-                          className="w-full"
-                        />
-                      ) : (
-                        task.currentStatus || 'N/A'
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {editingId === task.id ? (
-                        <Input
-                          value={editData.lastUpdate}
-                          onChange={(e) => setEditData({ ...editData, lastUpdate: e.target.value })}
-                          className="w-full"
-                          placeholder="Enter update..."
-                        />
-                      ) : (
-                        task.lastUpdate || '-'
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {editingId === task.id ? (
-                        <Input
-                          value={editData.statusUpdate}
-                          onChange={(e) => setEditData({ ...editData, statusUpdate: e.target.value })}
-                          className="w-full"
-                        />
-                      ) : (
-                        task.statusUpdate || 'N/A'
-                      )}
+                      <div className="max-w-xs">
+                        <div className="text-sm font-medium">{task.currentStatus || 'N/A'}</div>
+                        {task.statusUpdate && (
+                          <div className="text-xs text-muted-foreground mt-1">{task.statusUpdate}</div>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
@@ -332,13 +444,28 @@ export default function Tasks() {
                           </>
                         ) : (
                           <>
-                            <Button size="sm" variant="outline" onClick={() => handleEdit(task)}>
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              onClick={() => {
+                                setSelectedTaskForStatus(task);
+                                setStatusUpdateText('');
+                                setStatusUpdateDialogOpen(true);
+                              }} 
+                              title="Update Status"
+                            >
+                              <CheckSquare className="w-3 h-3" />
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => handleViewDetails(task)} title="View Details">
+                              <Eye className="w-3 h-3" />
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => handleEditDetails(task)} title="Edit">
                               <Edit className="w-3 h-3" />
                             </Button>
-                            <Button size="sm" variant="outline" onClick={() => showHistory(task.taskId)}>
+                            <Button size="sm" variant="outline" onClick={() => showHistory(task.taskId)} title="History">
                               <History className="w-3 h-3" />
                             </Button>
-                            <Button size="sm" variant="destructive" onClick={() => handleDelete(task.id)}>
+                            <Button size="sm" variant="destructive" onClick={() => handleDelete(task.id)} title="Delete">
                               <Trash2 className="w-3 h-3" />
                             </Button>
                           </>
@@ -402,153 +529,177 @@ export default function Tasks() {
       </Dialog>
 
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create New Task</DialogTitle>
             <DialogDescription>
               Add a new task to the project. Task ID will be auto-generated (T-XXXX format).
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="taskGroup" className="text-right">Task Group *</Label>
-              <Input
-                id="taskGroup"
-                value={newTask.taskGroup}
-                onChange={(e) => setNewTask({ ...newTask, taskGroup: e.target.value })}
-                className="col-span-3"
-                placeholder="Enter task group..."
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="description" className="text-right">Description *</Label>
-              <Input
-                id="description"
-                value={newTask.description}
-                onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
-                className="col-span-3"
-                placeholder="Task description..."
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="requirementId" className="text-right">Requirement ID</Label>
-              <Select
-                value={newTask.requirementId}
-                onValueChange={(value) => setNewTask({ ...newTask, requirementId: value })}
-              >
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select requirement..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  {requirements?.map((req) => (
-                    <SelectItem key={req.id} value={req.idCode}>
-                      {req.idCode} - {req.description?.substring(0, 50) || 'No description'}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="responsible" className="text-right">Responsible</Label>
-              <div className="col-span-3 flex gap-2">
-                <Select
-                  value={newTask.responsible}
-                  onValueChange={(value) => setNewTask({ ...newTask, responsible: value })}
-                >
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Select responsible person..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {stakeholders?.map((s) => (
-                      <SelectItem key={s.id} value={s.fullName}>
-                        {s.fullName} - {s.position || s.role || 'N/A'}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setAddStakeholderDialogOpen(true)}
-                >
-                  <Plus className="w-4 h-4" />
-                </Button>
+          <div className="space-y-6 py-4">
+            {/* Basic Information Section */}
+            <div className="space-y-4">
+              <h4 className="text-sm font-semibold border-b pb-2">Basic Information</h4>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="taskGroup">Task Group *</Label>
+                  <div className="flex gap-2">
+                    <Select
+                      value={newTask.taskGroup}
+                      onValueChange={(value) => setNewTask({ ...newTask, taskGroup: value })}
+                    >
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Select task group..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {taskGroups?.map((group) => (
+                          <SelectItem key={group.id} value={group.name}>
+                            {group.idCode ? `${group.idCode} - ${group.name}` : group.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      onClick={() => setAddTaskGroupDialogOpen(true)}
+                      title="Add new task group"
+                      disabled={createTaskGroupMutation.isPending}
+                    >
+                      {createTaskGroupMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="description">Description *</Label>
+                  <Input
+                    id="description"
+                    value={newTask.description}
+                    onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
+                    placeholder="Task description..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="requirementId">Requirement ID</Label>
+                  <Select
+                    value={newTask.requirementId}
+                    onValueChange={(value) => setNewTask({ ...newTask, requirementId: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select requirement..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {requirements?.map((req) => (
+                        <SelectItem key={req.id} value={req.idCode}>
+                          {req.idCode} - {req.description?.substring(0, 50) || 'No description'}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="accountable" className="text-right">Accountable</Label>
-              <div className="col-span-3 flex gap-2">
-                <Select
-                  value={newTask.accountable}
-                  onValueChange={(value) => setNewTask({ ...newTask, accountable: value })}
-                >
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Select accountable person..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {stakeholders?.map((s) => (
-                      <SelectItem key={s.id} value={s.fullName}>
-                        {s.fullName} - {s.position || s.role || 'N/A'}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setAddStakeholderDialogOpen(true)}
-                >
-                  <Plus className="w-4 h-4" />
-                </Button>
+
+            {/* RACI Assignment Section */}
+            <div className="space-y-4">
+              <h4 className="text-sm font-semibold border-b pb-2">RACI Assignment</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="responsible">Responsible (R)</Label>
+                  <SelectWithCreate
+                    type="stakeholder"
+                    value={newTask.responsible}
+                    onValueChange={(value) => setNewTask({ ...newTask, responsible: value })}
+                    placeholder="Select responsible person..."
+                    projectId={currentProjectId || undefined}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="accountable">Accountable (A)</Label>
+                  <SelectWithCreate
+                    type="stakeholder"
+                    value={newTask.accountable}
+                    onValueChange={(value) => setNewTask({ ...newTask, accountable: value })}
+                    placeholder="Select accountable person..."
+                    projectId={currentProjectId || undefined}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="consulted">Consulted (C)</Label>
+                  <SelectWithCreate
+                    type="stakeholder"
+                    value={newTask.consulted}
+                    onValueChange={(value) => setNewTask({ ...newTask, consulted: value })}
+                    placeholder="Select consulted person..."
+                    projectId={currentProjectId || undefined}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="informed">Informed (I)</Label>
+                  <SelectWithCreate
+                    type="stakeholder"
+                    value={newTask.informed}
+                    onValueChange={(value) => setNewTask({ ...newTask, informed: value })}
+                    placeholder="Select informed person..."
+                    projectId={currentProjectId || undefined}
+                  />
+                </div>
               </div>
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="status" className="text-right">Status</Label>
-              <div className="col-span-3 flex gap-2">
-                <Select
-                  value={newTask.status}
-                  onValueChange={(value) => setNewTask({ ...newTask, status: value })}
-                >
-                  <SelectTrigger className="flex-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Not Started">Not Started</SelectItem>
-                    <SelectItem value="In Progress">In Progress</SelectItem>
-                    <SelectItem value="Completed">Completed</SelectItem>
-                    <SelectItem value="On Hold">On Hold</SelectItem>
-                    <SelectItem value="Blocked">Blocked</SelectItem>
-                  </SelectContent>
-                </Select>
-                <DropdownOptionsManager type="status" />
+
+            {/* Dates Section */}
+            <div className="space-y-4">
+              <h4 className="text-sm font-semibold border-b pb-2">Dates</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="assignDate">Assign Date</Label>
+                  <Input
+                    id="assignDate"
+                    type="date"
+                    value={newTask.assignDate}
+                    onChange={(e) => setNewTask({ ...newTask, assignDate: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="dueDate">Due Date (ETD)</Label>
+                  <Input
+                    id="dueDate"
+                    type="date"
+                    value={newTask.dueDate}
+                    onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })}
+                  />
+                </div>
               </div>
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="priority" className="text-right">Priority</Label>
-              <div className="col-span-3 flex gap-2">
-                <Select
-                  value={newTask.priority}
-                  onValueChange={(value) => setNewTask({ ...newTask, priority: value })}
-                >
-                  <SelectTrigger className="flex-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Low">Low</SelectItem>
-                    <SelectItem value="Medium">Medium</SelectItem>
-                    <SelectItem value="High">High</SelectItem>
-                    <SelectItem value="Very High">Very High</SelectItem>
-                  </SelectContent>
-                </Select>
-                <DropdownOptionsManager type="priority" />
+
+            {/* Status & Priority Section */}
+            <div className="space-y-4">
+              <h4 className="text-sm font-semibold border-b pb-2">Status & Priority</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="status">Status</Label>
+                  <SelectWithCreate
+                    type="status"
+                    value={newTask.status}
+                    onValueChange={(value) => setNewTask({ ...newTask, status: value })}
+                    placeholder="Select status"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="priority">Priority</Label>
+                  <SelectWithCreate
+                    type="priority"
+                    value={newTask.priority}
+                    onValueChange={(value) => setNewTask({ ...newTask, priority: value })}
+                    placeholder="Select priority"
+                  />
+                </div>
               </div>
             </div>
           </div>
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
             <Button onClick={handleCreate} disabled={createMutation.isPending}>
               {createMutation.isPending ? 'Creating...' : 'Create'}
             </Button>
@@ -619,6 +770,174 @@ export default function Tasks() {
         </DialogContent>
       </Dialog>
 
+      {/* View/Edit Details Dialog */}
+      <Dialog open={viewDialogOpen} onOpenChange={(open) => { setViewDialogOpen(open); if (!open) setIsEditMode(false); }}>
+        <DialogContent className="w-[95vw] max-w-[95vw] h-[90vh] max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader className="border-b pb-4 flex-shrink-0">
+            <div className="flex items-center justify-between">
+              <DialogTitle className="flex items-center gap-2 text-xl">
+                <span className="font-mono bg-primary/10 text-primary px-3 py-1 rounded">{selectedTask?.taskId}</span>
+                {isEditMode ? 'Edit Task' : 'Task Details'}
+              </DialogTitle>
+              <div className="flex items-center gap-2">
+                {isEditMode ? (
+                  <>
+                    <Button onClick={handleSaveEdit} disabled={updateMutation.isPending} className="bg-primary hover:bg-primary/90">
+                      <Save className="w-4 h-4 mr-2" />
+                      {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
+                    </Button>
+                    <Button variant="outline" onClick={() => setIsEditMode(false)}>
+                      <X className="w-4 h-4 mr-2" />
+                      Cancel
+                    </Button>
+                  </>
+                ) : (
+                  <Button onClick={() => setIsEditMode(true)} variant="outline">
+                    <Edit className="w-4 h-4 mr-2" />
+                    Edit
+                  </Button>
+                )}
+              </div>
+            </div>
+            <DialogDescription>
+              {isEditMode ? 'Edit the task details below' : 'View all details for this task'}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex-1 overflow-y-auto mt-4 space-y-4">
+            {/* Basic Information */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Task Group</Label>
+                {isEditMode ? (
+                  <Input value={editFormData.taskGroup} onChange={(e) => setEditFormData({...editFormData, taskGroup: e.target.value})} className="h-8" />
+                ) : (
+                  <p className="font-medium">{selectedTask?.taskGroup || '-'}</p>
+                )}
+              </div>
+              <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Requirement ID</Label>
+                <p className="font-medium">{selectedTask?.requirementId || '-'}</p>
+              </div>
+              <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Status</Label>
+                {isEditMode ? (
+                  <Input value={editFormData.status} onChange={(e) => setEditFormData({...editFormData, status: e.target.value})} className="h-8" />
+                ) : (
+                  <Badge variant={getStatusColor(selectedTask?.status)}>{selectedTask?.status || 'N/A'}</Badge>
+                )}
+              </div>
+              <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Priority</Label>
+                {isEditMode ? (
+                  <Input value={editFormData.priority} onChange={(e) => setEditFormData({...editFormData, priority: e.target.value})} className="h-8" />
+                ) : (
+                  <Badge variant={getPriorityColor(selectedTask?.priority)}>{selectedTask?.priority || 'N/A'}</Badge>
+                )}
+              </div>
+              <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Assign Date</Label>
+                {isEditMode ? (
+                  <Input type="date" value={editFormData.assignDate} onChange={(e) => setEditFormData({...editFormData, assignDate: e.target.value})} className="h-8" />
+                ) : (
+                  <p className="font-medium">{selectedTask?.assignDate || '-'}</p>
+                )}
+              </div>
+              <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Due Date (ETD)</Label>
+                {isEditMode ? (
+                  <Input type="date" value={editFormData.dueDate} onChange={(e) => setEditFormData({...editFormData, dueDate: e.target.value})} className="h-8" />
+                ) : (
+                  <p className="font-medium">{selectedTask?.dueDate || '-'}</p>
+                )}
+              </div>
+            </div>
+
+            {/* RACI Assignment */}
+            <div className="border-t pt-4">
+              <h4 className="font-medium mb-3">RACI Assignment</h4>
+              <div className="grid grid-cols-4 gap-4">
+                <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Responsible (R)</Label>
+                  {isEditMode ? (
+                    <Input value={editFormData.responsible} onChange={(e) => setEditFormData({...editFormData, responsible: e.target.value})} className="h-8" />
+                  ) : (
+                    <p className="font-medium">{selectedTask?.responsible || '-'}</p>
+                  )}
+                </div>
+                <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Accountable (A)</Label>
+                  {isEditMode ? (
+                    <Input value={editFormData.accountable} onChange={(e) => setEditFormData({...editFormData, accountable: e.target.value})} className="h-8" />
+                  ) : (
+                    <p className="font-medium">{selectedTask?.accountable || '-'}</p>
+                  )}
+                </div>
+                <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Consulted (C)</Label>
+                  {isEditMode ? (
+                    <Input value={editFormData.consulted} onChange={(e) => setEditFormData({...editFormData, consulted: e.target.value})} className="h-8" />
+                  ) : (
+                    <p className="font-medium">{selectedTask?.consulted || '-'}</p>
+                  )}
+                </div>
+                <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Informed (I)</Label>
+                  {isEditMode ? (
+                    <Input value={editFormData.informed} onChange={(e) => setEditFormData({...editFormData, informed: e.target.value})} className="h-8" />
+                  ) : (
+                    <p className="font-medium">{selectedTask?.informed || '-'}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Description */}
+            <div className="border-t pt-4">
+              <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Description</Label>
+                {isEditMode ? (
+                  <Textarea value={editFormData.description} onChange={(e) => setEditFormData({...editFormData, description: e.target.value})} className="min-h-[80px]" />
+                ) : (
+                  <p className="font-medium whitespace-pre-wrap">{selectedTask?.description || '-'}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Status Updates */}
+            <div className="border-t pt-4">
+              <h4 className="font-medium mb-3">Status Updates</h4>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Current Status</Label>
+                  {isEditMode ? (
+                    <Textarea value={editFormData.currentStatus} onChange={(e) => setEditFormData({...editFormData, currentStatus: e.target.value})} className="min-h-[60px]" />
+                  ) : (
+                    <p className="font-medium whitespace-pre-wrap">{selectedTask?.currentStatus || '-'}</p>
+                  )}
+                </div>
+                <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Last Update</Label>
+                  {isEditMode ? (
+                    <Textarea value={editFormData.lastUpdate} onChange={(e) => setEditFormData({...editFormData, lastUpdate: e.target.value})} className="min-h-[60px]" />
+                  ) : (
+                    <p className="font-medium whitespace-pre-wrap">{selectedTask?.lastUpdate || '-'}</p>
+                  )}
+                </div>
+                <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Status Update</Label>
+                  {isEditMode ? (
+                    <Textarea value={editFormData.statusUpdate} onChange={(e) => setEditFormData({...editFormData, statusUpdate: e.target.value})} className="min-h-[60px]" />
+                  ) : (
+                    <p className="font-medium whitespace-pre-wrap">{selectedTask?.statusUpdate || '-'}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -635,6 +954,101 @@ export default function Tasks() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Add Task Group Dialog */}
+      <Dialog open={addTaskGroupDialogOpen} onOpenChange={setAddTaskGroupDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New Task Group</DialogTitle>
+            <DialogDescription>
+              Enter a name for the new task group.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="taskGroupName" className="text-right">Name *</Label>
+              <Input
+                id="taskGroupName"
+                value={newTaskGroupName}
+                onChange={(e) => setNewTaskGroupName(e.target.value)}
+                placeholder="Enter task group name..."
+                className="col-span-3"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && newTaskGroupName.trim() && currentProjectId) {
+                    createTaskGroupMutation.mutate({ projectId: currentProjectId, name: newTaskGroupName.trim() });
+                  }
+                }}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setAddTaskGroupDialogOpen(false);
+              setNewTaskGroupName('');
+            }}>Cancel</Button>
+            <Button
+              onClick={() => {
+                if (newTaskGroupName.trim() && currentProjectId) {
+                  createTaskGroupMutation.mutate({ projectId: currentProjectId, name: newTaskGroupName.trim() });
+                }
+              }}
+              disabled={!newTaskGroupName.trim() || !currentProjectId || createTaskGroupMutation.isPending}
+            >
+              {createTaskGroupMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Creating...</> : 'Create'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Update Status Dialog */}
+      <Dialog open={statusUpdateDialogOpen} onOpenChange={setStatusUpdateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Update Task Status</DialogTitle>
+            <DialogDescription>
+              Update the status for task {selectedTaskForStatus?.taskId}. The update will be recorded with a timestamp and saved to history.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="statusUpdate">Status Update *</Label>
+              <Textarea
+                id="statusUpdate"
+                value={statusUpdateText}
+                onChange={(e) => setStatusUpdateText(e.target.value)}
+                placeholder="Enter status update..."
+                className="min-h-[100px]"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && e.ctrlKey && statusUpdateText.trim()) {
+                    // Ctrl+Enter to submit
+                    handleStatusUpdate();
+                  }
+                }}
+              />
+              <p className="text-xs text-muted-foreground">Press Ctrl+Enter to submit</p>
+            </div>
+            <div className="text-sm text-muted-foreground">
+              <div><strong>Current Status:</strong> {selectedTaskForStatus?.currentStatus || 'N/A'}</div>
+              {selectedTaskForStatus?.statusUpdate && (
+                <div className="mt-2"><strong>Previous Update:</strong> {selectedTaskForStatus.statusUpdate}</div>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setStatusUpdateDialogOpen(false);
+              setStatusUpdateText('');
+              setSelectedTaskForStatus(null);
+            }}>Cancel</Button>
+            <Button
+              onClick={handleStatusUpdate}
+              disabled={!statusUpdateText.trim() || updateMutation.isPending}
+            >
+              {updateMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Updating...</> : 'Update Status'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

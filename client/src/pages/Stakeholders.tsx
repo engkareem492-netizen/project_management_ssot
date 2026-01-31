@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
+import { useProject } from "@/contexts/ProjectContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -51,6 +52,7 @@ export default function Stakeholders() {
 
   const utils = trpc.useUtils();
   const { data: stakeholders, isLoading } = trpc.stakeholders.list.useQuery();
+  const { currentProjectId } = useProject();
   
   const createMutation = trpc.stakeholders.create.useMutation({
     onSuccess: () => {
@@ -105,7 +107,11 @@ export default function Stakeholders() {
       toast.error("Full name is required");
       return;
     }
-    createMutation.mutate(formData);
+    if (!currentProjectId) {
+      toast.error("No project selected");
+      return;
+    }
+    createMutation.mutate({ ...formData, projectId: currentProjectId });
   };
 
   const handleEdit = (stakeholder: any) => {
@@ -216,7 +222,7 @@ export default function Stakeholders() {
               <TableHead className="font-semibold">Email</TableHead>
               <TableHead className="font-semibold">Position</TableHead>
               <TableHead className="font-semibold">Role</TableHead>
-              <TableHead className="font-semibold">Job</TableHead>
+              <TableHead className="font-semibold">Department</TableHead>
               <TableHead className="font-semibold">Phone</TableHead>
               <TableHead className="font-semibold w-24">Actions</TableHead>
             </TableRow>
@@ -336,7 +342,7 @@ export default function Stakeholders() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="job">Job</Label>
+                <Label htmlFor="job">Department</Label>
                 <Input
                   id="job"
                   value={formData.job}
@@ -413,7 +419,7 @@ export default function Stakeholders() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="editJob">Job</Label>
+                <Label htmlFor="editJob">Department</Label>
                 <Input
                   id="editJob"
                   value={formData.job}

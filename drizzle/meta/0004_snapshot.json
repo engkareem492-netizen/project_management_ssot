@@ -1,8 +1,8 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "3c57cbf4-4862-4c36-b214-da4c37fde961",
-  "prevId": "f4abf013-425d-4117-8e14-42ec54e252e1",
+  "id": "37abbf42-22eb-4c82-8d29-9105744fc1d2",
+  "prevId": "15f8c371-1d35-455c-a56d-a29006847dbb",
   "tables": {
     "actionLogs": {
       "name": "actionLogs",
@@ -81,6 +81,13 @@
           "notNull": true,
           "autoincrement": true
         },
+        "projectId": {
+          "name": "projectId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
         "assumptionId": {
           "name": "assumptionId",
           "type": "varchar(50)",
@@ -151,14 +158,7 @@
           ]
         }
       },
-      "uniqueConstraints": {
-        "assumptions_assumptionId_unique": {
-          "name": "assumptions_assumptionId_unique",
-          "columns": [
-            "assumptionId"
-          ]
-        }
-      },
+      "uniqueConstraints": {},
       "checkConstraint": {}
     },
     "categoryOptions": {
@@ -309,6 +309,13 @@
           "notNull": true,
           "autoincrement": true
         },
+        "projectId": {
+          "name": "projectId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
         "deliverableId": {
           "name": "deliverableId",
           "type": "varchar(50)",
@@ -365,14 +372,7 @@
           ]
         }
       },
-      "uniqueConstraints": {
-        "deliverables_deliverableId_unique": {
-          "name": "deliverables_deliverableId_unique",
-          "columns": [
-            "deliverableId"
-          ]
-        }
-      },
+      "uniqueConstraints": {},
       "checkConstraint": {}
     },
     "dependencies": {
@@ -384,6 +384,13 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": true
+        },
+        "projectId": {
+          "name": "projectId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
         },
         "dependencyId": {
           "name": "dependencyId",
@@ -525,14 +532,7 @@
           ]
         }
       },
-      "uniqueConstraints": {
-        "dependencies_dependencyId_unique": {
-          "name": "dependencies_dependencyId_unique",
-          "columns": [
-            "dependencyId"
-          ]
-        }
-      },
+      "uniqueConstraints": {},
       "checkConstraint": {}
     },
     "idSequences": {
@@ -544,6 +544,13 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": true
+        },
+        "projectId": {
+          "name": "projectId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
         },
         "entityType": {
           "name": "entityType",
@@ -567,6 +574,30 @@
           "autoincrement": false,
           "default": 0
         },
+        "minNumber": {
+          "name": "minNumber",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1
+        },
+        "maxNumber": {
+          "name": "maxNumber",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 9999
+        },
+        "padLength": {
+          "name": "padLength",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 4
+        },
         "updatedAt": {
           "name": "updatedAt",
           "type": "timestamp",
@@ -587,14 +618,69 @@
           ]
         }
       },
-      "uniqueConstraints": {
-        "idSequences_entityType_unique": {
-          "name": "idSequences_entityType_unique",
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "issueGroups": {
+      "name": "issueGroups",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "projectId": {
+          "name": "projectId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(200)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "issueGroups_id": {
+          "name": "issueGroups_id",
           "columns": [
-            "entityType"
+            "id"
           ]
         }
       },
+      "uniqueConstraints": {},
       "checkConstraint": {}
     },
     "issues": {
@@ -606,6 +692,13 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": true
+        },
+        "projectId": {
+          "name": "projectId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
         },
         "issueId": {
           "name": "issueId",
@@ -782,14 +875,7 @@
           ]
         }
       },
-      "uniqueConstraints": {
-        "issues_issueId_unique": {
-          "name": "issues_issueId_unique",
-          "columns": [
-            "issueId"
-          ]
-        }
-      },
+      "uniqueConstraints": {},
       "checkConstraint": {}
     },
     "priorityOptions": {
@@ -891,6 +977,75 @@
       },
       "checkConstraint": {}
     },
+    "projects": {
+      "name": "projects",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(200)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "password": {
+          "name": "password",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "createdBy": {
+          "name": "createdBy",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "projects_id": {
+          "name": "projects_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
     "requirements": {
       "name": "requirements",
       "columns": {
@@ -900,6 +1055,13 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": true
+        },
+        "projectId": {
+          "name": "projectId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
         },
         "idCode": {
           "name": "idCode",
@@ -1083,14 +1245,7 @@
           ]
         }
       },
-      "uniqueConstraints": {
-        "requirements_idCode_unique": {
-          "name": "requirements_idCode_unique",
-          "columns": [
-            "idCode"
-          ]
-        }
-      },
+      "uniqueConstraints": {},
       "checkConstraint": {}
     },
     "stakeholders": {
@@ -1102,6 +1257,13 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": true
+        },
+        "projectId": {
+          "name": "projectId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
         },
         "fullName": {
           "name": "fullName",
@@ -1268,6 +1430,68 @@
       },
       "checkConstraint": {}
     },
+    "taskGroups": {
+      "name": "taskGroups",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "projectId": {
+          "name": "projectId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(200)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "taskGroups_id": {
+          "name": "taskGroups_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
     "tasks": {
       "name": "tasks",
       "columns": {
@@ -1277,6 +1501,13 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": true
+        },
+        "projectId": {
+          "name": "projectId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
         },
         "taskId": {
           "name": "taskId",
@@ -1376,6 +1607,13 @@
           "notNull": false,
           "autoincrement": false
         },
+        "assignDate": {
+          "name": "assignDate",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "currentStatus": {
           "name": "currentStatus",
           "type": "text",
@@ -1418,6 +1656,20 @@
           "notNull": false,
           "autoincrement": false
         },
+        "lastUpdate": {
+          "name": "lastUpdate",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "updateDate": {
+          "name": "updateDate",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "importedAt": {
           "name": "importedAt",
           "type": "timestamp",
@@ -1446,14 +1698,7 @@
           ]
         }
       },
-      "uniqueConstraints": {
-        "tasks_taskId_unique": {
-          "name": "tasks_taskId_unique",
-          "columns": [
-            "taskId"
-          ]
-        }
-      },
+      "uniqueConstraints": {},
       "checkConstraint": {}
     },
     "typeOptions": {

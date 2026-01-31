@@ -1,16 +1,19 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
+import { useProject } from "@/contexts/ProjectContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Search, Edit, History, Loader2, Plus, Trash2, Settings } from "lucide-react";
+import { Search, Edit, History, Loader2, Plus, Trash2, Settings, Eye, Save, X } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownOptionsManager } from "@/components/DropdownOptionsManager";
+import { SelectWithCreate } from "@/components/SelectWithCreate";
 import { DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 
@@ -25,9 +28,16 @@ export default function Issues() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsType, setSettingsType] = useState<"status" | "priority">("status");
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [selectedIssue, setSelectedIssue] = useState<any>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editFormData, setEditFormData] = useState<any>({});
   const [addStakeholderDialogOpen, setAddStakeholderDialogOpen] = useState(false);
   const [newStakeholder, setNewStakeholder] = useState({ fullName: '', position: '', role: '' });
+  const [addIssueGroupDialogOpen, setAddIssueGroupDialogOpen] = useState(false);
+  const [newIssueGroupName, setNewIssueGroupName] = useState('');
   const [newIssue, setNewIssue] = useState<any>({
+    issueGroup: '',
     description: '',
     source: '',
     owner: '',
@@ -43,6 +53,26 @@ export default function Issues() {
     { entityType: "issue", entityId: selectedEntityId },
     { enabled: historyDialogOpen && !!selectedEntityId }
   );
+  const { currentProjectId } = useProject();
+  const { data: issueGroups } = trpc.dropdownOptions.issueGroups.getAll.useQuery(
+    { projectId: currentProjectId || 0 },
+    { enabled: !!currentProjectId }
+  );
+
+  const utils = trpc.useUtils();
+
+  const createIssueGroupMutation = trpc.dropdownOptions.issueGroups.create.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Issue Group "${data.name}" created successfully`);
+      setNewIssue({ ...newIssue, issueGroup: data.name });
+      utils.dropdownOptions.issueGroups.getAll.invalidate();
+      setAddIssueGroupDialogOpen(false);
+      setNewIssueGroupName('');
+    },
+    onError: (error) => {
+      toast.error(`Failed to create issue group: ${error.message}`);
+    },
+  });
 
   const updateMutation = trpc.issues.update.useMutation({
     onSuccess: (data) => {
@@ -60,7 +90,9 @@ export default function Issues() {
       toast.success(`Issue ${data.issueId} created successfully`);
       setCreateDialogOpen(false);
       setNewIssue({
+        issueGroup: '',
         description: '',
+        source: '',
         owner: '',
         status: 'Open',
         priority: 'Medium',
@@ -149,6 +181,7 @@ export default function Issues() {
     // Convert "none" to undefined for optional requirementId
     const issueData = {
       ...newIssue,
+      projectId: currentProjectId!,
       requirementId: newIssue.requirementId === "none" ? undefined : newIssue.requirementId,
     };
     createMutation.mutate(issueData);
@@ -159,26 +192,88 @@ export default function Issues() {
     setDeleteDialogOpen(true);
   };
 
+  const handleViewDetails = (issue: any) => {
+    setSelectedIssue(issue);
+    setIsEditMode(false);
+    setEditFormData({
+      issueGroup: issue.issueGroup || '',
+      description: issue.description || '',
+      source: issue.source || '',
+      owner: issue.owner || '',
+      status: issue.status || '',
+      priority: issue.priority || '',
+      requirementId: issue.requirementId || '',
+      currentStatus: issue.currentStatus || '',
+      lastUpdate: issue.lastUpdate || '',
+      statusUpdate: issue.statusUpdate || '',
+    });
+    setViewDialogOpen(true);
+  };
+
+  const handleEditDetails = (issue: any) => {
+    setSelectedIssue(issue);
+    setIsEditMode(true);
+    setEditFormData({
+      issueGroup: issue.issueGroup || '',
+      description: issue.description || '',
+      source: issue.source || '',
+      owner: issue.owner || '',
+      status: issue.status || '',
+      priority: issue.priority || '',
+      requirementId: issue.requirementId || '',
+      currentStatus: issue.currentStatus || '',
+      lastUpdate: issue.lastUpdate || '',
+      statusUpdate: issue.statusUpdate || '',
+    });
+    setViewDialogOpen(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (!selectedIssue) return;
+    updateMutation.mutate({
+      id: selectedIssue.id,
+      issueId: selectedIssue.issueId,
+      data: editFormData,
+    }, {
+      onSuccess: () => {
+        setIsEditMode(false);
+        setViewDialogOpen(false);
+      }
+    });
+  };
+
+  const getStatusColor = (status: string | null | undefined) => {
+    if (!status) return "secondary";
+    if (status === "Closed" || status === "Resolved") return "default";
+    if (status === "In Progress") return "outline";
+    if (status === "Open") return "destructive";
+    return "secondary";
+  };
+
+  const getPriorityColor = (priority: string | null | undefined) => {
+    if (!priority) return "secondary";
+    if (priority === "Critical" || priority === "Very High") return "destructive";
+    if (priority === "High") return "default";
+    if (priority === "Medium") return "outline";
+    return "secondary";
+  };
+
   const handleCreateStakeholder = () => {
     if (!newStakeholder.fullName.trim()) {
       toast.error('Full name is required');
       return;
     }
-    createStakeholderMutation.mutate(newStakeholder);
+    if (!currentProjectId) {
+      toast.error('No project selected');
+      return;
+    }
+    createStakeholderMutation.mutate({ ...newStakeholder, projectId: currentProjectId });
   };
 
   const confirmDelete = () => {
     if (deletingId) {
       deleteMutation.mutate({ id: deletingId });
     }
-  };
-
-  const getPriorityColor = (priority: string | null) => {
-    if (!priority) return "secondary";
-    if (priority.includes("Very High")) return "destructive";
-    if (priority.includes("High")) return "default";
-    if (priority.includes("Medium")) return "outline";
-    return "secondary";
   };
 
   if (isLoading) {
@@ -323,10 +418,13 @@ export default function Issues() {
                           </>
                         ) : (
                           <>
-                            <Button size="sm" variant="outline" onClick={() => handleEdit(issue)}>
+                            <Button size="sm" variant="outline" onClick={() => handleViewDetails(issue)} title="View Details">
+                              <Eye className="w-3 h-3" />
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => handleEditDetails(issue)} title="Edit">
                               <Edit className="w-3 h-3" />
                             </Button>
-                            <Button size="sm" variant="outline" onClick={() => showHistory(issue.issueId)}>
+                            <Button size="sm" variant="outline" onClick={() => showHistory(issue.issueId)} title="History">
                               <History className="w-3 h-3" />
                             </Button>
                             <Button size="sm" variant="destructive" onClick={() => handleDelete(issue.id)}>
@@ -393,7 +491,7 @@ export default function Issues() {
       </Dialog>
 
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create New Issue</DialogTitle>
             <DialogDescription>
@@ -401,6 +499,37 @@ export default function Issues() {
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
+            {/* Issue Group - Dropdown from Issues */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="issueGroup" className="text-right">Issue Group</Label>
+              <div className="col-span-3 flex gap-2">
+                <Select
+                  value={newIssue.issueGroup}
+                  onValueChange={(value) => setNewIssue({ ...newIssue, issueGroup: value })}
+                >
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Select issue group..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {issueGroups?.map((group) => (
+                      <SelectItem key={group.id} value={group.name}>
+                        {group.idCode ? `${group.idCode} - ${group.name}` : group.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="outline"
+                  onClick={() => setAddIssueGroupDialogOpen(true)}
+                  title="Add new issue group"
+                  disabled={createIssueGroupMutation.isPending}
+                >
+                  {createIssueGroupMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                </Button>
+              </div>
+            </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="description" className="text-right">Description *</Label>
               <Input
@@ -443,70 +572,36 @@ export default function Issues() {
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="owner" className="text-right">Owner</Label>
-              <div className="col-span-3 flex gap-2">
-                <Select
+              <div className="col-span-3">
+                <SelectWithCreate
+                  type="stakeholder"
                   value={newIssue.owner}
                   onValueChange={(value) => setNewIssue({ ...newIssue, owner: value })}
-                >
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Select owner..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {stakeholders?.map((s) => (
-                      <SelectItem key={s.id} value={s.fullName}>
-                        {s.fullName} - {s.position || s.role || 'N/A'}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setAddStakeholderDialogOpen(true)}
-                >
-                  <Plus className="w-4 h-4" />
-                </Button>
+                  placeholder="Select owner..."
+                  projectId={currentProjectId || undefined}
+                />
               </div>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="status" className="text-right">Status</Label>
-              <div className="col-span-3 flex gap-2">
-                <Select
+              <div className="col-span-3">
+                <SelectWithCreate
+                  type="status"
                   value={newIssue.status}
                   onValueChange={(value) => setNewIssue({ ...newIssue, status: value })}
-                >
-                  <SelectTrigger className="flex-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Open">Open</SelectItem>
-                    <SelectItem value="In Progress">In Progress</SelectItem>
-                    <SelectItem value="Resolved">Resolved</SelectItem>
-                    <SelectItem value="Closed">Closed</SelectItem>
-                  </SelectContent>
-                </Select>
-                <DropdownOptionsManager type="status" />
+                  placeholder="Select status"
+                />
               </div>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="priority" className="text-right">Priority</Label>
-              <div className="col-span-3 flex gap-2">
-                <Select
+              <div className="col-span-3">
+                <SelectWithCreate
+                  type="priority"
                   value={newIssue.priority}
                   onValueChange={(value) => setNewIssue({ ...newIssue, priority: value })}
-                >
-                  <SelectTrigger className="flex-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Low">Low</SelectItem>
-                    <SelectItem value="Medium">Medium</SelectItem>
-                    <SelectItem value="High">High</SelectItem>
-                    <SelectItem value="Very High">Very High</SelectItem>
-                  </SelectContent>
-                </Select>
-                <DropdownOptionsManager type="priority" />
+                  placeholder="Select priority"
+                />
               </div>
             </div>
           </div>
@@ -582,6 +677,135 @@ export default function Issues() {
         </DialogContent>
       </Dialog>
 
+      {/* View/Edit Details Dialog */}
+      <Dialog open={viewDialogOpen} onOpenChange={(open) => { setViewDialogOpen(open); if (!open) setIsEditMode(false); }}>
+        <DialogContent className="w-[95vw] max-w-[95vw] h-[90vh] max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader className="border-b pb-4 flex-shrink-0">
+            <div className="flex items-center justify-between">
+              <DialogTitle className="flex items-center gap-2 text-xl">
+                <span className="font-mono bg-primary/10 text-primary px-3 py-1 rounded">{selectedIssue?.issueId}</span>
+                {isEditMode ? 'Edit Issue' : 'Issue Details'}
+              </DialogTitle>
+              <div className="flex items-center gap-2">
+                {isEditMode ? (
+                  <>
+                    <Button onClick={handleSaveEdit} disabled={updateMutation.isPending} className="bg-primary hover:bg-primary/90">
+                      <Save className="w-4 h-4 mr-2" />
+                      {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
+                    </Button>
+                    <Button variant="outline" onClick={() => setIsEditMode(false)}>
+                      <X className="w-4 h-4 mr-2" />
+                      Cancel
+                    </Button>
+                  </>
+                ) : (
+                  <Button onClick={() => setIsEditMode(true)} variant="outline">
+                    <Edit className="w-4 h-4 mr-2" />
+                    Edit
+                  </Button>
+                )}
+              </div>
+            </div>
+            <DialogDescription>
+              {isEditMode ? 'Edit the issue details below' : 'View all details for this issue'}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex-1 overflow-y-auto mt-4 space-y-4">
+            {/* Basic Information */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Issue Group</Label>
+                {isEditMode ? (
+                  <Input value={editFormData.issueGroup} onChange={(e) => setEditFormData({...editFormData, issueGroup: e.target.value})} className="h-8" />
+                ) : (
+                  <p className="font-medium">{selectedIssue?.issueGroup || '-'}</p>
+                )}
+              </div>
+              <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Requirement ID</Label>
+                <p className="font-medium">{selectedIssue?.requirementId || '-'}</p>
+              </div>
+              <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Status</Label>
+                {isEditMode ? (
+                  <Input value={editFormData.status} onChange={(e) => setEditFormData({...editFormData, status: e.target.value})} className="h-8" />
+                ) : (
+                  <Badge variant={getStatusColor(selectedIssue?.status)}>{selectedIssue?.status || 'N/A'}</Badge>
+                )}
+              </div>
+              <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Priority</Label>
+                {isEditMode ? (
+                  <Input value={editFormData.priority} onChange={(e) => setEditFormData({...editFormData, priority: e.target.value})} className="h-8" />
+                ) : (
+                  <Badge variant={getPriorityColor(selectedIssue?.priority)}>{selectedIssue?.priority || 'N/A'}</Badge>
+                )}
+              </div>
+              <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Source</Label>
+                {isEditMode ? (
+                  <Input value={editFormData.source} onChange={(e) => setEditFormData({...editFormData, source: e.target.value})} className="h-8" />
+                ) : (
+                  <p className="font-medium">{selectedIssue?.source || '-'}</p>
+                )}
+              </div>
+              <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Owner</Label>
+                {isEditMode ? (
+                  <Input value={editFormData.owner} onChange={(e) => setEditFormData({...editFormData, owner: e.target.value})} className="h-8" />
+                ) : (
+                  <p className="font-medium">{selectedIssue?.owner || '-'}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Description */}
+            <div className="border-t pt-4">
+              <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Description</Label>
+                {isEditMode ? (
+                  <Textarea value={editFormData.description} onChange={(e) => setEditFormData({...editFormData, description: e.target.value})} className="min-h-[80px]" />
+                ) : (
+                  <p className="font-medium whitespace-pre-wrap">{selectedIssue?.description || '-'}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Status Updates */}
+            <div className="border-t pt-4">
+              <h4 className="font-medium mb-3">Status Updates</h4>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Current Status</Label>
+                  {isEditMode ? (
+                    <Textarea value={editFormData.currentStatus} onChange={(e) => setEditFormData({...editFormData, currentStatus: e.target.value})} className="min-h-[60px]" />
+                  ) : (
+                    <p className="font-medium whitespace-pre-wrap">{selectedIssue?.currentStatus || '-'}</p>
+                  )}
+                </div>
+                <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Last Update</Label>
+                  {isEditMode ? (
+                    <Textarea value={editFormData.lastUpdate} onChange={(e) => setEditFormData({...editFormData, lastUpdate: e.target.value})} className="min-h-[60px]" />
+                  ) : (
+                    <p className="font-medium whitespace-pre-wrap">{selectedIssue?.lastUpdate || '-'}</p>
+                  )}
+                </div>
+                <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Status Update</Label>
+                  {isEditMode ? (
+                    <Textarea value={editFormData.statusUpdate} onChange={(e) => setEditFormData({...editFormData, statusUpdate: e.target.value})} className="min-h-[60px]" />
+                  ) : (
+                    <p className="font-medium whitespace-pre-wrap">{selectedIssue?.statusUpdate || '-'}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -598,6 +822,51 @@ export default function Issues() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Add Issue Group Dialog */}
+      <Dialog open={addIssueGroupDialogOpen} onOpenChange={setAddIssueGroupDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New Issue Group</DialogTitle>
+            <DialogDescription>
+              Enter a name for the new issue group.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="issueGroupName" className="text-right">Name *</Label>
+              <Input
+                id="issueGroupName"
+                value={newIssueGroupName}
+                onChange={(e) => setNewIssueGroupName(e.target.value)}
+                placeholder="Enter issue group name..."
+                className="col-span-3"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && newIssueGroupName.trim() && currentProjectId) {
+                    createIssueGroupMutation.mutate({ projectId: currentProjectId, name: newIssueGroupName.trim() });
+                  }
+                }}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setAddIssueGroupDialogOpen(false);
+              setNewIssueGroupName('');
+            }}>Cancel</Button>
+            <Button
+              onClick={() => {
+                if (newIssueGroupName.trim() && currentProjectId) {
+                  createIssueGroupMutation.mutate({ projectId: currentProjectId, name: newIssueGroupName.trim() });
+                }
+              }}
+              disabled={!newIssueGroupName.trim() || createIssueGroupMutation.isPending}
+            >
+              {createIssueGroupMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Creating...</> : 'Create'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

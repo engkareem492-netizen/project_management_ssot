@@ -1,340 +1,187 @@
 # Project Management SSOT - TODO
 
-## Phase 1: Database Schema & Data Model
-- [x] Design database schema for Requirements table
-- [x] Design database schema for Tasks table
-- [x] Design database schema for Issues table
-- [x] Design database schema for Dependencies table
-- [x] Design database schema for Assumptions table
-- [x] Design database schema for Action Log table
-- [x] Implement database migrations
+## Core Features
 
-## Phase 2: Excel Upload & Import
-- [x] Create Excel file upload component
-- [x] Implement Excel parser for Requirements sheet
-- [x] Implement Excel parser for Tasks sheet
-- [x] Implement Excel parser for Issues sheet
-- [x] Implement Excel parser for Dependencies sheet
-- [x] Implement Excel parser for Assumptions sheet
-- [x] Create data validation and error handling
-- [x] Store parsed data in database
+- [x] Multi-project support with password protection
+- [x] Project selection/creation interface
+- [x] Database schema with all tables (projects, requirements, tasks, issues, etc.)
+- [x] Today Dashboard as main landing page
+- [x] Excel import/export in sidebar
+- [x] Requirements management with auto-generated IDs
+- [x] Task management linked to requirements
+- [x] Issue tracking
+- [x] Stakeholder management
+- [x] Deliverables tracking
+- [x] Dependencies management
+- [x] Assumptions tracking
+- [x] Action logging for audit trail
+- [x] Settings management for dropdown options
+- [x] Dashboard layout with sidebar navigation
+- [x] Authentication integration with Manus OAuth
+- [x] Project switching functionality
 
-## Phase 3: Action Log System
-- [x] Implement delta change detection algorithm
-- [x] Create automatic timestamp tracking
-- [x] Build action log recording for Requirements
-- [x] Build action log recording for Tasks
-- [x] Build action log recording for Issues
-- [x] Track specific fields: Deliverables 1, D1 Status, Deliverables 2, D2 Status, Last Update, Update Date, Status
+## Future Enhancements (Optional)
 
-## Phase 4: Interactive Data Tables
-- [x] Create Requirements data table with inline editing
-- [x] Create Tasks data table with inline editing
-- [x] Create Issues data table with inline editing
-- [x] Create Dependencies data table
-- [x] Implement real-time validation
-- [x] Add save/cancel functionality
+- [ ] Add project-level permissions and roles
+- [ ] Implement project archiving functionality
+- [ ] Add project cloning feature
+- [ ] Export project data as backup
+- [ ] Project activity dashboard
+- [ ] Project collaboration features
+- [ ] Advanced filtering and search across projects
 
-## Phase 5: Historical Timeline Viewer
-- [x] Design pop-up modal for timeline view
-- [x] Implement chronological change history display
-- [x] Show field-level changes with timestamps
-- [x] Add user-friendly change comparison view
+## Bug Fixes / Improvements
 
-## Phase 6: Relationship Mapping
-- [x] Build relationship detection system (Requirement ID, Task ID, Issue ID)
-- [x] Create relationship mapping dashboard
-- [x] Implement hierarchical view of linked entities
-- [x] Add visual relationship diagram
-- [x] Create relationship report generator
+- [x] Add demo/bypass authentication mode for testing without OAuth
+- [x] Fix invalid hook call in Requirements.tsx (useProject called inside callback)
+- [x] Fix invalid hook call in Deliverables.tsx
+- [x] Fix invalid hook call in Issues.tsx
+- [x] Fix invalid hook call in Stakeholders.tsx
+- [x] Fix invalid hook call in Tasks.tsx
 
-## Phase 7: Search, Filter & Export
-- [x] Implement search across all entities by ID
-- [x] Add filter by status, priority, owner
-- [x] Add date range filtering
-- [x] Create Excel export functionality
-- [x] Include action log data in export
-- [x] Preserve original Excel structure
+## New Feature Requests
 
-## Phase 8: Testing & Documentation
-- [x] Write unit tests for delta change detection
-- [x] Write integration tests for Excel import/export
-- [x] Test all CRUD operations
-- [x] Create user documentation
-- [x] Test relationship mapping accuracy
+- [x] Update Requirement structure with new fields: Task Group, Issue Group, Source Type, External Source, Last Update
+- [x] Fix projectId error in Requirement creation (expected number, received undefined)
+- [x] Apply Oracle Database theme (professional dark/red theme)
+- [x] Fix Settings tab for dynamic number ranges configuration
+- [x] Update Requirements page UI to display all new fields in order: ID | Task Group | Issue Group | Priority | Creation Date | Type | Category | Owner | Description | Source Type | External Source | Status | Last Update
+- [x] Add history tracking for Last Update field
+## Testing Completed (Jan 25, 2026)
 
-## Phase 9: Delivery
-- [x] Final testing and bug fixes
-- [x] Create checkpoint
-- [x] Deliver application to user
+- [x] Fix project password verification (updated hash in database)
+- [x] Verify ID Configuration in Settings works with dynamic number ranges
+- [x] Test requirement creation with new field structure (Q-0001 created successfully)
+- [x] Verify Oracle theme applied to UI
 
-## Enhancement: Full CRUD Operations
+## New Feature Requests (Jan 25, 2026 - Batch 2)
 
-### Phase 1: Create/Add Functionality
-- [x] Add "Create New Requirement" button and form dialog
-- [x] Add "Create New Task" button and form dialog
-- [x] Add "Create New Issue" button and form dialog
-- [x] Add "Create New Dependency" button and form dialog
-- [x] Add "Create New Assumption" button and form dialog
-- [x] Implement form validation for all create forms
-- [x] Add backend procedures for creating new entities
+### Requirements Enhancements
+- [x] Task Group and Issue Group should link to Tasks & Issues tabs (dropdown selection)
+- [x] Allow manual control of Creation Date in Requirements
+- [x] Add option to create new Type directly from Requirements form (SelectWithCreate component)
+- [x] Add option to create new Owner (Stakeholder) directly from Requirements form (SelectWithCreate component)
+- [x] Add option to create new Category directly from Requirements form (SelectWithCreate component)
+- [x] Add option to create new Status directly from Requirements form (SelectWithCreate component)
 
-### Phase 2: Delete Functionality
-- [x] Add delete button to Requirements table
-- [x] Add delete button to Tasks table
-- [x] Add delete button to Issues table
-- [x] Add delete button to Dependencies table
-- [x] Add delete button to Assumptions table
-- [x] Implement confirmation dialogs for delete operations
-- [x] Add backend procedures for deleting entities
+### Tasks Enhancements
+- [x] Add Task Groups field with dropdown selection from Requirements
+- [x] Add RACI People field (Responsible, Accountable, Consulted, Informed)
+- [x] Add ETD/Due Date field for Today Dashboard integration
+- [x] Add Assign Date field
 
-### Phase 3: Bulk Operations (SKIPPED per user request)
-- [-] Add checkbox selection to Requirements table
-- [-] Add checkbox selection to Tasks table
-- [-] Add checkbox selection to Issues table
-- [-] Implement bulk delete functionality
-- [-] Implement bulk status update functionality
-- [-] Add "Select All" / "Deselect All" functionality
+### Issues Enhancements
+- [x] Add Issue Group field with dropdown selection from Requirements
 
-### Phase 4: Testing & Delivery
-- [x] Test create operations for all entities
-- [x] Test delete operations with confirmation
-- [x] Verify inline editing still works
-- [x] Create checkpoint
-- [x] Deliver enhanced application
+### Today Dashboard
+- [x] Update to use ETD/Due Date from Tasks for scheduling
 
-## Enhancement V2: Next Level Features
+## Bug Fixes (Jan 25, 2026 - Batch 3)
 
-### Phase 1: Automatic IDs and Sorting
-- [x] Implement auto-generated IDs for Requirements (Q-XXXX format)
-- [x] Implement auto-generated IDs for Tasks (T-XXXX format)
-- [x] Implement auto-generated IDs for Issues (I-XXXX format)
-- [x] Implement auto-generated IDs for Dependencies (D-XXXX format)
-- [x] Implement auto-generated IDs for Assumptions (A-XXXX format)
-- [x] Add sorting by ID for all entity tables
-- [x] Remove manual ID input from create forms (frontend)
-### Phase 2: Stakeholder Register
-- [x] Create stakeholders database table
-- [x] Create Stakeholder Register page with CRUD operations
-- [x] Add Full Name, Email, Position, Role, Job, Phone fields
-- [ ] Integrate stakeholders as dropdown options for Owner/Responsible/Accountable/Informed/Consultedakeholder dropdown for Owner field in Tasks
-- [ ] Integrate stakeholder dropdown for Owner field in Issues
-- [ ] Integrate stakeholder dropdown for Responsible field in Dependencies
+- [x] Fix Task Group in Requirements - Should be dropdown linked to Tasks entity (not text input)
+- [x] Fix Task Group in Tasks page - Should be dropdown populated from Tasks entity
+- [x] Fix Issue Group in Requirements - Should be dropdown linked to Issues entity (not text input)
+- [x] Fix Issue Group in Issues page - Should be dropdown populated from Issues entity, remove custom input option
+- [x] Fix History/Updates display - Change from text format to Excel-like sheet/table format showing field changes
 
-### Phase 3: Deliverables System
-- [x] Create deliverables database table
-- [x] Create deliverable_links table for many-to-many relationships
-- [x] Create Deliverables page with CRUD operations
-- [x] Implement linking to Requirements, Tasks, Dependencies
-- [ ] Add ability to create deliverables from Tasks/Requirements/Dependencies pagesrables to Dependencies
-- [ ] Add ability to create deliverables from within Requirements/Tasks
+## Bug Fixes (Jan 25, 2026 - Batch 4)
 
-### Phase 4: Navigation and Accessibility
-- [x] Fix 404 error on Page 2 (updated navigation menu)
-- [ ] Improve sidebar navigation with proper routing
-- [ ] Add breadcrumb navigation
-- [ ] Ensure all pages are accessible from navigation
+- [x] Add "+" button to Task Group dropdown in Requirements for inline creation
+- [x] Add "+" button to Issue Group dropdown in Requirements for inline creation
+- [x] Enlarge History dialog to display changes properly (increase max-width from 2xl to 5xl)
+- [x] Fix Task creation dialog messy layout (restructured with sections: Basic Information, RACI Assignment, Dates, Status & Priority)
 
-### Phase 5: Requirement-Task Integration
-- [x] Add "Create Task" button within Requirement edit/view
-- [x] Auto-link created tasks to parent requirement
-- [x] Create Requirement Detail popup showing all linked items
-- [x] Show linked Tasks with status in popup
-- [x] Show linked Issues with status in popup
-- [ ] Show linked Deliverables with status in popup
-- [x] Reflect task creation in Tasks page automatically
+## Bug Fixes (Jan 25, 2026 - Batch 5)
 
-### Phase 6: Testing and Delivery
-- [x] Test automatic ID generation
-- [x] Test stakeholder integration
-- [x] Test deliverables relationships
-- [x] Test navigation fixes
-- [x] Test requirement-task linking
-- [x] Create checkpoint
-- [x] Deliver enhanced application
+- [x] Fix Task Group + button to create persistent groups in database (created taskGroups table)
+- [x] Fix Issue Group + button to create persistent groups in database (created issueGroups table)
+- [x] Make History screen even bigger (full-width 90vw, 70vh height) to display all changes properly
+- [x] Add theme toggle option (light/dark mode) in Settings > Theme tab
 
-## Enhancement V3: Comprehensive Improvements
+## Bug Fixes (Jan 25, 2026 - Batch 6)
 
-### ID Configuration
-- [x] Create ID Configuration backend router
-- [x] Create Settings page for ID configuration
-- [x] Add Settings to navigation menu
-- [ ] Test ID configuration changes
+- [x] Unify Edit and View dialogs into single full-screen dialog with editable mode
+- [x] View button opens full-screen detail dialog (read-only)
+- [x] Edit button opens same full-screen dialog but with all fields editable
+- [x] Apply unified dialog to Requirements page
+- [x] Apply unified dialog to Tasks page
+- [x] Apply unified dialog to Issues page
 
-### Stakeholder Integration
-- [ ] Add stakeholder dropdown for Owner in Requirements
-- [ ] Add stakeholder dropdown for Owner in Issues  
-- [ ] Add stakeholder dropdown for Responsible/Accountable in Tasks
-- [ ] Add stakeholder dropdown for Responsible in Dependencies
+## Bug Fixes (Jan 25, 2026 - Batch 7)
 
-### Status & Priority Dropdowns
-- [ ] Add Status dropdown with predefined options (Open, Pending, Closed, In Progress)
-- [ ] Add Priority dropdown with predefined options (Low, Medium, High, Very High)
-- [ ] Apply to Requirements, Tasks, Issues
+- [x] Fix controlled/uncontrolled input error in Requirements page (added missing createdAt field to reset state)
 
-### Deliverables Integration
-- [ ] Show linked Deliverables from database in Requirements popup (not Excel fields)
-- [ ] Add "Create Deliverable" button in Requirements
-- [ ] Add "Create Deliverable" button in Tasks
-- [ ] Update Deliverables page to show linked Requirements/Tasks
+## Feature Requests (Jan 25, 2026 - Batch 8)
 
-### Bidirectional Linking
-- [ ] Show parent Requirement in Tasks table/detail view
-- [ ] Show parent Requirement in Issues table/detail view
-- [ ] Add "Create Issue" button in Requirements
+- [x] Remove Custom Task Group field from Task creation dialog
+- [x] Add ID number range control for Task Groups in Settings (TG-XXXX format)
+- [x] Add ID number range control for Issue Groups in Settings (IG-XXXX format)
+- [x] Enable Task creation from Requirement detail view Tasks tab with Task Group dropdown and RACI fields
+- [x] Enable Issue creation from Requirement detail view Issues tab with Issue Group dropdown
 
-### Last Update Field
-- [ ] Make Last Update field prominently editable
-- [ ] Auto-update Last Update on any change
+## Feature Requests (Jan 25, 2026 - Batch 9)
 
-### Testing & Delivery
-- [ ] Test all dropdown integrations
-- [ ] Test deliverables linking
-- [ ] Test bidirectional navigation
-- [ ] Create checkpoint
-- [ ] Deliver V3 enhancements
+- [x] Add Task Groups and Issue Groups management tab in Settings
+- [x] Display all existing Task Groups with their IDs and names
+- [x] Display all existing Issue Groups with their IDs and names
+- [x] Implement edit functionality to rename groups
+- [x] Implement delete functionality to remove unused groups
+- [ ] Show usage count (how many requirements/tasks/issues use each group)
 
-## Bugs
-- [x] Fix Select.Item empty value error in Tasks page
-- [x] Fix Select.Item empty value error in Issues page
+## Feature Requests (Jan 25, 2026 - Batch 10)
 
-## Enhancement V4: Settings Management & Today Dashboard
+- [x] Rename "Job" field to "Department" in Stakeholder edit/create dialog
+- [x] Add "+" button to Task Group dropdown in Create Task dialog for inline group creation
+- [x] Add "+" button to Issue Group dropdown in Create Issue dialog for inline group creation
 
-### Phase 1: Fix Issues Page Error
-- [x] Fix Select.Item empty value error in Issues create dialog
+## Feature Requests (Jan 25, 2026 - Batch 11)
 
-### Phase 2: Database Schema for Dropdown Options
-- [x] Create status_options table
-- [x] Create priority_options table
-- [x] Create type_options table
-- [x] Create category_options table
-- [x] Add usage_count field to track option usage
-- [x] Seed initial data for all option tables
-- [x] Add database helpers for CRUD operations
+- [x] Replace browser prompt() with custom dialog for Task Group creation in Tasks page
+- [x] Replace browser prompt() with custom dialog for Issue Group creation in Issues page
 
-### Phase 3: Settings Buttons for Dropdowns
-- [x] Created DropdownOptionsManager component
-- [x] Added dropdownOptions namespace router in server
-- [x] Removed Deliverables 1 and D1 Status fields from Requirements
-- [x] Add Settings buttons in Requirements page
-- [x] Add Settings buttons in Tasks page
-- [x] Add Settings buttons in Issues page
-- [x] Add Settings buttons in Deliverables page
+## Feature Requests (Jan 26, 2026 - Batch 12)
 
-### Phase 4: Settings Page Enhancement
-- [x] Create comprehensive Settings page with tabs
-- [x] Add Status Options management section
-- [x] Add Priority Options management section
-- [x] Add Type Options management section
-- [x] Add Category Options management section
-- [x] Show usage count for each option
-- [x] Prevent delete if option is in use
+- [x] Add "+" buttons to RACI fields (Responsible, Accountable, Consulted, Informed) in Tasks create dialog for inline stakeholder creation (already implemented with SelectWithCreate component)
+- [x] Combine Current Status, Last Update, and Status Update columns into a single "Update Status" action cell in Tasks table
+- [x] Implement status update dialog that captures status change and automatically records timestamp
+- [x] Save status updates to action history for tracking changes over time (statusUpdate field includes timestamp)
 
-### Phase 5: Today Dashboard
-- [x] Create Today/Dashboard page in navigation
-- [x] Show tasks due today with status
-- [x] Show requirements due today with status
-- [x] Show overdue tasks (past due date)
-- [x] Show overdue requirements
-- [x] Show upcoming tasks (next 7 days)
-- [x] Show upcoming requirements (next 7 days)
-- [x] Add quick action buttons (mark complete, edit)
-- [x] Add summary cards (total today, overdue, upcoming)
+## Bug Fixes (Jan 27, 2026)
 
-### Phase 6: Testing & Delivery
-- [ ] Test dropdown options CRUD
-- [ ] Test Settings buttons functionality
-- [ ] Test Settings page management
-- [ ] Test Today Dashboard filtering
-- [ ] Create checkpoint
-- [ ] Deliver V4 enhancements
+- [x] Fix Requirements page update mutation error - missing idCode and data parameters
 
-## Bug Fixes V4.1
+## Feature Requests (Jan 27, 2026 - Batch 12)
 
-### Phase 1: Fix Settings Data and Remove D1/D1 Status
-- [x] Debug why Settings page doesn't show dropdown options data
-- [x] Remove D1 and D1 Status fields completely from Requirements view dialog
-- [x] Remove D1 and D1 Status columns from Requirements table
+- [x] Add "Forgot Password?" link on Project Selection page that redirects to Manus OAuth password reset page
 
-### Phase 2: Fix Today Dashboard and Remove Deliverables Tab
-- [ ] Check Today Dashboard route in App.tsx
-- [ ] Add Today/Dashboard to navigation menu
-- [ ] Remove Deliverables tab from Requirements view dialog
+## Feature Requests (Jan 28, 2026 - Batch 13)
 
-### Phase 3: Add Stakeholder Management
-- [x] Create StakeholderManager component with add/edit/delete (using inline dialog)
-- [x] Add "Add New" button beside Responsible dropdown in Tasks
-- [x] Add "Add New" button beside Accountable dropdown in Tasks
-- [x] Add "Add New" button beside Owner dropdown in Requirements
-- [x] Add "Add New" button beside Owner dropdown in Issues
-- [ ] Add Stakeholders management section in Settings page
+- [x] Add project password reset feature for when users forget their project password
+- [x] Add project deletion feature to remove unwanted projects
+- [x] Add backend procedure to reset project password
+- [x] Add backend procedure to delete project and all associated data
 
-### Phase 4: Testing & Delivery
-- [ ] Test Settings page data loading
-- [ ] Test Today Dashboard functionality
-- [ ] Test Stakeholder management
-- [ ] Create checkpoint
-- [ ] Deliver fixes
+## Feature Requests (Jan 29, 2026 - Batch 14)
 
-## Bug Fixes V4.2 & Schema Updates
+- [x] Fix Requirements page theme to match the rest of the application (already using semantic theme classes)
+- [x] Add multiple color theme options (Red, Blue, Green, Purple, Teal, Orange)
+- [x] Create theme selector component for users to switch between themes
+- [x] Persist theme selection in localStorage or user preferences
 
-### Phase 1: Fix Dropdown Refresh Issues
-- [x] Fix Type dropdown not refreshing after adding new options in Settings
-- [x] Fix Priority dropdown not refreshing after adding new options in Settings
-- [x] Fix Status dropdown not refreshing after adding new options in Settings
-- [x] Fix Category dropdown not refreshing after adding new options in Settings
-- [x] Implement proper cache invalidation for dropdown options
+## Bug Fixes (Jan 29, 2026 - Batch 15)
 
-### Phase 2: Add Task Group Field
-- [x] Add taskGroup field to tasks table in database schema (already existed)
-- [x] Update Tasks create form to include Task Group field
-- [x] Update Tasks table to display Task Group column
-- [x] Update Tasks edit functionality to support Task Group
-- [x] Make Task Group required field
+- [x] Fix newly created Task Groups not appearing in dropdown immediately after creation in Tasks page
+- [x] Fix newly created Issue Groups not appearing in dropdown immediately after creation in Issues page
+- [x] Fix newly created Task Groups not appearing in dropdown immediately after creation in Requirements page
 
-### Phase 3: Add Source Field
-- [x] Add source field (varchar 20) to requirements table
-- [x] Add source field (varchar 20) to issues table
-- [x] Update Requirements create/edit forms to include Source field
-- [x] Update Issues create/edit forms to include Source field
-- [ ] Display Source in Requirements and Issues tables (not added to table view yet)
+## Bug Fixes (Jan 30, 2026 - Batch 16)
 
-### Phase 4: Convert Last Update to Text Input
-- [x] Change Last Update field from display-only to editable text input
-- [x] Update Requirements Last Update field to text input
-- [x] Update Tasks Last Update field to text input
-- [x] Update Issues Last Update field to text input (already implemented)
-- [x] Ensure Last Update text is saved in action logs for history
+- [x] Fix Tasks page mutation error - projectId is undefined when creating Task Groups
 
-### Phase 5: Update Requirements-Tasks Relationship
-- [x] Change Requirements to link to Task Group instead of Task ID (schema already supports it)
-- [x] Update Requirements view dialog to show tasks grouped by Task Group
-- [ ] Update task creation from Requirements to use Task Group (future enhancement)
-- [x] Update relationship mapping to use Task Group
+## Bug Fixes (Jan 31, 2026 - Batch 17)
 
-### Phase 6: Testing & Delivery
-- [ ] Test dropdown refresh after Settings changes
-- [ ] Test Task Group field in all operations
-- [ ] Test Source field in Requirements and Issues
-- [ ] Test Last Update text input and history tracking
-- [ ] Test Requirements-Task Group relationships
-- [ ] Create checkpoint
-- [ ] Deliver fixes
+- [x] Fix all remaining instances where projectId is undefined in Tasks page mutations
 
-## Bug Fixes V4.3
+## Bug Fixes (Jan 31, 2026 - Batch 18)
 
-### Critical Fixes
-- [x] Fix task creation from Requirements - add taskGroup field to create task dialog
-- [x] Enable deliverable modification in Requirements tab (with edit and delete buttons)
-- [x] Add Settings button for Deliverable Status dropdown
-- [x] Test task creation with taskGroup
-- [x] Test deliverable editing functionality
-- [x] Create checkpoint
-
-## Bug Fix V4.4 & Export
-
-### Critical Fix
-- [x] Add RACI fields (Responsible, Accountable, Informed, Consulted) to create task dialog from Requirements
-- [x] Test task creation from Requirements with all required fields
-- [ ] Export website to GitHub for handover to another Manus profile (user action required)
-- [ ] Create final checkpoint
+- [x] Fix Issues page mutation error - projectId is undefined when creating issues

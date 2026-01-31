@@ -19,13 +19,33 @@ export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
 /**
+ * Projects table - stores multiple projects with password protection
+ */
+export const projects = mysqlTable("projects", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 200 }).notNull(),
+  description: text("description"),
+  password: varchar("password", { length: 255 }).notNull(),
+  createdBy: int("createdBy").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Project = typeof projects.$inferSelect;
+export type InsertProject = typeof projects.$inferInsert;
+
+/**
  * ID Sequences table - tracks auto-generated IDs for each entity type
  */
 export const idSequences = mysqlTable("idSequences", {
   id: int("id").autoincrement().primaryKey(),
-  entityType: varchar("entityType", { length: 50 }).notNull().unique(),
+  projectId: int("projectId").notNull(),
+  entityType: varchar("entityType", { length: 50 }).notNull(),
   prefix: varchar("prefix", { length: 10 }).notNull(),
   currentNumber: int("currentNumber").notNull().default(0),
+  minNumber: int("minNumber").notNull().default(1),
+  maxNumber: int("maxNumber").notNull().default(9999),
+  padLength: int("padLength").notNull().default(4),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
@@ -33,10 +53,43 @@ export type IdSequence = typeof idSequences.$inferSelect;
 export type InsertIdSequence = typeof idSequences.$inferInsert;
 
 /**
+ * Task Groups table - stores task group options for requirements and tasks
+ */
+export const taskGroups = mysqlTable("taskGroups", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  idCode: varchar("idCode", { length: 20 }),
+  name: varchar("name", { length: 200 }).notNull(),
+  description: text("description"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type TaskGroup = typeof taskGroups.$inferSelect;
+export type InsertTaskGroup = typeof taskGroups.$inferInsert;
+
+/**
+ * Issue Groups table - stores issue group options for requirements and issues
+ */
+export const issueGroups = mysqlTable("issueGroups", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  idCode: varchar("idCode", { length: 20 }),
+  name: varchar("name", { length: 200 }).notNull(),
+  description: text("description"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type IssueGroup = typeof issueGroups.$inferSelect;
+export type InsertIssueGroup = typeof issueGroups.$inferInsert;
+
+/**
  * Stakeholders table - stores all project stakeholders for person-based fields
  */
 export const stakeholders = mysqlTable("stakeholders", {
   id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
   fullName: varchar("fullName", { length: 200 }).notNull(),
   email: varchar("email", { length: 320 }),
   position: varchar("position", { length: 200 }),
@@ -55,7 +108,8 @@ export type InsertStakeholder = typeof stakeholders.$inferInsert;
  */
 export const requirements = mysqlTable("requirements", {
   id: int("id").autoincrement().primaryKey(),
-  idCode: varchar("idCode", { length: 50 }).notNull().unique(),
+  projectId: int("projectId").notNull(),
+  idCode: varchar("idCode", { length: 50 }).notNull(),
   taskGroup: varchar("taskGroup", { length: 100 }),
   issueGroup: varchar("issueGroup", { length: 100 }),
   createdAt: varchar("createdAt", { length: 50 }),
@@ -89,7 +143,8 @@ export type InsertRequirement = typeof requirements.$inferInsert;
  */
 export const tasks = mysqlTable("tasks", {
   id: int("id").autoincrement().primaryKey(),
-  taskId: varchar("taskId", { length: 50 }).notNull().unique(),
+  projectId: int("projectId").notNull(),
+  taskId: varchar("taskId", { length: 50 }).notNull(),
   taskGroup: varchar("taskGroup", { length: 100 }),
   dependencyId: varchar("dependencyId", { length: 50 }),
   requirementId: varchar("requirementId", { length: 50 }),
@@ -103,6 +158,7 @@ export const tasks = mysqlTable("tasks", {
   consulted: varchar("consulted", { length: 200 }),
   consultedId: int("consultedId"),
   dueDate: varchar("dueDate", { length: 50 }),
+  assignDate: varchar("assignDate", { length: 50 }),
   currentStatus: text("currentStatus"),
   statusUpdate: text("statusUpdate"),
   owner: varchar("owner", { length: 200 }),
@@ -123,7 +179,8 @@ export type InsertTask = typeof tasks.$inferInsert;
  */
 export const issues = mysqlTable("issues", {
   id: int("id").autoincrement().primaryKey(),
-  issueId: varchar("issueId", { length: 50 }).notNull().unique(),
+  projectId: int("projectId").notNull(),
+  issueId: varchar("issueId", { length: 50 }).notNull(),
   issueGroup: varchar("issueGroup", { length: 100 }),
   taskGroup: varchar("taskGroup", { length: 100 }),
   requirementId: varchar("requirementId", { length: 50 }),
@@ -156,7 +213,8 @@ export type InsertIssue = typeof issues.$inferInsert;
  */
 export const dependencies = mysqlTable("dependencies", {
   id: int("id").autoincrement().primaryKey(),
-  dependencyId: varchar("dependencyId", { length: 50 }).notNull().unique(),
+  projectId: int("projectId").notNull(),
+  dependencyId: varchar("dependencyId", { length: 50 }).notNull(),
   depGroup: varchar("depGroup", { length: 100 }),
   taskId: varchar("taskId", { length: 50 }),
   requirementId: varchar("requirementId", { length: 50 }),
@@ -184,7 +242,8 @@ export type InsertDependency = typeof dependencies.$inferInsert;
  */
 export const assumptions = mysqlTable("assumptions", {
   id: int("id").autoincrement().primaryKey(),
-  assumptionId: varchar("assumptionId", { length: 50 }).notNull().unique(),
+  projectId: int("projectId").notNull(),
+  assumptionId: varchar("assumptionId", { length: 50 }).notNull(),
   description: text("description"),
   category: varchar("category", { length: 100 }),
   owner: varchar("owner", { length: 200 }),
@@ -202,7 +261,8 @@ export type InsertAssumption = typeof assumptions.$inferInsert;
  */
 export const deliverables = mysqlTable("deliverables", {
   id: int("id").autoincrement().primaryKey(),
-  deliverableId: varchar("deliverableId", { length: 50 }).notNull().unique(),
+  projectId: int("projectId").notNull(),
+  deliverableId: varchar("deliverableId", { length: 50 }).notNull(),
   description: text("description"),
   status: varchar("status", { length: 100 }),
   dueDate: varchar("dueDate", { length: 50 }),
@@ -251,8 +311,8 @@ export const statusOptions = mysqlTable("statusOptions", {
   id: int("id").autoincrement().primaryKey(),
   value: varchar("value", { length: 100 }).notNull().unique(),
   label: varchar("label", { length: 100 }).notNull(),
-  category: varchar("category", { length: 50 }).notNull(), // 'requirement', 'task', 'issue', 'dependency', 'all'
-  color: varchar("color", { length: 50 }), // for badge colors
+  category: varchar("category", { length: 50 }).notNull(),
+  color: varchar("color", { length: 50 }),
   isDefault: boolean("isDefault").default(false).notNull(),
   usageCount: int("usageCount").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -269,9 +329,9 @@ export const priorityOptions = mysqlTable("priorityOptions", {
   id: int("id").autoincrement().primaryKey(),
   value: varchar("value", { length: 100 }).notNull().unique(),
   label: varchar("label", { length: 100 }).notNull(),
-  category: varchar("category", { length: 50 }).notNull(), // 'requirement', 'task', 'issue', 'all'
-  color: varchar("color", { length: 50 }), // for badge colors
-  level: int("level").notNull(), // 1=Low, 2=Medium, 3=High, 4=Very High
+  category: varchar("category", { length: 50 }).notNull(),
+  color: varchar("color", { length: 50 }),
+  level: int("level").notNull(),
   isDefault: boolean("isDefault").default(false).notNull(),
   usageCount: int("usageCount").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
