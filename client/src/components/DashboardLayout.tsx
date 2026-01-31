@@ -7,6 +7,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
@@ -38,7 +45,8 @@ import {
   Calendar,
   Upload,
   Download,
-  Database
+  Database,
+  Palette
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -142,6 +150,7 @@ function DashboardLayoutContent({
   const { state, toggleSidebar } = useSidebar();
   const isCollapsed = state === "collapsed";
   const [isResizing, setIsResizing] = useState(false);
+  const [themeDialogOpen, setThemeDialogOpen] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const activeMenuItem = menuItems.find(item => item.path === location);
   const isMobile = useIsMobile();
@@ -357,6 +366,13 @@ function DashboardLayoutContent({
                   <span>Switch Project</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
+                  onClick={() => setThemeDialogOpen(true)}
+                  className="cursor-pointer"
+                >
+                  <Palette className="mr-2 h-4 w-4" />
+                  <span>Theme</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
                   onClick={logout}
                   className="cursor-pointer text-destructive focus:text-destructive"
                 >
@@ -397,6 +413,21 @@ function DashboardLayoutContent({
         )}
         <main className="flex-1 p-4">{children}</main>
       </SidebarInset>
+
+      {/* Theme Settings Dialog */}
+      <Dialog open={themeDialogOpen} onOpenChange={setThemeDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Theme Settings</DialogTitle>
+            <DialogDescription>
+              Choose your preferred color theme for the application
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <ThemeSelector />
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

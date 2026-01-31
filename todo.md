@@ -461,3 +461,13 @@
 - [x] Add task field display in Issues table with info button
 - [x] Add task detail dialog to view full task information
 - [ ] Test task creation and linking from Issues page
+
+
+## UI/UX Improvement (Feb 1, 2026 - Theme Settings Accessibility)
+
+### Move Theme Selector to Settings Menu
+- [x] Add Theme option to DashboardLayout settings dropdown menu (user avatar dropdown)
+- [x] Create theme settings dialog/panel accessible from settings menu
+- [x] Include color palette selector in theme settings (ThemeSelector component)
+- [x] Ensure theme selector is accessible at all screen sizes (not just mobile)
+- [ ] Test theme changes persist across page navigation
