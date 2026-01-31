@@ -117,9 +117,12 @@ export async function getUserByOpenId(openId: string) {
 }
 
 // Requirements CRUD
-export async function getAllRequirements() {
+export async function getAllRequirements(projectId?: number) {
   const db = await getDb();
   if (!db) return [];
+  if (projectId) {
+    return await db.select().from(requirements).where(eq(requirements.projectId, projectId)).orderBy(desc(requirements.importedAt));
+  }
   return await db.select().from(requirements).orderBy(desc(requirements.importedAt));
 }
 
@@ -156,9 +159,12 @@ export async function deleteAllRequirements() {
 }
 
 // Tasks CRUD
-export async function getAllTasks() {
+export async function getAllTasks(projectId?: number) {
   const db = await getDb();
   if (!db) return [];
+  if (projectId) {
+    return await db.select().from(tasks).where(eq(tasks.projectId, projectId)).orderBy(desc(tasks.importedAt));
+  }
   return await db.select().from(tasks).orderBy(desc(tasks.importedAt));
 }
 
@@ -465,9 +471,12 @@ export async function initializeIdSequence(entityType: string, prefix: string, s
 }
 
 // Stakeholders CRUD
-export async function getAllStakeholders() {
+export async function getAllStakeholders(projectId?: number) {
   const db = await getDb();
   if (!db) return [];
+  if (projectId) {
+    return await db.select().from(stakeholders).where(eq(stakeholders.projectId, projectId)).orderBy(stakeholders.fullName);
+  }
   return await db.select().from(stakeholders).orderBy(stakeholders.fullName);
 }
 
