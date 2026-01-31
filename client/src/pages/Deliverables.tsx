@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DropdownOptionsManager } from "@/components/DropdownOptionsManager";
 import {
   Select,
@@ -258,23 +259,26 @@ export default function Deliverables() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <Package className="h-6 w-6" />
-            Deliverables Management
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Create and manage deliverables linked to Requirements, Tasks, and Dependencies
-          </p>
-        </div>
-        <Button onClick={() => setIsCreateOpen(true)} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Add Deliverable
-        </Button>
-      </div>
+    <div className="space-y-6">
+      <Card className="border-primary/20">
+        <CardHeader className="bg-gradient-to-r from-primary/10 to-primary/5 border-b border-primary/20">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-xl flex items-center gap-2">
+                <Package className="w-5 h-5 text-primary" />
+                Deliverables Management
+              </CardTitle>
+              <CardDescription className="mt-1">
+                Create and manage deliverables linked to Requirements, Tasks, and Dependencies
+              </CardDescription>
+            </div>
+            <Button onClick={() => setIsCreateOpen(true)} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Add Deliverable
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-6">
 
       {/* Search */}
       <div className="relative max-w-md">
@@ -670,6 +674,8 @@ export default function Deliverables() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+        </CardContent>
+      </Card>
     </div>
   );
 }

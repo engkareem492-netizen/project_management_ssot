@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Search, Edit, History, Loader2, Plus, Trash2, Settings, Eye, Save, X, Info } from "lucide-react";
+import { Search, Edit, History, Loader2, Plus, Trash2, Settings, Eye, Save, X, Info, AlertCircle } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -500,12 +500,15 @@ export default function Issues() {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
+      <Card className="border-primary/20">
+        <CardHeader className="bg-gradient-to-r from-primary/10 to-primary/5 border-b border-primary/20">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Issues Management</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-xl flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-primary" />
+                Issues Management
+              </CardTitle>
+              <CardDescription className="mt-1">
                 View, edit, and track changes to project issues
               </CardDescription>
             </div>

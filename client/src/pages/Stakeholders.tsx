@@ -4,6 +4,7 @@ import { useProject } from "@/contexts/ProjectContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -169,23 +170,26 @@ export default function Stakeholders() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <Users className="h-6 w-6" />
-            Stakeholder Register
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Manage project stakeholders for Owner, Responsible, Accountable, Informed, and Consulted roles
-          </p>
-        </div>
-        <Button onClick={() => setIsCreateOpen(true)} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Add Stakeholder
-        </Button>
-      </div>
+    <div className="space-y-6">
+      <Card className="border-primary/20">
+        <CardHeader className="bg-gradient-to-r from-primary/10 to-primary/5 border-b border-primary/20">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-xl flex items-center gap-2">
+                <Users className="w-5 h-5 text-primary" />
+                Stakeholder Register
+              </CardTitle>
+              <CardDescription className="mt-1">
+                Manage project stakeholders for Owner, Responsible, Accountable, Informed, and Consulted roles
+              </CardDescription>
+            </div>
+            <Button onClick={() => setIsCreateOpen(true)} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Add Stakeholder
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-6">
 
       {/* Search */}
       <div className="relative max-w-md">
@@ -468,6 +472,8 @@ export default function Stakeholders() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+        </CardContent>
+      </Card>
     </div>
   );
 }

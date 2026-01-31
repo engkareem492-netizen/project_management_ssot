@@ -471,3 +471,28 @@
 - [x] Include color palette selector in theme settings (ThemeSelector component)
 - [x] Ensure theme selector is accessible at all screen sizes (not just mobile)
 - [ ] Test theme changes persist across page navigation
+
+
+## UI/UX Improvement (Feb 1, 2026 - Theme Selector & Visual Consistency)
+
+### Add Color Palette Selector to Settings Theme Tab
+- [x] Add ThemeSelector component to Settings page Theme tab
+- [x] Display all color themes (Rose, Blue, Green, etc.) in Settings
+- [ ] Test theme selection works from Settings page
+
+### Apply Vertical Layout to Requirements Page
+- [ ] Update Requirements table to use two-line vertical field layout
+- [ ] Match Tasks and Issues page display format
+- [ ] Add info buttons for linked entities
+
+### Add Colored Header Ribbons to All Pages
+- [x] Identify the colored ribbon style from Requirements page (bg-gradient-to-r from-primary/10 to-primary/5 border-b border-primary/20)
+- [x] Apply colored header ribbon to Tasks page
+- [x] Apply colored header ribbon to Issues page
+- [x] Apply colored header ribbon to Deliverables page
+- [x] Apply colored header ribbon to Stakeholders page
+- [ ] Apply colored header ribbon to Dependencies page
+- [ ] Apply colored header ribbon to Assumptions page
+- [ ] Apply colored header ribbon to Action Log page
+- [ ] Apply colored header ribbon to Relationships page
+- [ ] Ensure consistent color scheme across all pages

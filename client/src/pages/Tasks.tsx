@@ -443,12 +443,15 @@ export default function Tasks() {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
+      <Card className="border-primary/20">
+        <CardHeader className="bg-gradient-to-r from-primary/10 to-primary/5 border-b border-primary/20">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Tasks Management</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-xl flex items-center gap-2">
+                <CheckSquare className="w-5 h-5 text-primary" />
+                Tasks Management
+              </CardTitle>
+              <CardDescription className="mt-1">
                 View, edit, and track changes to project tasks
               </CardDescription>
             </div>

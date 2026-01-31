@@ -13,6 +13,7 @@ import { useState } from "react";
 import { Settings as SettingsIcon, Save, Plus, Edit, Trash2, Hash, AlertCircle, Sun, Moon, Monitor } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useProject } from "@/contexts/ProjectContext";
+import { ThemeSelector } from "@/components/ThemeSelector";
 
 interface IdConfigEdit {
   prefix: string;
@@ -893,6 +894,10 @@ export default function Settings() {
             </CardHeader>
             <CardContent className="space-y-6">
               <ThemeSelectorInline />
+              <div className="border-t pt-6">
+                <h3 className="text-sm font-medium mb-4">Color Palette</h3>
+                <ThemeSelector />
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
