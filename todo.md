@@ -181,3 +181,7 @@
 ## Bug Fixes (Jan 31, 2026 - Batch 17)
 
 - [x] Fix all remaining instances where projectId is undefined in Tasks page mutations
+
+## Bug Fixes (Jan 31, 2026 - Batch 18)
+
+- [x] Fix Issues page mutation error - projectId is undefined when creating issues

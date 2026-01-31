@@ -181,6 +181,7 @@ export default function Issues() {
     // Convert "none" to undefined for optional requirementId
     const issueData = {
       ...newIssue,
+      projectId: currentProjectId!,
       requirementId: newIssue.requirementId === "none" ? undefined : newIssue.requirementId,
     };
     createMutation.mutate(issueData);
