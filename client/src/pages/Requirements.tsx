@@ -579,128 +579,100 @@ export default function Requirements() {
             </Button>
           </div>
 
-          {/* Requirements Table with New Field Order */}
-          <div className="rounded-md border border-primary/20 overflow-x-auto">
+          {/* Requirements Table with Vertical Layout */}
+          <div className="rounded-md border border-primary/20">
             <Table>
               <TableHeader>
                 <TableRow className="bg-primary/5 hover:bg-primary/10">
-                  <TableHead className="w-[90px] font-semibold text-primary">ID</TableHead>
-                  <TableHead className="w-[100px] font-semibold">Task Group</TableHead>
-                  <TableHead className="w-[100px] font-semibold">Issue Group</TableHead>
-                  <TableHead className="w-[80px] font-semibold">Priority</TableHead>
-                  <TableHead className="w-[100px] font-semibold">Created</TableHead>
-                  <TableHead className="w-[80px] font-semibold">Type</TableHead>
-                  <TableHead className="w-[90px] font-semibold">Category</TableHead>
-                  <TableHead className="w-[100px] font-semibold">Owner</TableHead>
-                  <TableHead className="min-w-[150px] font-semibold">Description</TableHead>
-                  <TableHead className="w-[90px] font-semibold">Source Type</TableHead>
-                  <TableHead className="w-[100px] font-semibold">Ext. Source</TableHead>
-                  <TableHead className="w-[80px] font-semibold">Status</TableHead>
-                  <TableHead className="min-w-[120px] font-semibold">Last Update</TableHead>
-                  <TableHead className="w-[140px] font-semibold">Actions</TableHead>
+                  <TableHead className="font-semibold text-primary">Requirement Details</TableHead>
+                  <TableHead className="w-[200px] font-semibold text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredRequirements?.map((req) => (
                   <TableRow key={req.id} className="hover:bg-primary/5">
-                    <TableCell className="font-mono font-medium text-primary">{req.idCode}</TableCell>
-                    <TableCell className="text-sm">{req.taskGroup || '-'}</TableCell>
-                    <TableCell className="text-sm">{req.issueGroup || '-'}</TableCell>
-                    <TableCell>
-                      {editingId === req.id ? (
-                        <Select
-                          value={editData.priority}
-                          onValueChange={(value) => setEditData({ ...editData, priority: value })}
-                        >
-                          <SelectTrigger className="w-24 h-8">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {priorityOptions?.map((opt) => (
-                              <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <Badge variant={getPriorityColor(req.priority)} className="text-xs">{req.priority || 'N/A'}</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{formatDate(req.createdAt)}</TableCell>
-                    <TableCell className="text-sm">{req.type || '-'}</TableCell>
-                    <TableCell className="text-sm">{req.category || '-'}</TableCell>
-                    <TableCell className="text-sm">{req.owner || '-'}</TableCell>
-                    <TableCell className="max-w-[200px] truncate text-sm" title={req.description || ''}>
-                      {req.description || '-'}
-                    </TableCell>
-                    <TableCell className="text-sm">{req.sourceType || '-'}</TableCell>
-                    <TableCell className="text-sm max-w-[100px] truncate" title={req.refSource || ''}>
-                      {req.refSource || '-'}
-                    </TableCell>
-                    <TableCell>
-                      {editingId === req.id ? (
-                        <Select
-                          value={editData.status}
-                          onValueChange={(value) => setEditData({ ...editData, status: value })}
-                        >
-                          <SelectTrigger className="w-24 h-8">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {statusOptions?.map((opt) => (
-                              <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <Badge variant={getStatusColor(req.status)} className="text-xs">{req.status || 'N/A'}</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {editingId === req.id ? (
-                        <Input
-                          value={editData.lastUpdate}
-                          onChange={(e) => setEditData({ ...editData, lastUpdate: e.target.value })}
-                          className="w-full h-8 text-sm"
-                          placeholder="Enter update..."
-                        />
-                      ) : (
-                        <div className="text-sm">
-                          {req.lastUpdate ? (
-                            <div className="flex items-center gap-1">
-                              <Clock className="w-3 h-3 text-muted-foreground" />
-                              <span className="truncate max-w-[100px]" title={req.lastUpdate}>{req.lastUpdate}</span>
-                            </div>
-                          ) : '-'}
+                    <TableCell className="py-4">
+                      <div className="space-y-3">
+                        {/* Line 1: ID, Task Group, Issue Group, Description */}
+                        <div className="flex items-start gap-3">
+                          <span className="font-mono font-bold text-primary text-base">{req.idCode}</span>
+                          <div className="flex items-center gap-2">
+                            {req.taskGroup && (
+                              <span className="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                                {req.taskGroup}
+                              </span>
+                            )}
+                            {req.issueGroup && (
+                              <span className="text-xs px-2 py-0.5 rounded bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300">
+                                {req.issueGroup}
+                              </span>
+                            )}
+                          </div>
+                          <p className="flex-1 text-sm">{req.description || '-'}</p>
                         </div>
-                      )}
+
+                        {/* Line 2: Details Grid */}
+                        <div className="grid grid-cols-1 gap-1 text-sm text-muted-foreground pl-4 border-l-2 border-muted">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium min-w-[120px]">Priority:</span>
+                            <Badge variant={getPriorityColor(req.priority)} className="text-xs">{req.priority || 'N/A'}</Badge>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium min-w-[120px]">Created:</span>
+                            <span>{formatDate(req.createdAt)}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium min-w-[120px]">Type:</span>
+                            <span>{req.type || 'N/A'}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium min-w-[120px]">Category:</span>
+                            <span>{req.category || 'N/A'}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium min-w-[120px]">Owner:</span>
+                            <span>{req.owner || 'N/A'}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium min-w-[120px]">Source Type:</span>
+                            <span>{req.sourceType || 'N/A'}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium min-w-[120px]">External Source:</span>
+                            <span className="truncate max-w-[300px]" title={req.refSource || ''}>{req.refSource || 'N/A'}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium min-w-[120px]">Status:</span>
+                            <Badge variant={getStatusColor(req.status)} className="text-xs">{req.status || 'N/A'}</Badge>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium min-w-[120px]">Last Update:</span>
+                            {req.lastUpdate ? (
+                              <div className="flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                <span>{req.lastUpdate}</span>
+                              </div>
+                            ) : (
+                              <span>N/A</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
                     </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        {editingId === req.id ? (
-                          <>
-                            <Button size="sm" variant="default" onClick={() => handleSave(req)} disabled={updateMutation.isPending} className="h-7 w-7 p-0">
-                              <Save className="w-3 h-3" />
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={handleCancel} className="h-7 w-7 p-0">
-                              <X className="w-3 h-3" />
-                            </Button>
-                          </>
-                        ) : (
-                          <>
-                            <Button size="sm" variant="ghost" onClick={() => handleViewDetails(req)} title="View Details" className="h-7 w-7 p-0 hover:bg-primary/10">
-                              <Eye className="w-3 h-3" />
-                            </Button>
-                            <Button size="sm" variant="ghost" onClick={() => handleEditDetails(req)} title="Edit" className="h-7 w-7 p-0 hover:bg-primary/10">
-                              <Edit className="w-3 h-3" />
-                            </Button>
-                            <Button size="sm" variant="ghost" onClick={() => showHistory(req.idCode)} title="History" className="h-7 w-7 p-0 hover:bg-primary/10">
-                              <History className="w-3 h-3" />
-                            </Button>
-                            <Button size="sm" variant="destructive" onClick={() => handleDelete(req.id)} title="Delete" className="h-7 w-7 p-0">
-                              <Trash2 className="w-3 h-3" />
-                            </Button>
-                          </>
-                        )}
+                    <TableCell className="align-top py-4">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button size="sm" variant="ghost" onClick={() => handleViewDetails(req)} title="View Details" className="h-8 w-8 p-0 hover:bg-primary/10">
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => handleEditDetails(req)} title="Edit" className="h-8 w-8 p-0 hover:bg-primary/10">
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => showHistory(req.idCode)} title="History" className="h-8 w-8 p-0 hover:bg-primary/10">
+                          <History className="w-4 h-4" />
+                        </Button>
+                        <Button size="sm" variant="destructive" onClick={() => handleDelete(req.id)} title="Delete" className="h-8 w-8 p-0">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>

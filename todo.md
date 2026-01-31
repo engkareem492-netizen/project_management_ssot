@@ -481,9 +481,9 @@
 - [ ] Test theme selection works from Settings page
 
 ### Apply Vertical Layout to Requirements Page
-- [ ] Update Requirements table to use two-line vertical field layout
-- [ ] Match Tasks and Issues page display format
-- [ ] Add info buttons for linked entities
+- [x] Update Requirements table to use two-line vertical field layout
+- [x] Match Tasks and Issues page display format
+- [x] Add info buttons for linked entities
 
 ### Add Colored Header Ribbons to All Pages
 - [x] Identify the colored ribbon style from Requirements page (bg-gradient-to-r from-primary/10 to-primary/5 border-b border-primary/20)
