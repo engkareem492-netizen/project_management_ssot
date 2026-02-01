@@ -74,7 +74,7 @@ export default function Settings() {
   const [optionFormData, setOptionFormData] = useState({ name: "" });
 
   // ID Config queries and state
-  const { data: idConfigs, isLoading: idConfigsLoading } = trpc.idConfig.list.useQuery();
+  const { data: idConfigs, isLoading: idConfigsLoading } = trpc.idConfig.list.useQuery({ projectId: currentProjectId || 1 });
   const updateConfig = trpc.idConfig.update.useMutation();
   const utils = trpc.useUtils();
   const [editingConfigs, setEditingConfigs] = useState<Record<string, IdConfigEdit>>({});

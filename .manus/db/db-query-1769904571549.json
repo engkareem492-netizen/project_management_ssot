@@ -1,0 +1,240 @@
+{
+  "query": "SELECT id, projectId, entityType, prefix, currentNumber, minNumber, maxNumber, padLength FROM idSequences ORDER BY entityType, id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4FzqaZAU5mRtC.root --database j37MQHBuWbY6PMBApJWnKm --execute SELECT id, projectId, entityType, prefix, currentNumber, minNumber, maxNumber, padLength FROM idSequences ORDER BY entityType, id;",
+  "rows": [
+    {
+      "id": "60005",
+      "projectId": "2",
+      "entityType": "Deliverable",
+      "prefix": "DL",
+      "currentNumber": "1",
+      "minNumber": "1",
+      "maxNumber": "9999",
+      "padLength": "4"
+    },
+    {
+      "id": "60013",
+      "projectId": "1",
+      "entityType": "Deliverable",
+      "prefix": "DL",
+      "currentNumber": "1",
+      "minNumber": "1",
+      "maxNumber": "9999",
+      "padLength": "4"
+    },
+    {
+      "id": "60004",
+      "projectId": "2",
+      "entityType": "Dependency",
+      "prefix": "D",
+      "currentNumber": "1",
+      "minNumber": "1",
+      "maxNumber": "9999",
+      "padLength": "4"
+    },
+    {
+      "id": "60012",
+      "projectId": "1",
+      "entityType": "Dependency",
+      "prefix": "D",
+      "currentNumber": "1",
+      "minNumber": "1",
+      "maxNumber": "9999",
+      "padLength": "4"
+    },
+    {
+      "id": "60003",
+      "projectId": "2",
+      "entityType": "Issue",
+      "prefix": "I",
+      "currentNumber": "1",
+      "minNumber": "1",
+      "maxNumber": "9999",
+      "padLength": "4"
+    },
+    {
+      "id": "60011",
+      "projectId": "1",
+      "entityType": "Issue",
+      "prefix": "I",
+      "currentNumber": "1",
+      "minNumber": "1",
+      "maxNumber": "9999",
+      "padLength": "4"
+    },
+    {
+      "id": "60007",
+      "projectId": "2",
+      "entityType": "Issue Group",
+      "prefix": "IG",
+      "currentNumber": "0",
+      "minNumber": "1",
+      "maxNumber": "999",
+      "padLength": "3"
+    },
+    {
+      "id": "60015",
+      "projectId": "1",
+      "entityType": "Issue Group",
+      "prefix": "IG",
+      "currentNumber": "0",
+      "minNumber": "1",
+      "maxNumber": "999",
+      "padLength": "3"
+    },
+    {
+      "id": "60001",
+      "projectId": "2",
+      "entityType": "Requirement",
+      "prefix": "Q",
+      "currentNumber": "6",
+      "minNumber": "1",
+      "maxNumber": "9999",
+      "padLength": "4"
+    },
+    {
+      "id": "60009",
+      "projectId": "1",
+      "entityType": "Requirement",
+      "prefix": "Q",
+      "currentNumber": "6",
+      "minNumber": "1",
+      "maxNumber": "9999",
+      "padLength": "4"
+    },
+    {
+      "id": "60002",
+      "projectId": "2",
+      "entityType": "Task",
+      "prefix": "T",
+      "currentNumber": "1",
+      "minNumber": "1",
+      "maxNumber": "9999",
+      "padLength": "4"
+    },
+    {
+      "id": "60010",
+      "projectId": "1",
+      "entityType": "Task",
+      "prefix": "T",
+      "currentNumber": "1",
+      "minNumber": "1",
+      "maxNumber": "9999",
+      "padLength": "4"
+    },
+    {
+      "id": "60006",
+      "projectId": "2",
+      "entityType": "Task Group",
+      "prefix": "TG",
+      "currentNumber": "1",
+      "minNumber": "1",
+      "maxNumber": "999",
+      "padLength": "3"
+    },
+    {
+      "id": "60014",
+      "projectId": "1",
+      "entityType": "Task Group",
+      "prefix": "TG",
+      "currentNumber": "0",
+      "minNumber": "1",
+      "maxNumber": "999",
+      "padLength": "3"
+    },
+    {
+      "id": "7",
+      "projectId": "1",
+      "entityType": "assumption",
+      "prefix": "A",
+      "currentNumber": "0",
+      "minNumber": "1",
+      "maxNumber": "9999",
+      "padLength": "4"
+    },
+    {
+      "id": "5",
+      "projectId": "1",
+      "entityType": "deliverable",
+      "prefix": "V",
+      "currentNumber": "2",
+      "minNumber": "1",
+      "maxNumber": "9999",
+      "padLength": "4"
+    },
+    {
+      "id": "6",
+      "projectId": "1",
+      "entityType": "dependency",
+      "prefix": "D",
+      "currentNumber": "0",
+      "minNumber": "1",
+      "maxNumber": "9999",
+      "padLength": "4"
+    },
+    {
+      "id": "4",
+      "projectId": "1",
+      "entityType": "issue",
+      "prefix": "I",
+      "currentNumber": "0",
+      "minNumber": "1",
+      "maxNumber": "9999",
+      "padLength": "4"
+    },
+    {
+      "id": "90001",
+      "projectId": "2",
+      "entityType": "issue",
+      "prefix": "I",
+      "currentNumber": "2",
+      "minNumber": "1",
+      "maxNumber": "9999",
+      "padLength": "4"
+    },
+    {
+      "id": "1",
+      "projectId": "1",
+      "entityType": "requirement",
+      "prefix": "R",
+      "currentNumber": "2",
+      "minNumber": "1",
+      "maxNumber": "9999",
+      "padLength": "4"
+    },
+    {
+      "id": "60017",
+      "projectId": "2",
+      "entityType": "requirement",
+      "prefix": "Q",
+      "currentNumber": "9",
+      "minNumber": "1",
+      "maxNumber": "9999",
+      "padLength": "4"
+    },
+    {
+      "id": "3",
+      "projectId": "1",
+      "entityType": "task",
+      "prefix": "S",
+      "currentNumber": "0",
+      "minNumber": "1",
+      "maxNumber": "9999",
+      "padLength": "4"
+    },
+    {
+      "id": "60016",
+      "projectId": "2",
+      "entityType": "task",
+      "prefix": "S",
+      "currentNumber": "3",
+      "minNumber": "1",
+      "maxNumber": "9999",
+      "padLength": "4"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tprojectId\tentityType\tprefix\tcurrentNumber\tminNumber\tmaxNumber\tpadLength\n60005\t2\tDeliverable\tDL\t1\t1\t9999\t4\n60013\t1\tDeliverable\tDL\t1\t1\t9999\t4\n60004\t2\tDependency\tD\t1\t1\t9999\t4\n60012\t1\tDependency\tD\t1\t1\t9999\t4\n60003\t2\tIssue\tI\t1\t1\t9999\t4\n60011\t1\tIssue\tI\t1\t1\t9999\t4\n60007\t2\tIssue Group\tIG\t0\t1\t999\t3\n60015\t1\tIssue Group\tIG\t0\t1\t999\t3\n60001\t2\tRequirement\tQ\t6\t1\t9999\t4\n60009\t1\tRequirement\tQ\t6\t1\t9999\t4\n60002\t2\tTask\tT\t1\t1\t9999\t4\n60010\t1\tTask\tT\t1\t1\t9999\t4\n60006\t2\tTask Group\tTG\t1\t1\t999\t3\n60014\t1\tTask Group\tTG\t0\t1\t999\t3\n7\t1\tassumption\tA\t0\t1\t9999\t4\n5\t1\tdeliverable\tV\t2\t1\t9999\t4\n6\t1\tdependency\tD\t0\t1\t9999\t4\n4\t1\tissue\tI\t0\t1\t9999\t4\n90001\t2\tissue\tI\t2\t1\t9999\t4\n1\t1\trequirement\tR\t2\t1\t9999\t4\n60017\t2\trequirement\tQ\t9\t1\t9999\t4\n3\t1\ttask\tS\t0\t1\t9999\t4\n60016\t2\ttask\tS\t3\t1\t9999\t4\n",
+  "stderr": "",
+  "execution_time_ms": 1513
+}

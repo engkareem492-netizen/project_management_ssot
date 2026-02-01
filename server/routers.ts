@@ -537,6 +537,7 @@ export const appRouter = router({
         owner: z.string().optional(),
         ownerId: z.number().optional(),
         dueDate: z.string().optional(),
+        assignDate: z.string().optional(),
         currentStatus: z.string().optional(),
         statusUpdate: z.string().optional(),
         status: z.string().optional(),
@@ -643,7 +644,10 @@ export const appRouter = router({
         description: z.string().optional(),
         sourceType: z.string().optional(),
         refSource: z.string().optional(),
+        openDate: z.string().optional(),
         priority: z.string().optional(),
+        deliverableId: z.number().optional(),
+        taskId: z.string().optional(),
         deliverables1: z.string().optional(),
         d1Status: z.string().optional(),
         deliverables2: z.string().optional(),
@@ -983,8 +987,9 @@ export const appRouter = router({
   // ID Configuration
   idConfig: router({
     list: protectedProcedure
-      .query(async () => {
-        return await db.getAllIdSequences();
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ input }) => {
+        return await db.getIdSequencesByProject(input.projectId);
       }),
 
     update: protectedProcedure

@@ -514,3 +514,24 @@
 - [x] Initialize openDate with today's date in Issues creation form state
 - [x] Ensure default dates are saved to database when not manually changed (added to handleCreate)
 - [ ] Test that dates persist correctly after creation
+
+
+## Bug Fixes (Feb 1, 2026 - Multiple Issues)
+
+### Add Requirement Checkbox to Tasks Creation
+- [x] Add "Link to Requirement" checkbox to Tasks creation dialog (already exists at line 741-752)
+- [x] Show/hide requirement dropdown based on checkbox state (already implemented)
+- [x] Ensure requirement linking works correctly (already working)
+
+### Fix Date Auto-Capture Issue
+- [x] Investigate why assignDate and openDate aren't saving automatically (fields missing from input schema)
+- [x] Check backend schema for date field types (varchar fields in database)
+- [x] Fix date mutation to properly save default values (added assignDate and openDate to input schemas)
+- [x] Add openDate field to issues table schema
+- [ ] Test that dates persist without manual### Remove Duplicate ID Configurations
+- [x] Identify duplicate entries in Settings ID Configuration tab (caused by showing all projects)
+- [x] Add projectId filter to idConfig.list query in backend
+- [x] Create getIdSequencesByProject function in db.ts
+- [x] Update Settings page to pass currentProjectId to query
+- [x] Filter ID configurations to show only current project's entity typesliverable, etc.)
+- [ ] Ensure each entity type appears only once

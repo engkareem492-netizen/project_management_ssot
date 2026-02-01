@@ -738,6 +738,12 @@ export async function getAllIdSequences() {
   return await db.select().from(idSequences);
 }
 
+export async function getIdSequencesByProject(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(idSequences).where(eq(idSequences.projectId, projectId));
+}
+
 export async function getIdSequence(entityType: string) {
   const db = await getDb();
   if (!db) return null;
