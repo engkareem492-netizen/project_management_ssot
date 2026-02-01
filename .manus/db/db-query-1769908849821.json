@@ -1,0 +1,80 @@
+{
+  "query": "SELECT id, projectId, entityType, prefix, currentNumber FROM idSequences WHERE projectId = 2 ORDER BY entityType;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4FzqaZAU5mRtC.root --database j37MQHBuWbY6PMBApJWnKm --execute SELECT id, projectId, entityType, prefix, currentNumber FROM idSequences WHERE projectId = 2 ORDER BY entityType;",
+  "rows": [
+    {
+      "id": "60005",
+      "projectId": "2",
+      "entityType": "Deliverable",
+      "prefix": "DL",
+      "currentNumber": "1"
+    },
+    {
+      "id": "60004",
+      "projectId": "2",
+      "entityType": "Dependency",
+      "prefix": "D",
+      "currentNumber": "1"
+    },
+    {
+      "id": "60003",
+      "projectId": "2",
+      "entityType": "Issue",
+      "prefix": "I",
+      "currentNumber": "1"
+    },
+    {
+      "id": "60007",
+      "projectId": "2",
+      "entityType": "Issue Group",
+      "prefix": "IG",
+      "currentNumber": "0"
+    },
+    {
+      "id": "60001",
+      "projectId": "2",
+      "entityType": "Requirement",
+      "prefix": "Q",
+      "currentNumber": "0"
+    },
+    {
+      "id": "60002",
+      "projectId": "2",
+      "entityType": "Task",
+      "prefix": "T",
+      "currentNumber": "0"
+    },
+    {
+      "id": "60006",
+      "projectId": "2",
+      "entityType": "Task Group",
+      "prefix": "TG",
+      "currentNumber": "1"
+    },
+    {
+      "id": "90001",
+      "projectId": "2",
+      "entityType": "issue",
+      "prefix": "I",
+      "currentNumber": "2"
+    },
+    {
+      "id": "60017",
+      "projectId": "2",
+      "entityType": "requirement",
+      "prefix": "Q",
+      "currentNumber": "10"
+    },
+    {
+      "id": "60016",
+      "projectId": "2",
+      "entityType": "task",
+      "prefix": "S",
+      "currentNumber": "4"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tprojectId\tentityType\tprefix\tcurrentNumber\n60005\t2\tDeliverable\tDL\t1\n60004\t2\tDependency\tD\t1\n60003\t2\tIssue\tI\t1\n60007\t2\tIssue Group\tIG\t0\n60001\t2\tRequirement\tQ\t0\n60002\t2\tTask\tT\t0\n60006\t2\tTask Group\tTG\t1\n90001\t2\tissue\tI\t2\n60017\t2\trequirement\tQ\t10\n60016\t2\ttask\tS\t4\n",
+  "stderr": "",
+  "execution_time_ms": 1615
+}

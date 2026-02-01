@@ -535,3 +535,12 @@
 - [x] Update Settings page to pass currentProjectId to query
 - [x] Filter ID configurations to show only current project's entity typesliverable, etc.)
 - [ ] Ensure each entity type appears only once
+
+
+## Bug Fix (Feb 1, 2026 - Remove Duplicate ID Configuration Entries)
+
+### Clean Up Duplicate idSequence Records
+- [x] Query database to identify duplicate entity types within same project (found 8 case-insensitive duplicates)
+- [x] Delete duplicate idSequence records, keeping only one per entity type per project (removed uppercase variants)
+- [x] Ensure entity type names are normalized (lowercase)
+- [ ] Test ID Configuration Settings page shows no duplicates

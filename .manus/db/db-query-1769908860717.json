@@ -1,0 +1,66 @@
+{
+  "query": "SELECT projectId, LOWER(entityType) as normalized_type, GROUP_CONCAT(entityType) as variants, GROUP_CONCAT(id) as ids, COUNT(*) as count FROM idSequences GROUP BY projectId, LOWER(entityType) HAVING COUNT(*) > 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4FzqaZAU5mRtC.root --database j37MQHBuWbY6PMBApJWnKm --execute SELECT projectId, LOWER(entityType) as normalized_type, GROUP_CONCAT(entityType) as variants, GROUP_CONCAT(id) as ids, COUNT(*) as count FROM idSequences GROUP BY projectId, LOWER(entityType) HAVING COUNT(*) > 1;",
+  "rows": [
+    {
+      "projectId": "1",
+      "normalized_type": "issue",
+      "variants": "Issue,issue",
+      "ids": "60011,4",
+      "count": "2"
+    },
+    {
+      "projectId": "1",
+      "normalized_type": "dependency",
+      "variants": "Dependency,dependency",
+      "ids": "60012,6",
+      "count": "2"
+    },
+    {
+      "projectId": "2",
+      "normalized_type": "requirement",
+      "variants": "Requirement,requirement",
+      "ids": "60001,60017",
+      "count": "2"
+    },
+    {
+      "projectId": "1",
+      "normalized_type": "requirement",
+      "variants": "Requirement,requirement",
+      "ids": "60009,1",
+      "count": "2"
+    },
+    {
+      "projectId": "1",
+      "normalized_type": "deliverable",
+      "variants": "Deliverable,deliverable",
+      "ids": "60013,5",
+      "count": "2"
+    },
+    {
+      "projectId": "2",
+      "normalized_type": "issue",
+      "variants": "Issue,issue",
+      "ids": "60003,90001",
+      "count": "2"
+    },
+    {
+      "projectId": "2",
+      "normalized_type": "task",
+      "variants": "Task,task",
+      "ids": "60002,60016",
+      "count": "2"
+    },
+    {
+      "projectId": "1",
+      "normalized_type": "task",
+      "variants": "Task,task",
+      "ids": "60010,3",
+      "count": "2"
+    }
+  ],
+  "messages": [],
+  "stdout": "projectId\tnormalized_type\tvariants\tids\tcount\n1\tissue\tIssue,issue\t60011,4\t2\n1\tdependency\tDependency,dependency\t60012,6\t2\n2\trequirement\tRequirement,requirement\t60001,60017\t2\n1\trequirement\tRequirement,requirement\t60009,1\t2\n1\tdeliverable\tDeliverable,deliverable\t60013,5\t2\n2\tissue\tIssue,issue\t60003,90001\t2\n2\ttask\tTask,task\t60002,60016\t2\n1\ttask\tTask,task\t60010,3\t2\n",
+  "stderr": "",
+  "execution_time_ms": 1625
+}
