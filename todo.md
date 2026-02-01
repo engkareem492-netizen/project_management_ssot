@@ -564,3 +564,13 @@
 - [x] Apply same cleanup to issues.create mutation
 - [ ] Test task creation after backend fix
 - [ ] Test issue creation after backend fix
+
+
+## Critical Bug (Feb 1, 2026 - SQL INSERT DEFAULT Keyword Issue)
+
+### Investigate Root Cause of Drizzle DEFAULT Keyword Problem
+- [x] Investigate if the issue is with how Drizzle handles optional fields (confirmed - Drizzle uses DEFAULT for missing fields)
+- [x] Try alternative approach: explicitly set fields to null instead of omitting them (implemented in createTask)
+- [x] Apply same fix to createIssue function
+- [ ] Test task creation with the null-setting approach
+- [ ] Test issue creation with the null-setting approach

@@ -212,13 +212,19 @@ export async function createTask(data: InsertTask) {
     if (stakeholder) enrichedData.owner = stakeholder.fullName;
   }
   
-  // Remove undefined values to prevent Drizzle from using DEFAULT keyword
-  const cleanedData: any = {};
-  for (const [key, value] of Object.entries(enrichedData)) {
-    if (value !== undefined) {
-      cleanedData[key] = value;
+  // Set undefined optional fields to null explicitly to prevent Drizzle DEFAULT keyword issue
+  const cleanedData: any = { ...enrichedData };
+  const optionalFields = [
+    'dependencyId', 'requirementId', 'deliverableId', 'accountable', 'accountableId',
+    'informed', 'informedId', 'consulted', 'consultedId', 'dueDate', 'assignDate',
+    'currentStatus', 'statusUpdate', 'owner', 'ownerId', 'lastUpdate', 'updateDate'
+  ];
+  
+  optionalFields.forEach(field => {
+    if (cleanedData[field] === undefined) {
+      cleanedData[field] = null;
     }
-  }
+  });
   
   const result = await db.insert(tasks).values(cleanedData);
   return result;
@@ -259,7 +265,22 @@ export async function getIssueByIssueId(issueId: string) {
 export async function createIssue(data: InsertIssue) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(issues).values(data);
+  
+  // Set undefined optional fields to null explicitly to prevent Drizzle DEFAULT keyword issue
+  const cleanedData: any = { ...data };
+  const optionalFields = [
+    'issueGroup', 'taskGroup', 'requirementId', 'type', 'class', 'owner', 'ownerId',
+    'sourceType', 'refSource', 'openDate', 'deliverableId', 'taskId',
+    'deliverables1', 'd1Status', 'deliverables2', 'd2Status', 'lastUpdate', 'updateDate'
+  ];
+  
+  optionalFields.forEach(field => {
+    if (cleanedData[field] === undefined) {
+      cleanedData[field] = null;
+    }
+  });
+  
+  const result = await db.insert(issues).values(cleanedData);
   return result;
 }
 
