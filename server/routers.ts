@@ -544,9 +544,18 @@ export const appRouter = router({
         priority: z.string().optional(),
       }))
       .mutation(async ({ input }) => {
+        // Clean up empty strings and convert to undefined
+        const cleanedInput: any = {};
+        Object.keys(input).forEach(key => {
+          const value = (input as any)[key];
+          if (value !== '' && value !== 'none' && value !== undefined) {
+            cleanedInput[key] = value;
+          }
+        });
+        
         // Generate auto ID for task
         const taskId = await db.getNextId('task', 'T', input.projectId);
-        await db.createTask({ ...input, taskId, projectId: input.projectId });
+        await db.createTask({ ...cleanedInput, taskId, projectId: input.projectId });
         
         // Auto-create Requirement linked to this Task
         const requirementIdCode = await db.getNextId('requirement', 'Q', input.projectId);
@@ -656,9 +665,18 @@ export const appRouter = router({
         updateDate: z.string().optional(),
       }))
       .mutation(async ({ input }) => {
+        // Clean up empty strings and convert to undefined
+        const cleanedInput: any = {};
+        Object.keys(input).forEach(key => {
+          const value = (input as any)[key];
+          if (value !== '' && value !== 'none' && value !== undefined) {
+            cleanedInput[key] = value;
+          }
+        });
+        
         // Generate auto ID
         const issueId = await db.getNextId('issue', 'I', input.projectId);
-        await db.createIssue({ ...input, issueId });
+        await db.createIssue({ ...cleanedInput, issueId });
         return { success: true, issueId };
       }),
 

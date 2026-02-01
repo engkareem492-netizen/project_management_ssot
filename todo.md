@@ -554,3 +554,13 @@
 - [x] Apply same fix to Issues.tsx handleCreate function
 - [x] Ensure all required fields are properly passed from frontend to backend
 - [ ] Test task creation with all field combinations
+
+
+## Bug Fix (Feb 1, 2026 - Persistent SQL INSERT Error)
+
+### Debug and Fix Task Creation Error
+- [x] Investigate why frontend cleanup logic didn't prevent SQL error (empty strings still passed)
+- [x] Implement backend-level empty string cleanup as fallback (added to tasks.create mutation)
+- [x] Apply same cleanup to issues.create mutation
+- [ ] Test task creation after backend fix
+- [ ] Test issue creation after backend fix
