@@ -544,3 +544,13 @@
 - [x] Delete duplicate idSequence records, keeping only one per entity type per project (removed uppercase variants)
 - [x] Ensure entity type names are normalized (lowercase)
 - [ ] Test ID Configuration Settings page shows no duplicates
+
+
+## Bug Fix (Feb 1, 2026 - Task Creation SQL INSERT Error)
+
+### Fix tasks.create Mutation Field Mapping
+- [x] Investigate SQL INSERT error in tasks.create mutation (empty strings causing Drizzle to use DEFAULT)
+- [x] Fix field mapping to handle NULL values properly (clean empty strings in handleCreate)
+- [x] Apply same fix to Issues.tsx handleCreate function
+- [x] Ensure all required fields are properly passed from frontend to backend
+- [ ] Test task creation with all field combinations

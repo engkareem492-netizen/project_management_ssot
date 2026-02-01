@@ -314,7 +314,7 @@ export default function Tasks() {
       return;
     }
     // Only include requirementId if linkRequirement checkbox is checked
-    const taskData = {
+    const taskData: any = {
       ...newTask,
       projectId: currentProjectId!,
       requirementId: linkRequirement && newTask.requirementId && newTask.requirementId !== "none" ? newTask.requirementId : undefined,
@@ -322,6 +322,14 @@ export default function Tasks() {
       // Preserve assignDate default value (today's date) if not changed
       assignDate: newTask.assignDate,
     };
+    
+    // Clean up empty strings and convert to undefined to prevent SQL errors
+    Object.keys(taskData).forEach(key => {
+      if (taskData[key] === '' || taskData[key] === 'none') {
+        taskData[key] = undefined;
+      }
+    });
+    
     createMutation.mutate(taskData);
   };
 

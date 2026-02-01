@@ -323,7 +323,7 @@ export default function Issues() {
       return;
     }
     // Convert "none" to undefined for optional fields
-    const issueData = {
+    const issueData: any = {
       ...newIssue,
       projectId: currentProjectId!,
       requirementId: (linkRequirement && newIssue.requirementId && newIssue.requirementId !== "none") ? newIssue.requirementId : undefined,
@@ -332,6 +332,14 @@ export default function Issues() {
       // Preserve openDate default value (today's date) if not changed
       openDate: newIssue.openDate,
     };
+    
+    // Clean up empty strings and convert to undefined to prevent SQL errors
+    Object.keys(issueData).forEach(key => {
+      if (issueData[key] === '' || issueData[key] === 'none') {
+        issueData[key] = undefined;
+      }
+    });
+    
     createMutation.mutate(issueData);
   };
 
