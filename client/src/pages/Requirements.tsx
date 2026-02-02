@@ -72,7 +72,7 @@ export default function Requirements() {
     description: '',
     taskGroup: '',
     issueGroup: '',
-    owner: '',
+    ownerId: undefined,
     status: 'Open',
     priority: 'Medium',
     type: '',
@@ -157,7 +157,7 @@ export default function Requirements() {
         description: '',
         taskGroup: '',
         issueGroup: '',
-        owner: '',
+        ownerId: undefined,
         status: 'Open',
         priority: 'Medium',
         type: '',
@@ -1254,8 +1254,8 @@ export default function Requirements() {
               <Label>Owner (Stakeholder)</Label>
               <SelectWithCreate
                 type="stakeholder"
-                value={newRequirement.owner}
-                onValueChange={(value) => setNewRequirement({ ...newRequirement, owner: value })}
+                value={newRequirement.ownerId?.toString() || ''}
+                onValueChange={(value) => setNewRequirement({ ...newRequirement, ownerId: value ? parseInt(value) : undefined })}
                 placeholder="Select owner"
                 projectId={currentProjectId || undefined}
               />

@@ -618,3 +618,23 @@
 - [x] Fixed updateIdSequence to only update the current project's counter
 - [x] Added projectId parameter to updateIdSequence and getIdSequence functions
 - [x] Test counter reset after deleting objects
+
+## Bug Fix (Feb 2, 2026 - Requirement Creation Data Mapping Error)
+
+### Requirement Creation Failing in Both Task and Direct Creation
+- [ ] Error shows owner field receiving ownerId value (240001 instead of name string)
+- [ ] Direct requirement creation passes type, class, sourceType, refSource fields
+- [ ] Investigate requirements.create mutation data mapping
+- [ ] Fix field mapping to match database schema
+- [ ] Test both creation methods
+
+## Bug Fix (Feb 2, 2026 - Requirement Creation Data Mapping Error)
+
+### Requirement Creation Failing in Both Task and Direct Creation
+- [x] Error shows owner field receiving ownerId value (240001 instead of name string)
+- [x] SelectWithCreate component returns stakeholder ID instead of name
+- [x] Changed Requirements form to use ownerId field instead of owner
+- [x] Updated requirements.create mutation to look up owner name from ownerId
+- [x] Test both task-linked and direct requirement creation (ready for user testing)
+
+- [x] Fix Tasks page to use ownerId instead of owner when creating linked requirements

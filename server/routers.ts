@@ -383,7 +383,23 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         // Generate auto ID
         const idCode = await db.getNextId('requirement', 'Q', input.projectId);
-        await db.createRequirement({ ...input, idCode, projectId: input.projectId });
+        
+        // Look up owner name from ownerId if provided
+        let ownerName = input.owner;
+        if (input.ownerId && !ownerName) {
+          const stakeholder = await db.getStakeholderById(input.ownerId);
+          if (stakeholder) {
+            ownerName = stakeholder.fullName;
+          }
+        }
+        
+        await db.createRequirement({ 
+          ...input, 
+          idCode, 
+          projectId: input.projectId,
+          owner: ownerName,
+          ownerId: input.ownerId,
+        });
         return { success: true, idCode };
       }),
 

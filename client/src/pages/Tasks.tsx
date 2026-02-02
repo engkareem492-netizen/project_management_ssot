@@ -41,11 +41,23 @@ export default function Tasks() {
   const [addRequirementDialogOpen, setAddRequirementDialogOpen] = useState(false);
   const [addDeliverableDialogOpen, setAddDeliverableDialogOpen] = useState(false);
   const [newDeliverable, setNewDeliverable] = useState({ description: '', status: 'Pending', dueDate: '' });
-  const [newRequirement, setNewRequirement] = useState({
+  const [newRequirement, setNewRequirement] = useState<{
+    description: string;
+    taskGroup: string;
+    issueGroup: string;
+    ownerId: number | undefined;
+    status: string;
+    priority: string;
+    type: string;
+    category: string;
+    sourceType: string;
+    refSource: string;
+    createdAt: string;
+  }>({
     description: '',
     taskGroup: '',
     issueGroup: '',
-    owner: '',
+    ownerId: undefined,
     status: 'Open',
     priority: 'Medium',
     type: '',
@@ -153,7 +165,7 @@ export default function Tasks() {
         description: '',
         taskGroup: '',
         issueGroup: '',
-        owner: '',
+        ownerId: undefined,
         status: 'Open',
         priority: 'Medium',
         type: '',
@@ -161,7 +173,7 @@ export default function Tasks() {
         sourceType: '',
         refSource: '',
         createdAt: new Date().toISOString().split('T')[0],
-       });
+      });
     },
     onError: (error) => {
       toast.error(`Failed to create requirement: ${error.message}`);
@@ -1305,8 +1317,8 @@ export default function Tasks() {
               <Label>Owner (Stakeholder)</Label>
               <SelectWithCreate
                 type="stakeholder"
-                value={newRequirement.owner}
-                onValueChange={(value) => setNewRequirement({ ...newRequirement, owner: value })}
+                value={newRequirement.ownerId?.toString() || ''}
+                onValueChange={(value) => setNewRequirement({ ...newRequirement, ownerId: value ? parseInt(value) : undefined })}
                 placeholder="Select owner"
                 projectId={currentProjectId || undefined}
               />
@@ -1353,7 +1365,7 @@ export default function Tasks() {
                 description: '',
                 taskGroup: '',
                 issueGroup: '',
-                owner: '',
+                ownerId: undefined,
                 status: 'Open',
                 priority: 'Medium',
                 type: '',
@@ -1371,7 +1383,7 @@ export default function Tasks() {
                     description: newRequirement.description.trim(),
                     taskGroup: newRequirement.taskGroup || undefined,
                     issueGroup: newRequirement.issueGroup || undefined,
-                    owner: newRequirement.owner || undefined,
+                    ownerId: newRequirement.ownerId || undefined,
                     status: newRequirement.status || undefined,
                     priority: newRequirement.priority || undefined,
                     type: newRequirement.type || undefined,
