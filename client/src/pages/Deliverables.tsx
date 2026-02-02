@@ -65,12 +65,15 @@ export default function Deliverables() {
     entityId: "",
   });
 
+  const { currentProjectId } = useProject();
   const utils = trpc.useUtils();
-  const { data: deliverables, isLoading } = trpc.deliverables.list.useQuery();
+  const { data: deliverables, isLoading } = trpc.deliverables.list.useQuery(
+    { projectId: currentProjectId || 0 },
+    { enabled: !!currentProjectId }
+  );
   const { data: requirements } = trpc.requirements.list.useQuery();
   const { data: tasks } = trpc.tasks.list.useQuery();
   const { data: dependencies } = trpc.dependencies.list.useQuery();
-  const { currentProjectId } = useProject();
   const { data: deliverableLinks } = trpc.deliverables.getLinks.useQuery(
     { deliverableId: selectedDeliverable?.id || 0 },
     { enabled: isLinkOpen && !!selectedDeliverable?.id }

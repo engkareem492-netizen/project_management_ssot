@@ -578,9 +578,12 @@ export async function deleteStakeholder(id: number) {
 }
 
 // Deliverables CRUD
-export async function getAllDeliverables() {
+export async function getAllDeliverables(projectId?: number) {
   const db = await getDb();
   if (!db) return [];
+  if (projectId) {
+    return await db.select().from(deliverables).where(eq(deliverables.projectId, projectId)).orderBy(deliverables.deliverableId);
+  }
   return await db.select().from(deliverables).orderBy(deliverables.deliverableId);
 }
 

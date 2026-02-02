@@ -1021,9 +1021,11 @@ export const appRouter = router({
 
   // Deliverables
   deliverables: router({
-    list: protectedProcedure.query(async () => {
-      return await db.getAllDeliverables();
-    }),
+    list: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ input }) => {
+        return await db.getAllDeliverables(input.projectId);
+      }),
 
     get: protectedProcedure
       .input(z.object({ id: z.number() }))

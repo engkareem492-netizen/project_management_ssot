@@ -100,7 +100,10 @@ export default function Tasks() {
   );
   const { data: stakeholders } = trpc.stakeholders.list.useQuery();
   const { data: requirements } = trpc.requirements.list.useQuery();
-  const { data: deliverables } = trpc.deliverables.list.useQuery();
+  const { data: deliverables } = trpc.deliverables.list.useQuery(
+    { projectId: currentProjectId || 0 },
+    { enabled: !!currentProjectId }
+  );
   const { data: actionLogs } = trpc.actionLogs.getByEntity.useQuery(
     { entityType: "task", entityId: selectedEntityId },
     { enabled: historyDialogOpen && !!selectedEntityId }

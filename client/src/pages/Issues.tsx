@@ -92,16 +92,19 @@ export default function Issues() {
     openDate: new Date().toISOString().split('T')[0],
   });
 
+  const { currentProjectId } = useProject();
   const { data: issues, isLoading, refetch } = trpc.issues.list.useQuery();
   const { data: stakeholders } = trpc.stakeholders.list.useQuery();
   const { data: requirements } = trpc.requirements.list.useQuery();
-  const { data: deliverables } = trpc.deliverables.list.useQuery();
+  const { data: deliverables } = trpc.deliverables.list.useQuery(
+    { projectId: currentProjectId || 0 },
+    { enabled: !!currentProjectId }
+  );
   const { data: tasks } = trpc.tasks.list.useQuery();
   const { data: actionLogs } = trpc.actionLogs.getByEntity.useQuery(
     { entityType: "issue", entityId: selectedEntityId },
     { enabled: historyDialogOpen && !!selectedEntityId }
   );
-  const { currentProjectId } = useProject();
   const { data: issueGroups } = trpc.dropdownOptions.issueGroups.getAll.useQuery(
     { projectId: currentProjectId || 0 },
     { enabled: !!currentProjectId }

@@ -329,6 +329,7 @@
 - [x] Fix Tasks.tsx to convert deliverableId from string to number using parseInt
 - [x] Fix createDeliverableMutation to use data.id instead of data.deliverableId
 - [ ] Test task creation with deliverable selection
+- [x] Fix deliverable selection dropdown in task creation form - deliverables exist but cannot be selected
 
 ### Requirements Table Missing Columns
 - [x] Check requirements table for missing columns - CONFIRMED: all columns exist
