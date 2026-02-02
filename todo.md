@@ -675,3 +675,6 @@
 
 - [x] Fix NaN deliverableId error when creating tasks without selecting a deliverable
 - [x] Fix deliverable dropdown showing empty in task creation form (deliverables exist but not displaying)
+
+- [x] Fix task dropdown in Issues page showing tasks from all projects instead of current project only
+- [x] Remove auto-requirement creation when saving tasks (unwanted feature)

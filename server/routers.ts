@@ -598,50 +598,7 @@ export const appRouter = router({
           const taskId = await db.getNextId('task', 'T', input.projectId);
           await db.createTask({ ...cleanedInput, taskId, projectId: input.projectId });
           
-          // Auto-create Requirement linked to this Task
-          const requirementIdCode = await db.getNextId('requirement', 'Q', input.projectId);
-          
-          // Validate stakeholder exists before using ownerId
-          let validOwnerId = undefined;
-          let validOwnerName = undefined;
-          if (input.responsibleId) {
-            const stakeholder = await db.getStakeholderById(input.responsibleId);
-            if (stakeholder) {
-              validOwnerId = input.responsibleId;
-              validOwnerName = stakeholder.fullName;
-            }
-          } else if (input.ownerId) {
-            const stakeholder = await db.getStakeholderById(input.ownerId);
-            if (stakeholder) {
-              validOwnerId = input.ownerId;
-              validOwnerName = stakeholder.fullName;
-            }
-          }
-          
-          console.log('[tasks.create] Creating requirement with data:', {
-            projectId: input.projectId,
-            idCode: requirementIdCode,
-            taskGroup: input.taskGroup,
-            description: input.description,
-            owner: validOwnerName,
-            ownerId: validOwnerId,
-            status: input.status,
-            priority: input.priority,
-          });
-          
-          await db.createRequirement({
-            projectId: input.projectId,
-            idCode: requirementIdCode,
-            taskGroup: input.taskGroup,
-            description: input.description,
-            owner: validOwnerName,
-            ownerId: validOwnerId,
-            status: input.status,
-            priority: input.priority,
-            lastUpdate: input.statusUpdate,
-          });
-          
-          return { success: true, taskId, requirementIdCode };
+          return { success: true, taskId };
         } catch (error: any) {
           console.error('[tasks.create] Error creating task:', error);
           console.error('[tasks.create] Error details:', {

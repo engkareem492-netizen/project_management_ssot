@@ -100,7 +100,10 @@ export default function Issues() {
     { projectId: currentProjectId || 0 },
     { enabled: !!currentProjectId }
   );
-  const { data: tasks } = trpc.tasks.list.useQuery();
+  const { data: tasks } = trpc.tasks.list.useQuery(
+    { projectId: currentProjectId || 0 },
+    { enabled: !!currentProjectId }
+  );
   const { data: actionLogs } = trpc.actionLogs.getByEntity.useQuery(
     { entityType: "issue", entityId: selectedEntityId },
     { enabled: historyDialogOpen && !!selectedEntityId }
