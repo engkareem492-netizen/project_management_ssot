@@ -381,26 +381,50 @@ export const appRouter = router({
         updateDate: z.string().optional(),
       }))
       .mutation(async ({ input }) => {
-        // Generate auto ID
-        const idCode = await db.getNextId('requirement', 'Q', input.projectId);
-        
-        // Look up owner name from ownerId if provided
-        let ownerName = input.owner;
-        if (input.ownerId && !ownerName) {
-          const stakeholder = await db.getStakeholderById(input.ownerId);
-          if (stakeholder) {
-            ownerName = stakeholder.fullName;
+        try {
+          // Generate auto ID
+          const idCode = await db.getNextId('requirement', 'Q', input.projectId);
+          
+          // Look up owner name from ownerId if provided
+          let ownerName = input.owner;
+          if (input.ownerId && !ownerName) {
+            const stakeholder = await db.getStakeholderById(input.ownerId);
+            if (stakeholder) {
+              ownerName = stakeholder.fullName;
+            }
           }
+          
+          const requirementData = { 
+            ...input, 
+            idCode, 
+            projectId: input.projectId,
+            owner: ownerName,
+            ownerId: input.ownerId,
+          };
+          
+          console.log('[requirements.create] Creating requirement with data:', requirementData);
+          
+          await db.createRequirement(requirementData);
+          return { success: true, idCode };
+        } catch (error: any) {
+          console.error('[requirements.create] Error:', error);
+          console.error('[requirements.create] Error details:', {
+            message: error.message,
+            cause: error.cause,
+            sqlMessage: error.cause?.sqlMessage,
+            errno: error.cause?.errno,
+          });
+          
+          // User-friendly error for duplicate IDs
+          if (error.cause?.errno === 1062 && error.cause?.sqlMessage?.includes('idCode_unique')) {
+            throw new TRPCError({
+              code: 'CONFLICT',
+              message: 'A requirement with this ID already exists. Please increment the counter in Settings or delete the existing requirement.',
+            });
+          }
+          
+          throw error;
         }
-        
-        await db.createRequirement({ 
-          ...input, 
-          idCode, 
-          projectId: input.projectId,
-          owner: ownerName,
-          ownerId: input.ownerId,
-        });
-        return { success: true, idCode };
       }),
 
     createTask: protectedProcedure
@@ -626,9 +650,27 @@ export const appRouter = router({
             sqlMessage: error.cause?.sqlMessage,
             errno: error.cause?.errno,
           });
+          
+          // User-friendly error for duplicate task IDs
+          if (error.cause?.errno === 1062 && error.cause?.sqlMessage?.includes('taskId_unique')) {
+            throw new TRPCError({
+              code: 'CONFLICT',
+              message: 'A task with this ID already exists. Please increment the counter in Settings or delete the existing task.',
+            });
+          }
+          
+          // User-friendly error for duplicate requirement IDs (when creating linked requirement)
+          if (error.cause?.errno === 1062 && error.cause?.sqlMessage?.includes('idCode_unique')) {
+            throw new TRPCError({
+              code: 'CONFLICT',
+              message: 'A requirement with this ID already exists. The task was not created. Please increment the requirement counter in Settings.',
+            });
+          }
+          
           throw new TRPCError({
             code: 'INTERNAL_SERVER_ERROR',
-            message: `Failed to create task: ${error.cause?.sqlMessage || error.message}`,
+            message: 'Failed to create task. Please try again.',
+            cause: error,
           });
         }
       }),
@@ -738,8 +780,23 @@ export const appRouter = router({
           const issueId = await db.getNextId('issue', 'I', input.projectId);
           await db.createIssue({ ...cleanedInput, issueId });
           return { success: true, issueId };
-        } catch (error) {
+        } catch (error: any) {
           console.error('[issues.create] Error creating issue:', error);
+          console.error('[issues.create] Error details:', {
+            message: error.message,
+            cause: error.cause,
+            sqlMessage: error.cause?.sqlMessage,
+            errno: error.cause?.errno,
+          });
+          
+          // User-friendly error for duplicate IDs
+          if (error.cause?.errno === 1062 && error.cause?.sqlMessage?.includes('issueId_unique')) {
+            throw new TRPCError({
+              code: 'CONFLICT',
+              message: 'An issue with this ID already exists. Please increment the counter in Settings or delete the existing issue.',
+            });
+          }
+          
           throw new TRPCError({
             code: 'INTERNAL_SERVER_ERROR',
             message: error instanceof Error ? error.message : 'Failed to create issue',
@@ -986,28 +1043,57 @@ export const appRouter = router({
         })).optional(),
       }))
       .mutation(async ({ input }) => {
-        // Generate auto ID
-        const deliverableId = await db.getNextId('deliverable', 'DEL', input.projectId);
-        const created = await db.createDeliverable({
-          projectId: input.projectId,
-          deliverableId,
-          description: input.description,
-          status: input.status,
-          dueDate: input.dueDate,
-        });
+        try {
+          // Generate auto ID
+          const deliverableId = await db.getNextId('deliverable', 'DEL', input.projectId);
+          
+          console.log('[deliverables.create] Creating deliverable with data:', {
+            projectId: input.projectId,
+            deliverableId,
+            description: input.description,
+            status: input.status,
+            dueDate: input.dueDate,
+          });
+          
+          const created = await db.createDeliverable({
+            projectId: input.projectId,
+            deliverableId,
+            description: input.description,
+            status: input.status,
+            dueDate: input.dueDate,
+          });
 
-        // Create links if provided
-        if (created && input.linkedEntities) {
-          for (const link of input.linkedEntities) {
-            await db.createDeliverableLink({
-              deliverableId: created.id,
-              linkedEntityType: link.entityType,
-              linkedEntityId: link.entityId,
+          // Create links if provided
+          if (created && input.linkedEntities) {
+            for (const link of input.linkedEntities) {
+              await db.createDeliverableLink({
+                deliverableId: created.id,
+                linkedEntityType: link.entityType,
+                linkedEntityId: link.entityId,
+              });
+            }
+          }
+
+          return created;
+        } catch (error: any) {
+          console.error('[deliverables.create] Error:', error);
+          console.error('[deliverables.create] Error details:', {
+            message: error.message,
+            cause: error.cause,
+            sqlMessage: error.cause?.sqlMessage,
+            errno: error.cause?.errno,
+          });
+          
+          // User-friendly error for duplicate IDs
+          if (error.cause?.errno === 1062 && error.cause?.sqlMessage?.includes('deliverableId_unique')) {
+            throw new TRPCError({
+              code: 'CONFLICT',
+              message: 'A deliverable with this ID already exists. Please increment the counter in Settings or delete the existing deliverable.',
             });
           }
+          
+          throw error;
         }
-
-        return created;
       }),
 
     update: protectedProcedure

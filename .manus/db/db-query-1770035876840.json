@@ -1,0 +1,38 @@
+{
+  "query": "SELECT * FROM requirements WHERE idCode = 'Q-TEST'; DELETE FROM requirements WHERE idCode = 'Q-TEST';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4FzqaZAU5mRtC.root --database j37MQHBuWbY6PMBApJWnKm --execute SELECT * FROM requirements WHERE idCode = 'Q-TEST'; DELETE FROM requirements WHERE idCode = 'Q-TEST';",
+  "rows": [
+    {
+      "id": "360001",
+      "projectId": "2",
+      "idCode": "Q-TEST",
+      "taskGroup": "ABAP - 001",
+      "issueGroup": "NULL",
+      "createdAt": "NULL",
+      "type": "WRICEF",
+      "class": "NULL",
+      "category": "MM",
+      "agreement": "NULL",
+      "owner": "Riyadh Al-Qadhi",
+      "description": "Test requirement",
+      "sourceType": "Ticket - 3404",
+      "refSource": "https://example.com",
+      "status": "Open",
+      "priority": "Medium",
+      "deliverables1": "NULL",
+      "d1Status": "NULL",
+      "deliverables2": "NULL",
+      "d2Status": "NULL",
+      "lastUpdate": "NULL",
+      "updateDate": "NULL",
+      "importedAt": "2026-02-02 12:36:57",
+      "updatedAt": "2026-02-02 12:36:57",
+      "ownerId": "240001",
+      "source": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tprojectId\tidCode\ttaskGroup\tissueGroup\tcreatedAt\ttype\tclass\tcategory\tagreement\towner\tdescription\tsourceType\trefSource\tstatus\tpriority\tdeliverables1\td1Status\tdeliverables2\td2Status\tlastUpdate\tupdateDate\timportedAt\tupdatedAt\townerId\tsource\n360001\t2\tQ-TEST\tABAP - 001\tNULL\tNULL\tWRICEF\tNULL\tMM\tNULL\tRiyadh Al-Qadhi\tTest requirement\tTicket - 3404\thttps://example.com\tOpen\tMedium\tNULL\tNULL\tNULL\tNULL\tNULL\tNULL\t2026-02-02 12:36:57\t2026-02-02 12:36:57\t240001\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 1770
+}

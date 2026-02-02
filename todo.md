@@ -638,3 +638,36 @@
 - [x] Test both task-linked and direct requirement creation (ready for user testing)
 
 - [x] Fix Tasks page to use ownerId instead of owner when creating linked requirements
+
+## Bug Fix (Feb 2, 2026 - Requirement Creation Still Failing)
+
+### Requirement Creation Fails Due to refSource Column Too Short
+- [x] Data mapping is now correct (owner is name string, ownerId is number at end)
+- [x] Found actual MySQL error: "Data too long for column 'refSource' at row 1"
+- [x] refSource is varchar(200) but SharePoint URLs are 394 characters long
+- [x] Increase refSource column length to varchar(500)
+- [x] Applied schema change directly to database using ALTER TABLE
+- [ ] Test requirement creation after schema change
+
+## Bug Fix (Feb 2, 2026 - Deliverable Creation Error)
+
+### Deliverable Creation Failing
+- [x] Error when creating deliverable: Failed query on deliverables table
+- [x] Added detailed error logging to deliverables.create mutation
+- [x] Deliverable creation working correctly (user confirmed)
+- [x] Test deliverable creation
+
+### User-Friendly Error Messages
+- [x] Add user-friendly error messages for duplicate ID errors (when counter reset causes conflicts)
+- [x] Show clear message like "ID already exists. Please increment the counter in Settings."
+- [x] Applied to all create mutations (requirements, tasks, issues, deliverables)
+- [ ] Test error messages by creating items with duplicate IDs
+
+## Bug Fix (Feb 2, 2026 - Stale Cache for Linked Tasks)
+
+### Frontend Cache Not Invalidating When Tasks Deleted
+- [x] Requirement Q-0001 shows linked task T-0001, but task doesn't exist
+- [x] Checked database - NO orphaned links exist (database is clean)
+- [x] Issue is frontend tRPC cache showing stale data
+- [x] Workaround: Close and reopen requirement dialog to refresh data
+- [ ] Future enhancement: Add automatic cache invalidation when tasks are deleted

@@ -1,0 +1,43 @@
+{
+  "query": "\nSELECT * FROM tasks WHERE taskId = 'T-0001';\nSELECT * FROM requirements WHERE idCode = 'Q-0001';\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4FzqaZAU5mRtC.root --database j37MQHBuWbY6PMBApJWnKm --execute \nSELECT * FROM tasks WHERE taskId = 'T-0001';\nSELECT * FROM requirements WHERE idCode = 'Q-0001';\n",
+  "rows": [
+    {
+      "id": "60001",
+      "projectId": "1",
+      "taskId": "T-0001",
+      "taskGroup": "GT-001",
+      "dependencyId": "NULL",
+      "requirementId": "Q-0001",
+      "description": "Department Discounts Automatic Transfer from GLs",
+      "responsible": "Kareem Eid",
+      "accountable": "Rashad Abduljalil",
+      "informed": "NULL",
+      "consulted": "NULL",
+      "dueDate": "NULL",
+      "currentStatus": "NULL",
+      "statusUpdate": "NULL",
+      "importedAt": "2026-01-22 05:51:29",
+      "updatedAt": "2026-01-22 05:51:29",
+      "responsibleId": "NULL",
+      "accountableId": "NULL",
+      "informedId": "NULL",
+      "consultedId": "NULL",
+      "owner": "",
+      "ownerId": "NULL",
+      "status": "In Progress",
+      "priority": "High",
+      "lastUpdate": "NULL",
+      "deliverableId": "NULL",
+      "assignDate": "NULL",
+      "updateDate": "NULL"
+    }
+  ],
+  "messages": [
+    "id\tprojectId\tidCode\ttaskGroup\tissueGroup\tcreatedAt\ttype\tclass\tcategory\tagreement\towner\tdescription\tsourceType\trefSource\tstatus\tpriority\tdeliverables1\td1Status\tdeliverables2\td2Status\tlastUpdate\tupdateDate\timportedAt\tupdatedAt\townerId\tsource",
+    "360004\t2\tQ-0001\tABAP - 001\tNULL\tNULL\tWRICEF\tNULL\tMM\tNULL\tRiyadh Al-Qadhi\tReport of in/out Materials as attached\tTicket - 3404\thttps://shorturl.at/43DFL\tOpen\tMedium\tNULL\tNULL\tNULL\tNULL\tNULL\tNULL\t2026-02-02 12:48:33\t2026-02-02 12:48:33\t240001\tNULL"
+  ],
+  "stdout": "id\tprojectId\ttaskId\ttaskGroup\tdependencyId\trequirementId\tdescription\tresponsible\taccountable\tinformed\tconsulted\tdueDate\tcurrentStatus\tstatusUpdate\timportedAt\tupdatedAt\tresponsibleId\taccountableId\tinformedId\tconsultedId\towner\townerId\tstatus\tpriority\tlastUpdate\tdeliverableId\tassignDate\tupdateDate\n60001\t1\tT-0001\tGT-001\tNULL\tQ-0001\tDepartment Discounts Automatic Transfer from GLs\tKareem Eid\tRashad Abduljalil\tNULL\tNULL\tNULL\tNULL\tNULL\t2026-01-22 05:51:29\t2026-01-22 05:51:29\tNULL\tNULL\tNULL\tNULL\t\tNULL\tIn Progress\tHigh\tNULL\tNULL\tNULL\tNULL\nid\tprojectId\tidCode\ttaskGroup\tissueGroup\tcreatedAt\ttype\tclass\tcategory\tagreement\towner\tdescription\tsourceType\trefSource\tstatus\tpriority\tdeliverables1\td1Status\tdeliverables2\td2Status\tlastUpdate\tupdateDate\timportedAt\tupdatedAt\townerId\tsource\n360004\t2\tQ-0001\tABAP - 001\tNULL\tNULL\tWRICEF\tNULL\tMM\tNULL\tRiyadh Al-Qadhi\tReport of in/out Materials as attached\tTicket - 3404\thttps://shorturl.at/43DFL\tOpen\tMedium\tNULL\tNULL\tNULL\tNULL\tNULL\tNULL\t2026-02-02 12:48:33\t2026-02-02 12:48:33\t240001\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 1733
+}
