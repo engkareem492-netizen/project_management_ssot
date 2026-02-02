@@ -1069,6 +1069,7 @@ export const appRouter = router({
         minNumber: z.number().optional(),
         maxNumber: z.number().optional(),
         padLength: z.number().optional(),
+        projectId: z.number(),
       }))
       .mutation(async ({ input }) => {
         return await db.updateIdSequence(input.entityType, {
@@ -1077,7 +1078,7 @@ export const appRouter = router({
           minNumber: input.minNumber,
           maxNumber: input.maxNumber,
           padLength: input.padLength,
-        });
+        }, input.projectId);
       }),
   }),
 

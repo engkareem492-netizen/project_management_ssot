@@ -769,14 +769,17 @@ export async function getIdSequencesByProject(projectId: number) {
   return await db.select().from(idSequences).where(eq(idSequences.projectId, projectId));
 }
 
-export async function getIdSequence(entityType: string) {
+export async function getIdSequence(entityType: string, projectId?: number) {
   const db = await getDb();
   if (!db) return null;
-  const result = await db.select().from(idSequences).where(eq(idSequences.entityType, entityType)).limit(1);
+  const whereClause = projectId 
+    ? and(eq(idSequences.entityType, entityType), eq(idSequences.projectId, projectId))
+    : eq(idSequences.entityType, entityType);
+  const result = await db.select().from(idSequences).where(whereClause).limit(1);
   return result.length > 0 ? result[0] : null;
 }
 
-export async function updateIdSequence(entityType: string, data: { prefix?: string; startNumber?: number; minNumber?: number; maxNumber?: number; padLength?: number }) {
+export async function updateIdSequence(entityType: string, data: { prefix?: string; startNumber?: number; minNumber?: number; maxNumber?: number; padLength?: number }, projectId: number = 1) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
@@ -789,9 +792,9 @@ export async function updateIdSequence(entityType: string, data: { prefix?: stri
   
   await db.update(idSequences)
     .set(updateData)
-    .where(eq(idSequences.entityType, entityType));
+    .where(and(eq(idSequences.entityType, entityType), eq(idSequences.projectId, projectId)));
   
-  return await getIdSequence(entityType);
+  return await getIdSequence(entityType, projectId);
 }
 
 

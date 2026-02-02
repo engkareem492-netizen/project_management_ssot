@@ -291,6 +291,7 @@ export default function Settings() {
         minNumber: config.minNumber,
         maxNumber: config.maxNumber,
         padLength: config.padLength,
+        projectId: currentProjectId || 1,
       });
       
       await utils.idConfig.list.invalidate();

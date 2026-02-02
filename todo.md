@@ -608,3 +608,13 @@
 - [x] Values are being inserted into wrong columns (ownerId value goes to owner column, description goes to ownerId)
 - [x] Reordered schema fields to match actual database (moved ownerId and source to end)
 - [x] Test manual task creation after fix
+
+## Bug Fix (Feb 2, 2026 - ID Counter Not Respecting Manual Resets)
+
+### ID Sequence Counter Ignores Manual Resets
+- [x] When user deletes all requirements (Q-0001 to Q-0006) and resets counter to 1, system still creates Q-0007
+- [x] getNextId function increments counter before checking if ID exists (this is expected behavior)
+- [x] updateIdSequence was updating ALL projects instead of just current project
+- [x] Fixed updateIdSequence to only update the current project's counter
+- [x] Added projectId parameter to updateIdSequence and getIdSequence functions
+- [x] Test counter reset after deleting objects
