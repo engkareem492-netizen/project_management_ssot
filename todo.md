@@ -600,3 +600,11 @@
 - [x] Validate stakeholder ID exists before passing to createRequirement
 - [x] Make ownerId optional (undefined) if stakeholder doesn't exist
 - [x] Test task creation with and without stakeholder assignment
+
+## Bug Fix (Feb 2, 2026 - Drizzle Schema Column Order Mismatch)
+
+### Requirement Creation Failing Due to Column Order Mismatch
+- [x] Drizzle schema definition order doesn't match actual database table structure
+- [x] Values are being inserted into wrong columns (ownerId value goes to owner column, description goes to ownerId)
+- [x] Reordered schema fields to match actual database (moved ownerId and source to end)
+- [x] Test manual task creation after fix

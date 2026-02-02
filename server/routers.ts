@@ -578,6 +578,17 @@ export const appRouter = router({
             }
           }
           
+          console.log('[tasks.create] Creating requirement with data:', {
+            projectId: input.projectId,
+            idCode: requirementIdCode,
+            taskGroup: input.taskGroup,
+            description: input.description,
+            owner: validOwnerName,
+            ownerId: validOwnerId,
+            status: input.status,
+            priority: input.priority,
+          });
+          
           await db.createRequirement({
             projectId: input.projectId,
             idCode: requirementIdCode,
@@ -591,11 +602,17 @@ export const appRouter = router({
           });
           
           return { success: true, taskId, requirementIdCode };
-        } catch (error) {
+        } catch (error: any) {
           console.error('[tasks.create] Error creating task:', error);
+          console.error('[tasks.create] Error details:', {
+            message: error.message,
+            cause: error.cause,
+            sqlMessage: error.cause?.sqlMessage,
+            errno: error.cause?.errno,
+          });
           throw new TRPCError({
             code: 'INTERNAL_SERVER_ERROR',
-            message: error instanceof Error ? error.message : 'Failed to create task',
+            message: `Failed to create task: ${error.cause?.sqlMessage || error.message}`,
           });
         }
       }),

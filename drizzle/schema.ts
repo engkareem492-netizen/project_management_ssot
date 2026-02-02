@@ -118,9 +118,7 @@ export const requirements = mysqlTable("requirements", {
   category: varchar("category", { length: 100 }),
   agreement: varchar("agreement", { length: 100 }),
   owner: varchar("owner", { length: 200 }),
-  ownerId: int("ownerId"),
   description: text("description"),
-  source: varchar("source", { length: 20 }),
   sourceType: varchar("sourceType", { length: 100 }),
   refSource: varchar("refSource", { length: 200 }),
   status: varchar("status", { length: 100 }),
@@ -133,6 +131,8 @@ export const requirements = mysqlTable("requirements", {
   updateDate: varchar("updateDate", { length: 50 }),
   importedAt: timestamp("importedAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  ownerId: int("ownerId"),
+  source: varchar("source", { length: 20 }),
 });
 
 export type Requirement = typeof requirements.$inferSelect;
