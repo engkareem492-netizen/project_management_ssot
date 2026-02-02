@@ -808,7 +808,14 @@ export default function Tasks() {
                   <div className="flex gap-2">
                     <Select
                       value={newTask.deliverableId?.toString() || ''}
-                      onValueChange={(value) => setNewTask({ ...newTask, deliverableId: value ? parseInt(value) : undefined })}
+                      onValueChange={(value) => {
+                        if (value === '' || value === 'none') {
+                          setNewTask({ ...newTask, deliverableId: undefined });
+                        } else {
+                          const numValue = parseInt(value);
+                          setNewTask({ ...newTask, deliverableId: isNaN(numValue) ? undefined : numValue });
+                        }
+                      }}
                     >
                       <SelectTrigger className="flex-1">
                         <SelectValue placeholder="Select deliverable..." />
@@ -816,7 +823,7 @@ export default function Tasks() {
                       <SelectContent>
                         <SelectItem value="none">None</SelectItem>
                         {deliverables?.map((del) => (
-                          <SelectItem key={del.id} value={del.deliverableId}>
+                          <SelectItem key={del.id} value={del.id.toString()}>
                             {del.deliverableId} - {del.description?.substring(0, 50) || 'No description'}
                           </SelectItem>
                         ))}

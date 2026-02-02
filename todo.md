@@ -672,3 +672,6 @@
 - [x] Issue is frontend tRPC cache showing stale data
 - [x] Workaround: Close and reopen requirement dialog to refresh data
 - [ ] Future enhancement: Add automatic cache invalidation when tasks are deleted
+
+- [x] Fix NaN deliverableId error when creating tasks without selecting a deliverable
+- [x] Fix deliverable dropdown showing empty in task creation form (deliverables exist but not displaying)
