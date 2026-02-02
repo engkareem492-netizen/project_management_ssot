@@ -473,7 +473,7 @@ import {
 } from "../drizzle/schema";
 
 // ID Sequence functions - Auto-generate IDs
-export async function getNextId(entityType: string, prefix: string, projectId: number = 1): Promise<string> {
+export async function getNextId(entityType: string, defaultPrefix: string, projectId: number = 1): Promise<string> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
@@ -485,17 +485,21 @@ export async function getNextId(entityType: string, prefix: string, projectId: n
     .limit(1);
   
   let nextNumber: number;
+  let actualPrefix: string;
   
   if (existing.length === 0) {
-    // Create new sequence starting at 1
+    // Create new sequence starting at 1 with default prefix
     await db.insert(idSequences).values({
       projectId,
       entityType,
-      prefix,
+      prefix: defaultPrefix,
       currentNumber: 1,
     });
     nextNumber = 1;
+    actualPrefix = defaultPrefix;
   } else {
+    // Use prefix from database configuration, not the default parameter
+    actualPrefix = existing[0].prefix;
     // Increment existing sequence
     nextNumber = existing[0].currentNumber + 1;
     await db
@@ -504,8 +508,8 @@ export async function getNextId(entityType: string, prefix: string, projectId: n
       .where(and(eq(idSequences.entityType, entityType), eq(idSequences.projectId, projectId)));
   }
   
-  // Format as prefix + 4-digit number (e.g., Q-0001)
-  return `${prefix}-${nextNumber.toString().padStart(4, '0')}`;
+  // Format as prefix + 4-digit number (e.g., Q-0001 or S-0003)
+  return `${actualPrefix}-${nextNumber.toString().padStart(4, '0')}`;
 }
 
 export async function initializeIdSequence(entityType: string, prefix: string, startNumber: number, projectId: number = 1) {

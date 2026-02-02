@@ -1,0 +1,25 @@
+{
+  "query": "SELECT taskId, description, assignDate FROM tasks ORDER BY id DESC LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4FzqaZAU5mRtC.root --database j37MQHBuWbY6PMBApJWnKm --execute SELECT taskId, description, assignDate FROM tasks ORDER BY id DESC LIMIT 5;",
+  "rows": [
+    {
+      "taskId": "S-0004",
+      "description": "Authorization for Printing PO for USER: EGY-2",
+      "assignDate": "2026-02-01"
+    },
+    {
+      "taskId": "S-0003",
+      "description": "Fix ZMI04 - To defaulty appear the Base Unit of Measures , and test to confirm that Selected Unit of Measure when posting affect correctly at MI05",
+      "assignDate": "2026-02-01"
+    },
+    {
+      "taskId": "T-0001",
+      "description": "Department Discounts Automatic Transfer from GLs",
+      "assignDate": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "taskId\tdescription\tassignDate\nS-0004\tAuthorization for Printing PO for USER: EGY-2\t2026-02-01\nS-0003\tFix ZMI04 - To defaulty appear the Base Unit of Measures , and test to confirm that Selected Unit of Measure when posting affect correctly at MI05\t2026-02-01\nT-0001\tDepartment Discounts Automatic Transfer from GLs\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 1532
+}

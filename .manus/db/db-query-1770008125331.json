@@ -1,0 +1,19 @@
+{
+  "query": "SELECT * FROM taskGroups LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4FzqaZAU5mRtC.root --database j37MQHBuWbY6PMBApJWnKm --execute SELECT * FROM taskGroups LIMIT 5;",
+  "rows": [
+    {
+      "id": "60001",
+      "projectId": "2",
+      "idCode": "TG-0001",
+      "name": "ABAP - 001",
+      "description": "NULL",
+      "createdAt": "2026-01-31 23:42:01",
+      "updatedAt": "2026-01-31 23:42:01"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tprojectId\tidCode\tname\tdescription\tcreatedAt\tupdatedAt\n60001\t2\tTG-0001\tABAP - 001\tNULL\t2026-01-31 23:42:01\t2026-01-31 23:42:01\n",
+  "stderr": "",
+  "execution_time_ms": 1539
+}

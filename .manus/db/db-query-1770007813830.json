@@ -1,0 +1,57 @@
+{
+  "query": "\n-- First, let's see all duplicates with their IDs\nSELECT id, projectId, entityType, prefix, currentNumber FROM idSequences WHERE entityType IN ('task', 'requirement', 'issue') ORDER BY entityType, currentNumber;\n\n-- Delete the lower currentNumber entries (keep the higher ones)\nDELETE FROM idSequences WHERE entityType = 'task' AND currentNumber = 2;\nDELETE FROM idSequences WHERE entityType = 'requirement' AND currentNumber = 0 LIMIT 1;\nDELETE FROM idSequences WHERE entityType = 'issue' AND currentNumber = 0 LIMIT 1;\n\n-- Verify cleanup\nSELECT entityType, prefix, currentNumber FROM idSequences WHERE entityType IN ('task', 'requirement', 'issue');\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4FzqaZAU5mRtC.root --database j37MQHBuWbY6PMBApJWnKm --execute \n-- First, let's see all duplicates with their IDs\nSELECT id, projectId, entityType, prefix, currentNumber FROM idSequences WHERE entityType IN ('task', 'requirement', 'issue') ORDER BY entityType, currentNumber;\n\n-- Delete the lower currentNumber entries (keep the higher ones)\nDELETE FROM idSequences WHERE entityType = 'task' AND currentNumber = 2;\nDELETE FROM idSequences WHERE entityType = 'requirement' AND currentNumber = 0 LIMIT 1;\nDELETE FROM idSequences WHERE entityType = 'issue' AND currentNumber = 0 LIMIT 1;\n\n-- Verify cleanup\nSELECT entityType, prefix, currentNumber FROM idSequences WHERE entityType IN ('task', 'requirement', 'issue');\n",
+  "rows": [
+    {
+      "id": "4",
+      "projectId": "1",
+      "entityType": "issue",
+      "prefix": "I",
+      "currentNumber": "0"
+    },
+    {
+      "id": "90001",
+      "projectId": "2",
+      "entityType": "issue",
+      "prefix": "I",
+      "currentNumber": "0"
+    },
+    {
+      "id": "1",
+      "projectId": "1",
+      "entityType": "requirement",
+      "prefix": "Q",
+      "currentNumber": "0"
+    },
+    {
+      "id": "60017",
+      "projectId": "2",
+      "entityType": "requirement",
+      "prefix": "Q",
+      "currentNumber": "3"
+    },
+    {
+      "id": "3",
+      "projectId": "1",
+      "entityType": "task",
+      "prefix": "S",
+      "currentNumber": "2"
+    },
+    {
+      "id": "60016",
+      "projectId": "2",
+      "entityType": "task",
+      "prefix": "S",
+      "currentNumber": "4"
+    }
+  ],
+  "messages": [
+    "entityType\tprefix\tcurrentNumber",
+    "task\tS\t4",
+    "requirement\tQ\t3",
+    "issue\tI\t0"
+  ],
+  "stdout": "id\tprojectId\tentityType\tprefix\tcurrentNumber\n4\t1\tissue\tI\t0\n90001\t2\tissue\tI\t0\n1\t1\trequirement\tQ\t0\n60017\t2\trequirement\tQ\t3\n3\t1\ttask\tS\t2\n60016\t2\ttask\tS\t4\nentityType\tprefix\tcurrentNumber\ntask\tS\t4\nrequirement\tQ\t3\nissue\tI\t0\n",
+  "stderr": "",
+  "execution_time_ms": 2464
+}

@@ -544,34 +544,60 @@ export const appRouter = router({
         priority: z.string().optional(),
       }))
       .mutation(async ({ input }) => {
-        // Clean up empty strings and convert to undefined
-        const cleanedInput: any = {};
-        Object.keys(input).forEach(key => {
-          const value = (input as any)[key];
-          if (value !== '' && value !== 'none' && value !== undefined) {
-            cleanedInput[key] = value;
+        try {
+          // Clean up empty strings and convert to undefined
+          const cleanedInput: any = {};
+          Object.keys(input).forEach(key => {
+            const value = (input as any)[key];
+            if (value !== '' && value !== 'none' && value !== undefined) {
+              cleanedInput[key] = value;
+            }
+          });
+          
+          // Generate auto ID for task
+          const taskId = await db.getNextId('task', 'T', input.projectId);
+          await db.createTask({ ...cleanedInput, taskId, projectId: input.projectId });
+          
+          // Auto-create Requirement linked to this Task
+          const requirementIdCode = await db.getNextId('requirement', 'Q', input.projectId);
+          
+          // Validate stakeholder exists before using ownerId
+          let validOwnerId = undefined;
+          let validOwnerName = undefined;
+          if (input.responsibleId) {
+            const stakeholder = await db.getStakeholderById(input.responsibleId);
+            if (stakeholder) {
+              validOwnerId = input.responsibleId;
+              validOwnerName = stakeholder.fullName;
+            }
+          } else if (input.ownerId) {
+            const stakeholder = await db.getStakeholderById(input.ownerId);
+            if (stakeholder) {
+              validOwnerId = input.ownerId;
+              validOwnerName = stakeholder.fullName;
+            }
           }
-        });
-        
-        // Generate auto ID for task
-        const taskId = await db.getNextId('task', 'T', input.projectId);
-        await db.createTask({ ...cleanedInput, taskId, projectId: input.projectId });
-        
-        // Auto-create Requirement linked to this Task
-        const requirementIdCode = await db.getNextId('requirement', 'Q', input.projectId);
-        await db.createRequirement({
-          projectId: input.projectId,
-          idCode: requirementIdCode,
-          taskGroup: input.taskGroup,
-          description: input.description,
-          owner: input.responsible || input.owner,
-          ownerId: input.responsibleId || input.ownerId,
-          status: input.status,
-          priority: input.priority,
-          lastUpdate: input.statusUpdate,
-        });
-        
-        return { success: true, taskId, requirementIdCode };
+          
+          await db.createRequirement({
+            projectId: input.projectId,
+            idCode: requirementIdCode,
+            taskGroup: input.taskGroup,
+            description: input.description,
+            owner: validOwnerName,
+            ownerId: validOwnerId,
+            status: input.status,
+            priority: input.priority,
+            lastUpdate: input.statusUpdate,
+          });
+          
+          return { success: true, taskId, requirementIdCode };
+        } catch (error) {
+          console.error('[tasks.create] Error creating task:', error);
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: error instanceof Error ? error.message : 'Failed to create task',
+          });
+        }
       }),
 
     update: protectedProcedure
@@ -665,19 +691,27 @@ export const appRouter = router({
         updateDate: z.string().optional(),
       }))
       .mutation(async ({ input }) => {
-        // Clean up empty strings and convert to undefined
-        const cleanedInput: any = {};
-        Object.keys(input).forEach(key => {
-          const value = (input as any)[key];
-          if (value !== '' && value !== 'none' && value !== undefined) {
-            cleanedInput[key] = value;
-          }
-        });
-        
-        // Generate auto ID
-        const issueId = await db.getNextId('issue', 'I', input.projectId);
-        await db.createIssue({ ...cleanedInput, issueId });
-        return { success: true, issueId };
+        try {
+          // Clean up empty strings and convert to undefined
+          const cleanedInput: any = {};
+          Object.keys(input).forEach(key => {
+            const value = (input as any)[key];
+            if (value !== '' && value !== 'none' && value !== undefined) {
+              cleanedInput[key] = value;
+            }
+          });
+          
+          // Generate auto ID
+          const issueId = await db.getNextId('issue', 'I', input.projectId);
+          await db.createIssue({ ...cleanedInput, issueId });
+          return { success: true, issueId };
+        } catch (error) {
+          console.error('[issues.create] Error creating issue:', error);
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: error instanceof Error ? error.message : 'Failed to create issue',
+          });
+        }
       }),
 
     update: protectedProcedure

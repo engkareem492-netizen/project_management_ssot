@@ -1,0 +1,25 @@
+{
+  "query": "SELECT taskId, description, projectId FROM tasks WHERE taskId = 'T-0002'; SELECT entityType, prefix, currentNumber FROM idSequences WHERE entityType = 'task' AND projectId = 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4FzqaZAU5mRtC.root --database j37MQHBuWbY6PMBApJWnKm --execute SELECT taskId, description, projectId FROM tasks WHERE taskId = 'T-0002'; SELECT entityType, prefix, currentNumber FROM idSequences WHERE entityType = 'task' AND projectId = 1;",
+  "rows": [
+    {
+      "taskId": "T-0002",
+      "description": "Final test after server restart",
+      "projectId": "1"
+    },
+    {
+      "taskId": "entityType",
+      "description": "prefix",
+      "projectId": "currentNumber"
+    },
+    {
+      "taskId": "task",
+      "description": "T",
+      "projectId": "2"
+    }
+  ],
+  "messages": [],
+  "stdout": "taskId\tdescription\tprojectId\nT-0002\tFinal test after server restart\t1\nentityType\tprefix\tcurrentNumber\ntask\tT\t2\n",
+  "stderr": "",
+  "execution_time_ms": 1753
+}

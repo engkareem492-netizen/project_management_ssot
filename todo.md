@@ -574,3 +574,29 @@
 - [x] Apply same fix to createIssue function
 - [ ] Test task creation with the null-setting approach
 - [ ] Test issue creation with the null-setting approach
+
+
+## Critical Bugs (Feb 1, 2026 - ID Prefix and Error Handling)
+
+### Fix Wrong ID Prefix Issue
+- [x] Investigate why task uses "T-" prefix instead of configured "S-" prefix (hardcoded in getNextId calls)
+- [x] Check getNextId function to see how it retrieves prefix from ID configuration (was using parameter, not database)
+- [x] Update getNextId to read prefix from existing idSequence record in database
+- [x] Ensure getNextId queries the correct entity type and project
+- [ ] Test that updated prefix in Settings is immediately used for new tasks
+
+### Fix Error Handling in Task Creation
+- [x] Investigate why error is shown but task is still created (error occurred after task insert, during requirement creation)
+- [x] Check if error occurs after database insert (confirmed - partial creation possible)
+- [x] Wrap task creation in try-catch with proper error logging
+- [x] Wrap issue creation in try-catch with proper error logging
+- [x] Add TRPCError with clear error messages for user feedback
+- [ ] Test that errors properly prevent partial data creation
+
+## Bug Fix (Feb 2, 2026 - Foreign Key Constraint)
+
+### Requirement Creation Foreign Key Error
+- [x] Fix auto-created requirement failing when ownerId doesn't exist in stakeholders table
+- [x] Validate stakeholder ID exists before passing to createRequirement
+- [x] Make ownerId optional (undefined) if stakeholder doesn't exist
+- [x] Test task creation with and without stakeholder assignment

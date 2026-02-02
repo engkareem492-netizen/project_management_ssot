@@ -1,0 +1,101 @@
+{
+  "query": "SELECT id, projectId, entityType, prefix, currentNumber FROM idSequences ORDER BY entityType;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4FzqaZAU5mRtC.root --database j37MQHBuWbY6PMBApJWnKm --execute SELECT id, projectId, entityType, prefix, currentNumber FROM idSequences ORDER BY entityType;",
+  "rows": [
+    {
+      "id": "60007",
+      "projectId": "2",
+      "entityType": "Issue Group",
+      "prefix": "IG",
+      "currentNumber": "0"
+    },
+    {
+      "id": "60015",
+      "projectId": "1",
+      "entityType": "Issue Group",
+      "prefix": "IG",
+      "currentNumber": "0"
+    },
+    {
+      "id": "60006",
+      "projectId": "2",
+      "entityType": "Task Group",
+      "prefix": "TG",
+      "currentNumber": "1"
+    },
+    {
+      "id": "60014",
+      "projectId": "1",
+      "entityType": "Task Group",
+      "prefix": "TG",
+      "currentNumber": "0"
+    },
+    {
+      "id": "7",
+      "projectId": "1",
+      "entityType": "assumption",
+      "prefix": "A",
+      "currentNumber": "0"
+    },
+    {
+      "id": "5",
+      "projectId": "1",
+      "entityType": "deliverable",
+      "prefix": "V",
+      "currentNumber": "2"
+    },
+    {
+      "id": "6",
+      "projectId": "1",
+      "entityType": "dependency",
+      "prefix": "D",
+      "currentNumber": "0"
+    },
+    {
+      "id": "4",
+      "projectId": "1",
+      "entityType": "issue",
+      "prefix": "I",
+      "currentNumber": "0"
+    },
+    {
+      "id": "90001",
+      "projectId": "2",
+      "entityType": "issue",
+      "prefix": "I",
+      "currentNumber": "0"
+    },
+    {
+      "id": "1",
+      "projectId": "1",
+      "entityType": "requirement",
+      "prefix": "Q",
+      "currentNumber": "0"
+    },
+    {
+      "id": "60017",
+      "projectId": "2",
+      "entityType": "requirement",
+      "prefix": "Q",
+      "currentNumber": "3"
+    },
+    {
+      "id": "3",
+      "projectId": "1",
+      "entityType": "task",
+      "prefix": "S",
+      "currentNumber": "2"
+    },
+    {
+      "id": "60016",
+      "projectId": "2",
+      "entityType": "task",
+      "prefix": "S",
+      "currentNumber": "4"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tprojectId\tentityType\tprefix\tcurrentNumber\n60007\t2\tIssue Group\tIG\t0\n60015\t1\tIssue Group\tIG\t0\n60006\t2\tTask Group\tTG\t1\n60014\t1\tTask Group\tTG\t0\n7\t1\tassumption\tA\t0\n5\t1\tdeliverable\tV\t2\n6\t1\tdependency\tD\t0\n4\t1\tissue\tI\t0\n90001\t2\tissue\tI\t0\n1\t1\trequirement\tQ\t0\n60017\t2\trequirement\tQ\t3\n3\t1\ttask\tS\t2\n60016\t2\ttask\tS\t4\n",
+  "stderr": "",
+  "execution_time_ms": 1623
+}
