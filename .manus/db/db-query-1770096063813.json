@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `issueLinks` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `issueId` int NOT NULL,\n  `linkedEntityType` enum('requirement','task','dependency') NOT NULL,\n  `linkedEntityId` varchar(50) NOT NULL,\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  CONSTRAINT `issueLinks_id` PRIMARY KEY(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4FzqaZAU5mRtC.root --database j37MQHBuWbY6PMBApJWnKm --execute CREATE TABLE IF NOT EXISTS `issueLinks` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `issueId` int NOT NULL,\n  `linkedEntityType` enum('requirement','task','dependency') NOT NULL,\n  `linkedEntityId` varchar(50) NOT NULL,\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  CONSTRAINT `issueLinks_id` PRIMARY KEY(`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 2263
+}

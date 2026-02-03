@@ -683,3 +683,10 @@
 - [x] Add "+" button next to requirement dropdown in edit task dialog to create new requirements
 
 - [x] Add deliverable selector in requirement edit dialog to link existing deliverables (in addition to create button)
+
+- [ ] Add linked issues section to task detail dialog
+- [ ] Add dropdown to link existing issues to tasks
+- [ ] Add "+" button to create new issues while editing tasks
+- [ ] Add edit and delete functionality for linked issues in task dialog
+
+- [x] Add linked issues section to task detail dialog with view, link existing, create new, edit, and delete functionality

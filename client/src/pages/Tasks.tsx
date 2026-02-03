@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Search, Edit, History, Loader2, Plus, Trash2, Settings, Eye, Save, X, CheckSquare, Info } from "lucide-react";
+import { Search, Edit, History, Loader2, Plus, Trash2, Settings, Eye, Save, X, CheckSquare, Info, AlertCircle, Link2 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -78,6 +78,19 @@ export default function Tasks() {
   const [newIssueGroup, setNewIssueGroup] = useState({ name: '', description: '' });
   const [selectedDeliverable, setSelectedDeliverable] = useState<any>(null);
   const [linkRequirement, setLinkRequirement] = useState(false);
+  const [addIssueDialogOpen, setAddIssueDialogOpen] = useState(false);
+  const [selectedIssueToLink, setSelectedIssueToLink] = useState<string>('');
+  const [editingIssueId, setEditingIssueId] = useState<number | null>(null);
+  const [editIssueData, setEditIssueData] = useState<any>({});
+  const [deletingIssueId, setDeletingIssueId] = useState<number | null>(null);
+  const [deleteIssueDialogOpen, setDeleteIssueDialogOpen] = useState(false);
+  const [newIssue, setNewIssue] = useState({
+    description: '',
+    owner: '',
+    status: 'Open',
+    priority: 'Medium',
+    issueGroup: '',
+  });
   const [newTask, setNewTask] = useState<any>({
     taskGroup: '',
     description: '',
@@ -106,6 +119,11 @@ export default function Tasks() {
   const { data: deliverables } = trpc.deliverables.list.useQuery(
     { projectId: currentProjectId || 0 },
     { enabled: !!currentProjectId }
+  );
+  const { data: allIssues } = trpc.issues.list.useQuery();
+  const { data: linkedIssues } = trpc.issues.getByEntity.useQuery(
+    { entityType: "task", entityId: selectedTask?.taskId || "" },
+    { enabled: viewDialogOpen && !!selectedTask?.taskId }
   );
   const { data: actionLogs } = trpc.actionLogs.getByEntity.useQuery(
     { entityType: "task", entityId: selectedEntityId },
@@ -196,6 +214,76 @@ export default function Tasks() {
     },
     onError: (error) => {
       toast.error(`Failed to create deliverable: ${error.message}`);
+    },
+  });
+
+  const createIssueMutation = trpc.issues.create.useMutation({
+    onSuccess: async (data) => {
+      toast.success(`Issue "${data.issueId}" created successfully`);
+      
+      // Link the newly created issue to the task
+      if (selectedTask?.taskId && data.issueId) {
+        // Find the issue by issueId to get its numeric ID
+        await utils.issues.list.invalidate();
+        const allIssuesData = await utils.issues.list.fetch();
+        const createdIssue = allIssuesData?.find(iss => iss.issueId === data.issueId);
+        
+        if (createdIssue) {
+          await linkIssueMutation.mutateAsync({
+            issueId: createdIssue.id,
+            entityType: 'task',
+            entityId: selectedTask.taskId,
+          });
+        }
+      }
+      
+      setAddIssueDialogOpen(false);
+      setNewIssue({
+        description: '',
+        owner: '',
+        status: 'Open',
+        priority: 'Medium',
+        issueGroup: '',
+      });
+      utils.issues.getByEntity.invalidate();
+    },
+    onError: (error) => {
+      toast.error(`Failed to create issue: ${error.message}`);
+    },
+  });
+
+  const linkIssueMutation = trpc.issues.addLink.useMutation({
+    onSuccess: () => {
+      toast.success('Issue linked successfully');
+      setSelectedIssueToLink('');
+      utils.issues.getByEntity.invalidate();
+    },
+    onError: (error) => {
+      toast.error(`Link failed: ${error.message}`);
+    },
+  });
+
+  const updateIssueMutation = trpc.issues.update.useMutation({
+    onSuccess: () => {
+      toast.success('Issue updated successfully');
+      setEditingIssueId(null);
+      setEditIssueData({});
+      utils.issues.getByEntity.invalidate();
+    },
+    onError: (error) => {
+      toast.error(`Update failed: ${error.message}`);
+    },
+  });
+
+  const deleteIssueMutation = trpc.issues.delete.useMutation({
+    onSuccess: () => {
+      toast.success('Issue deleted successfully');
+      setDeleteIssueDialogOpen(false);
+      setDeletingIssueId(null);
+      utils.issues.getByEntity.invalidate();
+    },
+    onError: (error) => {
+      toast.error(`Delete failed: ${error.message}`);
     },
   });
 
@@ -429,6 +517,44 @@ export default function Tasks() {
   const confirmDelete = () => {
     if (deletingId) {
       deleteMutation.mutate({ id: deletingId });
+    }
+  };
+
+  const handleEditIssue = (issue: any) => {
+    setEditingIssueId(issue.id);
+    setEditIssueData({
+      status: issue.status || '',
+      priority: issue.priority || '',
+      deliverables1: issue.deliverables1 || '',
+      d1Status: issue.d1Status || '',
+      deliverables2: issue.deliverables2 || '',
+      d2Status: issue.d2Status || '',
+      lastUpdate: issue.lastUpdate || '',
+      updateDate: issue.updateDate || '',
+    });
+  };
+
+  const handleSaveIssue = (issue: any) => {
+    updateIssueMutation.mutate({
+      id: issue.id,
+      issueId: issue.issueId,
+      data: editIssueData,
+    });
+  };
+
+  const handleCancelEditIssue = () => {
+    setEditingIssueId(null);
+    setEditIssueData({});
+  };
+
+  const handleDeleteIssue = (id: number) => {
+    setDeletingIssueId(id);
+    setDeleteIssueDialogOpen(true);
+  };
+
+  const confirmDeleteIssue = () => {
+    if (deletingIssueId) {
+      deleteIssueMutation.mutate({ id: deletingIssueId });
     }
   };
 
@@ -1187,6 +1313,129 @@ export default function Tasks() {
               </div>
             </div>
 
+            {/* Linked Issues Section */}
+            <div className="border-t pt-4 mt-4">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-medium flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-primary" />
+                  Linked Issues
+                </h4>
+                <Button size="sm" onClick={() => setAddIssueDialogOpen(true)} className="bg-primary hover:bg-primary/90">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Issue
+                </Button>
+              </div>
+              {/* Link Existing Issue */}
+              <div className="flex gap-2 mb-3">
+                <Select
+                  value={selectedIssueToLink}
+                  onValueChange={setSelectedIssueToLink}
+                >
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Select issue to link..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allIssues?.filter(iss => 
+                      !linkedIssues?.some(linked => linked.id === iss.id)
+                    ).map((iss) => (
+                      <SelectItem key={iss.id} value={iss.id.toString()}>
+                        {iss.issueId} - {iss.description?.substring(0, 50) || 'No description'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    if (selectedIssueToLink && selectedTask?.taskId) {
+                      linkIssueMutation.mutate({
+                        issueId: parseInt(selectedIssueToLink),
+                        entityType: 'task',
+                        entityId: selectedTask.taskId,
+                      });
+                    }
+                  }}
+                  disabled={!selectedIssueToLink || linkIssueMutation.isPending}
+                  className="bg-primary hover:bg-primary/90"
+                >
+                  {linkIssueMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Link2 className="w-4 h-4 mr-2" />
+                      Link
+                    </>
+                  )}
+                </Button>
+              </div>
+              {linkedIssues && linkedIssues.length > 0 ? (
+                <div className="space-y-2">
+                  {linkedIssues.map((issue) => (
+                    <Card key={issue.id} className="p-3 border-primary/20">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <span className="font-mono text-sm font-medium text-primary">{issue.issueId}</span>
+                          {editingIssueId === issue.id ? (
+                            <div className="mt-2 space-y-2">
+                              <Textarea
+                                value={editIssueData.description}
+                                onChange={(e) => setEditIssueData({ ...editIssueData, description: e.target.value })}
+                                className="text-sm"
+                                rows={2}
+                              />
+                              <div className="grid grid-cols-2 gap-2">
+                                <Input
+                                  value={editIssueData.status}
+                                  onChange={(e) => setEditIssueData({ ...editIssueData, status: e.target.value })}
+                                  placeholder="Status"
+                                  className="text-sm"
+                                />
+                                <Input
+                                  value={editIssueData.priority}
+                                  onChange={(e) => setEditIssueData({ ...editIssueData, priority: e.target.value })}
+                                  placeholder="Priority"
+                                  className="text-sm"
+                                />
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="text-sm text-muted-foreground mt-1">{issue.description || 'No description'}</p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 ml-4">
+                          {editingIssueId === issue.id ? (
+                            <>
+                              <Button size="sm" onClick={() => handleSaveIssue(issue)} disabled={updateIssueMutation.isPending}>
+                                <Save className="w-3 h-3" />
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={handleCancelEditIssue}>
+                                <X className="w-3 h-3" />
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <Badge variant="outline">{issue.status || 'N/A'}</Badge>
+                              <Badge variant="outline">{issue.priority || 'N/A'}</Badge>
+                              <Button size="sm" variant="ghost" onClick={() => handleEditIssue(issue)}>
+                                <Edit className="w-3 h-3" />
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={() => handleDeleteIssue(issue.id)}>
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-4 text-muted-foreground border border-dashed border-primary/20 rounded-lg">
+                  No issues linked yet.
+                </div>
+              )}
+            </div>
+
             {/* Status Updates */}
             <div className="border-t pt-4">
               <h4 className="font-medium mb-3">Current Status</h4>
@@ -1513,6 +1762,102 @@ export default function Tasks() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Add Issue Dialog */}
+      <Dialog open={addIssueDialogOpen} onOpenChange={setAddIssueDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New Issue</DialogTitle>
+            <DialogDescription>
+              Create a new issue to link with this task.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Description *</Label>
+              <Textarea
+                value={newIssue.description}
+                onChange={(e) => setNewIssue({ ...newIssue, description: e.target.value })}
+                placeholder="Enter issue description"
+                rows={3}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Input
+                  value={newIssue.status}
+                  onChange={(e) => setNewIssue({ ...newIssue, status: e.target.value })}
+                  placeholder="e.g., Open, In Progress, Resolved"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Priority</Label>
+                <Input
+                  value={newIssue.priority}
+                  onChange={(e) => setNewIssue({ ...newIssue, priority: e.target.value })}
+                  placeholder="e.g., Low, Medium, High"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Issue Group</Label>
+              <Input
+                value={newIssue.issueGroup}
+                onChange={(e) => setNewIssue({ ...newIssue, issueGroup: e.target.value })}
+                placeholder="Enter issue group"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setAddIssueDialogOpen(false);
+              setNewIssue({
+                description: '',
+                owner: '',
+                status: 'Open',
+                priority: 'Medium',
+                issueGroup: '',
+              });
+            }}>Cancel</Button>
+            <Button
+              onClick={() => {
+                if (newIssue.description.trim() && currentProjectId) {
+                  createIssueMutation.mutate({
+                    projectId: currentProjectId,
+                    description: newIssue.description.trim(),
+                    status: newIssue.status || 'Open',
+                    priority: newIssue.priority || 'Medium',
+                    issueGroup: newIssue.issueGroup || undefined,
+                    taskId: selectedTask?.taskId,
+                  });
+                }
+              }}
+              disabled={!newIssue.description.trim() || !currentProjectId || createIssueMutation.isPending}
+            >
+              {createIssueMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Creating...</> : 'Create'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Issue Confirmation Dialog */}
+      <AlertDialog open={deleteIssueDialogOpen} onOpenChange={setDeleteIssueDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the issue.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteIssue} disabled={deleteIssueMutation.isPending}>
+              {deleteIssueMutation.isPending ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Task Group Creation Dialog (for Requirement) */}
       <Dialog open={taskGroupDialogOpen} onOpenChange={setTaskGroupDialogOpen}>

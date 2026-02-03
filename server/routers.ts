@@ -816,6 +816,37 @@ export const appRouter = router({
         await db.deleteIssue(input.id);
         return { success: true };
       }),
+
+    getByEntity: protectedProcedure
+      .input(z.object({
+        entityType: z.enum(['requirement', 'task', 'dependency']),
+        entityId: z.string(),
+      }))
+      .query(async ({ input }) => {
+        return await db.getIssuesByEntity(input.entityType, input.entityId);
+      }),
+
+    addLink: protectedProcedure
+      .input(z.object({
+        issueId: z.number(),
+        entityType: z.enum(['requirement', 'task', 'dependency']),
+        entityId: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        await db.createIssueLink({
+          issueId: input.issueId,
+          linkedEntityType: input.entityType,
+          linkedEntityId: input.entityId,
+        });
+        return { success: true };
+      }),
+
+    removeLink: protectedProcedure
+      .input(z.object({ linkId: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.deleteIssueLink(input.linkId);
+        return { success: true };
+      }),
   }),
 
   // Dependencies

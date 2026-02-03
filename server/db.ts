@@ -463,11 +463,13 @@ export async function getAllRelationships() {
 import { 
   stakeholders, 
   deliverables, 
-  deliverableLinks, 
+  deliverableLinks,
+  issueLinks,
   idSequences,
   InsertStakeholder,
   InsertDeliverable,
   InsertDeliverableLink,
+  InsertIssueLink,
   Stakeholder,
   Deliverable
 } from "../drizzle/schema";
@@ -667,6 +669,46 @@ export async function getDeliverablesByEntity(entityType: "requirement" | "task"
   const deliverableIds = links.map(l => l.deliverableId);
   const allDeliverables = await getAllDeliverables();
   return allDeliverables.filter(d => deliverableIds.includes(d.id));
+}
+
+// Issue Links functions
+export async function createIssueLink(data: InsertIssueLink) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(issueLinks).values(data);
+  return result;
+}
+
+export async function deleteIssueLink(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(issueLinks).where(eq(issueLinks.id, id));
+}
+
+export async function getIssueLinksByEntity(entityType: "requirement" | "task" | "dependency", entityId: string) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db
+    .select()
+    .from(issueLinks)
+    .where(
+      and(
+        eq(issueLinks.linkedEntityType, entityType),
+        eq(issueLinks.linkedEntityId, entityId)
+      )
+    );
+}
+
+export async function getIssuesByEntity(entityType: "requirement" | "task" | "dependency", entityId: string) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const links = await getIssueLinksByEntity(entityType, entityId);
+  if (links.length === 0) return [];
+  
+  const issueIds = links.map(l => l.issueId);
+  const allIssues = await getAllIssuesSorted();
+  return allIssues.filter(i => issueIds.includes(i.id));
 }
 
 // Enhanced relationship functions

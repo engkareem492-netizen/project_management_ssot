@@ -292,6 +292,20 @@ export type DeliverableLink = typeof deliverableLinks.$inferSelect;
 export type InsertDeliverableLink = typeof deliverableLinks.$inferInsert;
 
 /**
+ * Issue Links table - many-to-many relationships between issues and other entities
+ */
+export const issueLinks = mysqlTable("issueLinks", {
+  id: int("id").autoincrement().primaryKey(),
+  issueId: int("issueId").notNull(),
+  linkedEntityType: mysqlEnum("linkedEntityType", ["requirement", "task", "dependency"]).notNull(),
+  linkedEntityId: varchar("linkedEntityId", { length: 50 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type IssueLink = typeof issueLinks.$inferSelect;
+export type InsertIssueLink = typeof issueLinks.$inferInsert;
+
+/**
  * Action Log table - stores all changes with delta tracking
  * Records only the fields that changed, not entire records
  */
