@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `classOptions` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `value` varchar(100) NOT NULL UNIQUE,\n  `label` varchar(100) NOT NULL,\n  `description` text,\n  `isDefault` boolean NOT NULL DEFAULT false,\n  `usageCount` int NOT NULL DEFAULT 0,\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  CONSTRAINT `classOptions_id` PRIMARY KEY(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4FzqaZAU5mRtC.root --database j37MQHBuWbY6PMBApJWnKm --execute CREATE TABLE IF NOT EXISTS `classOptions` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `value` varchar(100) NOT NULL UNIQUE,\n  `label` varchar(100) NOT NULL,\n  `description` text,\n  `isDefault` boolean NOT NULL DEFAULT false,\n  `usageCount` int NOT NULL DEFAULT 0,\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  CONSTRAINT `classOptions_id` PRIMARY KEY(`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 2043
+}

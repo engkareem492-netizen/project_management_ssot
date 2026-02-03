@@ -392,3 +392,20 @@ export const categoryOptions = mysqlTable("categoryOptions", {
 
 export type CategoryOption = typeof categoryOptions.$inferSelect;
 export type InsertCategoryOption = typeof categoryOptions.$inferInsert;
+
+/**
+ * Class Options table - stores customizable class values (for issues)
+ */
+export const classOptions = mysqlTable("classOptions", {
+  id: int("id").autoincrement().primaryKey(),
+  value: varchar("value", { length: 100 }).notNull().unique(),
+  label: varchar("label", { length: 100 }).notNull(),
+  description: text("description"),
+  isDefault: boolean("isDefault").default(false).notNull(),
+  usageCount: int("usageCount").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ClassOption = typeof classOptions.$inferSelect;
+export type InsertClassOption = typeof classOptions.$inferInsert;

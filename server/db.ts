@@ -24,6 +24,7 @@ import {
   priorityOptions,
   typeOptions,
   categoryOptions,
+  classOptions,
   taskGroups,
   issueGroups,
   InsertTaskGroup,
@@ -1020,6 +1021,48 @@ export async function incrementCategoryUsage(value: string) {
   await db.update(categoryOptions)
     .set({ usageCount: sql`${categoryOptions.usageCount} + 1` })
     .where(eq(categoryOptions.value, value));
+}
+
+/**
+ * Class Options
+ */
+export async function getAllClassOptions() {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(classOptions);
+}
+
+export async function createClassOption(data: { value: string; label: string; description?: string; isDefault?: boolean }) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  await db.insert(classOptions).values(data);
+  const [created] = await db.select().from(classOptions).where(eq(classOptions.value, data.value));
+  return created;
+}
+
+export async function updateClassOption(id: number, data: Partial<{ label: string; description: string; isDefault: boolean }>) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  await db.update(classOptions).set(data).where(eq(classOptions.id, id));
+  return await db.select().from(classOptions).where(eq(classOptions.id, id)).limit(1);
+}
+
+export async function deleteClassOption(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  const option = await db.select().from(classOptions).where(eq(classOptions.id, id)).limit(1);
+  if (option[0]?.usageCount && option[0].usageCount > 0) {
+    throw new Error('Cannot delete option that is currently in use');
+  }
+  await db.delete(classOptions).where(eq(classOptions.id, id));
+}
+
+export async function incrementClassUsage(value: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(classOptions)
+    .set({ usageCount: sql`${classOptions.usageCount} + 1` })
+    .where(eq(classOptions.value, value));
 }
 
 // Project functions
