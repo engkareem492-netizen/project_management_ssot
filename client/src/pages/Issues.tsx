@@ -364,6 +364,10 @@ export default function Issues() {
       owner: issue.owner || '',
       status: issue.status || '',
       priority: issue.priority || '',
+      type: issue.type || '',
+      class: issue.class || '',
+      sourceType: issue.sourceType || '',
+      refSource: issue.refSource || '',
       requirementId: issue.requirementId || '',
       currentStatus: issue.currentStatus || '',
       lastUpdate: issue.lastUpdate || '',
@@ -382,6 +386,10 @@ export default function Issues() {
       owner: issue.owner || '',
       status: issue.status || '',
       priority: issue.priority || '',
+      type: issue.type || '',
+      class: issue.class || '',
+      sourceType: issue.sourceType || '',
+      refSource: issue.refSource || '',
       requirementId: issue.requirementId || '',
       currentStatus: issue.currentStatus || '',
       lastUpdate: issue.lastUpdate || '',
@@ -1092,19 +1100,52 @@ export default function Issues() {
                 )}
               </div>
               <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
-                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Source</Label>
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Type</Label>
                 {isEditMode ? (
-                  <Input value={editFormData.source} onChange={(e) => setEditFormData({...editFormData, source: e.target.value})} className="h-8" />
+                  <Input value={editFormData.type} onChange={(e) => setEditFormData({...editFormData, type: e.target.value})} className="h-8" />
                 ) : (
-                  <p className="font-medium">{selectedIssue?.source || '-'}</p>
+                  <p className="font-medium">{selectedIssue?.type || '-'}</p>
+                )}
+              </div>
+              <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Class</Label>
+                {isEditMode ? (
+                  <Input value={editFormData.class} onChange={(e) => setEditFormData({...editFormData, class: e.target.value})} className="h-8" />
+                ) : (
+                  <p className="font-medium">{selectedIssue?.class || '-'}</p>
                 )}
               </div>
               <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                 <Label className="text-xs text-muted-foreground uppercase tracking-wide">Owner</Label>
                 {isEditMode ? (
-                  <Input value={editFormData.owner} onChange={(e) => setEditFormData({...editFormData, owner: e.target.value})} className="h-8" />
+                  <Select value={editFormData.owner} onValueChange={(v) => setEditFormData({...editFormData, owner: v})}>
+                    <SelectTrigger className="h-8">
+                      <SelectValue placeholder="Select owner" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {stakeholders?.map((s) => (
+                        <SelectItem key={s.id} value={s.fullName}>{s.fullName}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 ) : (
                   <p className="font-medium">{selectedIssue?.owner || '-'}</p>
+                )}
+              </div>
+              <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Source Type</Label>
+                {isEditMode ? (
+                  <Input value={editFormData.sourceType} onChange={(e) => setEditFormData({...editFormData, sourceType: e.target.value})} className="h-8" />
+                ) : (
+                  <p className="font-medium">{selectedIssue?.sourceType || '-'}</p>
+                )}
+              </div>
+              <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide">External Source</Label>
+                {isEditMode ? (
+                  <Input value={editFormData.refSource} onChange={(e) => setEditFormData({...editFormData, refSource: e.target.value})} className="h-8" />
+                ) : (
+                  <p className="font-medium">{selectedIssue?.refSource || '-'}</p>
                 )}
               </div>
             </div>

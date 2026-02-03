@@ -690,3 +690,7 @@
 - [ ] Add edit and delete functionality for linked issues in task dialog
 
 - [x] Add linked issues section to task detail dialog with view, link existing, create new, edit, and delete functionality
+
+- [x] Fix Issues page Owner field to use stakeholder dropdown instead of text input showing ID
+- [x] Compare Issues fields with Requirements fields and align structure
+- [x] Update Issues edit dialog to match Requirements organization and field types
