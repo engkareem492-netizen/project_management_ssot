@@ -678,3 +678,6 @@
 
 - [x] Fix task dropdown in Issues page showing tasks from all projects instead of current project only
 - [x] Remove auto-requirement creation when saving tasks (unwanted feature)
+
+- [x] Add requirement dropdown selector in edit task dialog to allow changing linked requirement
+- [x] Add "+" button next to requirement dropdown in edit task dialog to create new requirements

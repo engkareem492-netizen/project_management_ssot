@@ -99,7 +99,10 @@ export default function Tasks() {
     { enabled: !!currentProjectId }
   );
   const { data: stakeholders } = trpc.stakeholders.list.useQuery();
-  const { data: requirements } = trpc.requirements.list.useQuery();
+  const { data: requirements } = trpc.requirements.list.useQuery(
+    { projectId: currentProjectId || 0 },
+    { enabled: !!currentProjectId }
+  );
   const { data: deliverables } = trpc.deliverables.list.useQuery(
     { projectId: currentProjectId || 0 },
     { enabled: !!currentProjectId }
@@ -1059,7 +1062,45 @@ export default function Tasks() {
               </div>
               <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                 <Label className="text-xs text-muted-foreground uppercase tracking-wide">Requirement ID</Label>
-                <p className="font-medium">{selectedTask?.requirementId || '-'}</p>
+                {isEditMode ? (
+                  <div className="flex gap-2">
+                    <Select
+                      value={editFormData.requirementId || ''}
+                      onValueChange={(value) => {
+                        if (value === '' || value === 'none') {
+                          setEditFormData({ ...editFormData, requirementId: undefined });
+                        } else {
+                          setEditFormData({ ...editFormData, requirementId: value });
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="h-8">
+                        <SelectValue placeholder="Select requirement..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {requirements?.map((req) => (
+                          <SelectItem key={req.id} value={req.idCode}>
+                            {req.idCode} - {req.description?.substring(0, 50) || 'No description'}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      onClick={() => setAddRequirementDialogOpen(true)}
+                      title="Add new requirement"
+                      disabled={createRequirementMutation.isPending}
+                      className="h-8 w-8"
+                    >
+                      {createRequirementMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+                    </Button>
+                  </div>
+                ) : (
+                  <p className="font-medium">{selectedTask?.requirementId || '-'}</p>
+                )}
               </div>
               <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                 <Label className="text-xs text-muted-foreground uppercase tracking-wide">Status</Label>
