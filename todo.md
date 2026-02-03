@@ -681,3 +681,5 @@
 
 - [x] Add requirement dropdown selector in edit task dialog to allow changing linked requirement
 - [x] Add "+" button next to requirement dropdown in edit task dialog to create new requirements
+
+- [x] Add deliverable selector in requirement edit dialog to link existing deliverables (in addition to create button)

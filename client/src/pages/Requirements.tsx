@@ -68,6 +68,7 @@ export default function Requirements() {
     status: 'Pending',
     dueDate: '',
   });
+  const [selectedDeliverableToLink, setSelectedDeliverableToLink] = useState<string>('');
   const [newRequirement, setNewRequirement] = useState<any>({
     description: '',
     taskGroup: '',
@@ -136,6 +137,10 @@ export default function Requirements() {
   const { data: linkedDeliverables } = trpc.deliverables.getByEntity.useQuery(
     { entityType: "requirement", entityId: selectedRequirement?.idCode || "" },
     { enabled: viewDialogOpen && !!selectedRequirement?.idCode }
+  );
+  const { data: allDeliverables } = trpc.deliverables.list.useQuery(
+    { projectId: currentProjectId || 0 },
+    { enabled: !!currentProjectId && viewDialogOpen }
   );
 
   const updateMutation = trpc.requirements.update.useMutation({
@@ -274,6 +279,17 @@ export default function Requirements() {
     },
     onError: (error) => {
       toast.error(`Delete failed: ${error.message}`);
+    },
+  });
+
+  const linkDeliverableMutation = trpc.deliverables.addLink.useMutation({
+    onSuccess: () => {
+      toast.success('Deliverable linked successfully');
+      setSelectedDeliverableToLink('');
+      utils.deliverables.getByEntity.invalidate();
+    },
+    onError: (error) => {
+      toast.error(`Link failed: ${error.message}`);
     },
   });
 
@@ -946,6 +962,49 @@ export default function Requirements() {
                   <Button size="sm" onClick={() => setCreateDeliverableDialogOpen(true)} className="bg-primary hover:bg-primary/90">
                     <Plus className="w-4 h-4 mr-2" />
                     Create Deliverable
+                  </Button>
+                </div>
+                {/* Link Existing Deliverable */}
+                <div className="flex gap-2 mb-3">
+                  <Select
+                    value={selectedDeliverableToLink}
+                    onValueChange={setSelectedDeliverableToLink}
+                  >
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Select deliverable to link..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {allDeliverables?.filter(del => 
+                        !linkedDeliverables?.some(linked => linked.id === del.id)
+                      ).map((del) => (
+                        <SelectItem key={del.id} value={del.id.toString()}>
+                          {del.deliverableId} - {del.description?.substring(0, 50) || 'No description'}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      if (selectedDeliverableToLink && selectedRequirement?.idCode) {
+                        linkDeliverableMutation.mutate({
+                          deliverableId: parseInt(selectedDeliverableToLink),
+                          entityType: 'requirement',
+                          entityId: selectedRequirement.idCode,
+                        });
+                      }
+                    }}
+                    disabled={!selectedDeliverableToLink || linkDeliverableMutation.isPending}
+                    className="bg-primary hover:bg-primary/90"
+                  >
+                    {linkDeliverableMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <>
+                        <Link2 className="w-4 h-4 mr-2" />
+                        Link
+                      </>
+                    )}
                   </Button>
                 </div>
                 {linkedDeliverables && linkedDeliverables.length > 0 ? (
