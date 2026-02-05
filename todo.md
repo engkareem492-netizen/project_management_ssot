@@ -694,3 +694,4 @@
 - [x] Fix Issues page Owner field to use stakeholder dropdown instead of text input showing ID
 - [x] Compare Issues fields with Requirements fields and align structure
 - [x] Update Issues edit dialog to match Requirements organization and field types
+- [x] Update Issues status updates section to match Requirements page format with proper field labels and layout

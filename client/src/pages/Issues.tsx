@@ -1162,35 +1162,19 @@ export default function Issues() {
               </div>
             </div>
 
-            {/* Status Updates */}
-            <div className="border-t pt-4">
-              <h4 className="font-medium mb-3">Status Updates</h4>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
-                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Current Status</Label>
-                  {isEditMode ? (
-                    <Textarea value={editFormData.currentStatus} onChange={(e) => setEditFormData({...editFormData, currentStatus: e.target.value})} className="min-h-[60px]" />
-                  ) : (
-                    <p className="font-medium whitespace-pre-wrap">{selectedIssue?.currentStatus || '-'}</p>
-                  )}
-                </div>
-                <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
-                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Last Update</Label>
-                  {isEditMode ? (
-                    <Textarea value={editFormData.lastUpdate} onChange={(e) => setEditFormData({...editFormData, lastUpdate: e.target.value})} className="min-h-[60px]" />
-                  ) : (
-                    <p className="font-medium whitespace-pre-wrap">{selectedIssue?.lastUpdate || '-'}</p>
-                  )}
-                </div>
-                <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
-                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Status Update</Label>
-                  {isEditMode ? (
-                    <Textarea value={editFormData.statusUpdate} onChange={(e) => setEditFormData({...editFormData, statusUpdate: e.target.value})} className="min-h-[60px]" />
-                  ) : (
-                    <p className="font-medium whitespace-pre-wrap">{selectedIssue?.statusUpdate || '-'}</p>
-                  )}
-                </div>
-              </div>
+            {/* Last Update */}
+            <div className="col-span-2 space-y-1 p-3 bg-muted/50 rounded-lg">
+              <Label className="text-xs text-muted-foreground uppercase tracking-wide">Last Update</Label>
+              {isEditMode ? (
+                <Textarea
+                  value={editFormData.lastUpdate}
+                  onChange={(e) => setEditFormData({...editFormData, lastUpdate: e.target.value})}
+                  className="min-h-[60px]"
+                  placeholder="Enter update notes"
+                />
+              ) : (
+                <p className="font-medium">{selectedIssue?.lastUpdate || '-'}</p>
+              )}
             </div>
           </div>
         </DialogContent>
