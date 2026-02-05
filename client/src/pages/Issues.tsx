@@ -28,7 +28,7 @@ export default function Issues() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [settingsType, setSettingsType] = useState<"status" | "priority" | "type" | "class">("status");
+  const [settingsType, setSettingsType] = useState<"status" | "priority">("status");
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [selectedIssue, setSelectedIssue] = useState<any>(null);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -116,8 +116,6 @@ export default function Issues() {
     { projectId: currentProjectId || 0 },
     { enabled: !!currentProjectId }
   );
-  const { data: typeOptions } = trpc.dropdownOptions.type.getAll.useQuery();
-  const { data: classOptions } = trpc.dropdownOptions.class.getAll.useQuery();
 
   const utils = trpc.useUtils();
 
@@ -567,30 +565,6 @@ export default function Issues() {
                 <Settings className="w-4 h-4 mr-1" />
                 Priority
               </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setSettingsType("type");
-                  setSettingsOpen(true);
-                }}
-                title="Manage Type Options"
-              >
-                <Settings className="w-4 h-4 mr-1" />
-                Type
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setSettingsType("class");
-                  setSettingsOpen(true);
-                }}
-                title="Manage Class Options"
-              >
-                <Settings className="w-4 h-4 mr-1" />
-                Class
-              </Button>
             </div>
           </div>
         </CardHeader>
@@ -1001,7 +975,7 @@ export default function Issues() {
       <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Manage {settingsType === 'status' ? 'Status' : settingsType === 'priority' ? 'Priority' : settingsType === 'type' ? 'Type' : 'Class'} Options</DialogTitle>
+            <DialogTitle>Manage {settingsType === 'status' ? 'Status' : 'Priority'} Options</DialogTitle>
             <DialogDescription>
               Add, edit, or delete {settingsType} options for issues
             </DialogDescription>
@@ -1128,16 +1102,7 @@ export default function Issues() {
               <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                 <Label className="text-xs text-muted-foreground uppercase tracking-wide">Type</Label>
                 {isEditMode ? (
-                  <Select value={editFormData.type} onValueChange={(v) => setEditFormData({...editFormData, type: v})}>
-                    <SelectTrigger className="h-8">
-                      <SelectValue placeholder="Select type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {typeOptions?.map((opt) => (
-                        <SelectItem key={opt.id} value={opt.value}>{opt.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Input value={editFormData.type} onChange={(e) => setEditFormData({...editFormData, type: e.target.value})} className="h-8" />
                 ) : (
                   <p className="font-medium">{selectedIssue?.type || '-'}</p>
                 )}
@@ -1145,16 +1110,7 @@ export default function Issues() {
               <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                 <Label className="text-xs text-muted-foreground uppercase tracking-wide">Class</Label>
                 {isEditMode ? (
-                  <Select value={editFormData.class} onValueChange={(v) => setEditFormData({...editFormData, class: v})}>
-                    <SelectTrigger className="h-8">
-                      <SelectValue placeholder="Select class" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {classOptions?.map((opt) => (
-                        <SelectItem key={opt.id} value={opt.value}>{opt.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Input value={editFormData.class} onChange={(e) => setEditFormData({...editFormData, class: e.target.value})} className="h-8" />
                 ) : (
                   <p className="font-medium">{selectedIssue?.class || '-'}</p>
                 )}

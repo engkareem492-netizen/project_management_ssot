@@ -678,9 +678,6 @@
 
 - [x] Fix task dropdown in Issues page showing tasks from all projects instead of current project only
 - [x] Remove auto-requirement creation when saving tasks (unwanted feature)
-- [x] Add Issue Class dropdown options in Settings with CRUD operations
-- [x] Add Issue Type dropdown options in Settings with CRUD operations
-- [x] Update Issues edit dialog to use Class and Type dropdowns instead of text inputs
 
 - [x] Add requirement dropdown selector in edit task dialog to allow changing linked requirement
 - [x] Add "+" button next to requirement dropdown in edit task dialog to create new requirements
@@ -697,9 +694,3 @@
 - [x] Fix Issues page Owner field to use stakeholder dropdown instead of text input showing ID
 - [x] Compare Issues fields with Requirements fields and align structure
 - [x] Update Issues edit dialog to match Requirements organization and field types
-
-- [ ] Add Issue Class dropdown options in Settings with CRUD operations
-- [ ] Add Issue Type dropdown options in Settings with CRUD operations
-- [ ] Update Issues creation form to use Class and Type dropdowns
-- [ ] Update Issues edit dialog to use Class and Type dropdowns
-- [ ] Fix Issues status updates section to match Requirements page format

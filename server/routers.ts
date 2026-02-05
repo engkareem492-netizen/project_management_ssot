@@ -1483,38 +1483,6 @@ export const appRouter = router({
           return { success: true };
         }),
     }),
-    class: router({
-      getAll: publicProcedure
-        .input(z.object({ category: z.string().optional() }).optional())
-        .query(async () => {
-          return await db.getAllClassOptions();
-        }),
-      create: protectedProcedure
-        .input(z.object({
-          value: z.string(),
-          category: z.string().optional(),
-        }))
-        .mutation(async ({ input }) => {
-          return await db.createClassOption({
-            value: input.value,
-            label: input.value,
-          });
-        }),
-      update: protectedProcedure
-        .input(z.object({
-          id: z.number(),
-          value: z.string(),
-        }))
-        .mutation(async ({ input }) => {
-          return await db.updateClassOption(input.id, { label: input.value });
-        }),
-      delete: protectedProcedure
-        .input(z.object({ id: z.number() }))
-        .mutation(async ({ input }) => {
-          await db.deleteClassOption(input.id);
-          return { success: true };
-        }),
-    }),
     // Task Groups
     taskGroups: router({
       getAll: publicProcedure

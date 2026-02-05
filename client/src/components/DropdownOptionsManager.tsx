@@ -14,7 +14,7 @@ import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 
 interface DropdownOptionsManagerProps {
-  type: "status" | "priority" | "type" | "category" | "class";
+  type: "status" | "priority" | "type" | "category";
   category?: string;
 }
 
@@ -31,19 +31,16 @@ export function DropdownOptionsManager({ type, category }: DropdownOptionsManage
   const priorityQuery = trpc.dropdownOptions.priority.getAll.useQuery(undefined, { enabled: type === "priority" });
   const typeQuery = trpc.dropdownOptions.type.getAll.useQuery(undefined, { enabled: type === "type" });
   const categoryQuery = trpc.dropdownOptions.category.getAll.useQuery(undefined, { enabled: type === "category" });
-  const classQuery = trpc.dropdownOptions.class.getAll.useQuery(undefined, { enabled: type === "class" });
 
   const options = type === "status" ? statusQuery.data :
                   type === "priority" ? priorityQuery.data :
                   type === "type" ? typeQuery.data :
-                  type === "category" ? categoryQuery.data :
-                  classQuery.data;
+                  categoryQuery.data;
 
   const isLoading = type === "status" ? statusQuery.isLoading :
                     type === "priority" ? priorityQuery.isLoading :
                     type === "type" ? typeQuery.isLoading :
-                    type === "category" ? categoryQuery.isLoading :
-                    classQuery.isLoading;
+                    categoryQuery.isLoading;
 
   // Create mutations
   const createStatusMutation = trpc.dropdownOptions.status.create.useMutation({
@@ -180,39 +177,6 @@ export function DropdownOptionsManager({ type, category }: DropdownOptionsManage
     },
   });
 
-  const createClassMutation = trpc.dropdownOptions.class.create.useMutation({
-    onSuccess: () => {
-      utils.dropdownOptions.class.getAll.invalidate();
-      setNewValue("");
-      toast.success("Class option added successfully");
-    },
-    onError: (error: any) => {
-      toast.error(`Failed to add option: ${error.message}`);
-    },
-  });
-
-  const updateClassMutation = trpc.dropdownOptions.class.update.useMutation({
-    onSuccess: () => {
-      utils.dropdownOptions.class.getAll.invalidate();
-      setEditingId(null);
-      setEditValue("");
-      toast.success("Class option updated successfully");
-    },
-    onError: (error: any) => {
-      toast.error(`Failed to update option: ${error.message}`);
-    },
-  });
-
-  const deleteClassMutation = trpc.dropdownOptions.class.delete.useMutation({
-    onSuccess: () => {
-      utils.dropdownOptions.class.getAll.invalidate();
-      toast.success("Class option deleted successfully");
-    },
-    onError: (error: any) => {
-      toast.error(`Failed to delete option: ${error.message}`);
-    },
-  });
-
   const handleCreate = () => {
     if (!newValue.trim()) {
       toast.error("Please enter a value");
@@ -222,8 +186,7 @@ export function DropdownOptionsManager({ type, category }: DropdownOptionsManage
     if (type === "status") createStatusMutation.mutate(input);
     else if (type === "priority") createPriorityMutation.mutate(input);
     else if (type === "type") createTypeMutation.mutate(input);
-    else if (type === "category") createCategoryMutation.mutate(input);
-    else createClassMutation.mutate(input);
+    else createCategoryMutation.mutate(input);
   };
 
   const handleUpdate = (id: number) => {
@@ -235,8 +198,7 @@ export function DropdownOptionsManager({ type, category }: DropdownOptionsManage
     if (type === "status") updateStatusMutation.mutate(input);
     else if (type === "priority") updatePriorityMutation.mutate(input);
     else if (type === "type") updateTypeMutation.mutate(input);
-    else if (type === "category") updateCategoryMutation.mutate(input);
-    else updateClassMutation.mutate(input);
+    else updateCategoryMutation.mutate(input);
   };
 
   const handleDelete = (id: number, usageCount: number) => {
@@ -248,16 +210,14 @@ export function DropdownOptionsManager({ type, category }: DropdownOptionsManage
       if (type === "status") deleteStatusMutation.mutate({ id });
       else if (type === "priority") deletePriorityMutation.mutate({ id });
       else if (type === "type") deleteTypeMutation.mutate({ id });
-      else if (type === "category") deleteCategoryMutation.mutate({ id });
-      else deleteClassMutation.mutate({ id });
+      else deleteCategoryMutation.mutate({ id });
     }
   };
 
   const isPending = type === "status" ? (createStatusMutation.isPending || updateStatusMutation.isPending || deleteStatusMutation.isPending) :
                     type === "priority" ? (createPriorityMutation.isPending || updatePriorityMutation.isPending || deletePriorityMutation.isPending) :
                     type === "type" ? (createTypeMutation.isPending || updateTypeMutation.isPending || deleteTypeMutation.isPending) :
-                    type === "category" ? (createCategoryMutation.isPending || updateCategoryMutation.isPending || deleteCategoryMutation.isPending) :
-                    (createClassMutation.isPending || updateClassMutation.isPending || deleteClassMutation.isPending);
+                    (createCategoryMutation.isPending || updateCategoryMutation.isPending || deleteCategoryMutation.isPending);
 
   return (
     <>
