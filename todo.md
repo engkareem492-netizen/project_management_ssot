@@ -695,3 +695,7 @@
 - [x] Compare Issues fields with Requirements fields and align structure
 - [x] Update Issues edit dialog to match Requirements organization and field types
 - [x] Update Issues status updates section to match Requirements page format with proper field labels and layout
+
+- [x] Add bar chart to Tasks page showing task distribution by responsible person
+- [x] Implement interactive drill-down: clicking bar shows table of tasks for that person
+- [x] Task detail table should include: Task ID, Assigned Date, Due Date, Last Status, Linked Requirement, Linked Issue
