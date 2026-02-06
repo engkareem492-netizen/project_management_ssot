@@ -86,6 +86,8 @@ export default function Issues() {
     owner: '',
     status: 'Open',
     priority: 'Medium',
+    type: '',
+    class: '',
     requirementId: '',
     deliverableId: undefined,
     taskId: '',
@@ -116,6 +118,9 @@ export default function Issues() {
     { projectId: currentProjectId || 0 },
     { enabled: !!currentProjectId }
   );
+  const { data: statusOptions } = trpc.dropdownOptions.status.getAll.useQuery();
+  const { data: priorityOptions } = trpc.dropdownOptions.priority.getAll.useQuery();
+  const { data: typeOptions } = trpc.dropdownOptions.type.getAll.useQuery();
 
   const utils = trpc.useUtils();
 
@@ -959,6 +964,31 @@ export default function Issues() {
                     placeholder="Select priority"
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="type">Type</Label>
+                  <Select
+                    value={newIssue.type || ''}
+                    onValueChange={(value) => setNewIssue({ ...newIssue, type: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select type..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {typeOptions?.map((t) => (
+                        <SelectItem key={t.id} value={t.value}>{t.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="class">Class</Label>
+                  <Input
+                    id="class"
+                    value={newIssue.class || ''}
+                    onChange={(e) => setNewIssue({ ...newIssue, class: e.target.value })}
+                    placeholder="Issue class..."
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -1094,7 +1124,16 @@ export default function Issues() {
               <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                 <Label className="text-xs text-muted-foreground uppercase tracking-wide">Priority</Label>
                 {isEditMode ? (
-                  <Input value={editFormData.priority} onChange={(e) => setEditFormData({...editFormData, priority: e.target.value})} className="h-8" />
+                  <Select value={editFormData.priority || ''} onValueChange={(v) => setEditFormData({...editFormData, priority: v})}>
+                    <SelectTrigger className="h-8">
+                      <SelectValue placeholder="Select priority" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {priorityOptions?.map((p) => (
+                        <SelectItem key={p.id} value={p.value}>{p.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 ) : (
                   <Badge variant={getPriorityColor(selectedIssue?.priority)}>{selectedIssue?.priority || '-'}</Badge>
                 )}
@@ -1102,7 +1141,16 @@ export default function Issues() {
               <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                 <Label className="text-xs text-muted-foreground uppercase tracking-wide">Type</Label>
                 {isEditMode ? (
-                  <Input value={editFormData.type} onChange={(e) => setEditFormData({...editFormData, type: e.target.value})} className="h-8" />
+                  <Select value={editFormData.type || ''} onValueChange={(v) => setEditFormData({...editFormData, type: v})}>
+                    <SelectTrigger className="h-8">
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {typeOptions?.map((t) => (
+                        <SelectItem key={t.id} value={t.value}>{t.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 ) : (
                   <p className="font-medium">{selectedIssue?.type || '-'}</p>
                 )}

@@ -699,3 +699,10 @@
 - [x] Add bar chart to Tasks page showing task distribution by responsible person
 - [x] Implement interactive drill-down: clicking bar shows table of tasks for that person
 - [x] Task detail table should include: Task ID, Assigned Date, Due Date, Last Status, Linked Requirement, Linked Issue
+
+- [ ] Fix Owner not displaying in Issues edit form
+- [ ] Replace Issue Type text input with dropdown in edit form
+- [ ] Replace Priority text input with dropdown in edit form
+- [ ] Replace Class text input with dropdown in edit form
+- [ ] Add Class dropdown to issue creation form
+- [ ] Add Type dropdown to issue creation form
