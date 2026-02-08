@@ -51,8 +51,11 @@ export default defineConfig({
         '**/.cache/**',
         '**/tmp/**',
         '**/temp/**',
+        '**/screenshots/**',
+        '**/page_texts/**',
       ],
       usePolling: false,
+      depth: 3,
     },
   },
 });
