@@ -305,10 +305,8 @@ function DashboardLayoutContent({
             </SidebarMenu>
 
             {/* Excel Import/Export Section */}
-            <div className="border-t mx-2 my-4"></div>
-            <SidebarGroup>
-              <SidebarGroupContent>
-                <SidebarMenu className="px-2">
+            <div className="mt-4 pt-4 border-t">
+              <SidebarMenu className="px-2">
                   <SidebarMenuItem>
                     <SidebarMenuButton
                       onClick={() => setExcelMenuOpen(!excelMenuOpen)}
@@ -351,9 +349,8 @@ function DashboardLayoutContent({
                       </SidebarMenuSub>
                     )}
                   </SidebarMenuItem>
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
+              </SidebarMenu>
+            </div>
           </SidebarContent>
 
           <SidebarFooter className="p-3">
