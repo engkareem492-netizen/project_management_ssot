@@ -749,3 +749,11 @@
 - [ ] Implement project export functionality (export all project data as JSON)
 - [ ] Implement project import functionality with password validation
 - [ ] Add UI for importing data from another project
+
+## CRITICAL BUGS (Feb 9, 2026)
+
+- [x] Fix data isolation - new projects showing data from other projects
+- [x] Verify all backend queries filter by projectId
+- [ ] Fix ID/prefix ranges - each project needs separate number sequences
+- [ ] Add project import UI during project creation
+- [ ] Implement selective entity import (stakeholders, issues, requirements, etc.)

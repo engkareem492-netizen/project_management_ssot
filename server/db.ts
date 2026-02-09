@@ -791,22 +791,34 @@ export async function getAllTasksSorted(projectId?: number) {
   return tasksWithStatus;
 }
 
-export async function getAllIssuesSorted() {
+export async function getAllIssuesSorted(projectId?: number) {
   const db = await getDb();
   if (!db) return [];
-  return await db.select().from(issues).orderBy(issues.issueId);
+  const query = db.select().from(issues);
+  if (projectId) {
+    return await query.where(eq(issues.projectId, projectId)).orderBy(issues.issueId);
+  }
+  return await query.orderBy(issues.issueId);
 }
 
-export async function getAllDependenciesSorted() {
+export async function getAllDependenciesSorted(projectId?: number) {
   const db = await getDb();
   if (!db) return [];
-  return await db.select().from(dependencies).orderBy(dependencies.dependencyId);
+  const query = db.select().from(dependencies);
+  if (projectId) {
+    return await query.where(eq(dependencies.projectId, projectId)).orderBy(dependencies.dependencyId);
+  }
+  return await query.orderBy(dependencies.dependencyId);
 }
 
-export async function getAllAssumptionsSorted() {
+export async function getAllAssumptionsSorted(projectId?: number) {
   const db = await getDb();
   if (!db) return [];
-  return await db.select().from(assumptions).orderBy(assumptions.assumptionId);
+  const query = db.select().from(assumptions);
+  if (projectId) {
+    return await query.where(eq(assumptions.projectId, projectId)).orderBy(assumptions.assumptionId);
+  }
+  return await query.orderBy(assumptions.assumptionId);
 }
 
 // ID Configuration functions

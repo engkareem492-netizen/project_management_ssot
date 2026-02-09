@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
+import { useProject } from "@/contexts/ProjectContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,8 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 
 export default function Today() {
-  const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
-  const [editingTaskStatus, setEditingTaskStatus] = useState("");
+  const { currentProjectId } = useProject();
+  const [editingTaskId, setEditingTaskId] = useState<number | null>(null);  const [editingTaskStatus, setEditingTaskStatus] = useState("");
   const [editingRequirementId, setEditingRequirementId] = useState<number | null>(null);
   const [editingRequirementStatus, setEditingRequirementStatus] = useState("");
   
@@ -22,8 +23,8 @@ export default function Today() {
   const [groupBy, setGroupBy] = useState<string>("none");
 
   const utils = trpc.useUtils();
-  const { data: tasks, isLoading: tasksLoading } = trpc.tasks.list.useQuery();
-  const { data: requirements, isLoading: requirementsLoading } = trpc.requirements.list.useQuery();
+  const { data: tasks, isLoading: tasksLoading } = trpc.tasks.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
+  const { data: requirements, isLoading: requirementsLoading } = trpc.requirements.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
   const { data: statusOptions } = trpc.dropdownOptions.status.getAll.useQuery();
 
   const updateTaskMutation = trpc.tasks.update.useMutation({

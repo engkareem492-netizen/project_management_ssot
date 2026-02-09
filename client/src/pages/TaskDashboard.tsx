@@ -1,10 +1,12 @@
 import { useMemo } from "react";
 import { trpc } from "@/lib/trpc";
+import { useProject } from "@/contexts/ProjectContext";
 import { Card } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 
 export function TaskDashboard() {
-  const { data: tasks = [] } = trpc.tasks.list.useQuery();
+  const { currentProjectId } = useProject();
+  const { data: tasks = [] } = trpc.tasks.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
 
   // Group tasks by Responsible
   const tasksByResponsible = useMemo(() => {

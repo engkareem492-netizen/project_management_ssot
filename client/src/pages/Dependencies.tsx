@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
+import { useProject } from "@/contexts/ProjectContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,8 +12,8 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
 export default function Dependencies() {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const { currentProjectId } = useProject();
+  const [searchTerm, setSearchTerm] = useState("");  const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [newDependency, setNewDependency] = useState<any>({
@@ -22,7 +23,7 @@ export default function Dependencies() {
     currentStatus: 'Pending',
   });
 
-  const { data: dependencies, isLoading, refetch } = trpc.dependencies.list.useQuery();
+  const { data: dependencies, isLoading, refetch } = trpc.dependencies.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
 
   const createMutation = trpc.dependencies.create.useMutation({
     onSuccess: () => {

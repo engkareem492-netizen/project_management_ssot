@@ -21,6 +21,7 @@ import { DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 
 export default function Tasks() {
+  const { currentProjectId } = useProject();
   const [searchTerm, setSearchTerm] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editData, setEditData] = useState<any>({});
@@ -105,14 +106,11 @@ export default function Tasks() {
     requirementId: '',
     dueDate: '',
     assignDate: new Date().toISOString().split('T')[0],
-  });
-
-  const { currentProjectId } = useProject();
-  const { data: tasks, isLoading, refetch } = trpc.tasks.list.useQuery(
+  });  const { data: tasks, isLoading, refetch } = trpc.tasks.list.useQuery(
     { projectId: currentProjectId || 0 },
     { enabled: !!currentProjectId }
   );
-  const { data: stakeholders } = trpc.stakeholders.list.useQuery();
+  const { data: stakeholders } = trpc.stakeholders.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
   const { data: requirements } = trpc.requirements.list.useQuery(
     { projectId: currentProjectId || 0 },
     { enabled: !!currentProjectId }
@@ -121,7 +119,7 @@ export default function Tasks() {
     { projectId: currentProjectId || 0 },
     { enabled: !!currentProjectId }
   );
-  const { data: allIssues } = trpc.issues.list.useQuery();
+  const { data: allIssues } = trpc.issues.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
   const { data: linkedIssues } = trpc.issues.getByEntity.useQuery(
     { entityType: "task", entityId: selectedTask?.taskId || "" },
     { enabled: viewDialogOpen && !!selectedTask?.taskId }

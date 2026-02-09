@@ -19,6 +19,7 @@ import { DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 
 export default function Issues() {
+  const { currentProjectId } = useProject();
   const [searchTerm, setSearchTerm] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editData, setEditData] = useState<any>({});
@@ -92,12 +93,9 @@ export default function Issues() {
     deliverableId: undefined,
     taskId: '',
     openDate: new Date().toISOString().split('T')[0],
-  });
-
-  const { currentProjectId } = useProject();
-  const { data: issues, isLoading, refetch } = trpc.issues.list.useQuery();
-  const { data: stakeholders } = trpc.stakeholders.list.useQuery();
-  const { data: requirements } = trpc.requirements.list.useQuery();
+  });  const { data: issues, isLoading, refetch } = trpc.issues.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
+  const { data: stakeholders } = trpc.stakeholders.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
+  const { data: requirements } = trpc.requirements.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
   const { data: deliverables } = trpc.deliverables.list.useQuery(
     { projectId: currentProjectId || 0 },
     { enabled: !!currentProjectId }

@@ -45,6 +45,7 @@ import { toast } from "sonner";
 import { Plus, Trash2, Pencil, Search, Package, Link2, X } from "lucide-react";
 
 export default function Deliverables() {
+  const { currentProjectId } = useProject();
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -63,17 +64,14 @@ export default function Deliverables() {
   const [linkData, setLinkData] = useState({
     entityType: "requirement" as "requirement" | "task" | "dependency",
     entityId: "",
-  });
-
-  const { currentProjectId } = useProject();
-  const utils = trpc.useUtils();
+  });  const utils = trpc.useUtils();
   const { data: deliverables, isLoading } = trpc.deliverables.list.useQuery(
     { projectId: currentProjectId || 0 },
     { enabled: !!currentProjectId }
   );
-  const { data: requirements } = trpc.requirements.list.useQuery();
-  const { data: tasks } = trpc.tasks.list.useQuery();
-  const { data: dependencies } = trpc.dependencies.list.useQuery();
+  const { data: requirements } = trpc.requirements.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
+  const { data: tasks } = trpc.tasks.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
+  const { data: dependencies } = trpc.dependencies.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
   const { data: deliverableLinks } = trpc.deliverables.getLinks.useQuery(
     { deliverableId: selectedDeliverable?.id || 0 },
     { enabled: isLinkOpen && !!selectedDeliverable?.id }

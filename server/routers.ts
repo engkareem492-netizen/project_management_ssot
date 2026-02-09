@@ -687,8 +687,10 @@ export const appRouter = router({
 
   // Issues
   issues: router({
-    list: protectedProcedure.query(async () => {
-      return await db.getAllIssuesSorted();
+    list: protectedProcedure
+      .input(z.object({ projectId: z.number() }).optional())
+      .query(async ({ input }) => {
+        return await db.getAllIssuesSorted(input?.projectId);
     }),
 
     get: protectedProcedure
@@ -851,8 +853,10 @@ export const appRouter = router({
 
   // Dependencies
   dependencies: router({
-    list: protectedProcedure.query(async () => {
-      return await db.getAllDependenciesSorted();
+    list: protectedProcedure
+      .input(z.object({ projectId: z.number() }).optional())
+      .query(async ({ input }) => {
+        return await db.getAllDependenciesSorted(input?.projectId);
     }),
 
     create: protectedProcedure
@@ -890,8 +894,10 @@ export const appRouter = router({
 
   // Assumptions
   assumptions: router({
-    list: protectedProcedure.query(async () => {
-      return await db.getAllAssumptionsSorted();
+    list: protectedProcedure
+      .input(z.object({ projectId: z.number() }).optional())
+      .query(async ({ input }) => {
+        return await db.getAllAssumptionsSorted(input?.projectId);
     }),
 
     create: protectedProcedure

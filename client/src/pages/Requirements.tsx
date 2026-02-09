@@ -18,6 +18,7 @@ import { SelectWithCreate } from "@/components/SelectWithCreate";
 import { toast } from "sonner";
 
 export default function Requirements() {
+  const { currentProjectId } = useProject();
   const [searchTerm, setSearchTerm] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editData, setEditData] = useState<any>({});
@@ -84,16 +85,14 @@ export default function Requirements() {
   });
 
   const utils = trpc.useUtils();
-  const { data: requirements, isLoading, refetch } = trpc.requirements.list.useQuery();
-  const { data: stakeholders } = trpc.stakeholders.list.useQuery();
-  const { data: tasks } = trpc.tasks.list.useQuery();
-  const { data: issues } = trpc.issues.list.useQuery();
+  const { data: requirements, isLoading, refetch } = trpc.requirements.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
+  const { data: stakeholders } = trpc.stakeholders.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
+  const { data: tasks } = trpc.tasks.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
+  const { data: issues } = trpc.issues.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
   const { data: statusOptions } = trpc.dropdownOptions.status.getAll.useQuery();
   const { data: priorityOptions } = trpc.dropdownOptions.priority.getAll.useQuery();
   const { data: typeOptions } = trpc.dropdownOptions.type.getAll.useQuery();
-  const { data: categoryOptions } = trpc.dropdownOptions.category.getAll.useQuery();
-  const { currentProjectId } = useProject();
-  const { data: taskGroups, refetch: refetchTaskGroups } = trpc.dropdownOptions.taskGroups.getAll.useQuery(
+  const { data: categoryOptions } = trpc.dropdownOptions.category.getAll.useQuery();  const { data: taskGroups, refetch: refetchTaskGroups } = trpc.dropdownOptions.taskGroups.getAll.useQuery(
     { projectId: currentProjectId! },
     { enabled: !!currentProjectId }
   );

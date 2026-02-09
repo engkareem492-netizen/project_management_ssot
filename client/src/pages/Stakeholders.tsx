@@ -35,6 +35,7 @@ import { toast } from "sonner";
 import { Plus, Trash2, Pencil, Search, Users, Mail, Phone, Briefcase } from "lucide-react";
 
 export default function Stakeholders() {
+  const { currentProjectId } = useProject();
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -52,10 +53,7 @@ export default function Stakeholders() {
   });
 
   const utils = trpc.useUtils();
-  const { data: stakeholders, isLoading } = trpc.stakeholders.list.useQuery();
-  const { currentProjectId } = useProject();
-  
-  const createMutation = trpc.stakeholders.create.useMutation({
+  const { data: stakeholders, isLoading } = trpc.stakeholders.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });  const createMutation = trpc.stakeholders.create.useMutation({
     onSuccess: () => {
       utils.stakeholders.list.invalidate();
       setIsCreateOpen(false);
