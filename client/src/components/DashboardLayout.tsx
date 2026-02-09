@@ -25,6 +25,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarProvider,
   SidebarTrigger,
   useSidebar,
@@ -48,6 +51,8 @@ import {
   Calendar,
   Upload,
   Download,
+  FileSpreadsheet,
+  ChevronRight,
   Database,
   Palette
 } from "lucide-react";
@@ -158,6 +163,7 @@ function DashboardLayoutContent({
   const activeMenuItem = menuItems.find(item => item.path === location);
   const isMobile = useIsMobile();
   const [uploading, setUploading] = useState(false);
+  const [excelMenuOpen, setExcelMenuOpen] = useState(false);
   const { currentProjectId, setCurrentProjectId } = useProject();
 
   const importMutation = trpc.excel.import.useMutation({
@@ -299,41 +305,52 @@ function DashboardLayoutContent({
             </SidebarMenu>
 
             {/* Excel Import/Export Section */}
-            <SidebarGroup className="border-t mt-4 pt-4">
+            <SidebarGroup className="border-t mt-6 pt-4">
               <SidebarGroupContent>
                 <SidebarMenu>
-                <SidebarMenuItem>
-                  <input
-                    type="file"
-                    accept=".xlsx,.xls"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                    id="sidebar-file-upload"
-                    disabled={uploading}
-                  />
-                  <label htmlFor="sidebar-file-upload" className="cursor-pointer">
+                  <SidebarMenuItem>
                     <SidebarMenuButton
-                      tooltip="Import Excel"
+                      onClick={() => setExcelMenuOpen(!excelMenuOpen)}
+                      tooltip="Excel Operations"
                       className="h-10 transition-all font-normal"
-                      disabled={uploading}
                     >
-                      <Upload className="h-4 w-4" />
-                      <span>{uploading ? "Importing..." : "Import Excel"}</span>
+                      <FileSpreadsheet className="h-4 w-4" />
+                      <span>Excel</span>
+                      <ChevronRight className={`ml-auto h-4 w-4 transition-transform ${excelMenuOpen ? 'rotate-90' : ''}`} />
                     </SidebarMenuButton>
-                  </label>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    onClick={handleExport}
-                    tooltip="Export Excel"
-                    className="h-10 transition-all font-normal"
-                    disabled={exportQuery.isLoading}
-                  >
-                    <Download className="h-4 w-4" />
-                    <span>{exportQuery.isLoading ? "Exporting..." : "Export Excel"}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
+                    {excelMenuOpen && (
+                      <SidebarMenuSub>
+                        <SidebarMenuSubItem>
+                          <input
+                            type="file"
+                            accept=".xlsx,.xls"
+                            onChange={handleFileUpload}
+                            className="hidden"
+                            id="sidebar-file-upload"
+                            disabled={uploading}
+                          />
+                          <label htmlFor="sidebar-file-upload" className="cursor-pointer w-full">
+                            <SidebarMenuSubButton asChild>
+                              <span className={uploading ? 'opacity-50 pointer-events-none' : ''}>
+                                <Upload className="h-4 w-4" />
+                                <span>{uploading ? "Importing..." : "Import"}</span>
+                              </span>
+                            </SidebarMenuSubButton>
+                          </label>
+                        </SidebarMenuSubItem>
+                        <SidebarMenuSubItem>
+                          <SidebarMenuSubButton
+                            onClick={handleExport}
+                            className={exportQuery.isLoading ? 'opacity-50 pointer-events-none' : ''}
+                          >
+                            <Download className="h-4 w-4" />
+                            <span>{exportQuery.isLoading ? "Exporting..." : "Export"}</span>
+                          </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
+                      </SidebarMenuSub>
+                    )}
+                  </SidebarMenuItem>
+                </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
           </SidebarContent>

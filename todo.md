@@ -736,3 +736,6 @@
 ## UI Fixes (Feb 9, 2026)
 
 - [x] Fix overlapping "EXCEL OPERATIONS" text in menu section (removed label to prevent overlap)
+
+- [x] Add spacing between Settings and Excel section (mt-6 instead of mt-4)
+- [x] Convert Excel Import/Export to collapsible menu with sub-items
