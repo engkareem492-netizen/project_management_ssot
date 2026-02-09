@@ -731,3 +731,8 @@
 - [ ] Create import UI with file upload and password input
 - [ ] Handle ID conflicts during import (regenerate IDs or map)
 - [ ] Test import/export with sample project data
+
+
+## UI Fixes (Feb 9, 2026)
+
+- [x] Fix overlapping "EXCEL OPERATIONS" text in menu section

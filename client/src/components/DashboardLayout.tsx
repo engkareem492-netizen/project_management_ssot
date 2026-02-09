@@ -17,6 +17,9 @@ import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarInset,
   SidebarMenu,
@@ -296,13 +299,12 @@ function DashboardLayoutContent({
             </SidebarMenu>
 
             {/* Excel Import/Export Section */}
-            <div className="px-2 py-4 border-t mt-4">
-              <div className="px-2 mb-2">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider group-data-[collapsible=icon]:hidden">
-                  Excel Operations
-                </p>
-              </div>
-              <SidebarMenu>
+            <SidebarGroup className="border-t mt-4 pt-4">
+              <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Excel Operations
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
                 <SidebarMenuItem>
                   <input
                     type="file"
@@ -335,7 +337,8 @@ function DashboardLayoutContent({
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               </SidebarMenu>
-            </div>
+              </SidebarGroupContent>
+            </SidebarGroup>
           </SidebarContent>
 
           <SidebarFooter className="p-3">
