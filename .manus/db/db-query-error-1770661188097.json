@@ -1,0 +1,8 @@
+{
+  "query": "INSERT INTO classOptions (projectId, value, label, description, isDefault) VALUES\n(1, 'critical', 'Critical', 'Critical priority class', 1),\n(1, 'high', 'High', 'High priority class', 0),\n(1, 'medium', 'Medium', 'Medium priority class', 0),\n(1, 'low', 'Low', 'Low priority class', 0),\n(2, 'critical', 'Critical', 'Critical priority class', 1),\n(2, 'high', 'High', 'High priority class', 0),\n(2, 'medium', 'Medium', 'Medium priority class', 0),\n(2, 'low', 'Low', 'Low priority class', 0),\n(3, 'critical', 'Critical', 'Critical priority class', 1),\n(3, 'high', 'High', 'High priority class', 0),\n(3, 'medium', 'Medium', 'Medium priority class', 0),\n(3, 'low', 'Low', 'Low priority class', 0);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4FzqaZAU5mRtC.root --database j37MQHBuWbY6PMBApJWnKm --execute INSERT INTO classOptions (projectId, value, label, description, isDefault) VALUES\n(1, 'critical', 'Critical', 'Critical priority class', 1),\n(1, 'high', 'High', 'High priority class', 0),\n(1, 'medium', 'Medium', 'Medium priority class', 0),\n(1, 'low', 'Low', 'Low priority class', 0),\n(2, 'critical', 'Critical', 'Critical priority class', 1),\n(2, 'high', 'High', 'High priority class', 0),\n(2, 'medium', 'Medium', 'Medium priority class', 0),\n(2, 'low', 'Low', 'Low priority class', 0),\n(3, 'critical', 'Critical', 'Critical priority class', 1),\n(3, 'high', 'High', 'High priority class', 0),\n(3, 'medium', 'Medium', 'Medium priority class', 0),\n(3, 'low', 'Low', 'Low priority class', 0);",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 1: Unknown column 'projectId' in 'field list'"
+  ]
+}

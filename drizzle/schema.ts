@@ -392,3 +392,75 @@ export const categoryOptions = mysqlTable("categoryOptions", {
 
 export type CategoryOption = typeof categoryOptions.$inferSelect;
 export type InsertCategoryOption = typeof categoryOptions.$inferInsert;
+
+/**
+ * Issue Types table - stores customizable type values for issues (project-specific)
+ */
+export const issueTypes = mysqlTable("issueTypes", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  value: varchar("value", { length: 100 }).notNull(),
+  label: varchar("label", { length: 100 }).notNull(),
+  description: text("description"),
+  isDefault: boolean("isDefault").default(false).notNull(),
+  usageCount: int("usageCount").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type IssueType = typeof issueTypes.$inferSelect;
+export type InsertIssueType = typeof issueTypes.$inferInsert;
+
+/**
+ * Task Types table - stores customizable type values for tasks (project-specific)
+ */
+export const taskTypes = mysqlTable("taskTypes", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  value: varchar("value", { length: 100 }).notNull(),
+  label: varchar("label", { length: 100 }).notNull(),
+  description: text("description"),
+  isDefault: boolean("isDefault").default(false).notNull(),
+  usageCount: int("usageCount").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type TaskType = typeof taskTypes.$inferSelect;
+export type InsertTaskType = typeof taskTypes.$inferInsert;
+
+/**
+ * Deliverable Types table - stores customizable type values for deliverables (project-specific)
+ */
+export const deliverableTypes = mysqlTable("deliverableTypes", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  value: varchar("value", { length: 100 }).notNull(),
+  label: varchar("label", { length: 100 }).notNull(),
+  description: text("description"),
+  isDefault: boolean("isDefault").default(false).notNull(),
+  usageCount: int("usageCount").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type DeliverableType = typeof deliverableTypes.$inferSelect;
+export type InsertDeliverableType = typeof deliverableTypes.$inferInsert;
+
+/**
+ * Class Options table - stores customizable class values for issues (project-specific)
+ */
+export const classOptions = mysqlTable("classOptions", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  value: varchar("value", { length: 100 }).notNull(),
+  label: varchar("label", { length: 100 }).notNull(),
+  description: text("description"),
+  isDefault: boolean("isDefault").default(false).notNull(),
+  usageCount: int("usageCount").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ClassOption = typeof classOptions.$inferSelect;
+export type InsertClassOption = typeof classOptions.$inferInsert;

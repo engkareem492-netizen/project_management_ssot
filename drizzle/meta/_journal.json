@@ -99,6 +99,13 @@
       "when": 1770334524884,
       "tag": "0013_elite_zodiak",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "5",
+      "when": 1770660804296,
+      "tag": "0014_boring_vindicator",
+      "breakpoints": true
     }
   ]
 }

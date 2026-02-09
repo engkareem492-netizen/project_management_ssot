@@ -700,9 +700,34 @@
 - [x] Implement interactive drill-down: clicking bar shows table of tasks for that person
 - [x] Task detail table should include: Task ID, Assigned Date, Due Date, Last Status, Linked Requirement, Linked Issue
 
-- [ ] Fix Owner not displaying in Issues edit form
-- [ ] Replace Issue Type text input with dropdown in edit form
-- [ ] Replace Priority text input with dropdown in edit form
-- [ ] Replace Class text input with dropdown in edit form
-- [ ] Add Class dropdown to issue creation form
-- [ ] Add Type dropdown to issue creation form
+- [x] Fix Owner not displaying in Issues edit form
+- [x] Replace Issue Type text input with dropdown in edit form
+- [x] Replace Priority text input with dropdown in edit form
+- [x] Replace Class text input with dropdown in edit form
+- [x] Add Class dropdown to issue creation form
+- [x] Add Type dropdown to issue creation form
+
+
+## Major Architectural Changes (Feb 8, 2026 - V6.0)
+
+### Separate Type Systems for Each Entity
+- [x] Create separate issueTypes table (independent from requirementTypes)
+- [x] Create separate taskTypes table
+- [x] Create separate deliverableTypes table
+- [ ] Remove shared typeOptions table or repurpose for requirements only
+- [ ] Add type management UI for each entity type
+
+### Class Field as Dropdown
+- [x] Create classOptions table with projectId
+- [ ] Add class management UI in Settings
+- [x] Convert Class text input to dropdown in Issues page
+- [ ] Add "+" button for inline class creation
+
+### Project Import/Export Feature
+- [ ] Design project export data structure (JSON format)
+- [ ] Create backend export procedure to serialize all project data
+- [ ] Create backend import procedure with data validation
+- [ ] Add password validation for project imports
+- [ ] Create import UI with file upload and password input
+- [ ] Handle ID conflicts during import (regenerate IDs or map)
+- [ ] Test import/export with sample project data

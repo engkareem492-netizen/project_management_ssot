@@ -120,7 +120,14 @@ export default function Issues() {
   );
   const { data: statusOptions } = trpc.dropdownOptions.status.getAll.useQuery();
   const { data: priorityOptions } = trpc.dropdownOptions.priority.getAll.useQuery();
-  const { data: typeOptions } = trpc.dropdownOptions.type.getAll.useQuery();
+  const { data: issueTypeOptions } = trpc.issueTypes.list.useQuery(
+    { projectId: currentProjectId || 0 },
+    { enabled: !!currentProjectId }
+  );
+  const { data: classOptions } = trpc.classOptions.list.useQuery(
+    { projectId: currentProjectId || 0 },
+    { enabled: !!currentProjectId }
+  );
 
   const utils = trpc.useUtils();
 
@@ -974,7 +981,7 @@ export default function Issues() {
                       <SelectValue placeholder="Select type..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {typeOptions?.map((t) => (
+                      {issueTypeOptions?.map((t) => (
                         <SelectItem key={t.id} value={t.value}>{t.label}</SelectItem>
                       ))}
                     </SelectContent>
@@ -982,12 +989,19 @@ export default function Issues() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="class">Class</Label>
-                  <Input
-                    id="class"
+                  <Select
                     value={newIssue.class || ''}
-                    onChange={(e) => setNewIssue({ ...newIssue, class: e.target.value })}
-                    placeholder="Issue class..."
-                  />
+                    onValueChange={(value) => setNewIssue({ ...newIssue, class: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select class..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {classOptions?.map((c) => (
+                        <SelectItem key={c.id} value={c.value}>{c.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>
@@ -1146,7 +1160,7 @@ export default function Issues() {
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
                     <SelectContent>
-                      {typeOptions?.map((t) => (
+                      {issueTypeOptions?.map((t) => (
                         <SelectItem key={t.id} value={t.value}>{t.label}</SelectItem>
                       ))}
                     </SelectContent>
@@ -1158,7 +1172,16 @@ export default function Issues() {
               <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                 <Label className="text-xs text-muted-foreground uppercase tracking-wide">Class</Label>
                 {isEditMode ? (
-                  <Input value={editFormData.class} onChange={(e) => setEditFormData({...editFormData, class: e.target.value})} className="h-8" />
+                  <Select value={editFormData.class} onValueChange={(value) => setEditFormData({...editFormData, class: value})}>
+                    <SelectTrigger className="h-8">
+                      <SelectValue placeholder="Select class" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {classOptions?.map((c) => (
+                        <SelectItem key={c.id} value={c.value}>{c.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 ) : (
                   <p className="font-medium">{selectedIssue?.class || '-'}</p>
                 )}

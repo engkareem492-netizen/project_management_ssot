@@ -27,7 +27,15 @@ import {
   taskGroups,
   issueGroups,
   InsertTaskGroup,
-  InsertIssueGroup
+  InsertIssueGroup,
+  issueTypes,
+  taskTypes,
+  deliverableTypes,
+  classOptions,
+  InsertIssueType,
+  InsertTaskType,
+  InsertDeliverableType,
+  InsertClassOption
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -1020,6 +1028,122 @@ export async function incrementCategoryUsage(value: string) {
   await db.update(categoryOptions)
     .set({ usageCount: sql`${categoryOptions.usageCount} + 1` })
     .where(eq(categoryOptions.value, value));
+}
+
+/**
+ * Issue Types (project-specific)
+ */
+export async function getAllIssueTypes(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(issueTypes).where(eq(issueTypes.projectId, projectId));
+}
+
+export async function createIssueType(data: InsertIssueType) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  const [created] = await db.insert(issueTypes).values(data).$returningId();
+  return await db.select().from(issueTypes).where(eq(issueTypes.id, created.id)).limit(1).then(r => r[0]);
+}
+
+export async function updateIssueType(id: number, data: Partial<{ label: string; description: string; isDefault: boolean }>) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  await db.update(issueTypes).set(data).where(eq(issueTypes.id, id));
+  return await db.select().from(issueTypes).where(eq(issueTypes.id, id)).limit(1).then(r => r[0]);
+}
+
+export async function deleteIssueType(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  await db.delete(issueTypes).where(eq(issueTypes.id, id));
+}
+
+/**
+ * Task Types (project-specific)
+ */
+export async function getAllTaskTypes(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(taskTypes).where(eq(taskTypes.projectId, projectId));
+}
+
+export async function createTaskType(data: InsertTaskType) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  const [created] = await db.insert(taskTypes).values(data).$returningId();
+  return await db.select().from(taskTypes).where(eq(taskTypes.id, created.id)).limit(1).then(r => r[0]);
+}
+
+export async function updateTaskType(id: number, data: Partial<{ label: string; description: string; isDefault: boolean }>) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  await db.update(taskTypes).set(data).where(eq(taskTypes.id, id));
+  return await db.select().from(taskTypes).where(eq(taskTypes.id, id)).limit(1).then(r => r[0]);
+}
+
+export async function deleteTaskType(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  await db.delete(taskTypes).where(eq(taskTypes.id, id));
+}
+
+/**
+ * Deliverable Types (project-specific)
+ */
+export async function getAllDeliverableTypes(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(deliverableTypes).where(eq(deliverableTypes.projectId, projectId));
+}
+
+export async function createDeliverableType(data: InsertDeliverableType) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  const [created] = await db.insert(deliverableTypes).values(data).$returningId();
+  return await db.select().from(deliverableTypes).where(eq(deliverableTypes.id, created.id)).limit(1).then(r => r[0]);
+}
+
+export async function updateDeliverableType(id: number, data: Partial<{ label: string; description: string; isDefault: boolean }>) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  await db.update(deliverableTypes).set(data).where(eq(deliverableTypes.id, id));
+  return await db.select().from(deliverableTypes).where(eq(deliverableTypes.id, id)).limit(1).then(r => r[0]);
+}
+
+export async function deleteDeliverableType(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  await db.delete(deliverableTypes).where(eq(deliverableTypes.id, id));
+}
+
+/**
+ * Class Options (project-specific)
+ */
+export async function getAllClassOptions(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(classOptions).where(eq(classOptions.projectId, projectId));
+}
+
+export async function createClassOption(data: InsertClassOption) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  const [created] = await db.insert(classOptions).values(data).$returningId();
+  return await db.select().from(classOptions).where(eq(classOptions.id, created.id)).limit(1).then(r => r[0]);
+}
+
+export async function updateClassOption(id: number, data: Partial<{ label: string; description: string; isDefault: boolean }>) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  await db.update(classOptions).set(data).where(eq(classOptions.id, id));
+  return await db.select().from(classOptions).where(eq(classOptions.id, id)).limit(1).then(r => r[0]);
+}
+
+export async function deleteClassOption(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  await db.delete(classOptions).where(eq(classOptions.id, id));
 }
 
 // Project functions

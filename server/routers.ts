@@ -1341,6 +1341,154 @@ export const appRouter = router({
       }),
   }),
 
+  issueTypes: router({
+    list: publicProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ input }) => {
+        return await db.getAllIssueTypes(input.projectId);
+      }),
+    create: protectedProcedure
+      .input(z.object({
+        projectId: z.number(),
+        value: z.string(),
+        label: z.string(),
+        description: z.string().optional(),
+        isDefault: z.boolean().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        return await db.createIssueType(input);
+      }),
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        data: z.object({
+          label: z.string().optional(),
+          description: z.string().optional(),
+          isDefault: z.boolean().optional(),
+        }),
+      }))
+      .mutation(async ({ input }) => {
+        return await db.updateIssueType(input.id, input.data);
+      }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.deleteIssueType(input.id);
+        return { success: true };
+      }),
+  }),
+
+  taskTypes: router({
+    list: publicProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ input }) => {
+        return await db.getAllTaskTypes(input.projectId);
+      }),
+    create: protectedProcedure
+      .input(z.object({
+        projectId: z.number(),
+        value: z.string(),
+        label: z.string(),
+        description: z.string().optional(),
+        isDefault: z.boolean().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        return await db.createTaskType(input);
+      }),
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        data: z.object({
+          label: z.string().optional(),
+          description: z.string().optional(),
+          isDefault: z.boolean().optional(),
+        }),
+      }))
+      .mutation(async ({ input }) => {
+        return await db.updateTaskType(input.id, input.data);
+      }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.deleteTaskType(input.id);
+        return { success: true };
+      }),
+  }),
+
+  deliverableTypes: router({
+    list: publicProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ input }) => {
+        return await db.getAllDeliverableTypes(input.projectId);
+      }),
+    create: protectedProcedure
+      .input(z.object({
+        projectId: z.number(),
+        value: z.string(),
+        label: z.string(),
+        description: z.string().optional(),
+        isDefault: z.boolean().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        return await db.createDeliverableType(input);
+      }),
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        data: z.object({
+          label: z.string().optional(),
+          description: z.string().optional(),
+          isDefault: z.boolean().optional(),
+        }),
+      }))
+      .mutation(async ({ input }) => {
+        return await db.updateDeliverableType(input.id, input.data);
+      }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.deleteDeliverableType(input.id);
+        return { success: true };
+      }),
+  }),
+
+  classOptions: router({
+    list: publicProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ input }) => {
+        return await db.getAllClassOptions(input.projectId);
+      }),
+    create: protectedProcedure
+      .input(z.object({
+        projectId: z.number(),
+        value: z.string(),
+        label: z.string(),
+        description: z.string().optional(),
+        isDefault: z.boolean().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        return await db.createClassOption(input);
+      }),
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        data: z.object({
+          label: z.string().optional(),
+          description: z.string().optional(),
+          isDefault: z.boolean().optional(),
+        }),
+      }))
+      .mutation(async ({ input }) => {
+        return await db.updateClassOption(input.id, input.data);
+      }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.deleteClassOption(input.id);
+        return { success: true };
+      }),
+  }),
+
   // Dropdown Options namespace for easier frontend access
   dropdownOptions: router({
     status: router({
