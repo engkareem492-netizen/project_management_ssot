@@ -300,9 +300,6 @@ function DashboardLayoutContent({
 
             {/* Excel Import/Export Section */}
             <SidebarGroup className="border-t mt-4 pt-4">
-              <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Excel Operations
-              </SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
                 <SidebarMenuItem>

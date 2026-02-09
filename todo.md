@@ -735,4 +735,4 @@
 
 ## UI Fixes (Feb 9, 2026)
 
-- [x] Fix overlapping "EXCEL OPERATIONS" text in menu section
+- [x] Fix overlapping "EXCEL OPERATIONS" text in menu section (removed label to prevent overlap)
