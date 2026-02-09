@@ -739,4 +739,4 @@
 
 - [x] Add spacing between Settings and Excel section (mt-6 instead of mt-4)
 - [x] Convert Excel Import/Export to collapsible menu with sub-items
-- [x] Fix Excel menu overlapping Settings vertically (replaced SidebarGroup with simple div container)
+- [ ] Fix Excel menu overlapping Settings by making sidebar more compact (reduce menu item heights)
