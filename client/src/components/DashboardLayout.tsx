@@ -305,7 +305,8 @@ function DashboardLayoutContent({
             </SidebarMenu>
 
             {/* Excel Import/Export Section */}
-            <SidebarGroup className="border-t mt-6 pt-4">
+            <div className="border-t mx-2 my-4"></div>
+            <SidebarGroup>
               <SidebarGroupContent>
                 <SidebarMenu className="px-2">
                   <SidebarMenuItem>
