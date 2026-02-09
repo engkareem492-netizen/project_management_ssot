@@ -165,6 +165,8 @@ function DashboardLayoutContent({
   const [uploading, setUploading] = useState(false);
   const [excelMenuOpen, setExcelMenuOpen] = useState(false);
   const { currentProjectId, setCurrentProjectId } = useProject();
+  const { data: projects } = trpc.projects.list.useQuery();
+  const currentProject = projects?.find(p => p.id === currentProjectId);
 
   const importMutation = trpc.excel.import.useMutation({
     onSuccess: (data) => {
@@ -275,7 +277,7 @@ function DashboardLayoutContent({
               {!isCollapsed ? (
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="font-semibold tracking-tight truncate">
-                    Navigation
+                    '{currentProject?.name || "Navigation"}'
                   </span>
                 </div>
               ) : null}
@@ -311,7 +313,7 @@ function DashboardLayoutContent({
                     <SidebarMenuButton
                       onClick={() => setExcelMenuOpen(!excelMenuOpen)}
                       tooltip="Excel Operations"
-                      className="h-10 transition-all font-normal"
+                      className="h-8 transition-all font-normal text-sm"
                     >
                       <FileSpreadsheet className="h-4 w-4" />
                       <span>Excel</span>

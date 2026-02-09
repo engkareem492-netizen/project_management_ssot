@@ -740,3 +740,12 @@
 - [x] Add spacing between Settings and Excel section (mt-6 instead of mt-4)
 - [x] Convert Excel Import/Export to collapsible menu with sub-items
 - [ ] Fix Excel menu overlapping Settings by making sidebar more compact (reduce menu item heights)
+
+## New Requirements (Feb 9, 2026 - Part 2)
+
+- [ ] Disconnect GitHub temporarily to speed up development
+- [x] Reduce Excel button height to h-8 to match other menu items
+- [x] Add project name indicator in header/sidebar to show current project
+- [ ] Implement project export functionality (export all project data as JSON)
+- [ ] Implement project import functionality with password validation
+- [ ] Add UI for importing data from another project
