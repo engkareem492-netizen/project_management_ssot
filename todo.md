@@ -739,3 +739,4 @@
 
 - [x] Add spacing between Settings and Excel section (mt-6 instead of mt-4)
 - [x] Convert Excel Import/Export to collapsible menu with sub-items
+- [x] Fix Excel menu appearing before Settings (added px-2 padding to match navigation menu)
