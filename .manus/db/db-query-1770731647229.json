@@ -1,0 +1,40 @@
+{
+  "query": "SHOW TABLES LIKE 'classOptions'; DESCRIBE classOptions;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4FzqaZAU5mRtC.root --database j37MQHBuWbY6PMBApJWnKm --execute SHOW TABLES LIKE 'classOptions'; DESCRIBE classOptions;",
+  "rows": [
+    {
+      "Tables_in_j37MQHBuWbY6PMBApJWnKm (classOptions)": "classOptions"
+    },
+    {
+      "Tables_in_j37MQHBuWbY6PMBApJWnKm (classOptions)": "Field\tType\tNull\tKey\tDefault\tExtra"
+    },
+    {
+      "Tables_in_j37MQHBuWbY6PMBApJWnKm (classOptions)": "id\tint(11)\tNO\tPRI\tNULL\tauto_increment"
+    },
+    {
+      "Tables_in_j37MQHBuWbY6PMBApJWnKm (classOptions)": "value\tvarchar(100)\tNO\tUNI\tNULL\t"
+    },
+    {
+      "Tables_in_j37MQHBuWbY6PMBApJWnKm (classOptions)": "label\tvarchar(100)\tNO\t\tNULL\t"
+    },
+    {
+      "Tables_in_j37MQHBuWbY6PMBApJWnKm (classOptions)": "description\ttext\tYES\t\tNULL\t"
+    },
+    {
+      "Tables_in_j37MQHBuWbY6PMBApJWnKm (classOptions)": "isDefault\ttinyint(1)\tNO\t\t0\t"
+    },
+    {
+      "Tables_in_j37MQHBuWbY6PMBApJWnKm (classOptions)": "usageCount\tint(11)\tNO\t\t0\t"
+    },
+    {
+      "Tables_in_j37MQHBuWbY6PMBApJWnKm (classOptions)": "createdAt\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\t"
+    },
+    {
+      "Tables_in_j37MQHBuWbY6PMBApJWnKm (classOptions)": "updatedAt\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\tDEFAULT_GENERATED on update CURRENT_TIMESTAMP"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_j37MQHBuWbY6PMBApJWnKm (classOptions)\nclassOptions\nField\tType\tNull\tKey\tDefault\tExtra\nid\tint(11)\tNO\tPRI\tNULL\tauto_increment\nvalue\tvarchar(100)\tNO\tUNI\tNULL\t\nlabel\tvarchar(100)\tNO\t\tNULL\t\ndescription\ttext\tYES\t\tNULL\t\nisDefault\ttinyint(1)\tNO\t\t0\t\nusageCount\tint(11)\tNO\t\t0\t\ncreatedAt\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\t\nupdatedAt\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\tDEFAULT_GENERATED on update CURRENT_TIMESTAMP\n",
+  "stderr": "",
+  "execution_time_ms": 2260
+}

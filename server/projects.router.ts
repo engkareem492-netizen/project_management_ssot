@@ -1,7 +1,7 @@
 import { protectedProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import * as db from "./db";
-import { stakeholders, deliverables } from "../drizzle/schema";
+
 import { TRPCError } from "@trpc/server";
 import { createHash } from "crypto";
 
@@ -162,5 +162,23 @@ export const projectsRouter = router({
 
       const data = await db.exportProjectData(input.projectId);
       return data;
+    }),
+
+  importData: protectedProcedure
+    .input(z.object({
+      targetProjectId: z.number(),
+      sourceData: z.any(),
+      selectedEntities: z.any(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      if (!ctx.user) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: 'You must be logged in to import project data',
+        });
+      }
+
+      await db.importProjectData(input.targetProjectId, input.sourceData, input.selectedEntities);
+      return { success: true };
     }),
 });

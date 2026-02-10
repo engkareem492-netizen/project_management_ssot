@@ -778,3 +778,16 @@
 - [x] Add password validation for source project
 - [x] Create backend endpoint to export project data as JSON
 - [ ] Implement import logic with data transformation (new IDs, preserve relationships) - TODO: Need to implement actual data import after project creation
+
+
+## Bug Fix (Feb 10, 2026 - Batch 27)
+
+### Complete Project Import Implementation
+- [x] Implement actual data import logic that inserts exported data into new project
+- [x] Transform entity IDs to match new project's ID sequences (strips old IDs, database auto-generates new ones)
+- [x] Preserve relationships between imported entities (idCode fields preserved for linking)
+- [x] Handle stakeholder imports with proper ID mapping
+- [x] Fixed classOptions table missing projectId column
+- [x] Created importProjectData backend function
+- [x] Added importData tRPC mutation
+- [x] Updated frontend to call import after project creation

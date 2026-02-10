@@ -1228,6 +1228,161 @@ export async function updateProjectPassword(projectId: number, hashedPassword: s
   }
 }
 
+export async function importProjectData(targetProjectId: number, sourceData: any, selectedEntities: any) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  try {
+    // Import stakeholders
+    if (selectedEntities.stakeholders && sourceData.stakeholders?.length > 0) {
+      for (const stakeholder of sourceData.stakeholders) {
+        const { id, createdAt, updatedAt, ...stakeholderData } = stakeholder;
+        await db.insert(stakeholders).values({
+          ...stakeholderData,
+          projectId: targetProjectId,
+        });
+      }
+    }
+
+    // Import task groups
+    if (selectedEntities.taskGroups && sourceData.taskGroups?.length > 0) {
+      for (const group of sourceData.taskGroups) {
+        const { id, createdAt, updatedAt, ...groupData } = group;
+        await db.insert(taskGroups).values({
+          ...groupData,
+          projectId: targetProjectId,
+        });
+      }
+    }
+
+    // Import issue groups
+    if (selectedEntities.issueGroups && sourceData.issueGroups?.length > 0) {
+      for (const group of sourceData.issueGroups) {
+        const { id, createdAt, updatedAt, ...groupData } = group;
+        await db.insert(issueGroups).values({
+          ...groupData,
+          projectId: targetProjectId,
+        });
+      }
+    }
+
+    // Import issue types
+    if (selectedEntities.issueTypes && sourceData.issueTypes?.length > 0) {
+      for (const type of sourceData.issueTypes) {
+        const { id, createdAt, updatedAt, ...typeData } = type;
+        await db.insert(issueTypes).values({
+          ...typeData,
+          projectId: targetProjectId,
+        });
+      }
+    }
+
+    // Import task types
+    if (selectedEntities.taskTypes && sourceData.taskTypes?.length > 0) {
+      for (const type of sourceData.taskTypes) {
+        const { id, createdAt, updatedAt, ...typeData } = type;
+        await db.insert(taskTypes).values({
+          ...typeData,
+          projectId: targetProjectId,
+        });
+      }
+    }
+
+    // Import deliverable types
+    if (selectedEntities.deliverableTypes && sourceData.deliverableTypes?.length > 0) {
+      for (const type of sourceData.deliverableTypes) {
+        const { id, createdAt, updatedAt, ...typeData } = type;
+        await db.insert(deliverableTypes).values({
+          ...typeData,
+          projectId: targetProjectId,
+        });
+      }
+    }
+
+    // Import class options
+    if (selectedEntities.classOptions && sourceData.classOptions?.length > 0) {
+      for (const option of sourceData.classOptions) {
+        const { id, createdAt, updatedAt, ...optionData } = option;
+        await db.insert(classOptions).values({
+          ...optionData,
+          projectId: targetProjectId,
+        });
+      }
+    }
+
+    // Import deliverables
+    if (selectedEntities.deliverables && sourceData.deliverables?.length > 0) {
+      for (const deliverable of sourceData.deliverables) {
+        const { id, createdAt, updatedAt, importedAt, ...deliverableData } = deliverable;
+        await db.insert(deliverables).values({
+          ...deliverableData,
+          projectId: targetProjectId,
+        });
+      }
+    }
+
+    // Import requirements
+    if (selectedEntities.requirements && sourceData.requirements?.length > 0) {
+      for (const requirement of sourceData.requirements) {
+        const { id, createdAt, updatedAt, importedAt, ...requirementData } = requirement;
+        await db.insert(requirements).values({
+          ...requirementData,
+          projectId: targetProjectId,
+        });
+      }
+    }
+
+    // Import tasks
+    if (selectedEntities.tasks && sourceData.tasks?.length > 0) {
+      for (const task of sourceData.tasks) {
+        const { id, createdAt, updatedAt, importedAt, ...taskData } = task;
+        await db.insert(tasks).values({
+          ...taskData,
+          projectId: targetProjectId,
+        });
+      }
+    }
+
+    // Import issues
+    if (selectedEntities.issues && sourceData.issues?.length > 0) {
+      for (const issue of sourceData.issues) {
+        const { id, createdAt, updatedAt, importedAt, ...issueData } = issue;
+        await db.insert(issues).values({
+          ...issueData,
+          projectId: targetProjectId,
+        });
+      }
+    }
+
+    // Import dependencies
+    if (selectedEntities.dependencies && sourceData.dependencies?.length > 0) {
+      for (const dependency of sourceData.dependencies) {
+        const { id, createdAt, updatedAt, importedAt, ...dependencyData } = dependency;
+        await db.insert(dependencies).values({
+          ...dependencyData,
+          projectId: targetProjectId,
+        });
+      }
+    }
+
+    // Import assumptions
+    if (selectedEntities.assumptions && sourceData.assumptions?.length > 0) {
+      for (const assumption of sourceData.assumptions) {
+        const { id, createdAt, updatedAt, importedAt, ...assumptionData } = assumption;
+        await db.insert(assumptions).values({
+          ...assumptionData,
+          projectId: targetProjectId,
+        });
+      }
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error importing project data:", error);
+    throw error;
+  }
+}
+
 export async function exportProjectData(projectId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");

@@ -51,6 +51,7 @@ export default function ProjectSelector({ onProjectSelected }: ProjectSelectorPr
 
   const projectsQuery = trpc.projects.list.useQuery();
   const exportDataMutation = trpc.projects.exportData.useMutation();
+  const importDataMutation = trpc.projects.importData.useMutation();
   
   const createMutation = trpc.projects.create.useMutation({
     onSuccess: async (data) => {
@@ -63,9 +64,12 @@ export default function ProjectSelector({ onProjectSelected }: ProjectSelectorPr
             password: importOptions.sourcePassword,
           });
           
-          // TODO: Import the exported data into the new project
-          // This will be implemented in the next step
-          console.log("Exported data:", exportedData);
+          // Import the exported data into the new project
+          await importDataMutation.mutateAsync({
+            targetProjectId: data.id,
+            sourceData: exportedData,
+            selectedEntities: importOptions.entities,
+          });
           toast.success("Project created and data imported successfully!");
         } catch (error: any) {
           toast.error(`Project created but import failed: ${error.message}`);
