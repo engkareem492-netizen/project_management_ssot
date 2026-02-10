@@ -791,3 +791,13 @@
 - [x] Created importProjectData backend function
 - [x] Added importData tRPC mutation
 - [x] Updated frontend to call import after project creation
+
+
+## Bug Fix (Feb 10, 2026 - Batch 28)
+
+### Fix Missing projectId Columns in Database Tables
+- [x] Check assumptions table for projectId column
+- [x] Add projectId column to assumptions table (ALTER TABLE executed)
+- [x] Check all other entity tables (requirements, tasks, issues, dependencies, deliverables, stakeholders) - all have projectId
+- [x] Restart server to pick up schema changes
+- [ ] Test import functionality after fix (waiting for user to test)
