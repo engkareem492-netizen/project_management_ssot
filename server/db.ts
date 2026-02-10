@@ -1169,6 +1169,7 @@ export async function getAllProjects() {
       name: projects.name,
       description: projects.description,
       createdAt: projects.createdAt,
+      createdBy: projects.createdBy,
     }).from(projects);
     return result;
   } catch (error) {

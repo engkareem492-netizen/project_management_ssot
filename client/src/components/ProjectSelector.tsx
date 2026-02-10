@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,6 +15,7 @@ interface ProjectSelectorProps {
 }
 
 export default function ProjectSelector({ onProjectSelected }: ProjectSelectorProps) {
+  const { user } = useAuth();
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const [password, setPassword] = useState("");
@@ -230,23 +232,25 @@ export default function ProjectSelector({ onProjectSelected }: ProjectSelectorPr
                 {verifyMutation.isPending ? "Verifying..." : "Access Project"}
               </Button>
             </div>
-            <div className="border-t pt-4 mt-4 space-y-2">
-              <Button
-                variant="outline"
-                onClick={() => setShowResetPassword(true)}
-                className="w-full"
-              >
-                Reset Project Password
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={handleDeleteProject}
-                disabled={deleteMutation.isPending}
-                className="w-full"
-              >
-                {deleteMutation.isPending ? "Deleting..." : "Delete Project"}
-              </Button>
-            </div>
+            {user && project?.createdBy === user.id && (
+              <div className="border-t pt-4 mt-4 space-y-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowResetPassword(true)}
+                  className="w-full"
+                >
+                  Reset Project Password
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleDeleteProject}
+                  disabled={deleteMutation.isPending}
+                  className="w-full"
+                >
+                  {deleteMutation.isPending ? "Deleting..." : "Delete Project"}
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

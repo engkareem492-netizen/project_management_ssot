@@ -757,3 +757,9 @@
 - [ ] Fix ID/prefix ranges - each project needs separate number sequences
 - [ ] Add project import UI during project creation
 - [ ] Implement selective entity import (stakeholders, issues, requirements, etc.)
+
+## URGENT BUG (Feb 9, 2026)
+
+- [x] Fix OAuth callback error - users cannot sign in (database connection reset - fixed by server restart)
+
+- [x] Hide delete/reset password buttons from non-creator users in ProjectSelector
