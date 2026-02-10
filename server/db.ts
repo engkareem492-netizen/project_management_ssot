@@ -1178,6 +1178,25 @@ export async function getAllProjects() {
   }
 }
 
+export async function getProjectsByUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  try {
+    const result = await db.select({
+      id: projects.id,
+      name: projects.name,
+      description: projects.description,
+      createdAt: projects.createdAt,
+      createdBy: projects.createdBy,
+    }).from(projects).where(eq(projects.createdBy, userId));
+    return result;
+  } catch (error) {
+    console.error("[Database] Failed to get projects by user:", error);
+    return [];
+  }
+}
+
 export async function getProjectById(id: number) {
   const db = await getDb();
   if (!db) return null;

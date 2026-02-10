@@ -801,3 +801,13 @@
 - [x] Check all other entity tables (requirements, tasks, issues, dependencies, deliverables, stakeholders) - all have projectId
 - [x] Restart server to pick up schema changes
 - [ ] Test import functionality after fix (waiting for user to test)
+
+
+## Feature (Feb 10, 2026 - Batch 29)
+
+### Filter Projects by Owner
+- [x] Update projects.list query to only return projects where createdBy = current user ID
+- [x] Created getProjectsByUser function in db.ts
+- [x] Updated projects router to use getProjectsByUser instead of getAllProjects
+- [x] Hide projects created by other users from the project selector
+- [x] Test that only owned projects appear in the list - verified working

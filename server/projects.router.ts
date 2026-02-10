@@ -11,7 +11,13 @@ function hashPassword(password: string): string {
 
 export const projectsRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
-    return await db.getAllProjects();
+    if (!ctx.user) {
+      throw new TRPCError({
+        code: 'UNAUTHORIZED',
+        message: 'You must be logged in to view projects',
+      });
+    }
+    return await db.getProjectsByUser(ctx.user.id);
   }),
 
   create: protectedProcedure
