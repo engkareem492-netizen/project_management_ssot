@@ -1,6 +1,7 @@
 import { protectedProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import * as db from "./db";
+import { stakeholders, deliverables } from "../drizzle/schema";
 import { TRPCError } from "@trpc/server";
 import { createHash } from "crypto";
 
@@ -126,5 +127,40 @@ export const projectsRouter = router({
       await db.deleteProject(input.projectId);
 
       return { success: true };
+    }),
+
+  exportData: protectedProcedure
+    .input(z.object({
+      projectId: z.number(),
+      password: z.string(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      if (!ctx.user) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: 'You must be logged in to export project data',
+        });
+      }
+
+      const project = await db.getProjectById(input.projectId);
+      
+      if (!project) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Project not found',
+        });
+      }
+
+      // Verify password
+      const hashedPassword = hashPassword(input.password);
+      if (project.password !== hashedPassword) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Invalid password',
+        });
+      }
+
+      const data = await db.exportProjectData(input.projectId);
+      return data;
     }),
 });

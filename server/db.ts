@@ -1228,6 +1228,52 @@ export async function updateProjectPassword(projectId: number, hashedPassword: s
   }
 }
 
+export async function exportProjectData(projectId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  try {
+    // Export all project data for import into another project
+    const [projectRequirements, projectTasks, projectIssues, projectStakeholders, 
+           projectDeliverables, projectDependencies, projectAssumptions,
+           projectTaskGroups, projectIssueGroups, projectIssueTypes,
+           projectTaskTypes, projectDeliverableTypes, projectClassOptions] = await Promise.all([
+      db.select().from(requirements).where(eq(requirements.projectId, projectId)),
+      db.select().from(tasks).where(eq(tasks.projectId, projectId)),
+      db.select().from(issues).where(eq(issues.projectId, projectId)),
+      db.select().from(stakeholders).where(eq(stakeholders.projectId, projectId)),
+      db.select().from(deliverables).where(eq(deliverables.projectId, projectId)),
+      db.select().from(dependencies).where(eq(dependencies.projectId, projectId)),
+      db.select().from(assumptions).where(eq(assumptions.projectId, projectId)),
+      db.select().from(taskGroups).where(eq(taskGroups.projectId, projectId)),
+      db.select().from(issueGroups).where(eq(issueGroups.projectId, projectId)),
+      db.select().from(issueTypes).where(eq(issueTypes.projectId, projectId)),
+      db.select().from(taskTypes).where(eq(taskTypes.projectId, projectId)),
+      db.select().from(deliverableTypes).where(eq(deliverableTypes.projectId, projectId)),
+      db.select().from(classOptions).where(eq(classOptions.projectId, projectId)),
+    ]);
+
+    return {
+      requirements: projectRequirements,
+      tasks: projectTasks,
+      issues: projectIssues,
+      stakeholders: projectStakeholders,
+      deliverables: projectDeliverables,
+      dependencies: projectDependencies,
+      assumptions: projectAssumptions,
+      taskGroups: projectTaskGroups,
+      issueGroups: projectIssueGroups,
+      issueTypes: projectIssueTypes,
+      taskTypes: projectTaskTypes,
+      deliverableTypes: projectDeliverableTypes,
+      classOptions: projectClassOptions,
+    };
+  } catch (error) {
+    console.error("Error exporting project data:", error);
+    throw error;
+  }
+}
+
 export async function deleteProject(projectId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");

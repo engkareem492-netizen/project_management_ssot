@@ -763,3 +763,18 @@
 - [x] Fix OAuth callback error - users cannot sign in (database connection reset - fixed by server restart)
 
 - [x] Hide delete/reset password buttons from non-creator users in ProjectSelector
+
+
+## Bug Fixes & Features (Feb 10, 2026 - Batch 26)
+
+### Delete Button Visibility Fix
+- [x] Fix delete button to show for project creators (was already working correctly)
+- [x] Update ProjectSelector.tsx to check if user.id === project.createdBy (already implemented on line 235)
+- [x] Show delete and reset password buttons only to project creators (working as designed)
+
+### Project Import Feature
+- [x] Add import option during project creation
+- [x] UI to select which entities to import (stakeholders, requirements, tasks, issues, deliverables, dependencies, assumptions)
+- [x] Add password validation for source project
+- [x] Create backend endpoint to export project data as JSON
+- [ ] Implement import logic with data transformation (new IDs, preserve relationships) - TODO: Need to implement actual data import after project creation
