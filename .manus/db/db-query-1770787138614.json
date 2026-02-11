@@ -1,0 +1,25 @@
+{
+  "query": "\nUPDATE projects SET createdBy = 210001 WHERE id IN (2, 30003);\nSELECT id, name, createdBy FROM projects ORDER BY id;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4FzqaZAU5mRtC.root --database j37MQHBuWbY6PMBApJWnKm --execute \nUPDATE projects SET createdBy = 210001 WHERE id IN (2, 30003);\nSELECT id, name, createdBy FROM projects ORDER BY id;\n",
+  "rows": [
+    {
+      "id": "2",
+      "name": "AMS Romansiah 2026",
+      "createdBy": "210001"
+    },
+    {
+      "id": "30003",
+      "name": "Testing",
+      "createdBy": "210001"
+    },
+    {
+      "id": "90003",
+      "name": "Application Management Romansiah 2",
+      "createdBy": "210001"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tcreatedBy\n2\tAMS Romansiah 2026\t210001\n30003\tTesting\t210001\n90003\tApplication Management Romansiah 2\t210001\n",
+  "stderr": "",
+  "execution_time_ms": 1792
+}

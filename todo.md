@@ -811,3 +811,13 @@
 - [x] Updated projects router to use getProjectsByUser instead of getAllProjects
 - [x] Hide projects created by other users from the project selector
 - [x] Test that only owned projects appear in the list - verified working
+
+
+## Bug Fix (Feb 10, 2026 - Batch 30)
+
+### Fix User ID Mismatch in Project Filtering
+- [x] Investigate why only 1 project shows when user created 3 projects - Found that projects 2 and 30003 had createdBy=1, project 90003 had createdBy=210001
+- [x] Check if ctx.user.id matches the createdBy field in database - Current user ID is 210001
+- [x] Verified user ID type (number vs string) in comparison - Both are numbers, comparison is correct
+- [x] Fix the user ID comparison to show all user's projects - Updated createdBy field for projects 2 and 30003 to 210001
+- [x] Database fix: UPDATE projects SET createdBy = 210001 WHERE id IN (2, 30003)

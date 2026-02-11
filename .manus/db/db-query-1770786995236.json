@@ -1,0 +1,16 @@
+{
+  "query": "\nSELECT id, openId, name, email FROM users WHERE email = 'k.eid@alromansiah.com';\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4FzqaZAU5mRtC.root --database j37MQHBuWbY6PMBApJWnKm --execute \nSELECT id, openId, name, email FROM users WHERE email = 'k.eid@alromansiah.com';\n",
+  "rows": [
+    {
+      "id": "210001",
+      "openId": "Ras7Kr6rZEKYcKVSQdHUKE",
+      "name": "k.eid",
+      "email": "k.eid@alromansiah.com"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\topenId\tname\temail\n210001\tRas7Kr6rZEKYcKVSQdHUKE\tk.eid\tk.eid@alromansiah.com\n",
+  "stderr": "",
+  "execution_time_ms": 1583
+}

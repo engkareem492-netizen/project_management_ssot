@@ -1,0 +1,37 @@
+{
+  "query": "\nSELECT \n  p.id,\n  p.name,\n  p.description,\n  p.createdBy,\n  u.name as creatorName,\n  u.email as creatorEmail,\n  p.createdAt\nFROM projects p\nLEFT JOIN users u ON p.createdBy = u.id\nORDER BY p.createdAt DESC;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4FzqaZAU5mRtC.root --database j37MQHBuWbY6PMBApJWnKm --execute \nSELECT \n  p.id,\n  p.name,\n  p.description,\n  p.createdBy,\n  u.name as creatorName,\n  u.email as creatorEmail,\n  p.createdAt\nFROM projects p\nLEFT JOIN users u ON p.createdBy = u.id\nORDER BY p.createdAt DESC;\n",
+  "rows": [
+    {
+      "id": "90003",
+      "name": "Application Management Romansiah 2",
+      "description": "Romansiah project",
+      "createdBy": "210001",
+      "creatorName": "k.eid",
+      "creatorEmail": "k.eid@alromansiah.com",
+      "createdAt": "2026-02-10 14:05:05"
+    },
+    {
+      "id": "30003",
+      "name": "Testing",
+      "description": "testing",
+      "createdBy": "1",
+      "creatorName": "Kareem Eid",
+      "creatorEmail": "eng.kareem492@gmail.com",
+      "createdAt": "2026-02-09 19:10:14"
+    },
+    {
+      "id": "2",
+      "name": "AMS Romansiah 2026",
+      "description": "Romansiah Support Project 2026",
+      "createdBy": "1",
+      "creatorName": "Kareem Eid",
+      "creatorEmail": "eng.kareem492@gmail.com",
+      "createdAt": "2026-01-31 18:52:00"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tdescription\tcreatedBy\tcreatorName\tcreatorEmail\tcreatedAt\n90003\tApplication Management Romansiah 2\tRomansiah project\t210001\tk.eid\tk.eid@alromansiah.com\t2026-02-10 14:05:05\n30003\tTesting\ttesting\t1\tKareem Eid\teng.kareem492@gmail.com\t2026-02-09 19:10:14\n2\tAMS Romansiah 2026\tRomansiah Support Project 2026\t1\tKareem Eid\teng.kareem492@gmail.com\t2026-01-31 18:52:00\n",
+  "stderr": "",
+  "execution_time_ms": 1599
+}
