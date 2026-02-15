@@ -1,0 +1,9 @@
+{
+  "query": "\n-- Fix existing prefixes\nUPDATE idSequences SET prefix = 'REQ' WHERE entityType = 'requirement' AND projectId = 1;\nUPDATE idSequences SET prefix = 'TSK' WHERE entityType = 'task' AND projectId = 1;\nUPDATE idSequences SET prefix = 'DEL' WHERE entityType = 'deliverable' AND projectId = 1;\n\n-- Add missing entity types\nINSERT INTO idSequences (projectId, entityType, prefix, currentNumber, minNumber, maxNumber, padLength) \nVALUES \n  (1, 'issue', 'ISS', 0, 1, 9999, 4),\n  (1, 'knowledgeBase', 'KB', 0, 1, 9999, 4)\nON DUPLICATE KEY UPDATE prefix = VALUES(prefix);\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4FzqaZAU5mRtC.root --database j37MQHBuWbY6PMBApJWnKm --execute \n-- Fix existing prefixes\nUPDATE idSequences SET prefix = 'REQ' WHERE entityType = 'requirement' AND projectId = 1;\nUPDATE idSequences SET prefix = 'TSK' WHERE entityType = 'task' AND projectId = 1;\nUPDATE idSequences SET prefix = 'DEL' WHERE entityType = 'deliverable' AND projectId = 1;\n\n-- Add missing entity types\nINSERT INTO idSequences (projectId, entityType, prefix, currentNumber, minNumber, maxNumber, padLength) \nVALUES \n  (1, 'issue', 'ISS', 0, 1, 9999, 4),\n  (1, 'knowledgeBase', 'KB', 0, 1, 9999, 4)\nON DUPLICATE KEY UPDATE prefix = VALUES(prefix);\n",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 2262
+}

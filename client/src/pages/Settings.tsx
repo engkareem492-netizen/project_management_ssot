@@ -95,6 +95,24 @@ export default function Settings() {
     { enabled: !!currentProjectId }
   );
 
+  // Issue Types, Deliverable Types, KB Types, KB Components queries
+  const { data: issueTypesData, refetch: refetchIssueTypes } = trpc.issueTypes.list.useQuery(
+    { projectId: currentProjectId || 0 },
+    { enabled: !!currentProjectId }
+  );
+  const { data: deliverableTypesData, refetch: refetchDeliverableTypes } = trpc.deliverableTypes.list.useQuery(
+    { projectId: currentProjectId || 0 },
+    { enabled: !!currentProjectId }
+  );
+  const { data: kbTypesData, refetch: refetchKBTypes } = trpc.knowledgeBase.types.list.useQuery(
+    { projectId: currentProjectId || 0 },
+    { enabled: !!currentProjectId }
+  );
+  const { data: kbComponentsData, refetch: refetchKBComponents } = trpc.knowledgeBase.components.list.useQuery(
+    { projectId: currentProjectId || 0 },
+    { enabled: !!currentProjectId }
+  );
+
   // Task Groups mutations
   const createTaskGroupMutation = trpc.dropdownOptions.taskGroups.create.useMutation({
     onSuccess: () => {
@@ -657,6 +675,10 @@ export default function Settings() {
               <TabsTrigger value="priority">Priority</TabsTrigger>
               <TabsTrigger value="type">Type</TabsTrigger>
               <TabsTrigger value="category">Category</TabsTrigger>
+              <TabsTrigger value="issueTypes">Issue Types</TabsTrigger>
+              <TabsTrigger value="deliverableTypes">Deliverable Types</TabsTrigger>
+              <TabsTrigger value="kbTypes">KB Types</TabsTrigger>
+              <TabsTrigger value="kbComponents">KB Components</TabsTrigger>
             </TabsList>
 
             <TabsContent value="status">
@@ -735,6 +757,226 @@ export default function Settings() {
                 </CardHeader>
                 <CardContent>
                   {renderOptionsTable(categoryOptions, "category")}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="issueTypes">
+              <Card>
+                <CardHeader>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <CardTitle>Issue Types</CardTitle>
+                      <CardDescription>Manage issue type options (Bug, Feature, Enhancement, etc.)</CardDescription>
+                    </div>
+                    <Button onClick={() => toast.info("Issue Types management coming soon")}>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add New
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Label</TableHead>
+                        <TableHead>Value</TableHead>
+                        <TableHead>Default</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {issueTypesData && issueTypesData.length > 0 ? (
+                        issueTypesData.map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell>{item.label}</TableCell>
+                            <TableCell className="font-mono text-sm">{item.value}</TableCell>
+                            <TableCell>{item.isDefault ? <Badge>Default</Badge> : "-"}</TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <Button variant="ghost" size="sm" onClick={() => toast.info("Edit coming soon")}>
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button variant="ghost" size="sm" onClick={() => toast.info("Delete coming soon")}>
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={4} className="text-center text-muted-foreground">
+                            No issue types found. Add your first one!
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="deliverableTypes">
+              <Card>
+                <CardHeader>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <CardTitle>Deliverable Types</CardTitle>
+                      <CardDescription>Manage deliverable type classifications</CardDescription>
+                    </div>
+                    <Button onClick={() => toast.info("Deliverable Types management coming soon")}>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add New
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Label</TableHead>
+                        <TableHead>Value</TableHead>
+                        <TableHead>Default</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {deliverableTypesData && deliverableTypesData.length > 0 ? (
+                        deliverableTypesData.map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell>{item.label}</TableCell>
+                            <TableCell className="font-mono text-sm">{item.value}</TableCell>
+                            <TableCell>{item.isDefault ? <Badge>Default</Badge> : "-"}</TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <Button variant="ghost" size="sm" onClick={() => toast.info("Edit coming soon")}>
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button variant="ghost" size="sm" onClick={() => toast.info("Delete coming soon")}>
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={4} className="text-center text-muted-foreground">
+                            No deliverable types found. Add your first one!
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="kbTypes">
+              <Card>
+                <CardHeader>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <CardTitle>Knowledge Base Types</CardTitle>
+                      <CardDescription>Manage KB types with hierarchical dependencies</CardDescription>
+                    </div>
+                    <Button onClick={() => toast.info("KB Types management coming soon")}>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add New
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Parent Type</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {kbTypesData && kbTypesData.length > 0 ? (
+                        kbTypesData.map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell>{item.name}</TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {item.parentTypeId ? kbTypesData.find(t => t.id === item.parentTypeId)?.name || "-" : "-"}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <Button variant="ghost" size="sm" onClick={() => toast.info("Edit coming soon")}>
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button variant="ghost" size="sm" onClick={() => toast.info("Delete coming soon")}>
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={3} className="text-center text-muted-foreground">
+                            No KB types found. Add your first one!
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="kbComponents">
+              <Card>
+                <CardHeader>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <CardTitle>Knowledge Base Components</CardTitle>
+                      <CardDescription>Manage KB component classifications</CardDescription>
+                    </div>
+                    <Button onClick={() => toast.info("KB Components management coming soon")}>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add New
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {kbComponentsData && kbComponentsData.length > 0 ? (
+                        kbComponentsData.map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell>{item.name}</TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <Button variant="ghost" size="sm" onClick={() => toast.info("Edit coming soon")}>
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button variant="ghost" size="sm" onClick={() => toast.info("Delete coming soon")}>
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={2} className="text-center text-muted-foreground">
+                            No KB components found. Add your first one!
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
                 </CardContent>
               </Card>
             </TabsContent>

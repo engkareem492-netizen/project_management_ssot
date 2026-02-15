@@ -1,0 +1,31 @@
+{
+  "query": "SELECT entityType FROM idSequences WHERE projectId = 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4FzqaZAU5mRtC.root --database j37MQHBuWbY6PMBApJWnKm --execute SELECT entityType FROM idSequences WHERE projectId = 1;",
+  "rows": [
+    {
+      "entityType": "Issue Group"
+    },
+    {
+      "entityType": "Task Group"
+    },
+    {
+      "entityType": "assumption"
+    },
+    {
+      "entityType": "deliverable"
+    },
+    {
+      "entityType": "dependency"
+    },
+    {
+      "entityType": "requirement"
+    },
+    {
+      "entityType": "task"
+    }
+  ],
+  "messages": [],
+  "stdout": "entityType\nIssue Group\nTask Group\nassumption\ndeliverable\ndependency\nrequirement\ntask\n",
+  "stderr": "",
+  "execution_time_ms": 1511
+}

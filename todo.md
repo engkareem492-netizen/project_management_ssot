@@ -857,3 +857,35 @@
 - [x] Show button with Database icon and "Switch" text
 - [x] Allow switching to another project without logging out
 - [x] Update current project in context when switched (clears projectId and redirects to project selector)
+
+
+## Bug Fix (Feb 15, 2026 - Settings Page Issues)
+### ID Configuration Tab Empty
+- [ ] ID Configuration tab shows no prefix configuration options
+- [ ] Add prefix configuration UI for all entities:
+  - [ ] Requirements (REQ)
+  - [ ] Tasks (TSK)
+  - [ ] Issues (ISS)
+  - [ ] Deliverables (DEL)
+  - [ ] Dependencies (DEP)
+  - [ ] Assumptions (ASM)
+  - [ ] Knowledge Base (KB)
+
+### Missing Dropdown Option Tabs
+- [ ] Dropdown Options tab only shows Status/Priority/Type/Category
+- [ ] Add missing dropdown configuration tabs:
+  - [ ] Issue Types (Bug, Feature, Enhancement, etc.)
+  - [ ] Deliverable Types
+  - [ ] Knowledge Base Types (with parent-child hierarchy)
+  - [ ] Knowledge Base Components
+
+
+## Bug Fix (Feb 15, 2026 - Settings Page Dropdown Options)
+
+### Fix Settings Page Missing Dropdown Options
+- [x] ID Configuration tab is empty - Fixed by adding correct idSequences records with proper prefixes (REQ, TSK, ISS, DEL, D, A, TG, IG, KB)
+- [x] Dropdown Options tab missing Issue Types, Deliverable Types, KB Types, KB Components - Added all tabs
+- [x] Add queries for issueTypes, deliverableTypes, kbTypes, kbComponents - All queries added
+- [x] Add tabs for these new dropdown types - All 4 tabs added (Issue Types, Deliverable Types, KB Types, KB Components)
+- [x] Add UI tables to display and manage these options - Tables showing data with placeholder CRUD buttons
+- [x] Test all dropdown options are visible and functional - All tabs working, displaying correct empty states
