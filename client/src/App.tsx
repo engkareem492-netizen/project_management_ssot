@@ -17,6 +17,7 @@ import Stakeholders from "./pages/Stakeholders";
 import Deliverables from "./pages/Deliverables";
 import Today from "./pages/Today";
 import Settings from "./pages/Settings";
+import KnowledgeBase from "./pages/KnowledgeBase";
 import DashboardLayout from "./components/DashboardLayout";
 
 function Router() {
@@ -66,6 +67,11 @@ function Router() {
       <Route path={"/settings"}>
         <DashboardLayout>
           <Settings />
+        </DashboardLayout>
+      </Route>
+      <Route path={"/knowledge-base"}>
+        <DashboardLayout>
+          <KnowledgeBase />
         </DashboardLayout>
       </Route>
       <Route path={"/action-log"}>

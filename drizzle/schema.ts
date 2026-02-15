@@ -464,3 +464,63 @@ export const classOptions = mysqlTable("classOptions", {
 
 export type ClassOption = typeof classOptions.$inferSelect;
 export type InsertClassOption = typeof classOptions.$inferInsert;
+
+/**
+ * Knowledge Base Types table - hierarchical types with parent-child relationships
+ */
+export const knowledgeBaseTypes = mysqlTable("knowledgeBaseTypes", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  name: varchar("name", { length: 100 }).notNull(),
+  parentTypeId: int("parentTypeId"), // null for root types, references another type for children
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type KnowledgeBaseType = typeof knowledgeBaseTypes.$inferSelect;
+export type InsertKnowledgeBaseType = typeof knowledgeBaseTypes.$inferInsert;
+
+/**
+ * Knowledge Base Components table - configurable component options
+ */
+export const knowledgeBaseComponents = mysqlTable("knowledgeBaseComponents", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  name: varchar("name", { length: 100 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type KnowledgeBaseComponent = typeof knowledgeBaseComponents.$inferSelect;
+export type InsertKnowledgeBaseComponent = typeof knowledgeBaseComponents.$inferInsert;
+
+/**
+ * Knowledge Base Code Configuration table - stores code prefix per project
+ */
+export const knowledgeBaseCodeConfig = mysqlTable("knowledgeBaseCodeConfig", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull().unique(),
+  prefix: varchar("prefix", { length: 10 }).notNull().default("KB"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type KnowledgeBaseCodeConfig = typeof knowledgeBaseCodeConfig.$inferSelect;
+export type InsertKnowledgeBaseCodeConfig = typeof knowledgeBaseCodeConfig.$inferInsert;
+
+/**
+ * Knowledge Base table - main entries with code, type, component, title, description
+ */
+export const knowledgeBase = mysqlTable("knowledgeBase", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  code: varchar("code", { length: 50 }).notNull(), // prefix + number, e.g., KB-001
+  typeId: int("typeId"), // references knowledgeBaseTypes
+  componentId: int("componentId"), // references knowledgeBaseComponents
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type KnowledgeBase = typeof knowledgeBase.$inferSelect;
+export type InsertKnowledgeBase = typeof knowledgeBase.$inferInsert;

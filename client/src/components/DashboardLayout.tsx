@@ -54,7 +54,8 @@ import {
   FileSpreadsheet,
   ChevronRight,
   Database,
-  Palette
+  Palette,
+  BookOpen
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -74,6 +75,7 @@ const menuItems = [
   { icon: FileCheck, label: "Assumptions", path: "/assumptions" },
   { icon: Users, label: "Stakeholders", path: "/stakeholders" },
   { icon: Package, label: "Deliverables", path: "/deliverables" },
+  { icon: BookOpen, label: "Knowledge Base", path: "/knowledge-base" },
   { icon: History, label: "Action Log", path: "/action-log" },
   { icon: GitBranch, label: "Relationships", path: "/relationships" },
   { icon: SettingsIcon, label: "Settings", path: "/settings" },

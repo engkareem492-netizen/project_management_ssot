@@ -7,10 +7,12 @@ import * as db from "./db";
 import * as XLSX from "xlsx";
 import { TRPCError } from "@trpc/server";
 import { projectsRouter } from "./projects.router";
+import { knowledgeBaseRouter } from "./knowledgeBase.router";
 
 export const appRouter = router({
   system: systemRouter,
   projects: projectsRouter,
+  knowledgeBase: knowledgeBaseRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {

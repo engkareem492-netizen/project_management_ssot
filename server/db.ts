@@ -35,7 +35,15 @@ import {
   InsertIssueType,
   InsertTaskType,
   InsertDeliverableType,
-  InsertClassOption
+  InsertClassOption,
+  knowledgeBase,
+  knowledgeBaseTypes,
+  knowledgeBaseComponents,
+  knowledgeBaseCodeConfig,
+  InsertKnowledgeBase,
+  InsertKnowledgeBaseType,
+  InsertKnowledgeBaseComponent,
+  InsertKnowledgeBaseCodeConfig
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -1574,4 +1582,148 @@ export async function deleteIssueGroup(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.delete(issueGroups).where(eq(issueGroups.id, id));
+}
+
+
+// ============================================
+// Knowledge Base Functions
+// ============================================
+
+export async function getKnowledgeBaseEntries(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(knowledgeBase).where(eq(knowledgeBase.projectId, projectId));
+}
+
+export async function getKnowledgeBaseEntry(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const results = await db.select().from(knowledgeBase).where(eq(knowledgeBase.id, id)).limit(1);
+  return results[0] || null;
+}
+
+export async function createKnowledgeBaseEntry(data: InsertKnowledgeBase) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(knowledgeBase).values(data);
+  return { id: Number(result[0].insertId) };
+}
+
+export async function updateKnowledgeBaseEntry(id: number, data: Partial<InsertKnowledgeBase>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(knowledgeBase).set(data).where(eq(knowledgeBase.id, id));
+  return { success: true };
+}
+
+export async function deleteKnowledgeBaseEntry(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(knowledgeBase).where(eq(knowledgeBase.id, id));
+  return { success: true };
+}
+
+// Knowledge Base Types
+export async function getKnowledgeBaseTypes(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(knowledgeBaseTypes).where(eq(knowledgeBaseTypes.projectId, projectId));
+}
+
+export async function createKnowledgeBaseType(data: InsertKnowledgeBaseType) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(knowledgeBaseTypes).values(data);
+  return { id: Number(result[0].insertId) };
+}
+
+export async function updateKnowledgeBaseType(id: number, data: Partial<InsertKnowledgeBaseType>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(knowledgeBaseTypes).set(data).where(eq(knowledgeBaseTypes.id, id));
+  return { success: true };
+}
+
+export async function deleteKnowledgeBaseType(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(knowledgeBaseTypes).where(eq(knowledgeBaseTypes.id, id));
+  return { success: true };
+}
+
+// Knowledge Base Components
+export async function getKnowledgeBaseComponents(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(knowledgeBaseComponents).where(eq(knowledgeBaseComponents.projectId, projectId));
+}
+
+export async function createKnowledgeBaseComponent(data: InsertKnowledgeBaseComponent) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(knowledgeBaseComponents).values(data);
+  return { id: Number(result[0].insertId) };
+}
+
+export async function updateKnowledgeBaseComponent(id: number, data: Partial<InsertKnowledgeBaseComponent>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(knowledgeBaseComponents).set(data).where(eq(knowledgeBaseComponents.id, id));
+  return { success: true };
+}
+
+export async function deleteKnowledgeBaseComponent(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(knowledgeBaseComponents).where(eq(knowledgeBaseComponents.id, id));
+  return { success: true };
+}
+
+// Knowledge Base Code Configuration
+export async function getKnowledgeBaseCodeConfig(projectId: number) {
+  const db = await getDb();
+  if (!db) return { prefix: "KB" };
+  const results = await db.select().from(knowledgeBaseCodeConfig).where(eq(knowledgeBaseCodeConfig.projectId, projectId)).limit(1);
+  return results[0] || { prefix: "KB" };
+}
+
+export async function updateKnowledgeBaseCodeConfig(projectId: number, prefix: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  // Check if config exists
+  const existing = await db.select().from(knowledgeBaseCodeConfig).where(eq(knowledgeBaseCodeConfig.projectId, projectId)).limit(1);
+  
+  if (existing.length > 0) {
+    await db.update(knowledgeBaseCodeConfig).set({ prefix }).where(eq(knowledgeBaseCodeConfig.projectId, projectId));
+  } else {
+    await db.insert(knowledgeBaseCodeConfig).values({ projectId, prefix });
+  }
+  
+  return { success: true };
+}
+
+export async function generateKnowledgeBaseCode(projectId: number): Promise<string> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  // Get prefix configuration
+  const config = await getKnowledgeBaseCodeConfig(projectId);
+  const prefix = config.prefix || "KB";
+  
+  // Get the highest code number for this project
+  const entries = await db.select().from(knowledgeBase).where(eq(knowledgeBase.projectId, projectId));
+  
+  let maxNumber = 0;
+  entries.forEach((entry) => {
+    // Extract number from code (e.g., "KB-001" -> 1)
+    const match = entry.code.match(/(\d+)$/);
+    if (match) {
+      const num = parseInt(match[1], 10);
+      if (num > maxNumber) maxNumber = num;
+    }
+  });
+  
+  const nextNumber = maxNumber + 1;
+  return `${prefix}-${String(nextNumber).padStart(3, "0")}`;
 }
