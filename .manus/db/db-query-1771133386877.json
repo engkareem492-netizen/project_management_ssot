@@ -1,0 +1,31 @@
+{
+  "query": "SELECT id, name, description, createdBy, createdAt FROM projects ORDER BY id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4FzqaZAU5mRtC.root --database j37MQHBuWbY6PMBApJWnKm --execute SELECT id, name, description, createdBy, createdAt FROM projects ORDER BY id;",
+  "rows": [
+    {
+      "id": "2",
+      "name": "AMS Romansiah 2026",
+      "description": "Romansiah Support Project 2026",
+      "createdBy": "210001",
+      "createdAt": "2026-01-31 18:52:00"
+    },
+    {
+      "id": "30003",
+      "name": "Testing",
+      "description": "testing",
+      "createdBy": "210001",
+      "createdAt": "2026-02-09 19:10:14"
+    },
+    {
+      "id": "90003",
+      "name": "Application Management Romansiah 2",
+      "description": "Romansiah project",
+      "createdBy": "210001",
+      "createdAt": "2026-02-10 14:05:05"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tdescription\tcreatedBy\tcreatedAt\n2\tAMS Romansiah 2026\tRomansiah Support Project 2026\t210001\t2026-01-31 18:52:00\n30003\tTesting\ttesting\t210001\t2026-02-09 19:10:14\n90003\tApplication Management Romansiah 2\tRomansiah project\t210001\t2026-02-10 14:05:05\n",
+  "stderr": "",
+  "execution_time_ms": 1532
+}

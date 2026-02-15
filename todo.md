@@ -848,3 +848,12 @@
   - [x] Configuration panel for types, components, and code prefix
 - [x] Add "Knowledge Base" to sidebar navigation
 - [x] Test complete CRUD flow - Verified in browser, all features working
+
+
+## Feature (Feb 15, 2026 - Project Switcher)
+
+### Add Project Switcher Button
+- [x] Add project switcher button to dashboard header
+- [x] Show button with Database icon and "Switch" text
+- [x] Allow switching to another project without logging out
+- [x] Update current project in context when switched (clears projectId and redirects to project selector)

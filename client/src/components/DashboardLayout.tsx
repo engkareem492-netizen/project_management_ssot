@@ -277,10 +277,18 @@ function DashboardLayoutContent({
                 <PanelLeft className="h-4 w-4 text-muted-foreground" />
               </button>
               {!isCollapsed ? (
-                <div className="flex items-center gap-2 min-w-0">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
                   <span className="font-semibold tracking-tight truncate">
-                    '{currentProject?.name || "Navigation"}'
+                    {currentProject?.name || "Navigation"}
                   </span>
+                  <button
+                    onClick={handleSwitchProject}
+                    className="ml-auto h-7 px-2 text-xs hover:bg-accent rounded transition-colors flex items-center gap-1 shrink-0"
+                    title="Switch Project"
+                  >
+                    <Database className="h-3 w-3" />
+                    Switch
+                  </button>
                 </div>
               ) : null}
             </div>
