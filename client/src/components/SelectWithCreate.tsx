@@ -28,7 +28,10 @@ export function SelectWithCreate({ type, value, onValueChange, placeholder, cate
   const priorityQuery = trpc.dropdownOptions.priority.getAll.useQuery(undefined, { enabled: type === "priority" });
   const typeQuery = trpc.dropdownOptions.type.getAll.useQuery(undefined, { enabled: type === "type" });
   const categoryQuery = trpc.dropdownOptions.category.getAll.useQuery(undefined, { enabled: type === "category" });
-  const stakeholdersQuery = trpc.stakeholders.list.useQuery(undefined, { enabled: type === "stakeholder" });
+  const stakeholdersQuery = trpc.stakeholders.list.useQuery(
+    { projectId: projectId! },
+    { enabled: type === "stakeholder" && !!projectId }
+  );
 
   const options = type === "status" ? statusQuery.data :
                   type === "priority" ? priorityQuery.data :

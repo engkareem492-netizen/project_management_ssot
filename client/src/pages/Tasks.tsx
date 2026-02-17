@@ -224,7 +224,7 @@ export default function Tasks() {
       if (selectedTask?.taskId && data.issueId) {
         // Find the issue by issueId to get its numeric ID
         await utils.issues.list.invalidate();
-        const allIssuesData = await utils.issues.list.fetch();
+        const allIssuesData = await utils.issues.list.fetch({ projectId: currentProjectId! });
         const createdIssue = allIssuesData?.find(iss => iss.issueId === data.issueId);
         
         if (createdIssue) {

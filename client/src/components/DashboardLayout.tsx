@@ -78,7 +78,6 @@ const menuItems = [
   { icon: Package, label: "Deliverables", path: "/deliverables" },
   { icon: BookOpen, label: "Knowledge Base", path: "/knowledge-base" },
   { icon: AlertTriangle, label: "Risk Register", path: "/risk-register" },
-  { icon: History, label: "Action Log", path: "/action-log" },
   { icon: GitBranch, label: "Relationships", path: "/relationships" },
   { icon: SettingsIcon, label: "Settings", path: "/settings" },
 ];

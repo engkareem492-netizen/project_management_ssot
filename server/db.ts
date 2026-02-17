@@ -1,4 +1,4 @@
-import { eq, desc, and, or, like, sql } from "drizzle-orm";
+import { eq, desc, and, or, like, sql, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { 
   InsertUser, 
@@ -577,13 +577,10 @@ export async function initializeIdSequence(entityType: string, prefix: string, s
 }
 
 // Stakeholders CRUD
-export async function getAllStakeholders(projectId?: number) {
+export async function getAllStakeholders(projectId: number) {
   const db = await getDb();
   if (!db) return [];
-  if (projectId) {
-    return await db.select().from(stakeholders).where(eq(stakeholders.projectId, projectId)).orderBy(stakeholders.fullName);
-  }
-  return await db.select().from(stakeholders).orderBy(stakeholders.fullName);
+  return await db.select().from(stakeholders).where(eq(stakeholders.projectId, projectId)).orderBy(stakeholders.fullName);
 }
 
 export async function getStakeholderById(id: number) {
@@ -744,8 +741,10 @@ export async function getIssuesByEntity(entityType: "requirement" | "task" | "de
   if (links.length === 0) return [];
   
   const issueIds = links.map(l => l.issueId);
-  const allIssues = await getAllIssuesSorted();
-  return allIssues.filter(i => issueIds.includes(i.id));
+  // Query issues directly by IDs instead of getting all issues
+  return await db.select().from(issues)
+    .where(inArray(issues.id, issueIds))
+    .orderBy(issues.issueId);
 }
 
 // Enhanced relationship functions
@@ -781,26 +780,22 @@ export async function getRequirementWithLinkedItems(requirementId: string) {
 }
 
 // Get sorted lists by ID
-export async function getAllRequirementsSorted(projectId?: number) {
+export async function getAllRequirementsSorted(projectId: number) {
   const db = await getDb();
   if (!db) return [];
-  let query = db.select().from(requirements);
-  if (projectId) {
-    query = query.where(eq(requirements.projectId, projectId)) as any;
-  }
-  return await query.orderBy(requirements.idCode);
+  return await db.select().from(requirements)
+    .where(eq(requirements.projectId, projectId))
+    .orderBy(requirements.idCode);
 }
 
-export async function getAllTasksSorted(projectId?: number) {
+export async function getAllTasksSorted(projectId: number) {
   const db = await getDb();
   if (!db) return [];
   
   // Get all tasks
-  let query = db.select().from(tasks);
-  if (projectId) {
-    query = query.where(eq(tasks.projectId, projectId)) as any;
-  }
-  const allTasks = await query.orderBy(tasks.taskId);
+  const allTasks = await db.select().from(tasks)
+    .where(eq(tasks.projectId, projectId))
+    .orderBy(tasks.taskId);
   
   // For each task, get the latest action log entry to populate currentStatus
   const tasksWithStatus = await Promise.all(allTasks.map(async (task) => {
@@ -820,14 +815,12 @@ export async function getAllTasksSorted(projectId?: number) {
   return tasksWithStatus;
 }
 
-export async function getAllIssuesSorted(projectId?: number) {
+export async function getAllIssuesSorted(projectId: number) {
   const db = await getDb();
   if (!db) return [];
-  const query = db.select().from(issues);
-  if (projectId) {
-    return await query.where(eq(issues.projectId, projectId)).orderBy(issues.issueId);
-  }
-  return await query.orderBy(issues.issueId);
+  return await db.select().from(issues)
+    .where(eq(issues.projectId, projectId))
+    .orderBy(issues.issueId);
 }
 
 export async function getAllDependenciesSorted(projectId?: number) {

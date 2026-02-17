@@ -352,9 +352,9 @@ export const appRouter = router({
   // Requirements
   requirements: router({
     list: protectedProcedure
-      .input(z.object({ projectId: z.number() }).optional())
+      .input(z.object({ projectId: z.number() }))
       .query(async ({ input }) => {
-        return await db.getAllRequirementsSorted(input?.projectId);
+        return await db.getAllRequirementsSorted(input.projectId);
       }),
 
     get: protectedProcedure
@@ -553,9 +553,9 @@ export const appRouter = router({
   // Tasks
   tasks: router({
     list: protectedProcedure
-      .input(z.object({ projectId: z.number() }).optional())
+      .input(z.object({ projectId: z.number() }))
       .query(async ({ input }) => {
-        return await db.getAllTasksSorted(input?.projectId);
+        return await db.getAllTasksSorted(input.projectId);
       }),
 
     get: protectedProcedure
@@ -694,9 +694,9 @@ export const appRouter = router({
   // Issues
   issues: router({
     list: protectedProcedure
-      .input(z.object({ projectId: z.number() }).optional())
+      .input(z.object({ projectId: z.number() }))
       .query(async ({ input }) => {
-        return await db.getAllIssuesSorted(input?.projectId);
+        return await db.getAllIssuesSorted(input.projectId);
     }),
 
     get: protectedProcedure
@@ -968,9 +968,9 @@ export const appRouter = router({
   // Stakeholders
   stakeholders: router({
     list: protectedProcedure
-      .input(z.object({ projectId: z.number() }).optional())
+      .input(z.object({ projectId: z.number() }))
       .query(async ({ input }) => {
-        return await db.getAllStakeholders(input?.projectId);
+        return await db.getAllStakeholders(input.projectId);
       }),
 
     get: protectedProcedure

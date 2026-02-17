@@ -1063,3 +1063,21 @@
 - [x] Allow inline editing and saving of prefix configurations
 - [x] Add "Initialize Default Configurations" button for projects without ID sequences
 - [x] Clean up duplicate RISK entry in database
+
+
+## Navigation and Data Isolation Fixes (Feb 17, 2026 - Batch 7)
+- [ ] Remove Action Log from sidebar navigation (it's only for object history, not a standalone page)
+- [ ] Fix stakeholder duplication - ensure stakeholders query filters by projectId
+- [ ] Audit all dropdown queries (Risk Types, Risk Status, Response Strategy) to filter by projectId
+- [ ] Audit all entity queries (Requirements, Tasks, Issues, Deliverables, etc.) to filter by projectId
+- [ ] Ensure complete data isolation between projects
+
+
+## Navigation and Data Isolation Fixes (Feb 17, 2026 - Batch 7)
+- [x] Remove Action Log from sidebar navigation (it's only for showing history per object)
+- [x] Fix stakeholder duplication - ensure stakeholders.list filters by projectId
+- [x] Audit all entity queries (Requirements, Tasks, Issues, etc.) to ensure projectId filtering
+- [x] Make projectId required (not optional) in all list queries to prevent cross-project data leakage
+- [x] Fixed: stakeholders, requirements, tasks, issues all now require projectId
+- [x] Fixed: SelectWithCreate component to pass projectId to stakeholders query
+- [x] Fixed: getIssuesByEntity to query directly instead of calling getAllIssuesSorted
