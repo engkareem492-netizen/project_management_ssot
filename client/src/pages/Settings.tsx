@@ -113,6 +113,110 @@ export default function Settings() {
     { enabled: !!currentProjectId }
   );
 
+  // Risk dropdown queries
+  const { data: riskTypesData, refetch: refetchRiskTypes } = trpc.risks.types.list.useQuery(
+    { projectId: currentProjectId || 0 },
+    { enabled: !!currentProjectId }
+  );
+  const { data: riskStatusData, refetch: refetchRiskStatus } = trpc.risks.status.list.useQuery(
+    { projectId: currentProjectId || 0 },
+    { enabled: !!currentProjectId }
+  );
+  const { data: responseStrategyData, refetch: refetchResponseStrategy } = trpc.risks.strategy.list.useQuery(
+    { projectId: currentProjectId || 0 },
+    { enabled: !!currentProjectId }
+  );
+
+  // Risk Types mutations
+  const createRiskTypeMutation = trpc.risks.types.create.useMutation({
+    onSuccess: () => {
+      toast.success("Risk Type created successfully");
+      refetchRiskTypes();
+      setEditDialogOpen(false);
+      resetOptionForm();
+    },
+    onError: (error) => toast.error(`Failed to create: ${error.message}`),
+  });
+
+  const updateRiskTypeMutation = trpc.risks.types.update.useMutation({
+    onSuccess: () => {
+      toast.success("Risk Type updated successfully");
+      refetchRiskTypes();
+      setEditDialogOpen(false);
+      resetOptionForm();
+    },
+    onError: (error) => toast.error(`Failed to update: ${error.message}`),
+  });
+
+  const deleteRiskTypeMutation = trpc.risks.types.delete.useMutation({
+    onSuccess: () => {
+      toast.success("Risk Type deleted successfully");
+      refetchRiskTypes();
+      setDeleteDialogOpen(false);
+    },
+    onError: (error) => toast.error(`Failed to delete: ${error.message}`),
+  });
+
+  // Risk Status mutations
+  const createRiskStatusMutation = trpc.risks.status.create.useMutation({
+    onSuccess: () => {
+      toast.success("Risk Status created successfully");
+      refetchRiskStatus();
+      setEditDialogOpen(false);
+      resetOptionForm();
+    },
+    onError: (error) => toast.error(`Failed to create: ${error.message}`),
+  });
+
+  const updateRiskStatusMutation = trpc.risks.status.update.useMutation({
+    onSuccess: () => {
+      toast.success("Risk Status updated successfully");
+      refetchRiskStatus();
+      setEditDialogOpen(false);
+      resetOptionForm();
+    },
+    onError: (error) => toast.error(`Failed to update: ${error.message}`),
+  });
+
+  const deleteRiskStatusMutation = trpc.risks.status.delete.useMutation({
+    onSuccess: () => {
+      toast.success("Risk Status deleted successfully");
+      refetchRiskStatus();
+      setDeleteDialogOpen(false);
+    },
+    onError: (error) => toast.error(`Failed to delete: ${error.message}`),
+  });
+
+  // Response Strategy mutations
+  const createResponseStrategyMutation = trpc.risks.strategy.create.useMutation({
+    onSuccess: () => {
+      toast.success("Response Strategy created successfully");
+      refetchResponseStrategy();
+      setEditDialogOpen(false);
+      resetOptionForm();
+    },
+    onError: (error) => toast.error(`Failed to create: ${error.message}`),
+  });
+
+  const updateResponseStrategyMutation = trpc.risks.strategy.update.useMutation({
+    onSuccess: () => {
+      toast.success("Response Strategy updated successfully");
+      refetchResponseStrategy();
+      setEditDialogOpen(false);
+      resetOptionForm();
+    },
+    onError: (error) => toast.error(`Failed to update: ${error.message}`),
+  });
+
+  const deleteResponseStrategyMutation = trpc.risks.strategy.delete.useMutation({
+    onSuccess: () => {
+      toast.success("Response Strategy deleted successfully");
+      refetchResponseStrategy();
+      setDeleteDialogOpen(false);
+    },
+    onError: (error) => toast.error(`Failed to delete: ${error.message}`),
+  });
+
   // Task Groups mutations
   const createTaskGroupMutation = trpc.dropdownOptions.taskGroups.create.useMutation({
     onSuccess: () => {
@@ -387,6 +491,15 @@ export default function Settings() {
       case "category":
         createCategoryMutation.mutate({ value: optionFormData.name });
         break;
+      case "riskTypes":
+        if (currentProjectId) createRiskTypeMutation.mutate({ projectId: currentProjectId, name: optionFormData.name });
+        break;
+      case "riskStatus":
+        if (currentProjectId) createRiskStatusMutation.mutate({ projectId: currentProjectId, name: optionFormData.name });
+        break;
+      case "responseStrategy":
+        if (currentProjectId) createResponseStrategyMutation.mutate({ projectId: currentProjectId, name: optionFormData.name });
+        break;
     }
   };
 
@@ -409,6 +522,15 @@ export default function Settings() {
       case "category":
         updateCategoryMutation.mutate({ id: editingItem.id, value: optionFormData.name });
         break;
+      case "riskTypes":
+        updateRiskTypeMutation.mutate({ id: editingItem.id, name: optionFormData.name });
+        break;
+      case "riskStatus":
+        updateRiskStatusMutation.mutate({ id: editingItem.id, name: optionFormData.name });
+        break;
+      case "responseStrategy":
+        updateResponseStrategyMutation.mutate({ id: editingItem.id, name: optionFormData.name });
+        break;
     }
   };
 
@@ -427,6 +549,15 @@ export default function Settings() {
         break;
       case "category":
         deleteCategoryMutation.mutate({ id: deletingItem.id });
+        break;
+      case "riskTypes":
+        deleteRiskTypeMutation.mutate({ id: deletingItem.id });
+        break;
+      case "riskStatus":
+        deleteRiskStatusMutation.mutate({ id: deletingItem.id });
+        break;
+      case "responseStrategy":
+        deleteResponseStrategyMutation.mutate({ id: deletingItem.id });
         break;
     }
   };
@@ -679,6 +810,9 @@ export default function Settings() {
               <TabsTrigger value="deliverableTypes">Deliverable Types</TabsTrigger>
               <TabsTrigger value="kbTypes">KB Types</TabsTrigger>
               <TabsTrigger value="kbComponents">KB Components</TabsTrigger>
+              <TabsTrigger value="riskTypes">Risk Types</TabsTrigger>
+              <TabsTrigger value="riskStatus">Risk Status</TabsTrigger>
+              <TabsTrigger value="responseStrategy">Response Strategy</TabsTrigger>
             </TabsList>
 
             <TabsContent value="status">
@@ -972,6 +1106,168 @@ export default function Settings() {
                         <TableRow>
                           <TableCell colSpan={2} className="text-center text-muted-foreground">
                             No KB components found. Add your first one!
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="riskTypes">
+              <Card>
+                <CardHeader>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <CardTitle>Risk Types</CardTitle>
+                      <CardDescription>Manage risk type classifications (Technical, Financial, Operational, etc.)</CardDescription>
+                    </div>
+                    <Button onClick={openCreateDialog}>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add New
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Default</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {riskTypesData && riskTypesData.length > 0 ? (
+                        riskTypesData.map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell className="font-medium">{item.name}</TableCell>
+                            <TableCell>{item.isDefault ? <Badge>Default</Badge> : "-"}</TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <Button variant="ghost" size="sm" onClick={() => openEditDialog({ ...item, value: item.name })}>
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button variant="ghost" size="sm" onClick={() => openDeleteDialog({ ...item, value: item.name })}>
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={3} className="text-center text-muted-foreground">
+                            No risk types found. Add your first one!
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="riskStatus">
+              <Card>
+                <CardHeader>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <CardTitle>Risk Status</CardTitle>
+                      <CardDescription>Manage risk status options (Open, Mitigated, Closed, etc.)</CardDescription>
+                    </div>
+                    <Button onClick={openCreateDialog}>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add New
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Default</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {riskStatusData && riskStatusData.length > 0 ? (
+                        riskStatusData.map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell className="font-medium">{item.name}</TableCell>
+                            <TableCell>{item.isDefault ? <Badge>Default</Badge> : "-"}</TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <Button variant="ghost" size="sm" onClick={() => openEditDialog({ ...item, value: item.name })}>
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button variant="ghost" size="sm" onClick={() => openDeleteDialog({ ...item, value: item.name })}>
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={3} className="text-center text-muted-foreground">
+                            No risk statuses found. Add your first one!
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="responseStrategy">
+              <Card>
+                <CardHeader>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <CardTitle>Response Strategy</CardTitle>
+                      <CardDescription>Manage risk response strategies (Avoid, Mitigate, Transfer, Accept, etc.)</CardDescription>
+                    </div>
+                    <Button onClick={openCreateDialog}>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add New
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Default</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {responseStrategyData && responseStrategyData.length > 0 ? (
+                        responseStrategyData.map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell className="font-medium">{item.name}</TableCell>
+                            <TableCell>{item.isDefault ? <Badge>Default</Badge> : "-"}</TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <Button variant="ghost" size="sm" onClick={() => openEditDialog({ ...item, value: item.name })}>
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button variant="ghost" size="sm" onClick={() => openDeleteDialog({ ...item, value: item.name })}>
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={3} className="text-center text-muted-foreground">
+                            No response strategies found. Add your first one!
                           </TableCell>
                         </TableRow>
                       )}

@@ -1,0 +1,13 @@
+{
+  "query": "SHOW TABLES LIKE '%id%';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4FzqaZAU5mRtC.root --database j37MQHBuWbY6PMBApJWnKm --execute SHOW TABLES LIKE '%id%';",
+  "rows": [
+    {
+      "Tables_in_j37MQHBuWbY6PMBApJWnKm (%id%)": "idSequences"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_j37MQHBuWbY6PMBApJWnKm (%id%)\nidSequences\n",
+  "stderr": "",
+  "execution_time_ms": 1501
+}

@@ -1033,7 +1033,7 @@
 - [x] Add sections for Risk Types, Risk Status, Response Strategy
 - [x] Add sections for Issue Types, Deliverable Types, KB Types, KB Components
 - [x] Add sections for Status, Priority, Type, Category
-- [ ] Implement CRUD operations for each dropdown type (placeholder created)
+- [x] Implement CRUD operations for each dropdown type (Risk Types, Risk Status, Response Strategy)
 - [ ] Add reordering capability for dropdown items
 - [x] Keep inline "+" buttons for quick access (better UX than removing them)
 
@@ -1046,3 +1046,12 @@
 - [x] Remove separate "System Config" menu item
 - [x] Merge System Configuration tabs into Settings page
 - [x] Keep single "Settings" menu item with all configuration options
+
+
+## Risk Dropdown CRUD in Settings (Feb 17, 2026 - Batch 5)
+- [x] Add Risk Types CRUD (add/edit/delete) to Settings Dropdown Options tab
+- [x] Add Risk Status CRUD (add/edit/delete) to Settings Dropdown Options tab
+- [x] Add Response Strategy CRUD (add/edit/delete) to Settings Dropdown Options tab
+- [x] Ensure RISK prefix appears in ID Configuration tab and is editable
+- [x] Wire delete mutations for all Risk dropdown types
+- [x] Tests passing (10/10 in settings-risk-dropdowns.test.ts)
