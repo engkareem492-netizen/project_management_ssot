@@ -38,6 +38,14 @@ export default function RiskRegister() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isAnalysisDialogOpen, setIsAnalysisDialogOpen] = useState(false);
   const [selectedRisk, setSelectedRisk] = useState<any>(null);
+  
+  // Inline creation dialogs
+  const [isCreateTypeDialogOpen, setIsCreateTypeDialogOpen] = useState(false);
+  const [isCreateStatusDialogOpen, setIsCreateStatusDialogOpen] = useState(false);
+  const [isCreateStrategyDialogOpen, setIsCreateStrategyDialogOpen] = useState(false);
+  const [newTypeName, setNewTypeName] = useState("");
+  const [newStatusName, setNewStatusName] = useState("");
+  const [newStrategyName, setNewStrategyName] = useState("");
   const [formData, setFormData] = useState({
     title: "",
     riskTypeId: undefined as number | undefined,
@@ -117,6 +125,46 @@ export default function RiskRegister() {
     },
     onError: (error) => {
       toast.error(`Error deleting risk: ${error.message}`);
+    },
+  });
+
+  // Inline creation mutations
+  const createRiskType = trpc.risks.types.create.useMutation({
+    onSuccess: (data: any) => {
+      utils.risks.types.list.invalidate();
+      setFormData({ ...formData, riskTypeId: data.insertId });
+      setIsCreateTypeDialogOpen(false);
+      setNewTypeName("");
+      toast.success("Risk type created successfully");
+    },
+    onError: (error) => {
+      toast.error(`Error creating risk type: ${error.message}`);
+    },
+  });
+
+  const createRiskStatus = trpc.risks.status.create.useMutation({
+    onSuccess: (data: any) => {
+      utils.risks.status.list.invalidate();
+      setFormData({ ...formData, riskStatusId: data.insertId });
+      setIsCreateStatusDialogOpen(false);
+      setNewStatusName("");
+      toast.success("Risk status created successfully");
+    },
+    onError: (error) => {
+      toast.error(`Error creating risk status: ${error.message}`);
+    },
+  });
+
+  const createResponseStrategy = trpc.risks.strategy.create.useMutation({
+    onSuccess: (data: any) => {
+      utils.risks.strategy.list.invalidate();
+      setFormData({ ...formData, responseStrategyId: data.insertId });
+      setIsCreateStrategyDialogOpen(false);
+      setNewStrategyName("");
+      toast.success("Response strategy created successfully");
+    },
+    onError: (error) => {
+      toast.error(`Error creating response strategy: ${error.message}`);
     },
   });
 
@@ -224,46 +272,66 @@ export default function RiskRegister() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="riskType">Risk Type</Label>
-                  <Select
-                    value={formData.riskTypeId?.toString() || "none"}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, riskTypeId: value === "none" ? undefined : parseInt(value) })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
-                      {riskTypes.map((type) => (
-                        <SelectItem key={type.id} value={type.id.toString()}>
-                          {type.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex gap-2">
+                    <Select
+                      value={formData.riskTypeId?.toString() || "none"}
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, riskTypeId: value === "none" ? undefined : parseInt(value) })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {riskTypes.map((type) => (
+                          <SelectItem key={type.id} value={type.id.toString()}>
+                            {type.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setIsCreateTypeDialogOpen(true)}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
 
                 <div>
                   <Label htmlFor="riskStatus">Risk Status</Label>
-                  <Select
-                    value={formData.riskStatusId?.toString() || "none"}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, riskStatusId: value === "none" ? undefined : parseInt(value) })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
-                      {riskStatuses.map((status) => (
-                        <SelectItem key={status.id} value={status.id.toString()}>
-                          {status.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex gap-2">
+                    <Select
+                      value={formData.riskStatusId?.toString() || "none"}
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, riskStatusId: value === "none" ? undefined : parseInt(value) })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {riskStatuses.map((status) => (
+                          <SelectItem key={status.id} value={status.id.toString()}>
+                            {status.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setIsCreateStatusDialogOpen(true)}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
 
@@ -402,24 +470,34 @@ export default function RiskRegister() {
 
                 <div>
                   <Label htmlFor="responseStrategy">Response Strategy</Label>
-                  <Select
-                    value={formData.responseStrategyId?.toString() || "none"}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, responseStrategyId: value === "none" ? undefined : parseInt(value) })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select strategy" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
-                      {responseStrategies.map((strategy) => (
-                        <SelectItem key={strategy.id} value={strategy.id.toString()}>
-                          {strategy.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex gap-2">
+                    <Select
+                      value={formData.responseStrategyId?.toString() || "none"}
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, responseStrategyId: value === "none" ? undefined : parseInt(value) })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select strategy" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {responseStrategies.map((strategy) => (
+                          <SelectItem key={strategy.id} value={strategy.id.toString()}>
+                            {strategy.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setIsCreateStrategyDialogOpen(true)}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
 
@@ -550,46 +628,66 @@ export default function RiskRegister() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Risk Type</Label>
-                <Select
-                  value={formData.riskTypeId?.toString() || "none"}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, riskTypeId: value === "none" ? undefined : parseInt(value) })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    {riskTypes.map((type) => (
-                      <SelectItem key={type.id} value={type.id.toString()}>
-                        {type.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex gap-2">
+                  <Select
+                    value={formData.riskTypeId?.toString() || "none"}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, riskTypeId: value === "none" ? undefined : parseInt(value) })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {riskTypes.map((type) => (
+                        <SelectItem key={type.id} value={type.id.toString()}>
+                          {type.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setIsCreateTypeDialogOpen(true)}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
 
               <div>
                 <Label>Risk Status</Label>
-                <Select
-                  value={formData.riskStatusId?.toString() || "none"}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, riskStatusId: value === "none" ? undefined : parseInt(value) })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    {riskStatuses.map((status) => (
-                      <SelectItem key={status.id} value={status.id.toString()}>
-                        {status.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex gap-2">
+                  <Select
+                    value={formData.riskStatusId?.toString() || "none"}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, riskStatusId: value === "none" ? undefined : parseInt(value) })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {riskStatuses.map((status) => (
+                        <SelectItem key={status.id} value={status.id.toString()}>
+                          {status.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setIsCreateStatusDialogOpen(true)}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </div>
 
@@ -645,6 +743,118 @@ export default function RiskRegister() {
         }}
         taskGroups={taskGroups}
       />
+
+      {/* Inline Creation Dialogs */}
+      <Dialog open={isCreateTypeDialogOpen} onOpenChange={setIsCreateTypeDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Risk Type</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="newTypeName">Type Name</Label>
+              <Input
+                id="newTypeName"
+                value={newTypeName}
+                onChange={(e) => setNewTypeName(e.target.value)}
+                placeholder="Enter risk type name..."
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setIsCreateTypeDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  if (currentProjectId && newTypeName.trim()) {
+                    createRiskType.mutate({
+                      projectId: currentProjectId,
+                      name: newTypeName.trim(),
+                    });
+                  }
+                }}
+                disabled={!newTypeName.trim() || createRiskType.isPending}
+              >
+                Create
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isCreateStatusDialogOpen} onOpenChange={setIsCreateStatusDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Risk Status</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="newStatusName">Status Name</Label>
+              <Input
+                id="newStatusName"
+                value={newStatusName}
+                onChange={(e) => setNewStatusName(e.target.value)}
+                placeholder="Enter risk status name..."
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setIsCreateStatusDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  if (currentProjectId && newStatusName.trim()) {
+                    createRiskStatus.mutate({
+                      projectId: currentProjectId,
+                      name: newStatusName.trim(),
+                    });
+                  }
+                }}
+                disabled={!newStatusName.trim() || createRiskStatus.isPending}
+              >
+                Create
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isCreateStrategyDialogOpen} onOpenChange={setIsCreateStrategyDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Response Strategy</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="newStrategyName">Strategy Name</Label>
+              <Input
+                id="newStrategyName"
+                value={newStrategyName}
+                onChange={(e) => setNewStrategyName(e.target.value)}
+                placeholder="Enter response strategy name..."
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setIsCreateStrategyDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  if (currentProjectId && newStrategyName.trim()) {
+                    createResponseStrategy.mutate({
+                      projectId: currentProjectId,
+                      name: newStrategyName.trim(),
+                    });
+                  }
+                }}
+                disabled={!newStrategyName.trim() || createResponseStrategy.isPending}
+              >
+                Create
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1005,3 +1005,15 @@
 - [ ] Export risk register to Excel
 - [ ] Risk notifications and alerts
 - [ ] Risk mitigation action tracking
+
+
+## Risk Register Enhancement (Feb 17, 2026 - Batch 2)
+
+### Add Inline Creation for Risk Register Dropdowns
+- [x] Add "+" button to Risk Type dropdown for inline creation
+- [x] Add "+" button to Risk Status dropdown for inline creation
+- [ ] Add "+" button to Contingency Plan dropdown for inline creation (uses Task Groups)
+- [x] Add "+" button to Response Strategy dropdown for inline creation
+- [x] Create inline creation dialogs for each field
+- [x] Refresh dropdown lists after creation
+- [x] Auto-select newly created items
