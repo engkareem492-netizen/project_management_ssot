@@ -80,7 +80,6 @@ const menuItems = [
   { icon: AlertTriangle, label: "Risk Register", path: "/risk-register" },
   { icon: History, label: "Action Log", path: "/action-log" },
   { icon: GitBranch, label: "Relationships", path: "/relationships" },
-  { icon: SettingsIcon, label: "System Config", path: "/system-config" },
   { icon: SettingsIcon, label: "Settings", path: "/settings" },
 ];
 

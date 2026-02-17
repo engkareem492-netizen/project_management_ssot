@@ -19,7 +19,6 @@ import Today from "./pages/Today";
 import Settings from "./pages/Settings";
 import KnowledgeBase from "./pages/KnowledgeBase";
 import RiskRegister from "./pages/RiskRegister";
-import SystemConfiguration from "./pages/SystemConfiguration";
 import DashboardLayout from "./components/DashboardLayout";
 
 function Router() {
@@ -89,11 +88,6 @@ function Router() {
        <Route path={"/relationships"}>
         <DashboardLayout>
           <Relationships />
-        </DashboardLayout>
-      </Route>
-      <Route path={"/system-config"}>
-        <DashboardLayout>
-          <SystemConfiguration />
         </DashboardLayout>
       </Route>
       <Route path={"/404"} component={NotFound} />

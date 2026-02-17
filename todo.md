@@ -1040,3 +1040,9 @@
 ### Groups and Theme Tabs
 - [x] Add Groups tab placeholder
 - [x] Add Theme tab placeholder
+
+
+## Settings Menu Consolidation (Feb 17, 2026 - Batch 4)
+- [x] Remove separate "System Config" menu item
+- [x] Merge System Configuration tabs into Settings page
+- [x] Keep single "Settings" menu item with all configuration options
