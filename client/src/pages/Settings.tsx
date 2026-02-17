@@ -74,10 +74,25 @@ export default function Settings() {
   const [optionFormData, setOptionFormData] = useState({ name: "" });
 
   // ID Config queries and state
-  const { data: idConfigs, isLoading: idConfigsLoading } = trpc.idConfig.list.useQuery({ projectId: currentProjectId || 1 });
+  const { data: idConfigs, isLoading: idConfigsLoading } = trpc.idConfig.list.useQuery(
+    { projectId: currentProjectId! },
+    { enabled: !!currentProjectId }
+  );
   const updateConfig = trpc.idConfig.update.useMutation();
+  const initDefaults = trpc.idConfig.initDefaults.useMutation();
   const utils = trpc.useUtils();
   const [editingConfigs, setEditingConfigs] = useState<Record<string, IdConfigEdit>>({});
+
+  const handleInitDefaults = async () => {
+    if (!currentProjectId) return;
+    try {
+      const result = await initDefaults.mutateAsync({ projectId: currentProjectId });
+      await utils.idConfig.list.invalidate();
+      toast.success(`Created ${result.created} default ID configurations`);
+    } catch (err) {
+      toast.error("Failed to initialize default configurations");
+    }
+  };
 
   // Dropdown options queries
   const { data: statusOptions, refetch: refetchStatus } = trpc.dropdownOptions.status.getAll.useQuery();
@@ -677,6 +692,22 @@ export default function Settings() {
               </div>
             </div>
           </div>
+
+          {(!idConfigs || idConfigs.length === 0) && !idConfigsLoading && (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <Hash className="w-12 h-12 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No ID Configurations Found</h3>
+                <p className="text-muted-foreground text-center mb-6">
+                  This project doesn't have any ID configurations yet. Initialize defaults to set up standard prefixes for all entity types.
+                </p>
+                <Button onClick={handleInitDefaults} disabled={initDefaults.isPending}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  {initDefaults.isPending ? "Initializing..." : "Initialize Default Configurations"}
+                </Button>
+              </CardContent>
+            </Card>
+          )}
 
           {idConfigs?.map((config) => {
             const editing = getEditingConfig(config.entityType, config);

@@ -1055,3 +1055,11 @@
 - [x] Ensure RISK prefix appears in ID Configuration tab and is editable
 - [x] Wire delete mutations for all Risk dropdown types
 - [x] Tests passing (10/10 in settings-risk-dropdowns.test.ts)
+
+
+## ID Configuration Fix (Feb 17, 2026 - Batch 6)
+- [x] Fix ID Configuration tab not showing entity prefix table (was project-specific - added empty state)
+- [x] Display all entity types (RISK, REQ, TASK, ISSUE, etc.) with editable prefix, number range, and padding
+- [x] Allow inline editing and saving of prefix configurations
+- [x] Add "Initialize Default Configurations" button for projects without ID sequences
+- [x] Clean up duplicate RISK entry in database

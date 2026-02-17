@@ -1165,6 +1165,40 @@ export const appRouter = router({
         return await db.getIdSequencesByProject(input.projectId);
       }),
 
+    initDefaults: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .mutation(async ({ input }) => {
+        const existing = await db.getIdSequencesByProject(input.projectId);
+        const existingTypes = new Set(existing.map(e => e.entityType));
+        const defaults = [
+          { entityType: 'requirement', prefix: 'REQ', padLength: 4 },
+          { entityType: 'task', prefix: 'TSK', padLength: 4 },
+          { entityType: 'issue', prefix: 'ISS', padLength: 4 },
+          { entityType: 'deliverable', prefix: 'DEL', padLength: 4 },
+          { entityType: 'dependency', prefix: 'DEP', padLength: 4 },
+          { entityType: 'assumption', prefix: 'ASM', padLength: 4 },
+          { entityType: 'knowledgeBase', prefix: 'KB', padLength: 4 },
+          { entityType: 'risk', prefix: 'RISK', padLength: 4 },
+          { entityType: 'Task Group', prefix: 'TG', padLength: 3, maxNumber: 999 },
+          { entityType: 'Issue Group', prefix: 'IG', padLength: 3, maxNumber: 999 },
+        ];
+        let created = 0;
+        for (const def of defaults) {
+          if (!existingTypes.has(def.entityType)) {
+            await db.createIdSequence({
+              projectId: input.projectId,
+              entityType: def.entityType,
+              prefix: def.prefix,
+              padLength: def.padLength,
+              minNumber: 1,
+              maxNumber: def.maxNumber || 9999,
+            });
+            created++;
+          }
+        }
+        return { created };
+      }),
+
     update: protectedProcedure
       .input(z.object({
         entityType: z.string(),

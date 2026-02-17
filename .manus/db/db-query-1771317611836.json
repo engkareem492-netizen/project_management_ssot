@@ -1,0 +1,20 @@
+{
+  "query": "SELECT projectId, GROUP_CONCAT(entityType) as types, COUNT(*) as cnt FROM idSequences GROUP BY projectId;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4FzqaZAU5mRtC.root --database j37MQHBuWbY6PMBApJWnKm --execute SELECT projectId, GROUP_CONCAT(entityType) as types, COUNT(*) as cnt FROM idSequences GROUP BY projectId;",
+  "rows": [
+    {
+      "projectId": "2",
+      "types": "Issue Group,Task Group,deliverable,issue,requirement,task",
+      "cnt": "6"
+    },
+    {
+      "projectId": "1",
+      "types": "Issue Group,RISK,Task Group,assumption,deliverable,dependency,issue,knowledgeBase,requirement,risk,task",
+      "cnt": "11"
+    }
+  ],
+  "messages": [],
+  "stdout": "projectId\ttypes\tcnt\n2\tIssue Group,Task Group,deliverable,issue,requirement,task\t6\n1\tIssue Group,RISK,Task Group,assumption,deliverable,dependency,issue,knowledgeBase,requirement,risk,task\t11\n",
+  "stderr": "",
+  "execution_time_ms": 1592
+}

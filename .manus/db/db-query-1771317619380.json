@@ -1,0 +1,30 @@
+{
+  "query": "SELECT id, name FROM projects;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4FzqaZAU5mRtC.root --database j37MQHBuWbY6PMBApJWnKm --execute SELECT id, name FROM projects;",
+  "rows": [
+    {
+      "id": "2",
+      "name": "AMS Romansiah 2026"
+    },
+    {
+      "id": "90003",
+      "name": "Application Management Romansiah 2"
+    },
+    {
+      "id": "120001",
+      "name": "Romansiah - Support 2026"
+    },
+    {
+      "id": "150001",
+      "name": "Risk Test Project"
+    },
+    {
+      "id": "150002",
+      "name": "Risk Test Project"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\n2\tAMS Romansiah 2026\n90003\tApplication Management Romansiah 2\n120001\tRomansiah - Support 2026\n150001\tRisk Test Project\n150002\tRisk Test Project\n",
+  "stderr": "",
+  "execution_time_ms": 1510
+}

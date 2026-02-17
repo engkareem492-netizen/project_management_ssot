@@ -1,0 +1,24 @@
+{
+  "query": "SELECT id, projectId, entityType, prefix, currentNumber FROM idSequences WHERE entityType LIKE '%isk%' OR entityType LIKE '%ISK%';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4FzqaZAU5mRtC.root --database j37MQHBuWbY6PMBApJWnKm --execute SELECT id, projectId, entityType, prefix, currentNumber FROM idSequences WHERE entityType LIKE '%isk%' OR entityType LIKE '%ISK%';",
+  "rows": [
+    {
+      "id": "210001",
+      "projectId": "1",
+      "entityType": "risk",
+      "prefix": "RISK",
+      "currentNumber": "0"
+    },
+    {
+      "id": "210002",
+      "projectId": "1",
+      "entityType": "RISK",
+      "prefix": "RISK",
+      "currentNumber": "64"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tprojectId\tentityType\tprefix\tcurrentNumber\n210001\t1\trisk\tRISK\t0\n210002\t1\tRISK\tRISK\t64\n",
+  "stderr": "",
+  "execution_time_ms": 1536
+}

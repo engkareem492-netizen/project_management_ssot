@@ -1,0 +1,18 @@
+{
+  "query": "SELECT projectId, COUNT(*) as count FROM idSequences GROUP BY projectId;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4FzqaZAU5mRtC.root --database j37MQHBuWbY6PMBApJWnKm --execute SELECT projectId, COUNT(*) as count FROM idSequences GROUP BY projectId;",
+  "rows": [
+    {
+      "projectId": "2",
+      "count": "6"
+    },
+    {
+      "projectId": "1",
+      "count": "11"
+    }
+  ],
+  "messages": [],
+  "stdout": "projectId\tcount\n2\t6\n1\t11\n",
+  "stderr": "",
+  "execution_time_ms": 1653
+}
