@@ -55,7 +55,8 @@ import {
   ChevronRight,
   Database,
   Palette,
-  BookOpen
+  BookOpen,
+  AlertTriangle
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -76,6 +77,7 @@ const menuItems = [
   { icon: Users, label: "Stakeholders", path: "/stakeholders" },
   { icon: Package, label: "Deliverables", path: "/deliverables" },
   { icon: BookOpen, label: "Knowledge Base", path: "/knowledge-base" },
+  { icon: AlertTriangle, label: "Risk Register", path: "/risk-register" },
   { icon: History, label: "Action Log", path: "/action-log" },
   { icon: GitBranch, label: "Relationships", path: "/relationships" },
   { icon: SettingsIcon, label: "Settings", path: "/settings" },

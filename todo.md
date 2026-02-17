@@ -889,3 +889,119 @@
 - [x] Add tabs for these new dropdown types - All 4 tabs added (Issue Types, Deliverable Types, KB Types, KB Components)
 - [x] Add UI tables to display and manage these options - Tables showing data with placeholder CRUD buttons
 - [x] Test all dropdown options are visible and functional - All tabs working, displaying correct empty states
+
+
+## Critical Bug (Feb 15, 2026 - Database Persistence)
+- [ ] idSequences records disappearing after page refresh
+- [ ] Project createdBy values resetting causing "No projects found"
+- [ ] Investigate if there's a seed script or migration resetting data
+- [ ] Create proper seed data with correct user IDs
+- [ ] Ensure data persists across sessions and deployments
+
+
+## Feature (Feb 15, 2026 - Risk Register)
+### Risk Register Core Feature
+- [ ] Create database schema for risks table with all fields
+- [ ] Risk ID with configurable prefix (e.g., RISK-0001)
+- [ ] Risk Type dropdown (editable)
+- [ ] Title field
+- [ ] Risk Owner (linked to stakeholders)
+- [ ] Risk Status dropdown (new, specific to risks)
+- [ ] Identified On date (default today, editable)
+- [ ] Update field with historical tracking
+- [ ] Update Date with historical tracking
+- [ ] Impact (1-5, mandatory)
+- [ ] Probability (1-5, mandatory)
+- [ ] Score (auto-calculated: Impact × Probability)
+- [ ] Residual Impact (1-5)
+- [ ] Residual Probability (1-5)
+- [ ] Residual Score (auto-calculated: Residual Impact × Residual Probability)
+- [ ] Contingency Plan (Task Group selection/creation)
+- [ ] Response Strategy dropdown (new)
+- [ ] Analysis button to open linked analysis card
+
+### Risk Analysis Feature
+- [ ] Create riskAnalysis table linked to risk ID
+- [ ] Table with 5 columns:
+  - [ ] Cause Level (number)
+  - [ ] Cause (text)
+  - [ ] Consequences (text)
+  - [ ] Trigger (text)
+  - [ ] Mitigation Plan (Task Group selection/creation)
+- [ ] UI card that opens from Risk Register
+- [ ] CRUD operations for analysis entries
+
+### Risk Dropdown Tables
+- [ ] Create riskTypes table (editable dropdown)
+- [ ] Create riskStatus table (specific to risks)
+- [ ] Create responseStrategy table (editable dropdown)
+- [ ] Add these to Settings page Dropdown Options
+
+### Backend Implementation
+- [ ] Create risks router with CRUD procedures
+- [ ] Create riskAnalysis router with CRUD procedures
+- [ ] Add risk dropdown routers (types, status, strategy)
+- [ ] Implement historical tracking for updates
+- [ ] Auto-calculate scores (initial and residual)
+
+### Frontend Implementation
+- [ ] Create Risk Register page component
+- [ ] Risk list view with filtering and search
+- [ ] Create/Edit risk form with all fields
+- [ ] Risk Analysis dialog/card component
+- [ ] Historical updates timeline view
+- [ ] Add Risk Register to sidebar navigation
+- [ ] Integrate with Task Groups for contingency/mitigation plans
+- [ ] Integrate with Stakeholders for risk owners
+
+### Testing
+- [ ] Test complete risk creation flow
+- [ ] Test risk analysis CRUD operations
+- [ ] Test score calculations (initial and residual)
+- [ ] Test historical tracking of updates
+- [ ] Test Task Group integration
+- [ ] Test Stakeholder integration
+
+
+## Risk Register Feature (Feb 17, 2026)
+
+### Database Schema
+- [x] Create risks table with all required fields (riskId, title, description, impact, probability, score, etc.)
+- [x] Create riskTypes table for risk categorization
+- [x] Create riskStatus table for risk status tracking
+- [x] Create responseStrategy table for mitigation strategies
+- [x] Create riskUpdates table for historical tracking
+- [x] Create riskAnalysis table for cause-consequence analysis
+
+### Backend Implementation
+- [x] Add Risk Register helper functions in db.ts for all CRUD operations
+- [x] Create risks.router.ts with tRPC procedures for all endpoints
+- [x] Implement auto-generated Risk IDs (RISK-XXX format)
+- [x] Implement auto-calculated risk scores (impact × probability)
+- [x] Implement residual score calculation
+- [x] Add risks router to main appRouter
+
+### Frontend Implementation
+- [x] Create RiskRegister.tsx page with comprehensive UI
+- [x] Implement risk list view with all fields displayed
+- [x] Create risk form with auto-calculated scores
+- [x] Add historical updates tracking UI
+- [x] Implement Risk Analysis modal with cause-consequence table
+- [x] Integrate with Stakeholders dropdown (Risk Owner)
+- [x] Integrate with Task Groups dropdown
+- [x] Add Risk Register navigation item to sidebar
+- [x] Configure routing in App.tsx
+
+### Testing
+- [ ] Unit tests for risk CRUD operations (basic structure created, needs refinement)
+- [ ] Unit tests for score calculation
+- [ ] Unit tests for historical tracking
+- [ ] Unit tests for risk analysis
+
+### Future Enhancements
+- [ ] Risk matrix visualization (impact vs probability grid)
+- [ ] Risk heat map
+- [ ] Risk trend analysis over time
+- [ ] Export risk register to Excel
+- [ ] Risk notifications and alerts
+- [ ] Risk mitigation action tracking

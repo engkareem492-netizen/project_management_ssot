@@ -18,6 +18,7 @@ import Deliverables from "./pages/Deliverables";
 import Today from "./pages/Today";
 import Settings from "./pages/Settings";
 import KnowledgeBase from "./pages/KnowledgeBase";
+import RiskRegister from "./pages/RiskRegister";
 import DashboardLayout from "./components/DashboardLayout";
 
 function Router() {
@@ -72,6 +73,11 @@ function Router() {
       <Route path={"/knowledge-base"}>
         <DashboardLayout>
           <KnowledgeBase />
+        </DashboardLayout>
+      </Route>
+      <Route path={"/risk-register"}>
+        <DashboardLayout>
+          <RiskRegister />
         </DashboardLayout>
       </Route>
       <Route path={"/action-log"}>

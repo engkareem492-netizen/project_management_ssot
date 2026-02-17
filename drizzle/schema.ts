@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, json, boolean } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, json, boolean, date } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -524,3 +524,108 @@ export const knowledgeBase = mysqlTable("knowledgeBase", {
 
 export type KnowledgeBase = typeof knowledgeBase.$inferSelect;
 export type InsertKnowledgeBase = typeof knowledgeBase.$inferInsert;
+
+
+/**
+ * Risk Types table - configurable dropdown for risk types
+ */
+export const riskTypes = mysqlTable("riskTypes", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  name: varchar("name", { length: 100 }).notNull(),
+  isDefault: boolean("isDefault").default(false),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type RiskType = typeof riskTypes.$inferSelect;
+export type InsertRiskType = typeof riskTypes.$inferInsert;
+
+/**
+ * Risk Status table - configurable dropdown for risk status
+ */
+export const riskStatus = mysqlTable("riskStatus", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  name: varchar("name", { length: 100 }).notNull(),
+  isDefault: boolean("isDefault").default(false),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type RiskStatus = typeof riskStatus.$inferSelect;
+export type InsertRiskStatus = typeof riskStatus.$inferInsert;
+
+/**
+ * Response Strategy table - configurable dropdown for response strategies
+ */
+export const responseStrategy = mysqlTable("responseStrategy", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  name: varchar("name", { length: 100 }).notNull(),
+  isDefault: boolean("isDefault").default(false),
+  createdAt: timestamp("createdAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ResponseStrategy = typeof responseStrategy.$inferSelect;
+export type InsertResponseStrategy = typeof responseStrategy.$inferInsert;
+
+/**
+ * Risks table - main risk register
+ */
+export const risks = mysqlTable("risks", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  riskId: varchar("riskId", { length: 50 }).notNull(), // e.g., RISK-0001
+  riskTypeId: int("riskTypeId"),
+  title: text("title").notNull(),
+  riskOwnerId: int("riskOwnerId"), // stakeholder ID
+  riskStatusId: int("riskStatusId"),
+  identifiedOn: date("identifiedOn").notNull(),
+  impact: int("impact").notNull(), // 1-5
+  probability: int("probability").notNull(), // 1-5
+  score: int("score").notNull(), // impact * probability
+  residualImpact: int("residualImpact"), // 1-5
+  residualProbability: int("residualProbability"), // 1-5
+  residualScore: int("residualScore"), // residualImpact * residualProbability
+  contingencyPlanId: int("contingencyPlanId"), // task group ID
+  responseStrategyId: int("responseStrategyId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Risk = typeof risks.$inferSelect;
+export type InsertRisk = typeof risks.$inferInsert;
+
+/**
+ * Risk Updates table - historical tracking of risk updates
+ */
+export const riskUpdates = mysqlTable("riskUpdates", {
+  id: int("id").autoincrement().primaryKey(),
+  riskId: int("riskId").notNull(), // foreign key to risks.id
+  update: text("update").notNull(),
+  updateDate: date("updateDate").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type RiskUpdate = typeof riskUpdates.$inferSelect;
+export type InsertRiskUpdate = typeof riskUpdates.$inferInsert;
+
+/**
+ * Risk Analysis table - cause-consequence-mitigation tracking
+ */
+export const riskAnalysis = mysqlTable("riskAnalysis", {
+  id: int("id").autoincrement().primaryKey(),
+  riskId: int("riskId").notNull(), // foreign key to risks.id
+  causeLevel: int("causeLevel").notNull(),
+  cause: text("cause").notNull(),
+  consequences: text("consequences").notNull(),
+  trigger: text("trigger").notNull(),
+  mitigationPlanId: int("mitigationPlanId"), // task group ID
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type RiskAnalysis = typeof riskAnalysis.$inferSelect;
+export type InsertRiskAnalysis = typeof riskAnalysis.$inferInsert;

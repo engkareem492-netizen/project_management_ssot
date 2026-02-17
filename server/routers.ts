@@ -8,11 +8,13 @@ import * as XLSX from "xlsx";
 import { TRPCError } from "@trpc/server";
 import { projectsRouter } from "./projects.router";
 import { knowledgeBaseRouter } from "./knowledgeBase.router";
+import { risksRouter } from "./risks.router";
 
 export const appRouter = router({
   system: systemRouter,
   projects: projectsRouter,
   knowledgeBase: knowledgeBaseRouter,
+  risks: risksRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {

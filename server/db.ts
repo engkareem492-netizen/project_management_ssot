@@ -43,7 +43,25 @@ import {
   InsertKnowledgeBase,
   InsertKnowledgeBaseType,
   InsertKnowledgeBaseComponent,
-  InsertKnowledgeBaseCodeConfig
+  InsertKnowledgeBaseCodeConfig,
+  risks,
+  riskTypes,
+  riskStatus,
+  responseStrategy,
+  riskUpdates,
+  riskAnalysis,
+  InsertRisk,
+  InsertRiskType,
+  InsertRiskStatus,
+  InsertResponseStrategy,
+  InsertRiskUpdate,
+  InsertRiskAnalysis,
+  Risk,
+  RiskType,
+  RiskStatus,
+  ResponseStrategy,
+  RiskUpdate,
+  RiskAnalysis
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -1726,4 +1744,167 @@ export async function generateKnowledgeBaseCode(projectId: number): Promise<stri
   
   const nextNumber = maxNumber + 1;
   return `${prefix}-${String(nextNumber).padStart(3, "0")}`;
+}
+
+// ==================== Risk Register Functions ====================
+
+export async function getAllRisks(projectId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return await db.select().from(risks).where(eq(risks.projectId, projectId));
+}
+
+export async function getRiskById(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.select().from(risks).where(eq(risks.id, id));
+  return result[0];
+}
+
+export async function createRisk(data: InsertRisk) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(risks).values(data);
+  return result;
+}
+
+export async function updateRisk(id: number, data: Partial<Risk>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(risks).set(data).where(eq(risks.id, id));
+}
+
+export async function deleteRisk(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(risks).where(eq(risks.id, id));
+}
+
+// Risk Types
+export async function getAllRiskTypes(projectId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return await db.select().from(riskTypes).where(eq(riskTypes.projectId, projectId));
+}
+
+export async function createRiskType(data: InsertRiskType) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(riskTypes).values(data);
+  return result;
+}
+
+export async function updateRiskType(id: number, data: Partial<RiskType>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(riskTypes).set(data).where(eq(riskTypes.id, id));
+}
+
+export async function deleteRiskType(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(riskTypes).where(eq(riskTypes.id, id));
+}
+
+// Risk Status
+export async function getAllRiskStatuses(projectId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return await db.select().from(riskStatus).where(eq(riskStatus.projectId, projectId));
+}
+
+export async function createRiskStatus(data: InsertRiskStatus) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(riskStatus).values(data);
+  return result;
+}
+
+export async function updateRiskStatus(id: number, data: Partial<RiskStatus>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(riskStatus).set(data).where(eq(riskStatus.id, id));
+}
+
+export async function deleteRiskStatus(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(riskStatus).where(eq(riskStatus.id, id));
+}
+
+// Response Strategies
+export async function getAllResponseStrategies(projectId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return await db.select().from(responseStrategy).where(eq(responseStrategy.projectId, projectId));
+}
+
+export async function createResponseStrategy(data: InsertResponseStrategy) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(responseStrategy).values(data);
+  return result;
+}
+
+export async function updateResponseStrategy(id: number, data: Partial<ResponseStrategy>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(responseStrategy).set(data).where(eq(responseStrategy.id, id));
+}
+
+export async function deleteResponseStrategy(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(responseStrategy).where(eq(responseStrategy.id, id));
+}
+
+// Risk Updates (Historical tracking)
+export async function getRiskUpdates(riskId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return await db.select().from(riskUpdates).where(eq(riskUpdates.riskId, riskId));
+}
+
+export async function createRiskUpdate(data: InsertRiskUpdate) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(riskUpdates).values(data);
+  return result;
+}
+
+export async function deleteRiskUpdate(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(riskUpdates).where(eq(riskUpdates.id, id));
+}
+
+// Risk Analysis
+export async function getRiskAnalysis(riskId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return await db.select().from(riskAnalysis).where(eq(riskAnalysis.riskId, riskId));
+}
+
+export async function createRiskAnalysis(data: InsertRiskAnalysis) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(riskAnalysis).values(data);
+  return result;
+}
+
+export async function updateRiskAnalysis(id: number, data: Partial<RiskAnalysis>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(riskAnalysis).set(data).where(eq(riskAnalysis.id, id));
+}
+
+export async function deleteRiskAnalysis(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(riskAnalysis).where(eq(riskAnalysis.id, id));
+}
+
+// Generate Risk ID
+export async function generateRiskId(projectId: number): Promise<string> {
+  return await getNextId("RISK", "RISK", projectId);
 }
