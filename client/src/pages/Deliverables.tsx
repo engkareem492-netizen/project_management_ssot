@@ -69,6 +69,7 @@ export default function Deliverables() {
     { projectId: currentProjectId || 0 },
     { enabled: !!currentProjectId }
   );
+  const { data: statusOptions } = trpc.dropdownOptions.status.getAll.useQuery();
   const { data: requirements } = trpc.requirements.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
   const { data: tasks } = trpc.tasks.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
   const { data: dependencies } = trpc.dependencies.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
@@ -447,10 +448,11 @@ export default function Deliverables() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Pending">Pending</SelectItem>
-                      <SelectItem value="In Progress">In Progress</SelectItem>
-                      <SelectItem value="Completed">Completed</SelectItem>
-                      <SelectItem value="Blocked">Blocked</SelectItem>
+                      {statusOptions?.map((option) => (
+                        <SelectItem key={option.id} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <DropdownOptionsManager type="status" />
@@ -508,10 +510,11 @@ export default function Deliverables() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Pending">Pending</SelectItem>
-                    <SelectItem value="In Progress">In Progress</SelectItem>
-                    <SelectItem value="Completed">Completed</SelectItem>
-                    <SelectItem value="Blocked">Blocked</SelectItem>
+                    {statusOptions?.map((option) => (
+                      <SelectItem key={option.id} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

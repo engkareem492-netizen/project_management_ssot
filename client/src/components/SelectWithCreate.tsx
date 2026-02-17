@@ -8,7 +8,7 @@ import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 
 interface SelectWithCreateProps {
-  type: "status" | "priority" | "type" | "category" | "stakeholder";
+  type: "status" | "priority" | "type" | "category" | "stakeholder" | "issueType" | "class";
   value: string;
   onValueChange: (value: string) => void;
   placeholder?: string;
@@ -32,12 +32,22 @@ export function SelectWithCreate({ type, value, onValueChange, placeholder, cate
     { projectId: projectId! },
     { enabled: type === "stakeholder" && !!projectId }
   );
+  const issueTypesQuery = trpc.issueTypes.list.useQuery(
+    { projectId: projectId! },
+    { enabled: type === "issueType" && !!projectId }
+  );
+  const classOptionsQuery = trpc.classOptions.list.useQuery(
+    { projectId: projectId! },
+    { enabled: type === "class" && !!projectId }
+  );
 
   const options = type === "status" ? statusQuery.data :
                   type === "priority" ? priorityQuery.data :
                   type === "type" ? typeQuery.data :
                   type === "category" ? categoryQuery.data :
-                  stakeholdersQuery.data;
+                  type === "stakeholder" ? stakeholdersQuery.data :
+                  type === "issueType" ? issueTypesQuery.data :
+                  classOptionsQuery.data;
 
   // Create mutations
   const createStatusMutation = trpc.dropdownOptions.status.create.useMutation({
@@ -105,6 +115,32 @@ export function SelectWithCreate({ type, value, onValueChange, placeholder, cate
     },
   });
 
+  const createIssueTypeMutation = trpc.issueTypes.create.useMutation({
+    onSuccess: (data: any) => {
+      utils.issueTypes.list.invalidate();
+      setNewValue("");
+      setCreateDialogOpen(false);
+      if (data?.value) onValueChange(data.value);
+      toast.success("Issue Type added successfully");
+    },
+    onError: (error: any) => {
+      toast.error(`Failed to add issue type: ${error.message}`);
+    },
+  });
+
+  const createClassMutation = trpc.classOptions.create.useMutation({
+    onSuccess: (data: any) => {
+      utils.classOptions.list.invalidate();
+      setNewValue("");
+      setCreateDialogOpen(false);
+      if (data?.value) onValueChange(data.value);
+      toast.success("Class option added successfully");
+    },
+    onError: (error: any) => {
+      toast.error(`Failed to add class option: ${error.message}`);
+    },
+  });
+
   const handleCreate = () => {
     if (type === "stakeholder") {
       if (!newStakeholder.fullName.trim()) {
@@ -126,11 +162,21 @@ export function SelectWithCreate({ type, value, onValueChange, placeholder, cate
         toast.error("Please enter a value");
         return;
       }
-      const input = { value: newValue, category };
-      if (type === "status") createStatusMutation.mutate(input);
-      else if (type === "priority") createPriorityMutation.mutate(input);
-      else if (type === "type") createTypeMutation.mutate(input);
-      else createCategoryMutation.mutate(input);
+      if (type === "issueType" || type === "class") {
+        if (!projectId) {
+          toast.error("No project selected");
+          return;
+        }
+        const input = { projectId, value: newValue, label: newValue };
+        if (type === "issueType") createIssueTypeMutation.mutate(input);
+        else createClassMutation.mutate(input);
+      } else {
+        const input = { value: newValue, category };
+        if (type === "status") createStatusMutation.mutate(input);
+        else if (type === "priority") createPriorityMutation.mutate(input);
+        else if (type === "type") createTypeMutation.mutate(input);
+        else createCategoryMutation.mutate(input);
+      }
     }
   };
 
@@ -138,7 +184,9 @@ export function SelectWithCreate({ type, value, onValueChange, placeholder, cate
                     type === "priority" ? createPriorityMutation.isPending :
                     type === "type" ? createTypeMutation.isPending :
                     type === "category" ? createCategoryMutation.isPending :
-                    createStakeholderMutation.isPending;
+                    type === "stakeholder" ? createStakeholderMutation.isPending :
+                    type === "issueType" ? createIssueTypeMutation.isPending :
+                    createClassMutation.isPending;
 
   return (
     <div className="flex gap-1">
@@ -150,6 +198,10 @@ export function SelectWithCreate({ type, value, onValueChange, placeholder, cate
           {type === "stakeholder" ? (
             (options as any[])?.map((stakeholder: any) => (
               <SelectItem key={stakeholder.id} value={stakeholder.id.toString()}>{stakeholder.fullName}</SelectItem>
+            ))
+          ) : type === "issueType" || type === "class" ? (
+            (options as any[])?.map((opt: any) => (
+              <SelectItem key={opt.id} value={opt.value}>{opt.label}</SelectItem>
             ))
           ) : (
             (options as any[])?.map((opt: any) => (

@@ -93,6 +93,7 @@ export default function Issues() {
     deliverableId: undefined,
     taskId: '',
     openDate: new Date().toISOString().split('T')[0],
+    knowledgeBaseCode: '',
   });  const { data: issues, isLoading, refetch } = trpc.issues.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
   const { data: stakeholders } = trpc.stakeholders.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
   const { data: requirements } = trpc.requirements.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
@@ -338,9 +339,21 @@ export default function Issues() {
       toast.error('Description is required');
       return;
     }
+    
+    // Convert owner ID to stakeholder name
+    let ownerName = newIssue.owner;
+    if (newIssue.owner && stakeholders) {
+      const stakeholder = stakeholders.find(s => s.id.toString() === newIssue.owner);
+      if (stakeholder) {
+        ownerName = stakeholder.fullName;
+      }
+    }
+    
     // Convert "none" to undefined for optional fields
     const issueData: any = {
       ...newIssue,
+      owner: ownerName,
+      ownerId: newIssue.owner ? parseInt(newIssue.owner) : undefined,
       projectId: currentProjectId!,
       requirementId: (linkRequirement && newIssue.requirementId && newIssue.requirementId !== "none") ? newIssue.requirementId : undefined,
       deliverableId: newIssue.deliverableId ? parseInt(newIssue.deliverableId) : undefined,
@@ -971,36 +984,37 @@ export default function Issues() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="type">Type</Label>
-                  <Select
+                  <SelectWithCreate
+                    type="issueType"
                     value={newIssue.type || ''}
                     onValueChange={(value) => setNewIssue({ ...newIssue, type: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select type..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {issueTypeOptions?.map((t) => (
-                        <SelectItem key={t.id} value={t.value}>{t.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    placeholder="Select type..."
+                    projectId={currentProjectId!}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="class">Class</Label>
-                  <Select
+                  <SelectWithCreate
+                    type="class"
                     value={newIssue.class || ''}
                     onValueChange={(value) => setNewIssue({ ...newIssue, class: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select class..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {classOptions?.map((c) => (
-                        <SelectItem key={c.id} value={c.value}>{c.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    placeholder="Select class..."
+                    projectId={currentProjectId!}
+                  />
                 </div>
+              </div>
+            </div>
+            {/* Knowledge Base Link */}
+            <div className="space-y-4">
+              <h4 className="text-sm font-semibold border-b pb-2">Knowledge Base</h4>
+              <div className="space-y-2">
+                <Label htmlFor="knowledgeBaseCode">Knowledge Base Code</Label>
+                <Input
+                  id="knowledgeBaseCode"
+                  value={newIssue.knowledgeBaseCode}
+                  onChange={(e) => setNewIssue({ ...newIssue, knowledgeBaseCode: e.target.value })}
+                  placeholder="e.g., KB-001"
+                />
               </div>
             </div>
           </div>

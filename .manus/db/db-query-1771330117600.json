@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE requirements ADD COLUMN knowledgeBaseCode VARCHAR(50);\nALTER TABLE issues ADD COLUMN knowledgeBaseCode VARCHAR(50);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4FzqaZAU5mRtC.root --database j37MQHBuWbY6PMBApJWnKm --execute ALTER TABLE requirements ADD COLUMN knowledgeBaseCode VARCHAR(50);\nALTER TABLE issues ADD COLUMN knowledgeBaseCode VARCHAR(50);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 2909
+}

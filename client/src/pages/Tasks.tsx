@@ -92,6 +92,8 @@ export default function Tasks() {
     status: 'Open',
     priority: 'Medium',
     issueGroup: '',
+    type: '',
+    class: '',
   });
   const [newTask, setNewTask] = useState<any>({
     taskGroup: '',
@@ -243,6 +245,8 @@ export default function Tasks() {
         status: 'Open',
         priority: 'Medium',
         issueGroup: '',
+        type: '',
+        class: '',
       });
       utils.issues.getByEntity.invalidate();
     },
@@ -1810,6 +1814,28 @@ export default function Tasks() {
                 placeholder="Enter issue group"
               />
             </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Type</Label>
+                <SelectWithCreate
+                  type="issueType"
+                  value={newIssue.type}
+                  onValueChange={(value) => setNewIssue({ ...newIssue, type: value })}
+                  placeholder="Select type..."
+                  projectId={currentProjectId!}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Class</Label>
+                <SelectWithCreate
+                  type="class"
+                  value={newIssue.class}
+                  onValueChange={(value) => setNewIssue({ ...newIssue, class: value })}
+                  placeholder="Select class..."
+                  projectId={currentProjectId!}
+                />
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => {
@@ -1820,6 +1846,8 @@ export default function Tasks() {
                 status: 'Open',
                 priority: 'Medium',
                 issueGroup: '',
+                type: '',
+                class: '',
               });
             }}>Cancel</Button>
             <Button
@@ -1831,6 +1859,8 @@ export default function Tasks() {
                     status: newIssue.status || 'Open',
                     priority: newIssue.priority || 'Medium',
                     issueGroup: newIssue.issueGroup || undefined,
+                    type: newIssue.type || undefined,
+                    class: newIssue.class || undefined,
                     taskId: selectedTask?.taskId,
                   });
                 }

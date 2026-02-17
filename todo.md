@@ -1081,3 +1081,32 @@
 - [x] Fixed: stakeholders, requirements, tasks, issues all now require projectId
 - [x] Fixed: SelectWithCreate component to pass projectId to stakeholders query
 - [x] Fixed: getIssuesByEntity to query directly instead of calling getAllIssuesSorted
+
+
+## UI Fixes Batch (Feb 17, 2026 - Batch 8)
+
+### Deliverables
+- [ ] Fix Status field to be a dropdown linked to Status dropdown options (currently text input)
+
+### Tasks
+- [ ] Add "+" button to Responsible (R) stakeholder dropdown in Create Task dialog
+- [ ] Add "+" button to Accountable (A) stakeholder dropdown in Create Task dialog
+- [ ] Add "+" button to Consulted (C) stakeholder dropdown in Create Task dialog
+- [ ] Add "+" button to Informed (I) stakeholder dropdown in Create Task dialog
+- [ ] Add "+" button to Status dropdown in Create Task dialog
+- [ ] Add "+" button to Priority dropdown in Create Task dialog
+- [ ] Show linked deliverable per Task in Tasks management view
+- [ ] Show linked requirement per Task in Tasks management view
+
+### Issues
+- [ ] Add "+" button to Type dropdown in Create Issue dialog
+- [ ] Add "+" button to Class dropdown in Create Issue dialog
+- [ ] Fix Owner display in Issue Details to show stakeholder name instead of ID number
+- [ ] Add field to link/create Knowledge Base entries from Issues
+
+### Requirements
+- [ ] Add field to link/create Knowledge Base entries from Requirements
+
+### Knowledge Base
+- [ ] Add "+" button to Type dropdown in Create KB Entry dialog
+- [ ] Add "+" button to Component dropdown in Create KB Entry dialog

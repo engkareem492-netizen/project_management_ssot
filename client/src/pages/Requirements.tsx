@@ -82,6 +82,7 @@ export default function Requirements() {
     sourceType: '',
     refSource: '',
     createdAt: new Date().toISOString().split('T')[0],
+    knowledgeBaseCode: '',
   });
 
   const utils = trpc.useUtils();
@@ -1022,12 +1023,14 @@ export default function Requirements() {
                                   rows={2}
                                 />
                                 <div className="grid grid-cols-2 gap-2">
-                                  <Input
+                                <div className="text-sm">
+                                  <SelectWithCreate
+                                    type="status"
                                     value={editDeliverableData.status}
-                                    onChange={(e) => setEditDeliverableData({ ...editDeliverableData, status: e.target.value })}
-                                    placeholder="Status"
-                                    className="text-sm"
+                                    onValueChange={(value) => setEditDeliverableData({ ...editDeliverableData, status: value })}
+                                    placeholder="Select status..."
                                   />
+                                </div>
                                   <Input
                                     type="date"
                                     value={editDeliverableData.dueDate}
@@ -1332,6 +1335,14 @@ export default function Requirements() {
                 value={newRequirement.refSource}
                 onChange={(e) => setNewRequirement({ ...newRequirement, refSource: e.target.value })}
                 placeholder="Reference source URL or name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Knowledge Base Code</Label>
+              <Input
+                value={newRequirement.knowledgeBaseCode}
+                onChange={(e) => setNewRequirement({ ...newRequirement, knowledgeBaseCode: e.target.value })}
+                placeholder="e.g., KB-001"
               />
             </div>
             <div className="space-y-2">
@@ -1689,10 +1700,11 @@ export default function Requirements() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Status</Label>
-                <Input
+                <SelectWithCreate
+                  type="status"
                   value={newDeliverable.status}
-                  onChange={(e) => setNewDeliverable({ ...newDeliverable, status: e.target.value })}
-                  placeholder="e.g., Pending, In Progress, Completed"
+                  onValueChange={(value) => setNewDeliverable({ ...newDeliverable, status: value })}
+                  placeholder="Select status..."
                 />
               </div>
               <div className="space-y-2">

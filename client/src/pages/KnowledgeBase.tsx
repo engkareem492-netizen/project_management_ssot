@@ -412,37 +412,61 @@ export default function KnowledgeBase() {
 
                 <div className="space-y-2">
                   <Label htmlFor="type">Type</Label>
-                  <Select value={typeId} onValueChange={setTypeId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No type</SelectItem>
-                      {types.map((type) => (
-                        <SelectItem key={type.id} value={type.id.toString()}>
-                          {type.name}
-                          {type.parentTypeId && ` (${getTypeName(type.parentTypeId)})`}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex gap-1">
+                    <Select value={typeId} onValueChange={setTypeId}>
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No type</SelectItem>
+                        {types.map((type) => (
+                          <SelectItem key={type.id} value={type.id.toString()}>
+                            {type.name}
+                            {type.parentTypeId && ` (${getTypeName(type.parentTypeId)})`}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="h-10 w-10 shrink-0"
+                      onClick={() => setConfigDialogOpen(true)}
+                      title="Manage types"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="component">Component</Label>
-                  <Select value={componentId} onValueChange={setComponentId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select component" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No component</SelectItem>
-                      {components.map((component) => (
-                        <SelectItem key={component.id} value={component.id.toString()}>
-                          {component.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex gap-1">
+                    <Select value={componentId} onValueChange={setComponentId}>
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Select component" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No component</SelectItem>
+                        {components.map((component) => (
+                          <SelectItem key={component.id} value={component.id.toString()}>
+                            {component.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="h-10 w-10 shrink-0"
+                      onClick={() => setConfigDialogOpen(true)}
+                      title="Manage components"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
