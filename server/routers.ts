@@ -9,12 +9,14 @@ import { TRPCError } from "@trpc/server";
 import { projectsRouter } from "./projects.router";
 import { knowledgeBaseRouter } from "./knowledgeBase.router";
 import { risksRouter } from "./risks.router";
+import { systemConfigRouter } from "./systemConfig.router";
 
 export const appRouter = router({
   system: systemRouter,
   projects: projectsRouter,
   knowledgeBase: knowledgeBaseRouter,
   risks: risksRouter,
+  systemConfig: systemConfigRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {

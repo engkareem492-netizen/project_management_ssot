@@ -1017,3 +1017,26 @@
 - [x] Create inline creation dialogs for each field
 - [x] Refresh dropdown lists after creation
 - [x] Auto-select newly created items
+
+
+## System Configuration Page (Feb 17, 2026 - Batch 3)
+
+### ID Configuration
+- [x] Create systemConfig table for storing ID prefix and number range settings
+- [x] Add backend router for ID configuration CRUD
+- [x] Build ID Configuration tab UI with prefix, min/max range, and padding settings
+- [ ] Update Risk Register to use configurable prefix instead of hardcoded "RISK"
+- [ ] Update other modules (Issues, Requirements, etc.) to use configurable prefixes
+
+### Dropdown Options Management
+- [x] Create centralized Dropdown Options tab in System Configuration
+- [x] Add sections for Risk Types, Risk Status, Response Strategy
+- [x] Add sections for Issue Types, Deliverable Types, KB Types, KB Components
+- [x] Add sections for Status, Priority, Type, Category
+- [ ] Implement CRUD operations for each dropdown type (placeholder created)
+- [ ] Add reordering capability for dropdown items
+- [x] Keep inline "+" buttons for quick access (better UX than removing them)
+
+### Groups and Theme Tabs
+- [x] Add Groups tab placeholder
+- [x] Add Theme tab placeholder

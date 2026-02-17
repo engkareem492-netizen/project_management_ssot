@@ -61,7 +61,11 @@ import {
   RiskStatus,
   ResponseStrategy,
   RiskUpdate,
-  RiskAnalysis
+  RiskAnalysis,
+  dropdownCategories,
+  InsertDropdownCategory,
+  DropdownCategory,
+  idSequences
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -499,7 +503,6 @@ import {
   deliverables, 
   deliverableLinks,
   issueLinks,
-  idSequences,
   InsertStakeholder,
   InsertDeliverable,
   InsertDeliverableLink,
@@ -1907,4 +1910,58 @@ export async function deleteRiskAnalysis(id: number) {
 // Generate Risk ID
 export async function generateRiskId(projectId: number): Promise<string> {
   return await getNextId("RISK", "RISK", projectId);
+}
+
+// ==================== System Configuration ====================
+
+// Dropdown Categories
+export async function getDropdownCategories(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(dropdownCategories).where(eq(dropdownCategories.projectId, projectId));
+}
+
+export async function createDropdownCategory(data: InsertDropdownCategory) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(dropdownCategories).values(data);
+  return result;
+}
+
+export async function updateDropdownCategory(id: number, data: Partial<DropdownCategory>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(dropdownCategories).set(data).where(eq(dropdownCategories.id, id));
+}
+
+export async function deleteDropdownCategory(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(dropdownCategories).where(eq(dropdownCategories.id, id));
+}
+
+// ID Sequences - Wrapper functions for system config router
+export async function getIdSequences(projectId: number) {
+  return await getIdSequencesByProject(projectId);
+}
+
+export async function createIdSequence(data: { projectId: number; entityType: string; prefix: string; minNumber?: number; maxNumber?: number; padLength?: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(idSequences).values({
+    projectId: data.projectId,
+    entityType: data.entityType,
+    prefix: data.prefix,
+    currentNumber: 0,
+    minNumber: data.minNumber ?? 1,
+    maxNumber: data.maxNumber ?? 9999,
+    padLength: data.padLength ?? 4,
+  });
+  return result;
+}
+
+export async function deleteIdSequence(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(idSequences).where(eq(idSequences.id, id));
 }

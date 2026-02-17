@@ -629,3 +629,20 @@ export const riskAnalysis = mysqlTable("riskAnalysis", {
 
 export type RiskAnalysis = typeof riskAnalysis.$inferSelect;
 export type InsertRiskAnalysis = typeof riskAnalysis.$inferInsert;
+
+/**
+ * System Configuration table - stores dropdown option categories and settings
+ */
+export const dropdownCategories = mysqlTable("dropdownCategories", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  categoryKey: varchar("categoryKey", { length: 50 }).notNull(), // e.g., "riskTypes", "issueTypes"
+  categoryLabel: varchar("categoryLabel", { length: 100 }).notNull(), // e.g., "Risk Types", "Issue Types"
+  description: text("description"),
+  sortOrder: int("sortOrder").notNull().default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type DropdownCategory = typeof dropdownCategories.$inferSelect;
+export type InsertDropdownCategory = typeof dropdownCategories.$inferInsert;
