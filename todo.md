@@ -1143,3 +1143,5 @@
 - [x] Add project-specific prefixes to entity codes (REQ, TSK, ISS, DEL, RISK) to prevent conflicts between projects
 - [x] Update entity code generation logic in all create functions
 - [x] Ensure existing entities keep their codes but new entities use project prefix
+
+- [x] Fix controlled/uncontrolled input error on Requirements page (undefined values in input fields)

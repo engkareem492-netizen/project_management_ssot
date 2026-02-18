@@ -363,6 +363,7 @@ export default function Requirements() {
       status: req.status || 'Open',
       description: req.description || '',
       lastUpdate: req.lastUpdate || '',
+      knowledgeBaseCode: req.knowledgeBaseCode || '',
     });
     setIsEditMode(false);
     setViewDialogOpen(true);
@@ -382,6 +383,7 @@ export default function Requirements() {
       status: req.status || 'Open',
       description: req.description || '',
       lastUpdate: req.lastUpdate || '',
+      knowledgeBaseCode: req.knowledgeBaseCode || '',
     });
     setIsEditMode(true);
     setViewDialogOpen(true);
