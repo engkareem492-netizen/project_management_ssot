@@ -206,14 +206,12 @@ export default function Today() {
   const totalOverdue = tasksOverdue.length + requirementsOverdue.length;
   const totalUpcoming = tasksUpcoming.length + requirementsUpcoming.length;
 
-  // Apply filters to get filtered tasks
-  const filteredTasks = useMemo(() => {
-    return applyFilters(tasks || []);
-  }, [tasks, filterResponsible, filterStatus, filterPriority]);
-
   // Build relationship graph nodes and edges
   const relationshipNodes: EntityNode[] = useMemo(() => {
     const nodes: EntityNode[] = [];
+
+    // Apply filters to get filtered tasks
+    const filteredTasks = applyFilters(tasks || []);
 
     // Add task nodes (only filtered tasks)
     filteredTasks.forEach((task) => {
@@ -269,10 +267,13 @@ export default function Today() {
     });
 
     return nodes;
-  }, [filteredTasks, requirements, issues, deliverables, risks]);
+  }, [tasks, requirements, issues, deliverables, risks, filterResponsible, filterStatus, filterPriority]);
 
   const relationshipEdges: EntityEdge[] = useMemo(() => {
     const edges: EntityEdge[] = [];
+
+    // Apply filters to get filtered tasks
+    const filteredTasks = applyFilters(tasks || []);
 
     // Task -> Requirement connections (only for filtered tasks)
     filteredTasks.forEach((task) => {
@@ -362,7 +363,7 @@ export default function Today() {
     });
 
     return edges;
-  }, [filteredTasks, requirements, issues, deliverables, risks]);
+  }, [tasks, requirements, issues, deliverables, risks, filterResponsible, filterStatus, filterPriority]);
 
   // Handle node click to open entity details
   const handleNodeClick = (node: EntityNode) => {

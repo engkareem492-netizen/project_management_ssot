@@ -1126,3 +1126,5 @@
 
 - [x] Update Relationship Map to respect Filter & Group Tasks controls (Responsible, Status, Priority)
 - [x] Show only filtered tasks and their related entities in the map
+
+- [x] Fix React Hooks order violation in Today page (filteredTasks useMemo causing "Rendered more hooks" error)
