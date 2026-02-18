@@ -1110,3 +1110,5 @@
 ### Knowledge Base
 - [ ] Add "+" button to Type dropdown in Create KB Entry dialog
 - [ ] Add "+" button to Component dropdown in Create KB Entry dialog
+
+- [x] Make task items clickable in Requirement Details dialog to open task details

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { TasksByResponsibleChart } from "@/components/TasksByResponsibleChart";
 import { useProject } from "@/contexts/ProjectContext";
@@ -108,10 +108,25 @@ export default function Tasks() {
     requirementId: '',
     dueDate: '',
     assignDate: new Date().toISOString().split('T')[0],
-  });  const { data: tasks, isLoading, refetch } = trpc.tasks.list.useQuery(
-    { projectId: currentProjectId || 0 },
-    { enabled: !!currentProjectId }
-  );
+  });
+
+  const { data: tasks, isLoading, refetch } = trpc.tasks.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
+
+  // Handle taskId query parameter from URL
+  useEffect(() => {
+    if (tasks && tasks.length > 0) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const taskId = urlParams.get('taskId');
+      if (taskId) {
+        const task = tasks.find(t => t.taskId === taskId);
+        if (task) {
+          handleViewDetails(task);
+          // Clear the query parameter
+          window.history.replaceState({}, '', '/tasks');
+        }
+      }
+    }
+  }, [tasks]);
   const { data: stakeholders } = trpc.stakeholders.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
   const { data: requirements } = trpc.requirements.list.useQuery(
     { projectId: currentProjectId || 0 },

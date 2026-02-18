@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useProject } from "@/contexts/ProjectContext";
 import { Button } from "@/components/ui/button";
@@ -1098,7 +1099,14 @@ export default function Requirements() {
               ) : (
                 <div className="space-y-2">
                   {linkedTasks.map((task) => (
-                    <Card key={task.id} className="p-3 border-primary/20">
+                    <Card 
+                      key={task.id} 
+                      className="p-3 border-primary/20 cursor-pointer hover:bg-accent/50 transition-colors"
+                      onClick={() => {
+                        // Navigate to Tasks page - the Tasks page will need to handle opening the task details
+                        window.location.href = `/tasks?taskId=${task.taskId}`;
+                      }}
+                    >
                       <div className="flex items-center justify-between">
                         <div>
                           <span className="font-mono text-sm font-medium text-primary">{task.taskId}</span>
