@@ -21,6 +21,7 @@ export default function Today() {
   const [filterResponsible, setFilterResponsible] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterPriority, setFilterPriority] = useState<string>("all");
+  const [filterTaskCode, setFilterTaskCode] = useState<string>("all");
   const [groupBy, setGroupBy] = useState<string>("none");
 
   const utils = trpc.useUtils();
@@ -79,6 +80,7 @@ export default function Today() {
       if (filterResponsible !== "all" && t.responsible !== filterResponsible) return false;
       if (filterStatus !== "all" && t.status !== filterStatus) return false;
       if (filterPriority !== "all" && t.priority !== filterPriority) return false;
+      if (filterTaskCode !== "all" && t.taskId !== filterTaskCode) return false;
       return true;
     });
   };
@@ -99,6 +101,11 @@ export default function Today() {
     return Array.from(new Set(priorities));
   }, [tasks]);
 
+  const uniqueTaskCodes = useMemo(() => {
+    const codes = tasks?.map(t => t.taskId).filter((c): c is string => Boolean(c)) || [];
+    return Array.from(new Set(codes)).sort();
+  }, [tasks]);
+
   // Categorize tasks
   const tasksToday = useMemo(() => {
     const filtered = tasks?.filter(t => {
@@ -106,7 +113,7 @@ export default function Today() {
       return dueDate && dueDate.getTime() === today.getTime();
     }) || [];
     return applyFilters(filtered);
-  }, [tasks, today, filterResponsible, filterStatus, filterPriority]);
+  }, [tasks, today, filterResponsible, filterStatus, filterPriority, filterTaskCode]);
 
   const tasksOverdue = useMemo(() => {
     const filtered = tasks?.filter(t => {
@@ -114,7 +121,7 @@ export default function Today() {
       return dueDate && dueDate.getTime() < today.getTime() && t.currentStatus !== "Completed";
     }) || [];
     return applyFilters(filtered);
-  }, [tasks, today, filterResponsible, filterStatus, filterPriority]);
+  }, [tasks, today, filterResponsible, filterStatus, filterPriority, filterTaskCode]);
 
   const tasksUpcoming = useMemo(() => {
     const filtered = tasks?.filter(t => {
@@ -122,7 +129,7 @@ export default function Today() {
       return dueDate && dueDate.getTime() > today.getTime() && dueDate.getTime() <= sevenDaysLater.getTime();
     }) || [];
     return applyFilters(filtered);
-  }, [tasks, today, sevenDaysLater, filterResponsible, filterStatus, filterPriority]);
+  }, [tasks, today, sevenDaysLater, filterResponsible, filterStatus, filterPriority, filterTaskCode]);
 
   // Categorize requirements
   const requirementsToday = useMemo(() => {
@@ -201,6 +208,43 @@ export default function Today() {
     // Apply filters to get filtered tasks
     const filteredTasks = applyFilters(tasks || []);
 
+    // Collect IDs of related entities from filtered tasks
+    const relatedRequirementCodes = new Set<string>();
+    const relatedDeliverableIds = new Set<number>();
+    const relatedIssueTaskCodes = new Set<string>();
+
+    filteredTasks.forEach((task) => {
+      if (task.requirementId) relatedRequirementCodes.add(task.requirementId);
+      if (task.deliverableId) relatedDeliverableIds.add(task.deliverableId);
+      if (task.taskId) relatedIssueTaskCodes.add(task.taskId);
+    });
+
+    // Find issues linked to filtered tasks
+    const relatedIssues = issues?.filter((issue) => {
+      if (issue.taskId && relatedIssueTaskCodes.has(issue.taskId)) return true;
+      if (issue.requirementId && relatedRequirementCodes.has(issue.requirementId)) return true;
+      return false;
+    }) || [];
+
+    // Find risks linked to filtered tasks
+    const relatedRisks = risks?.filter((risk) => {
+      if ((risk as any).taskId) {
+        const task = filteredTasks.find((t) => t.id === (risk as any).taskId);
+        if (task) return true;
+      }
+      return false;
+    }) || [];
+
+    // Find requirements linked to filtered tasks
+    const relatedRequirements = requirements?.filter((req) => {
+      return relatedRequirementCodes.has(req.idCode);
+    }) || [];
+
+    // Find deliverables linked to filtered tasks
+    const relatedDeliverables = deliverables?.filter((del) => {
+      return relatedDeliverableIds.has(del.id);
+    }) || [];
+
     // Add task nodes (only filtered tasks)
     filteredTasks.forEach((task) => {
       nodes.push({
@@ -213,8 +257,8 @@ export default function Today() {
       });
     });
 
-    // Add requirement nodes
-    requirements?.forEach((req) => {
+    // Add only related requirement nodes
+    relatedRequirements.forEach((req) => {
       nodes.push({
         id: `requirement-${req.id}`,
         type: 'requirement',
@@ -225,8 +269,8 @@ export default function Today() {
       });
     });
 
-    // Add issue nodes
-    issues?.forEach((issue) => {
+    // Add only related issue nodes
+    relatedIssues.forEach((issue) => {
       nodes.push({
         id: `issue-${issue.id}`,
         type: 'issue',
@@ -237,8 +281,8 @@ export default function Today() {
       });
     });
 
-    // Add deliverable nodes
-    deliverables?.forEach((del) => {
+    // Add only related deliverable nodes
+    relatedDeliverables.forEach((del) => {
       nodes.push({
         id: `deliverable-${del.id}`,
         type: 'deliverable',
@@ -248,8 +292,8 @@ export default function Today() {
       });
     });
 
-    // Add risk nodes
-    risks?.forEach((risk) => {
+    // Add only related risk nodes
+    relatedRisks.forEach((risk) => {
       nodes.push({
         id: `risk-${risk.id}`,
         type: 'risk',
@@ -260,7 +304,7 @@ export default function Today() {
     });
 
     return nodes;
-  }, [tasks, requirements, issues, deliverables, risks, filterResponsible, filterStatus, filterPriority]);
+  }, [tasks, requirements, issues, deliverables, risks, filterResponsible, filterStatus, filterPriority, filterTaskCode]);
 
   const relationshipEdges: EntityEdge[] = useMemo(() => {
     const edges: EntityEdge[] = [];
@@ -356,7 +400,7 @@ export default function Today() {
     });
 
     return edges;
-  }, [tasks, requirements, issues, deliverables, risks, filterResponsible, filterStatus, filterPriority]);
+  }, [tasks, requirements, issues, deliverables, risks, filterResponsible, filterStatus, filterPriority, filterTaskCode]);
 
   // Handle node click to open entity details
   const handleNodeClick = (node: EntityNode) => {
@@ -392,7 +436,21 @@ export default function Today() {
           <CardDescription>Customize your view to track tasks more effectively</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <div className="space-y-2">
+              <Label>Task Code</Label>
+              <Select value={filterTaskCode} onValueChange={setFilterTaskCode}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  {uniqueTaskCodes.map(c => (
+                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-2">
               <Label>Responsible</Label>
               <Select value={filterResponsible} onValueChange={setFilterResponsible}>
@@ -450,7 +508,7 @@ export default function Today() {
               </Select>
             </div>
           </div>
-          {(filterResponsible !== "all" || filterStatus !== "all" || filterPriority !== "all") && (
+          {(filterResponsible !== "all" || filterStatus !== "all" || filterPriority !== "all" || filterTaskCode !== "all") && (
             <Button
               variant="outline"
               size="sm"
@@ -459,6 +517,7 @@ export default function Today() {
                 setFilterResponsible("all");
                 setFilterStatus("all");
                 setFilterPriority("all");
+                setFilterTaskCode("all");
               }}
             >
               Clear Filters

@@ -1132,3 +1132,6 @@
 - [x] Fix persistent React Hooks order violation - move ALL hooks (including relationship map useMemos) before early returns
 
 - [x] Show entity titles/descriptions alongside codes in relationship map nodes (not just codes like TSK-0001)
+
+- [x] Hide unrelated nodes in relationship map - only show entities directly connected to filtered tasks
+- [x] Add Task Code filter dropdown to Filter & Group Tasks section
