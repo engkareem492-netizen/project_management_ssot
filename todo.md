@@ -1137,3 +1137,5 @@
 - [x] Add Task Code filter dropdown to Filter & Group Tasks section
 
 - [x] Add Deliverable selection field to Task edit dialog
+
+- [x] Fix Entity Relationships in Today page showing data from old project when switching to new project

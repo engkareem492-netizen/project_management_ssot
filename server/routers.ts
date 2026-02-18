@@ -948,9 +948,11 @@ export const appRouter = router({
 
   // Relationships
   relationships: router({
-    getAll: protectedProcedure.query(async () => {
-      return await db.getAllRelationships();
-    }),
+    getAll: protectedProcedure
+      .input(z.object({ projectId: z.number().optional() }))
+      .query(async ({ input }) => {
+        return await db.getAllRelationships(input.projectId);
+      }),
 
     getByRequirement: protectedProcedure
       .input(z.object({ requirementId: z.string() }))

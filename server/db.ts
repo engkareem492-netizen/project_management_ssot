@@ -470,13 +470,13 @@ export async function getRequirementRelationships(requirementId: string) {
   return { tasks: relatedTasks, issues: relatedIssues };
 }
 
-export async function getAllRelationships() {
+export async function getAllRelationships(projectId?: number) {
   const db = await getDb();
   if (!db) return [];
   
-  const allRequirements = await getAllRequirements();
-  const allTasks = await getAllTasks();
-  const allIssues = await getAllIssues();
+  const allRequirements = projectId ? await getAllRequirements(projectId) : await getAllRequirements();
+  const allTasks = projectId ? await getAllTasks(projectId) : await getAllTasks();
+  const allIssues = projectId ? await getAllIssuesSorted(projectId) : await getAllIssues();
   
   const relationships = [];
   

@@ -1,11 +1,16 @@
 import { trpc } from "@/lib/trpc";
+import { useProject } from "@/contexts/ProjectContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, GitBranch, FileText, CheckSquare, AlertCircle } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 export default function Relationships() {
-  const { data: relationships, isLoading } = trpc.relationships.getAll.useQuery();
+  const { currentProjectId } = useProject();
+  const { data: relationships, isLoading } = trpc.relationships.getAll.useQuery(
+    { projectId: currentProjectId || undefined },
+    { enabled: !!currentProjectId }
+  );
 
   if (isLoading) {
     return (
