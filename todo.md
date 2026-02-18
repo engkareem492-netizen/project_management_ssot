@@ -1135,3 +1135,5 @@
 
 - [x] Hide unrelated nodes in relationship map - only show entities directly connected to filtered tasks
 - [x] Add Task Code filter dropdown to Filter & Group Tasks section
+
+- [x] Add Deliverable selection field to Task edit dialog

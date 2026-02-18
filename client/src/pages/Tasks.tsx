@@ -492,6 +492,7 @@ export default function Tasks() {
       status: task.status || '',
       priority: task.priority || '',
       requirementId: task.requirementId || '',
+      deliverableId: task.deliverableId ? task.deliverableId.toString() : '',
       dueDate: task.dueDate || '',
       assignDate: task.assignDate || '',
     });
@@ -512,6 +513,7 @@ export default function Tasks() {
       status: task.status || '',
       priority: task.priority || '',
       requirementId: task.requirementId || '',
+      deliverableId: task.deliverableId ? task.deliverableId.toString() : '',
       dueDate: task.dueDate || '',
       assignDate: task.assignDate || '',
     });
@@ -1247,6 +1249,51 @@ export default function Tasks() {
                   </div>
                 ) : (
                   <p className="font-medium">{selectedTask?.requirementId || '-'}</p>
+                )}
+              </div>
+              <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Deliverable</Label>
+                {isEditMode ? (
+                  <div className="flex gap-2">
+                    <Select
+                      value={editFormData.deliverableId || ''}
+                      onValueChange={(value) => {
+                        if (value === '' || value === 'none') {
+                          setEditFormData({ ...editFormData, deliverableId: undefined });
+                        } else {
+                          setEditFormData({ ...editFormData, deliverableId: value });
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="h-8">
+                        <SelectValue placeholder="Select deliverable..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {deliverables?.map((del) => (
+                          <SelectItem key={del.id} value={del.id.toString()}>
+                            {del.deliverableId} - {del.description?.substring(0, 50) || 'No description'}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      onClick={() => setAddDeliverableDialogOpen(true)}
+                      title="Add new deliverable"
+                      className="h-8 w-8"
+                    >
+                      <Plus className="w-3 h-3" />
+                    </Button>
+                  </div>
+                ) : (
+                  <p className="font-medium">
+                    {selectedTask?.deliverableId
+                      ? (deliverables?.find(d => d.id === selectedTask.deliverableId)?.deliverableId || '-') + ' - ' + (deliverables?.find(d => d.id === selectedTask.deliverableId)?.description?.substring(0, 50) || '')
+                      : '-'}
+                  </p>
                 )}
               </div>
               <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
