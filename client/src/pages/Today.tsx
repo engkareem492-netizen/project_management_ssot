@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
+import { RelationshipMap, EntityNode, EntityEdge } from "@/components/RelationshipMap";
 import { useProject } from "@/contexts/ProjectContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,6 +26,9 @@ export default function Today() {
   const utils = trpc.useUtils();
   const { data: tasks, isLoading: tasksLoading } = trpc.tasks.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
   const { data: requirements, isLoading: requirementsLoading } = trpc.requirements.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
+  const { data: issues } = trpc.issues.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
+  const { data: deliverables } = trpc.deliverables.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
+  const { data: risks } = trpc.risks.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
   const { data: statusOptions } = trpc.dropdownOptions.status.getAll.useQuery();
 
   const updateTaskMutation = trpc.tasks.update.useMutation({
@@ -201,6 +205,172 @@ export default function Today() {
   const totalToday = tasksToday.length + requirementsToday.length;
   const totalOverdue = tasksOverdue.length + requirementsOverdue.length;
   const totalUpcoming = tasksUpcoming.length + requirementsUpcoming.length;
+
+  // Build relationship graph nodes and edges
+  const relationshipNodes: EntityNode[] = useMemo(() => {
+    const nodes: EntityNode[] = [];
+
+    // Add task nodes
+    tasks?.forEach((task) => {
+      nodes.push({
+        id: `task-${task.id}`,
+        type: 'task',
+        title: task.taskId || `Task ${task.id}`,
+        status: task.currentStatus || task.status,
+        priority: task.priority || undefined,
+      });
+    });
+
+    // Add requirement nodes
+    requirements?.forEach((req) => {
+      nodes.push({
+        id: `requirement-${req.id}`,
+        type: 'requirement',
+        title: req.idCode || `Req ${req.id}`,
+        status: req.status || undefined,
+        priority: req.priority || undefined,
+      });
+    });
+
+    // Add issue nodes
+    issues?.forEach((issue) => {
+      nodes.push({
+        id: `issue-${issue.id}`,
+        type: 'issue',
+        title: issue.issueId || `Issue ${issue.id}`,
+        status: issue.status || undefined,
+        priority: issue.priority || undefined,
+      });
+    });
+
+    // Add deliverable nodes
+    deliverables?.forEach((del) => {
+      nodes.push({
+        id: `deliverable-${del.id}`,
+        type: 'deliverable',
+        title: del.deliverableId || `Del ${del.id}`,
+        status: del.status || undefined,
+      });
+    });
+
+    // Add risk nodes
+    risks?.forEach((risk) => {
+      nodes.push({
+        id: `risk-${risk.id}`,
+        type: 'risk',
+        title: risk.riskId || `Risk ${risk.id}`,
+        status: `Impact: ${risk.impact}, Prob: ${risk.probability}`,
+      });
+    });
+
+    return nodes;
+  }, [tasks, requirements, issues, deliverables, risks]);
+
+  const relationshipEdges: EntityEdge[] = useMemo(() => {
+    const edges: EntityEdge[] = [];
+
+    // Task -> Requirement connections
+    tasks?.forEach((task) => {
+      if (task.requirementId) {
+        // requirementId is stored as string (idCode), find by idCode
+        const req = requirements?.find((r) => r.idCode === task.requirementId);
+        if (req) {
+          edges.push({
+            from: `task-${task.id}`,
+            to: `requirement-${req.id}`,
+            label: 'implements',
+          });
+        }
+      }
+    });
+
+    // Task -> Deliverable connections
+    tasks?.forEach((task) => {
+      if (task.deliverableId) {
+        const del = deliverables?.find((d) => d.id === task.deliverableId);
+        if (del) {
+          edges.push({
+            from: `task-${task.id}`,
+            to: `deliverable-${del.id}`,
+            label: 'contributes to',
+          });
+        }
+      }
+    });
+
+    // Issue -> Requirement connections
+    issues?.forEach((issue) => {
+      if (issue.requirementId) {
+        // requirementId is stored as string (idCode), find by idCode
+        const req = requirements?.find((r) => r.idCode === issue.requirementId);
+        if (req) {
+          edges.push({
+            from: `issue-${issue.id}`,
+            to: `requirement-${req.id}`,
+            label: 'affects',
+          });
+        }
+      }
+    });
+
+    // Issue -> Task connections
+    issues?.forEach((issue) => {
+      if (issue.taskId) {
+        // taskId is stored as string (taskId code), find by taskId
+        const task = tasks?.find((t) => t.taskId === issue.taskId);
+        if (task) {
+          edges.push({
+            from: `issue-${issue.id}`,
+            to: `task-${task.id}`,
+            label: 'blocks',
+          });
+        }
+      }
+    });
+
+    // Risk -> Task connections (if risks have taskId field)
+    risks?.forEach((risk) => {
+      if ((risk as any).taskId) {
+        const task = tasks?.find((t) => t.id === (risk as any).taskId);
+        if (task) {
+          edges.push({
+            from: `risk-${risk.id}`,
+            to: `task-${task.id}`,
+            label: 'threatens',
+          });
+        }
+      }
+    });
+
+    // Deliverable -> Requirement connections
+    deliverables?.forEach((del) => {
+      if ((del as any).requirementId) {
+        const req = requirements?.find((r) => r.id === (del as any).requirementId);
+        if (req) {
+          edges.push({
+            from: `deliverable-${del.id}`,
+            to: `requirement-${req.id}`,
+            label: 'fulfills',
+          });
+        }
+      }
+    });
+
+    return edges;
+  }, [tasks, requirements, issues, deliverables, risks]);
+
+  // Handle node click to open entity details
+  const handleNodeClick = (node: EntityNode) => {
+    const [type, idStr] = node.id.split('-');
+    const id = parseInt(idStr);
+
+    // TODO: Open the appropriate detail dialog based on entity type
+    // For now, just show a toast
+    toast.info(`Clicked on ${type}: ${node.title}`);
+
+    // You can navigate to the appropriate page or open a dialog here
+    // Example: window.location.href = `/${type}s?id=${id}`;
+  };
 
   return (
     <div className="space-y-6 p-6">
@@ -559,6 +729,21 @@ export default function Today() {
           </CardContent>
         </Card>
       )}
+
+      {/* Relationship Map */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Relationship Map</CardTitle>
+          <CardDescription>Visual representation of connections between Tasks, Requirements, Issues, Risks, and Deliverables</CardDescription>
+        </CardHeader>
+        <CardContent className="h-[600px]">
+          <RelationshipMap
+            nodes={relationshipNodes}
+            edges={relationshipEdges}
+            onNodeClick={handleNodeClick}
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 }

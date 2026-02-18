@@ -1112,3 +1112,14 @@
 - [ ] Add "+" button to Component dropdown in Create KB Entry dialog
 
 - [x] Make task items clickable in Requirement Details dialog to open task details
+
+## Relationship Map Visualization (Feb 18, 2026)
+
+- [x] Install React Flow library for graph visualization
+- [x] Create RelationshipMap component with node and edge rendering
+- [x] Add data fetching logic to build graph from Tasks, Requirements, Issues, Risks, Deliverables
+- [x] Implement filter controls to show/hide entity types (Tasks, Requirements, Issues, Risks, Deliverables)
+- [x] Add click handlers to open entity details dialogs from map nodes
+- [x] Integrate RelationshipMap into Today tab
+- [x] Style nodes with different colors for each entity type
+- [x] Add zoom and pan controls for large graphs
