@@ -207,6 +207,7 @@ export default function Today() {
         id: `task-${task.id}`,
         type: 'task',
         title: task.taskId || `Task ${task.id}`,
+        description: task.description || undefined,
         status: task.currentStatus || task.status,
         priority: task.priority || undefined,
       });
@@ -218,6 +219,7 @@ export default function Today() {
         id: `requirement-${req.id}`,
         type: 'requirement',
         title: req.idCode || `Req ${req.id}`,
+        description: req.description || undefined,
         status: req.status || undefined,
         priority: req.priority || undefined,
       });
@@ -229,6 +231,7 @@ export default function Today() {
         id: `issue-${issue.id}`,
         type: 'issue',
         title: issue.issueId || `Issue ${issue.id}`,
+        description: issue.description || undefined,
         status: issue.status || undefined,
         priority: issue.priority || undefined,
       });
@@ -240,6 +243,7 @@ export default function Today() {
         id: `deliverable-${del.id}`,
         type: 'deliverable',
         title: del.deliverableId || `Del ${del.id}`,
+        description: del.description || undefined,
         status: del.status || undefined,
       });
     });
@@ -250,6 +254,7 @@ export default function Today() {
         id: `risk-${risk.id}`,
         type: 'risk',
         title: risk.riskId || `Risk ${risk.id}`,
+        description: risk.title || undefined,
         status: `Impact: ${risk.impact}, Prob: ${risk.probability}`,
       });
     });

@@ -20,6 +20,7 @@ export interface EntityNode {
   id: string;
   type: 'task' | 'requirement' | 'issue' | 'risk' | 'deliverable';
   title: string;
+  description?: string;
   status?: string;
   priority?: string;
 }
@@ -79,12 +80,14 @@ export function RelationshipMap({ nodes, edges, onNodeClick }: RelationshipMapPr
             style={{
               backgroundColor: nodeColors[node.type],
               color: 'white',
-              minWidth: '120px',
+              minWidth: '140px',
+              maxWidth: '220px',
               textAlign: 'center',
             }}
           >
-            <div className="font-semibold text-sm">{node.title}</div>
-            {node.status && <div className="text-xs mt-1 opacity-90">{node.status}</div>}
+            <div className="font-bold text-xs opacity-80">{node.title}</div>
+            {node.description && <div className="font-semibold text-sm mt-0.5 leading-tight">{node.description}</div>}
+            {node.status && <div className="text-xs mt-1 opacity-80">{node.status}</div>}
           </div>
         ),
       },

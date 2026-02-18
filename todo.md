@@ -1130,3 +1130,5 @@
 - [x] Fix React Hooks order violation in Today page (filteredTasks useMemo causing "Rendered more hooks" error)
 
 - [x] Fix persistent React Hooks order violation - move ALL hooks (including relationship map useMemos) before early returns
+
+- [x] Show entity titles/descriptions alongside codes in relationship map nodes (not just codes like TSK-0001)
