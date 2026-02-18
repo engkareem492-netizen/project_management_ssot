@@ -194,18 +194,6 @@ export default function Today() {
     }
   };
 
-  if (tasksLoading || requirementsLoading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  const totalToday = tasksToday.length + requirementsToday.length;
-  const totalOverdue = tasksOverdue.length + requirementsOverdue.length;
-  const totalUpcoming = tasksUpcoming.length + requirementsUpcoming.length;
-
   // Build relationship graph nodes and edges
   const relationshipNodes: EntityNode[] = useMemo(() => {
     const nodes: EntityNode[] = [];
@@ -377,6 +365,18 @@ export default function Today() {
     // You can navigate to the appropriate page or open a dialog here
     // Example: window.location.href = `/${type}s?id=${id}`;
   };
+
+  if (tasksLoading || requirementsLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const totalToday = tasksToday.length + requirementsToday.length;
+  const totalOverdue = tasksOverdue.length + requirementsOverdue.length;
+  const totalUpcoming = tasksUpcoming.length + requirementsUpcoming.length;
 
   return (
     <div className="space-y-6 p-6">

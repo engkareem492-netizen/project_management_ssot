@@ -1128,3 +1128,5 @@
 - [x] Show only filtered tasks and their related entities in the map
 
 - [x] Fix React Hooks order violation in Today page (filteredTasks useMemo causing "Rendered more hooks" error)
+
+- [x] Fix persistent React Hooks order violation - move ALL hooks (including relationship map useMemos) before early returns
