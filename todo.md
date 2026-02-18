@@ -1139,3 +1139,7 @@
 - [x] Add Deliverable selection field to Task edit dialog
 
 - [x] Fix Entity Relationships in Today page showing data from old project when switching to new project
+
+- [x] Add project-specific prefixes to entity codes (REQ, TSK, ISS, DEL, RISK) to prevent conflicts between projects
+- [x] Update entity code generation logic in all create functions
+- [x] Ensure existing entities keep their codes but new entities use project prefix

@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE tasks DROP INDEX tasks_taskId_unique;\nALTER TABLE tasks ADD UNIQUE KEY tasks_projectId_taskId_unique (projectId, taskId);\n\nALTER TABLE issues DROP INDEX issues_issueId_unique;\nALTER TABLE issues ADD UNIQUE KEY issues_projectId_issueId_unique (projectId, issueId);\n\nALTER TABLE deliverables DROP INDEX deliverables_deliverableId_unique;\nALTER TABLE deliverables ADD UNIQUE KEY deliverables_projectId_deliverableId_unique (projectId, deliverableId);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4FzqaZAU5mRtC.root --database j37MQHBuWbY6PMBApJWnKm --execute ALTER TABLE tasks DROP INDEX tasks_taskId_unique;\nALTER TABLE tasks ADD UNIQUE KEY tasks_projectId_taskId_unique (projectId, taskId);\n\nALTER TABLE issues DROP INDEX issues_issueId_unique;\nALTER TABLE issues ADD UNIQUE KEY issues_projectId_issueId_unique (projectId, issueId);\n\nALTER TABLE deliverables DROP INDEX deliverables_deliverableId_unique;\nALTER TABLE deliverables ADD UNIQUE KEY deliverables_projectId_deliverableId_unique (projectId, deliverableId);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 5232
+}
