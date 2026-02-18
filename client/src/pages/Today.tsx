@@ -206,12 +206,17 @@ export default function Today() {
   const totalOverdue = tasksOverdue.length + requirementsOverdue.length;
   const totalUpcoming = tasksUpcoming.length + requirementsUpcoming.length;
 
+  // Apply filters to get filtered tasks
+  const filteredTasks = useMemo(() => {
+    return applyFilters(tasks || []);
+  }, [tasks, filterResponsible, filterStatus, filterPriority]);
+
   // Build relationship graph nodes and edges
   const relationshipNodes: EntityNode[] = useMemo(() => {
     const nodes: EntityNode[] = [];
 
-    // Add task nodes
-    tasks?.forEach((task) => {
+    // Add task nodes (only filtered tasks)
+    filteredTasks.forEach((task) => {
       nodes.push({
         id: `task-${task.id}`,
         type: 'task',
@@ -264,13 +269,13 @@ export default function Today() {
     });
 
     return nodes;
-  }, [tasks, requirements, issues, deliverables, risks]);
+  }, [filteredTasks, requirements, issues, deliverables, risks]);
 
   const relationshipEdges: EntityEdge[] = useMemo(() => {
     const edges: EntityEdge[] = [];
 
-    // Task -> Requirement connections
-    tasks?.forEach((task) => {
+    // Task -> Requirement connections (only for filtered tasks)
+    filteredTasks.forEach((task) => {
       if (task.requirementId) {
         // requirementId is stored as string (idCode), find by idCode
         const req = requirements?.find((r) => r.idCode === task.requirementId);
@@ -284,8 +289,8 @@ export default function Today() {
       }
     });
 
-    // Task -> Deliverable connections
-    tasks?.forEach((task) => {
+    // Task -> Deliverable connections (only for filtered tasks)
+    filteredTasks.forEach((task) => {
       if (task.deliverableId) {
         const del = deliverables?.find((d) => d.id === task.deliverableId);
         if (del) {
@@ -313,11 +318,11 @@ export default function Today() {
       }
     });
 
-    // Issue -> Task connections
+    // Issue -> Task connections (only if task is in filtered list)
     issues?.forEach((issue) => {
       if (issue.taskId) {
-        // taskId is stored as string (taskId code), find by taskId
-        const task = tasks?.find((t) => t.taskId === issue.taskId);
+        // taskId is stored as string (taskId code), find by taskId in filtered tasks
+        const task = filteredTasks.find((t) => t.taskId === issue.taskId);
         if (task) {
           edges.push({
             from: `issue-${issue.id}`,
@@ -328,10 +333,10 @@ export default function Today() {
       }
     });
 
-    // Risk -> Task connections (if risks have taskId field)
+    // Risk -> Task connections (only if task is in filtered list)
     risks?.forEach((risk) => {
       if ((risk as any).taskId) {
-        const task = tasks?.find((t) => t.id === (risk as any).taskId);
+        const task = filteredTasks.find((t) => t.id === (risk as any).taskId);
         if (task) {
           edges.push({
             from: `risk-${risk.id}`,
@@ -357,7 +362,7 @@ export default function Today() {
     });
 
     return edges;
-  }, [tasks, requirements, issues, deliverables, risks]);
+  }, [filteredTasks, requirements, issues, deliverables, risks]);
 
   // Handle node click to open entity details
   const handleNodeClick = (node: EntityNode) => {

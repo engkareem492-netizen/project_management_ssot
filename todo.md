@@ -1123,3 +1123,6 @@
 - [x] Integrate RelationshipMap into Today tab
 - [x] Style nodes with different colors for each entity type
 - [x] Add zoom and pan controls for large graphs
+
+- [x] Update Relationship Map to respect Filter & Group Tasks controls (Responsible, Status, Priority)
+- [x] Show only filtered tasks and their related entities in the map
