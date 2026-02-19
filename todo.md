@@ -1145,3 +1145,8 @@
 - [x] Ensure existing entities keep their codes but new entities use project prefix
 
 - [x] Fix controlled/uncontrolled input error on Requirements page (undefined values in input fields)
+
+- [x] Fix persistent controlled/uncontrolled input error on Requirements page after requirement creation
+- [x] Check newRequirement state initialization for missing default values
+- [x] Change Knowledge Base Link from text input to Select dropdown with existing KB entries
+- [x] Move Knowledge Base Link field to only show in edit mode (not create mode)

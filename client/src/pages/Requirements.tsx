@@ -143,6 +143,10 @@ export default function Requirements() {
     { projectId: currentProjectId || 0 },
     { enabled: !!currentProjectId && viewDialogOpen }
   );
+  const { data: knowledgeBaseEntries } = trpc.knowledgeBase.list.useQuery(
+    { projectId: currentProjectId || 0 },
+    { enabled: !!currentProjectId && viewDialogOpen && isEditMode }
+  );
 
   const updateMutation = trpc.requirements.update.useMutation({
     onSuccess: (data) => {
@@ -171,6 +175,7 @@ export default function Requirements() {
         sourceType: '',
         refSource: '',
         createdAt: new Date().toISOString().split('T')[0],
+        knowledgeBaseCode: '',
       });
       refetch();
     },
@@ -904,6 +909,28 @@ export default function Requirements() {
                     <p className="font-medium">{selectedRequirement?.refSource || '-'}</p>
                   )}
                 </div>
+                {/* Knowledge Base Code */}
+                {isEditMode && (
+                  <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                    <Label className="text-xs text-muted-foreground uppercase tracking-wide">Knowledge Base Link</Label>
+                    <Select 
+                      value={editFormData.knowledgeBaseCode} 
+                      onValueChange={(v) => setEditFormData({...editFormData, knowledgeBaseCode: v})}
+                    >
+                      <SelectTrigger className="h-8">
+                        <SelectValue placeholder="Select KB entry" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">None</SelectItem>
+                        {knowledgeBaseEntries?.map((kb: any) => (
+                          <SelectItem key={kb.id} value={kb.kbCode}>
+                            {kb.kbCode} - {kb.title}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 {/* Status */}
                 <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">Status</Label>
@@ -1347,14 +1374,7 @@ export default function Requirements() {
                 placeholder="Reference source URL or name"
               />
             </div>
-            <div className="space-y-2">
-              <Label>Knowledge Base Code</Label>
-              <Input
-                value={newRequirement.knowledgeBaseCode}
-                onChange={(e) => setNewRequirement({ ...newRequirement, knowledgeBaseCode: e.target.value })}
-                placeholder="e.g., KB-001"
-              />
-            </div>
+
             <div className="space-y-2">
               <Label>Status</Label>
               <SelectWithCreate
