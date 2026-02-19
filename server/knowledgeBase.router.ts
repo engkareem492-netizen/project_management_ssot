@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
+import { storagePut } from "./storage";
 import {
   createKnowledgeBaseEntry,
   updateKnowledgeBaseEntry,
@@ -41,6 +42,7 @@ export const knowledgeBaseRouter = router({
         componentId: z.number().optional(),
         title: z.string().min(1),
         description: z.string().optional(),
+        attachmentUrl: z.string().optional(),
       })
     )
     .mutation(async ({ input }) => {
@@ -60,6 +62,7 @@ export const knowledgeBaseRouter = router({
         componentId: z.number().optional(),
         title: z.string().min(1).optional(),
         description: z.string().optional(),
+        attachmentUrl: z.string().optional(),
       })
     )
     .mutation(async ({ input }) => {
@@ -70,6 +73,30 @@ export const knowledgeBaseRouter = router({
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
       return await deleteKnowledgeBaseEntry(input.id);
+    }),
+
+  uploadFile: protectedProcedure
+    .input(
+      z.object({
+        projectId: z.number(),
+        fileName: z.string(),
+        fileData: z.string(), // base64 encoded file data
+        mimeType: z.string(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      // Decode base64 to buffer
+      const buffer = Buffer.from(input.fileData, 'base64');
+      
+      // Generate unique file key with timestamp to prevent collisions
+      const timestamp = Date.now();
+      const sanitizedFileName = input.fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const fileKey = `kb-attachments/project-${input.projectId}/${timestamp}-${sanitizedFileName}`;
+      
+      // Upload to S3
+      const { url } = await storagePut(fileKey, buffer, input.mimeType);
+      
+      return { url };
     }),
 
   // Types Management

@@ -520,6 +520,8 @@ export const knowledgeBase = mysqlTable("knowledgeBase", {
   componentId: int("componentId"), // references knowledgeBaseComponents
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
+  attachmentUrl: varchar("attachmentUrl", { length: 500 }),
+  attachmentName: varchar("attachmentName", { length: 255 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

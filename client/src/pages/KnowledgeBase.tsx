@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Settings, Trash2, Edit, BookOpen } from "lucide-react";
+import { Plus, Settings, Trash2, Edit, BookOpen, Paperclip } from "lucide-react";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -23,6 +23,7 @@ export default function KnowledgeBase() {
   const [description, setDescription] = useState("");
   const [typeId, setTypeId] = useState<string>("");
   const [componentId, setComponentId] = useState<string>("");
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
 
   // Configuration states
   const [newTypeName, setNewTypeName] = useState("");
@@ -126,16 +127,52 @@ export default function KnowledgeBase() {
     },
   });
 
+  const uploadFileMutation = trpc.knowledgeBase.uploadFile.useMutation();
+
   const resetForm = () => {
     setTitle("");
     setDescription("");
     setTypeId("");
     setComponentId("");
+    setAttachmentFile(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentProjectId) return;
+
+    let attachmentUrl = editingEntry?.attachmentUrl || ""; // Preserve existing URL when editing
+
+    // Upload file to S3 if a new file is selected
+    if (attachmentFile) {
+      try {
+        // Read file as base64
+        const reader = new FileReader();
+        const fileData = await new Promise<string>((resolve, reject) => {
+          reader.onload = () => {
+            const base64 = reader.result as string;
+            // Remove data URL prefix (e.g., "data:image/png;base64,")
+            const base64Data = base64.split(',')[1];
+            resolve(base64Data);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(attachmentFile);
+        });
+
+        // Upload via tRPC
+        const uploadResult = await uploadFileMutation.mutateAsync({
+          projectId: currentProjectId,
+          fileName: attachmentFile.name,
+          fileData,
+          mimeType: attachmentFile.type,
+        });
+        
+        attachmentUrl = uploadResult.url;
+      } catch (error) {
+        toast.error("Failed to upload attachment");
+        return;
+      }
+    }
 
     const data = {
       projectId: currentProjectId,
@@ -143,6 +180,7 @@ export default function KnowledgeBase() {
       description,
       typeId: typeId ? parseInt(typeId) : undefined,
       componentId: componentId ? parseInt(componentId) : undefined,
+      attachmentUrl: attachmentUrl || undefined,
     };
 
     if (editingEntry) {
@@ -479,6 +517,34 @@ export default function KnowledgeBase() {
                   />
                 </div>
 
+                <div className="space-y-2">
+                  <Label htmlFor="attachment">Attachment</Label>
+                  <Input
+                    id="attachment"
+                    type="file"
+                    onChange={(e) => setAttachmentFile(e.target.files?.[0] || null)}
+                  />
+                  {attachmentFile && (
+                    <p className="text-sm text-muted-foreground">
+                      Selected: {attachmentFile.name}
+                    </p>
+                  )}
+                  {!attachmentFile && editingEntry?.attachmentUrl && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Paperclip className="h-4 w-4" />
+                      <a
+                        href={editingEntry.attachmentUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline"
+                      >
+                        Current attachment
+                      </a>
+                      <span>(select a new file to replace)</span>
+                    </div>
+                  )}
+                </div>
+
                 <div className="flex justify-end gap-2">
                   <Button
                     type="button"
@@ -555,11 +621,26 @@ export default function KnowledgeBase() {
                   </div>
                 </div>
               </CardHeader>
-              {entry.description && (
-                <CardContent>
-                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                    {entry.description}
-                  </p>
+              {(entry.description || entry.attachmentUrl) && (
+                <CardContent className="space-y-3">
+                  {entry.description && (
+                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                      {entry.description}
+                    </p>
+                  )}
+                  {entry.attachmentUrl && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Paperclip className="h-4 w-4 text-muted-foreground" />
+                      <a
+                        href={entry.attachmentUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline"
+                      >
+                        View Attachment
+                      </a>
+                    </div>
+                  )}
                 </CardContent>
               )}
             </Card>

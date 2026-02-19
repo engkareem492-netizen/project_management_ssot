@@ -1152,3 +1152,15 @@
 - [x] Move Knowledge Base Link field to only show in edit mode (not create mode)
 
 - [x] Fix SelectItem empty string value error in Knowledge Base Link dropdown (remove or change empty value)
+
+## Knowledge Base Attachments (Feb 19, 2026)
+
+- [x] Add attachment field to Knowledge Base schema (attachmentUrl, attachmentName)
+- [x] Update database with new attachment columns
+- [x] Add file upload input to Knowledge Base create dialog
+- [x] Add file upload input to Knowledge Base edit dialog
+- [x] Implement S3 file upload in Knowledge Base create mutation
+- [x] Display attachment download link in Knowledge Base view
+- [x] Show existing attachment when editing KB entry with option to replace
+- [x] Preserve existing attachment URL when editing without uploading new file
+- [ ] Add attachment file type validation (PDF, DOC, DOCX, XLS, XLSX, etc.)
