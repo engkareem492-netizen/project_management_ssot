@@ -921,7 +921,6 @@ export default function Requirements() {
                         <SelectValue placeholder="Select KB entry" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">None</SelectItem>
                         {knowledgeBaseEntries?.map((kb: any) => (
                           <SelectItem key={kb.id} value={kb.kbCode}>
                             {kb.kbCode} - {kb.title}

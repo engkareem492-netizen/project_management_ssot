@@ -1150,3 +1150,5 @@
 - [x] Check newRequirement state initialization for missing default values
 - [x] Change Knowledge Base Link from text input to Select dropdown with existing KB entries
 - [x] Move Knowledge Base Link field to only show in edit mode (not create mode)
+
+- [x] Fix SelectItem empty string value error in Knowledge Base Link dropdown (remove or change empty value)
