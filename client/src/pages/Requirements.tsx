@@ -57,6 +57,7 @@ export default function Requirements() {
     accountable: '',
     informed: '',
     consulted: '',
+    dueDate: '',
   });
   const [newIssue, setNewIssue] = useState({
     description: '',
@@ -210,6 +211,7 @@ export default function Requirements() {
         accountable: '',
         informed: '',
         consulted: '',
+        dueDate: '',
       });
       utils.tasks.list.invalidate();
     },
@@ -1474,10 +1476,10 @@ export default function Requirements() {
               </div>
             </div>
 
-            {/* Status & Priority */}
+            {/* Status, Priority & Due Date */}
             <div className="space-y-4">
-              <h4 className="font-semibold text-sm border-b pb-2">Status & Priority</h4>
-              <div className="grid grid-cols-2 gap-4">
+              <h4 className="font-semibold text-sm border-b pb-2">Status, Priority & Due Date</h4>
+              <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>Status</Label>
                   <Select
@@ -1509,6 +1511,14 @@ export default function Requirements() {
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Due Date</Label>
+                  <Input
+                    type="date"
+                    value={newTask.dueDate}
+                    onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })}
+                  />
                 </div>
               </div>
             </div>

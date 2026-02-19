@@ -1212,3 +1212,12 @@
 - [x] Remove Task Group field from Requirements create dialog
 - [x] Remove Issue Group field from Requirements create dialog
 - [x] Simplified create dialog by removing unnecessary grouping fields
+
+## Task Creation Dialog Improvements in Requirements Page (Feb 19, 2026)
+
+- [x] Add Due Date field to Task creation dialog in Requirements page
+- [x] Add "+" buttons to RACI fields in Task creation dialog for inline stakeholder creation
+- [x] Ensure Task creation dialog in Requirements matches direct task creation functionality
+- [x] Add dueDate to newTask state initialization
+- [x] Add dueDate to newTask reset in createTaskMutation success handler
+- [x] Changed grid layout from 2 columns to 3 columns for Status, Priority & Due Date section
