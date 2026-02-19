@@ -1172,3 +1172,14 @@
 - [x] Verify RACI dropdowns show stakeholder names properly in edit mode
 - [x] Update editFormData to use ID fields (responsibleId, accountableId, consultedId, informedId) instead of name fields
 - [x] Changed grid layout from 4 columns to 2 columns for better dropdown display
+
+## Issues Enhancements (Feb 19, 2026)
+
+- [x] Add "Open Date" field to Issues table schema (already existed in database)
+- [x] Add "Open Date" input to Issues create/edit dialog
+- [x] Add Knowledge Base dropdown to Issues page (similar to Requirements)
+- [x] Allow linking KB entries to Issues via dropdown selection
+- [x] Fix controlled/uncontrolled input error on Issues page (added missing openDate and knowledgeBaseCode to editFormData)
+- [x] Replace Knowledge Base text input with Select dropdown showing KB code and title
+- [x] Add KB query (trpc.knowledgeBase.list) to Issues page
+- [x] Show KB dropdown in edit mode only (consistent with Requirements page)

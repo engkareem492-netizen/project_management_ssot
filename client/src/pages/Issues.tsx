@@ -127,6 +127,10 @@ export default function Issues() {
     { projectId: currentProjectId || 0 },
     { enabled: !!currentProjectId }
   );
+  const { data: knowledgeBaseEntries } = trpc.knowledgeBase.list.useQuery(
+    { projectId: currentProjectId || 0 },
+    { enabled: !!currentProjectId }
+  );
 
   const utils = trpc.useUtils();
 
@@ -395,6 +399,8 @@ export default function Issues() {
       currentStatus: issue.currentStatus || '',
       lastUpdate: issue.lastUpdate || '',
       statusUpdate: issue.statusUpdate || '',
+      openDate: issue.openDate || '',
+      knowledgeBaseCode: issue.knowledgeBaseCode || '',
     });
     setViewDialogOpen(true);
   };
@@ -417,6 +423,8 @@ export default function Issues() {
       currentStatus: issue.currentStatus || '',
       lastUpdate: issue.lastUpdate || '',
       statusUpdate: issue.statusUpdate || '',
+      openDate: issue.openDate || '',
+      knowledgeBaseCode: issue.knowledgeBaseCode || '',
     });
     setViewDialogOpen(true);
   };
@@ -1004,17 +1012,41 @@ export default function Issues() {
                 </div>
               </div>
             </div>
+            {/* Dates Section */}
+            <div className="space-y-4">
+              <h4 className="text-sm font-semibold border-b pb-2">Dates</h4>
+              <div className="space-y-2">
+                <Label htmlFor="openDate">Open Date</Label>
+                <Input
+                  id="openDate"
+                  type="date"
+                  value={newIssue.openDate}
+                  onChange={(e) => setNewIssue({ ...newIssue, openDate: e.target.value })}
+                />
+              </div>
+            </div>
+
             {/* Knowledge Base Link */}
             <div className="space-y-4">
               <h4 className="text-sm font-semibold border-b pb-2">Knowledge Base</h4>
               <div className="space-y-2">
-                <Label htmlFor="knowledgeBaseCode">Knowledge Base Code</Label>
-                <Input
-                  id="knowledgeBaseCode"
+                <Label htmlFor="knowledgeBaseCode">Knowledge Base Link</Label>
+                <Select
                   value={newIssue.knowledgeBaseCode}
-                  onChange={(e) => setNewIssue({ ...newIssue, knowledgeBaseCode: e.target.value })}
-                  placeholder="e.g., KB-001"
-                />
+                  onValueChange={(value) => setNewIssue({ ...newIssue, knowledgeBaseCode: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select KB entry..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {knowledgeBaseEntries?.map((kb: any) => (
+                      <SelectItem key={kb.id} value={kb.kbCode}>
+                        {kb.kbCode} - {kb.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>
@@ -1231,6 +1263,35 @@ export default function Issues() {
                   <p className="font-medium">{selectedIssue?.refSource || '-'}</p>
                 )}
               </div>
+              <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Open Date</Label>
+                {isEditMode ? (
+                  <Input type="date" value={editFormData.openDate} onChange={(e) => setEditFormData({...editFormData, openDate: e.target.value})} className="h-8" />
+                ) : (
+                  <p className="font-medium">{selectedIssue?.openDate || '-'}</p>
+                )}
+              </div>
+              {isEditMode && (
+                <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Knowledge Base Link</Label>
+                  <Select 
+                    value={editFormData.knowledgeBaseCode} 
+                    onValueChange={(v) => setEditFormData({...editFormData, knowledgeBaseCode: v})}
+                  >
+                    <SelectTrigger className="h-8">
+                      <SelectValue placeholder="Select KB entry" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {knowledgeBaseEntries?.map((kb: any) => (
+                        <SelectItem key={kb.id} value={kb.kbCode}>
+                          {kb.kbCode} - {kb.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
 
             {/* Description */}
