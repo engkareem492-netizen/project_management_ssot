@@ -33,7 +33,25 @@ export default function Issues() {
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [selectedIssue, setSelectedIssue] = useState<any>(null);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [editFormData, setEditFormData] = useState<any>({});
+  const [editFormData, setEditFormData] = useState<any>({
+    issueGroup: '',
+    description: '',
+    source: '',
+    owner: '',
+    status: '',
+    priority: '',
+    type: '',
+    class: '',
+    sourceType: '',
+    refSource: '',
+    requirementId: '',
+    currentStatus: '',
+    lastUpdate: '',
+    statusUpdate: '',
+    openDate: '',
+    knowledgeBaseCode: '',
+    taskId: '',
+  });
   const [addStakeholderDialogOpen, setAddStakeholderDialogOpen] = useState(false);
   const [newStakeholder, setNewStakeholder] = useState({ fullName: '', position: '', role: '' });
   const [addIssueGroupDialogOpen, setAddIssueGroupDialogOpen] = useState(false);

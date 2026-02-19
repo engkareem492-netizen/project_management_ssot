@@ -1198,3 +1198,11 @@
 - [x] Add issueId to newTask state initialization
 - [x] Add issueId to editFormData in Tasks page (handleViewDetails and handleEditDetails)
 - [x] Add taskId to editFormData in Issues page (handleViewDetails and handleEditDetails)
+
+## Bug Fix (Feb 19, 2026 - Controlled Input Error)
+
+- [x] Fix controlled/uncontrolled input error on Issues page
+- [x] Ensure all Input components have stable default values (never undefined)
+- [x] Check newIssue state initialization for missing fields (deliverableId was undefined, but not used in Input)
+- [x] Check editFormData initialization for missing fields (was empty object {}, now initialized with all fields)
+- [x] Initialize editFormData with all required fields set to empty strings to prevent undefined values
