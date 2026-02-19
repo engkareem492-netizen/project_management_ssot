@@ -1206,3 +1206,9 @@
 - [x] Check newIssue state initialization for missing fields (deliverableId was undefined, but not used in Input)
 - [x] Check editFormData initialization for missing fields (was empty object {}, now initialized with all fields)
 - [x] Initialize editFormData with all required fields set to empty strings to prevent undefined values
+
+## Requirements UI Simplification (Feb 19, 2026)
+
+- [x] Remove Task Group field from Requirements create dialog
+- [x] Remove Issue Group field from Requirements create dialog
+- [x] Simplified create dialog by removing unnecessary grouping fields

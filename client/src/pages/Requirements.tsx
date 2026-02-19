@@ -1255,64 +1255,6 @@ export default function Requirements() {
           </DialogHeader>
           <div className="grid grid-cols-2 gap-4 py-4">
             <div className="space-y-2">
-              <Label>Task Group</Label>
-              <div className="flex gap-2">
-                <Select
-                  value={newRequirement.taskGroup}
-                  onValueChange={(value) => setNewRequirement({ ...newRequirement, taskGroup: value })}
-                >
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Select task group..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {taskGroups?.map((group) => (
-                      <SelectItem key={group.id} value={group.name}>
-                        {group.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="outline"
-                  onClick={() => setTaskGroupDialogOpen(true)}
-                  title="Create new task group"
-                >
-                  <Plus className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Issue Group</Label>
-              <div className="flex gap-2">
-                <Select
-                  value={newRequirement.issueGroup}
-                  onValueChange={(value) => setNewRequirement({ ...newRequirement, issueGroup: value })}
-                >
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Select issue group..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {issueGroups?.map((group) => (
-                      <SelectItem key={group.id} value={group.name}>
-                        {group.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="outline"
-                  onClick={() => setIssueGroupDialogOpen(true)}
-                  title="Create new issue group"
-                >
-                  <Plus className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-            <div className="space-y-2">
               <Label>Creation Date</Label>
               <Input
                 type="date"
