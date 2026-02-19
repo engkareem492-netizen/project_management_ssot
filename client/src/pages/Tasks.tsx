@@ -106,6 +106,7 @@ export default function Tasks() {
     status: 'Not Started',
     priority: 'Medium',
     requirementId: '',
+    issueId: '',
     dueDate: '',
     assignDate: new Date().toISOString().split('T')[0],
   });
@@ -493,6 +494,7 @@ export default function Tasks() {
       priority: task.priority || '',
       requirementId: task.requirementId || '',
       deliverableId: task.deliverableId ? task.deliverableId.toString() : '',
+      issueId: task.issueId || '',
       dueDate: task.dueDate || '',
       assignDate: task.assignDate || '',
     });
@@ -514,6 +516,7 @@ export default function Tasks() {
       priority: task.priority || '',
       requirementId: task.requirementId || '',
       deliverableId: task.deliverableId ? task.deliverableId.toString() : '',
+      issueId: task.issueId || '',
       dueDate: task.dueDate || '',
       assignDate: task.assignDate || '',
     });
@@ -993,6 +996,25 @@ export default function Tasks() {
                     </Button>
                   </div>
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="issueId">Issue</Label>
+                  <Select
+                    value={newTask.issueId}
+                    onValueChange={(value) => setNewTask({ ...newTask, issueId: value })}
+                  >
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Select issue..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {allIssues?.map((issue) => (
+                        <SelectItem key={issue.id} value={issue.issueId}>
+                          {issue.issueId} - {issue.description?.substring(0, 50) || 'No description'}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
 
@@ -1294,6 +1316,35 @@ export default function Tasks() {
                       ? (deliverables?.find(d => d.id === selectedTask.deliverableId)?.deliverableId || '-') + ' - ' + (deliverables?.find(d => d.id === selectedTask.deliverableId)?.description?.substring(0, 50) || '')
                       : '-'}
                   </p>
+                )}
+              </div>
+              <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Issue</Label>
+                {isEditMode ? (
+                  <Select
+                    value={editFormData.issueId || ''}
+                    onValueChange={(value) => {
+                      if (value === '' || value === 'none') {
+                        setEditFormData({ ...editFormData, issueId: undefined });
+                      } else {
+                        setEditFormData({ ...editFormData, issueId: value });
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="h-8">
+                      <SelectValue placeholder="Select issue..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {allIssues?.map((issue) => (
+                        <SelectItem key={issue.id} value={issue.issueId}>
+                          {issue.issueId} - {issue.description?.substring(0, 50) || 'No description'}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="font-medium">{selectedTask?.issueId || '-'}</p>
                 )}
               </div>
               <div className="space-y-1 p-3 bg-muted/50 rounded-lg">

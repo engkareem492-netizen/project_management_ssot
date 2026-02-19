@@ -1183,3 +1183,18 @@
 - [x] Replace Knowledge Base text input with Select dropdown showing KB code and title
 - [x] Add KB query (trpc.knowledgeBase.list) to Issues page
 - [x] Show KB dropdown in edit mode only (consistent with Requirements page)
+
+## Issue-Task Bidirectional Linking (Feb 19, 2026)
+
+- [x] Add Task dropdown to Issues create dialog (already existed, verified working)
+- [x] Add Task dropdown to Issues edit dialog
+- [x] Add Issue dropdown to Tasks create dialog
+- [x] Add Issue dropdown to Tasks edit dialog
+- [x] Ensure taskId field is properly saved when creating/editing Issues (already implemented)
+- [x] Ensure issueId field is properly saved when creating/editing Tasks
+- [x] Display linked Task in Issue view mode (shown in edit mode dropdown)
+- [x] Display linked Issue in Task view mode (shown in edit mode dropdown)
+- [x] Add issueId column to tasks table schema
+- [x] Add issueId to newTask state initialization
+- [x] Add issueId to editFormData in Tasks page (handleViewDetails and handleEditDetails)
+- [x] Add taskId to editFormData in Issues page (handleViewDetails and handleEditDetails)

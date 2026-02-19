@@ -401,6 +401,7 @@ export default function Issues() {
       statusUpdate: issue.statusUpdate || '',
       openDate: issue.openDate || '',
       knowledgeBaseCode: issue.knowledgeBaseCode || '',
+      taskId: issue.taskId || '',
     });
     setViewDialogOpen(true);
   };
@@ -425,6 +426,7 @@ export default function Issues() {
       statusUpdate: issue.statusUpdate || '',
       openDate: issue.openDate || '',
       knowledgeBaseCode: issue.knowledgeBaseCode || '',
+      taskId: issue.taskId || '',
     });
     setViewDialogOpen(true);
   };
@@ -1286,6 +1288,27 @@ export default function Issues() {
                       {knowledgeBaseEntries?.map((kb: any) => (
                         <SelectItem key={kb.id} value={kb.kbCode}>
                           {kb.kbCode} - {kb.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              {isEditMode && (
+                <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Task Link</Label>
+                  <Select 
+                    value={editFormData.taskId} 
+                    onValueChange={(v) => setEditFormData({...editFormData, taskId: v})}
+                  >
+                    <SelectTrigger className="h-8">
+                      <SelectValue placeholder="Select task" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {tasks?.map((task: any) => (
+                        <SelectItem key={task.id} value={task.taskId}>
+                          {task.taskId} - {task.description?.substring(0, 50) || 'No description'}
                         </SelectItem>
                       ))}
                     </SelectContent>
