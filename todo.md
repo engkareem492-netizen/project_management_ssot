@@ -1164,3 +1164,11 @@
 - [x] Show existing attachment when editing KB entry with option to replace
 - [x] Preserve existing attachment URL when editing without uploading new file
 - [ ] Add attachment file type validation (PDF, DOC, DOCX, XLS, XLSX, etc.)
+
+## Bug Fix (Feb 19, 2026 - RACI Fields)
+
+- [x] Fix RACI fields in Task edit dialog showing as plain text inputs instead of dropdown selectors
+- [x] Ensure RACI fields use SelectWithCreate component for stakeholder selection
+- [x] Verify RACI dropdowns show stakeholder names properly in edit mode
+- [x] Update editFormData to use ID fields (responsibleId, accountableId, consultedId, informedId) instead of name fields
+- [x] Changed grid layout from 4 columns to 2 columns for better dropdown display

@@ -484,11 +484,11 @@ export default function Tasks() {
     setEditFormData({
       taskGroup: task.taskGroup || '',
       description: task.description || '',
-      responsible: task.responsible || '',
-      accountable: task.accountable || '',
-      consulted: task.consulted || '',
-      informed: task.informed || '',
-      owner: task.owner || '',
+      responsibleId: task.responsibleId,
+      accountableId: task.accountableId,
+      consultedId: task.consultedId,
+      informedId: task.informedId,
+      ownerId: task.ownerId,
       status: task.status || '',
       priority: task.priority || '',
       requirementId: task.requirementId || '',
@@ -505,11 +505,11 @@ export default function Tasks() {
     setEditFormData({
       taskGroup: task.taskGroup || '',
       description: task.description || '',
-      responsible: task.responsible || '',
-      accountable: task.accountable || '',
-      consulted: task.consulted || '',
-      informed: task.informed || '',
-      owner: task.owner || '',
+      responsibleId: task.responsibleId,
+      accountableId: task.accountableId,
+      consultedId: task.consultedId,
+      informedId: task.informedId,
+      ownerId: task.ownerId,
       status: task.status || '',
       priority: task.priority || '',
       requirementId: task.requirementId || '',
@@ -1333,35 +1333,59 @@ export default function Tasks() {
             {/* RACI Assignment */}
             <div className="border-t pt-4">
               <h4 className="font-medium mb-3">RACI Assignment</h4>
-              <div className="grid grid-cols-4 gap-4">
-                <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">Responsible (R)</Label>
                   {isEditMode ? (
-                    <Input value={editFormData.responsible} onChange={(e) => setEditFormData({...editFormData, responsible: e.target.value})} className="h-8" />
+                    <SelectWithCreate
+                      type="stakeholder"
+                      value={editFormData.responsibleId?.toString() || ''}
+                      onValueChange={(value) => setEditFormData({...editFormData, responsibleId: value ? parseInt(value) : undefined})}
+                      placeholder="Select responsible person..."
+                      projectId={currentProjectId || undefined}
+                    />
                   ) : (
                     <p className="font-medium">{selectedTask?.responsible || '-'}</p>
                   )}
                 </div>
-                <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                <div className="space-y-2">
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">Accountable (A)</Label>
                   {isEditMode ? (
-                    <Input value={editFormData.accountable} onChange={(e) => setEditFormData({...editFormData, accountable: e.target.value})} className="h-8" />
+                    <SelectWithCreate
+                      type="stakeholder"
+                      value={editFormData.accountableId?.toString() || ''}
+                      onValueChange={(value) => setEditFormData({...editFormData, accountableId: value ? parseInt(value) : undefined})}
+                      placeholder="Select accountable person..."
+                      projectId={currentProjectId || undefined}
+                    />
                   ) : (
                     <p className="font-medium">{selectedTask?.accountable || '-'}</p>
                   )}
                 </div>
-                <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                <div className="space-y-2">
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">Consulted (C)</Label>
                   {isEditMode ? (
-                    <Input value={editFormData.consulted} onChange={(e) => setEditFormData({...editFormData, consulted: e.target.value})} className="h-8" />
+                    <SelectWithCreate
+                      type="stakeholder"
+                      value={editFormData.consultedId?.toString() || ''}
+                      onValueChange={(value) => setEditFormData({...editFormData, consultedId: value ? parseInt(value) : undefined})}
+                      placeholder="Select consulted person..."
+                      projectId={currentProjectId || undefined}
+                    />
                   ) : (
                     <p className="font-medium">{selectedTask?.consulted || '-'}</p>
                   )}
                 </div>
-                <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                <div className="space-y-2">
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">Informed (I)</Label>
                   {isEditMode ? (
-                    <Input value={editFormData.informed} onChange={(e) => setEditFormData({...editFormData, informed: e.target.value})} className="h-8" />
+                    <SelectWithCreate
+                      type="stakeholder"
+                      value={editFormData.informedId?.toString() || ''}
+                      onValueChange={(value) => setEditFormData({...editFormData, informedId: value ? parseInt(value) : undefined})}
+                      placeholder="Select informed person..."
+                      projectId={currentProjectId || undefined}
+                    />
                   ) : (
                     <p className="font-medium">{selectedTask?.informed || '-'}</p>
                   )}
