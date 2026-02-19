@@ -1182,7 +1182,16 @@ export default function Issues() {
               <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                 <Label className="text-xs text-muted-foreground uppercase tracking-wide">Issue Group</Label>
                 {isEditMode ? (
-                  <Input value={editFormData.issueGroup} onChange={(e) => setEditFormData({...editFormData, issueGroup: e.target.value})} className="h-8" />
+                  <Select value={editFormData.issueGroup} onValueChange={(v) => setEditFormData({...editFormData, issueGroup: v})}>
+                    <SelectTrigger className="h-8">
+                      <SelectValue placeholder="Select issue group" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {issueGroups?.map((g) => (
+                        <SelectItem key={g.id} value={g.name}>{g.idCode ? `${g.idCode} - ${g.name}` : g.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 ) : (
                   <p className="font-medium">{selectedIssue?.issueGroup || '-'}</p>
                 )}
@@ -1194,7 +1203,16 @@ export default function Issues() {
               <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                 <Label className="text-xs text-muted-foreground uppercase tracking-wide">Status</Label>
                 {isEditMode ? (
-                  <Input value={editFormData.status} onChange={(e) => setEditFormData({...editFormData, status: e.target.value})} className="h-8" />
+                  <Select value={editFormData.status} onValueChange={(v) => setEditFormData({...editFormData, status: v})}>
+                    <SelectTrigger className="h-8">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {statusOptions?.map((opt) => (
+                        <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 ) : (
                   <Badge variant={getStatusColor(selectedIssue?.status)}>{selectedIssue?.status || '-'}</Badge>
                 )}

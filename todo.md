@@ -1221,3 +1221,21 @@
 - [x] Add dueDate to newTask state initialization
 - [x] Add dueDate to newTask reset in createTaskMutation success handler
 - [x] Changed grid layout from 2 columns to 3 columns for Status, Priority & Due Date section
+
+## Dropdown Field Audit & Fix (Feb 19, 2026)
+
+- [x] Audit Requirements page create/edit dialogs for text inputs that should be dropdowns (already using Select for all)
+- [x] Audit Tasks page create/edit dialogs for text inputs that should be dropdowns (found 3 text inputs)
+- [x] Audit Issues page create/edit dialogs for text inputs that should be dropdowns (found 2 text inputs)
+- [x] Audit Deliverables page create/edit dialogs for text inputs that should be dropdowns (already using Select for all)
+- [x] Fix all Status fields to use Select dropdown (Tasks and Issues fixed)
+- [x] Fix all Priority fields to use Select dropdown (Tasks fixed, Issues already using Select)
+- [x] Fix all Type/Category fields to use Select dropdown (all pages already using Select)
+- [x] Fix all Group fields (Task Group, Issue Group) to use Select dropdown (Tasks and Issues fixed)
+- [x] Ensure all entity reference fields (Requirements, Tasks, Issues, Deliverables, KB) use Select dropdown (all verified)
+- [x] Add statusOptions and priorityOptions queries to Tasks page
+- [x] Tasks page: Replaced Task Group text input with Select dropdown showing task group code and name
+- [x] Tasks page: Replaced Status text input with Select dropdown using statusOptions
+- [x] Tasks page: Replaced Priority text input with Select dropdown using priorityOptions
+- [x] Issues page: Replaced Issue Group text input with Select dropdown showing issue group code and name
+- [x] Issues page: Replaced Status text input with Select dropdown using statusOptions

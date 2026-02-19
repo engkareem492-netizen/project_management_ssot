@@ -154,6 +154,8 @@ export default function Tasks() {
     { projectId: currentProjectId || 0 },
     { enabled: !!currentProjectId }
   );
+  const { data: statusOptions } = trpc.dropdownOptions.status.getAll.useQuery();
+  const { data: priorityOptions } = trpc.dropdownOptions.priority.getAll.useQuery();
 
   const utils = trpc.useUtils();
 
@@ -1226,7 +1228,16 @@ export default function Tasks() {
               <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                 <Label className="text-xs text-muted-foreground uppercase tracking-wide">Task Group</Label>
                 {isEditMode ? (
-                  <Input value={editFormData.taskGroup} onChange={(e) => setEditFormData({...editFormData, taskGroup: e.target.value})} className="h-8" />
+                  <Select value={editFormData.taskGroup} onValueChange={(v) => setEditFormData({...editFormData, taskGroup: v})}>
+                    <SelectTrigger className="h-8">
+                      <SelectValue placeholder="Select task group" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {taskGroups?.map((g) => (
+                        <SelectItem key={g.id} value={g.name}>{g.idCode ? `${g.idCode} - ${g.name}` : g.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 ) : (
                   <p className="font-medium">{selectedTask?.taskGroup || '-'}</p>
                 )}
@@ -1350,7 +1361,16 @@ export default function Tasks() {
               <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                 <Label className="text-xs text-muted-foreground uppercase tracking-wide">Status</Label>
                 {isEditMode ? (
-                  <Input value={editFormData.status} onChange={(e) => setEditFormData({...editFormData, status: e.target.value})} className="h-8" />
+                  <Select value={editFormData.status} onValueChange={(v) => setEditFormData({...editFormData, status: v})}>
+                    <SelectTrigger className="h-8">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {statusOptions?.map((opt) => (
+                        <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 ) : (
                   <Badge variant={getStatusColor(selectedTask?.status)}>{selectedTask?.status || '-'}</Badge>
                 )}
@@ -1358,7 +1378,16 @@ export default function Tasks() {
               <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                 <Label className="text-xs text-muted-foreground uppercase tracking-wide">Priority</Label>
                 {isEditMode ? (
-                  <Input value={editFormData.priority} onChange={(e) => setEditFormData({...editFormData, priority: e.target.value})} className="h-8" />
+                  <Select value={editFormData.priority} onValueChange={(v) => setEditFormData({...editFormData, priority: v})}>
+                    <SelectTrigger className="h-8">
+                      <SelectValue placeholder="Select priority" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {priorityOptions?.map((opt) => (
+                        <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 ) : (
                   <Badge variant={getPriorityColor(selectedTask?.priority)}>{selectedTask?.priority || '-'}</Badge>
                 )}
