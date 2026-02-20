@@ -1,5 +1,6 @@
 import { eq, desc, and, or, like, sql, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
+import * as schema from "../drizzle/schema";
 import { 
   InsertUser, 
   users, 
@@ -74,7 +75,7 @@ let _db: ReturnType<typeof drizzle> | null = null;
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      _db = drizzle(process.env.DATABASE_URL, { schema, mode: 'default' });
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
@@ -95,12 +96,19 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   }
 
   try {
+    // Email is now required
+    if (!user.email) {
+      console.warn("[Database] Cannot upsert user: email is required");
+      return;
+    }
+
     const values: InsertUser = {
-      openId: user.openId,
+      email: user.email,
+      openId: user.openId ?? null,
     };
     const updateSet: Record<string, unknown> = {};
 
-    const textFields = ["name", "email", "loginMethod"] as const;
+    const textFields = ["name", "loginMethod"] as const;
     type TextField = (typeof textFields)[number];
 
     const assignNullable = (field: TextField) => {
@@ -112,6 +120,9 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     };
 
     textFields.forEach(assignNullable);
+    
+    // Email is always set
+    updateSet.email = user.email;
 
     if (user.lastSignedIn !== undefined) {
       values.lastSignedIn = user.lastSignedIn;

@@ -1254,3 +1254,27 @@
 - [x] Use Button components for clickable entities with hover effects
 - [ ] Add filtering and sorting capabilities to relationship table (future enhancement)
 - [ ] Add Stakeholder column to relationship table (future enhancement)
+
+## Local Email/Password Authentication System (Feb 20, 2026)
+
+- [x] Add password field to users table schema
+- [x] Make openId field nullable for local users
+- [x] Implement password hashing with bcrypt
+- [x] Create registration API endpoint (tRPC auth.register)
+- [x] Create login API endpoint (tRPC auth.login)
+- [x] Create logout API endpoint (tRPC auth.logout)
+- [x] Create registration page UI with email/password form
+- [x] Create login page UI with email/password form
+- [x] Update Home page to redirect to /login instead of OAuth
+- [x] Add session management with JWT tokens (7-day expiry)
+- [x] Add password validation (minimum 8 characters)
+- [x] Add email validation and uniqueness check
+- [x] Update user creation to hash passwords with bcrypt
+- [x] Test registration flow (5 tests, all passing)
+- [x] Test login flow (5 tests, all passing)
+- [x] Test logout flow (5 tests, all passing)
+- [x] Add /login and /register routes to App.tsx
+- [x] Update auth.me procedure to support both JWT and OAuth
+- [x] Install bcrypt and jsonwebtoken packages
+- [x] Fix upsertUser to handle optional openId field
+- [ ] Remove Manus OAuth dependency (kept for backward compatibility)

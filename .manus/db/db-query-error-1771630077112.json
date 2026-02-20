@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE users \n  ADD COLUMN IF NOT EXISTS password VARCHAR(255),\n  MODIFY COLUMN openId VARCHAR(64) NULL,\n  MODIFY COLUMN email VARCHAR(320) NOT NULL,\n  ADD UNIQUE INDEX IF NOT EXISTS idx_users_email (email),\n  MODIFY COLUMN loginMethod VARCHAR(64) DEFAULT 'local';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4FzqaZAU5mRtC.root --database j37MQHBuWbY6PMBApJWnKm --execute ALTER TABLE users \n  ADD COLUMN IF NOT EXISTS password VARCHAR(255),\n  MODIFY COLUMN openId VARCHAR(64) NULL,\n  MODIFY COLUMN email VARCHAR(320) NOT NULL,\n  ADD UNIQUE INDEX IF NOT EXISTS idx_users_email (email),\n  MODIFY COLUMN loginMethod VARCHAR(64) DEFAULT 'local';",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1064 (42000) at line 1: You have an error in your SQL syntax; check the manual that corresponds to your TiDB version for the right syntax to use line 5 column 22 near \"IF NOT EXISTS idx_users_email (email),",
+    "  MODIFY COLUMN loginMethod VARCHAR(64) DEFAULT 'local'\""
+  ]
+}

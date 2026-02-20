@@ -20,10 +20,14 @@ import Settings from "./pages/Settings";
 import KnowledgeBase from "./pages/KnowledgeBase";
 import RiskRegister from "./pages/RiskRegister";
 import DashboardLayout from "./components/DashboardLayout";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
 
 function Router() {
   return (
     <Switch>
+      <Route path={"/login"} component={Login} />
+      <Route path={"/register"} component={Register} />
       <Route path={"/"} component={Home} />
       <Route path={"/requirements"}>
         <DashboardLayout>

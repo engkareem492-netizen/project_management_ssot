@@ -10,6 +10,7 @@ import { projectsRouter } from "./projects.router";
 import { knowledgeBaseRouter } from "./knowledgeBase.router";
 import { risksRouter } from "./risks.router";
 import { systemConfigRouter } from "./systemConfig.router";
+import { authLocalRouter } from "./auth.local.router";
 
 export const appRouter = router({
   system: systemRouter,
@@ -17,16 +18,7 @@ export const appRouter = router({
   knowledgeBase: knowledgeBaseRouter,
   risks: risksRouter,
   systemConfig: systemConfigRouter,
-  auth: router({
-    me: publicProcedure.query(opts => opts.ctx.user),
-    logout: publicProcedure.mutation(({ ctx }) => {
-      const cookieOptions = getSessionCookieOptions(ctx.req);
-      ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
-      return {
-        success: true,
-      } as const;
-    }),
-  }),
+  auth: authLocalRouter,
 
   // Excel import/export
   excel: router({
