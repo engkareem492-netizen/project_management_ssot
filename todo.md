@@ -1239,3 +1239,18 @@
 - [x] Tasks page: Replaced Priority text input with Select dropdown using priorityOptions
 - [x] Issues page: Replaced Issue Group text input with Select dropdown showing issue group code and name
 - [x] Issues page: Replaced Status text input with Select dropdown using statusOptions
+
+## Relationship Map Table View (Feb 19, 2026)
+
+- [x] Replace graph visualization with table format in Relationship Map tab
+- [x] Create table showing Requirements → Tasks → Issues relationships
+- [x] Add clickable entity links that open detail popups
+- [x] Implement popup dialog for Requirements with full details
+- [x] Implement popup dialog for Tasks with full details (including RACI assignments)
+- [x] Implement popup dialog for Issues with full details
+- [x] Show relationship counts and statistics (Requirements, Tasks, Issues summary cards)
+- [x] Flatten relationships into table rows for easy viewing
+- [x] Display entity IDs, descriptions, status, and priority in table cells
+- [x] Use Button components for clickable entities with hover effects
+- [ ] Add filtering and sorting capabilities to relationship table (future enhancement)
+- [ ] Add Stakeholder column to relationship table (future enhancement)
