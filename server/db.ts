@@ -186,9 +186,16 @@ export async function createRequirement(data: InsertRequirement) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
+  // Populate owner name from ownerId
+  const enrichedData: any = { ...data };
+  if (data.ownerId) {
+    const stakeholder = await getStakeholderById(data.ownerId);
+    if (stakeholder) enrichedData.owner = stakeholder.fullName;
+  }
+  
   // Remove undefined values to prevent Drizzle from using DEFAULT keyword
   const cleanedData: any = {};
-  for (const [key, value] of Object.entries(data)) {
+  for (const [key, value] of Object.entries(enrichedData)) {
     if (value !== undefined) {
       cleanedData[key] = value;
     }
@@ -315,8 +322,15 @@ export async function createIssue(data: InsertIssue) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
+  // Populate owner name from ownerId
+  const enrichedData: any = { ...data };
+  if (data.ownerId) {
+    const stakeholder = await getStakeholderById(data.ownerId);
+    if (stakeholder) enrichedData.owner = stakeholder.fullName;
+  }
+  
   // Set undefined optional fields to null explicitly to prevent Drizzle DEFAULT keyword issue
-  const cleanedData: any = { ...data };
+  const cleanedData: any = { ...enrichedData };
   const optionalFields = [
     'issueGroup', 'taskGroup', 'requirementId', 'type', 'class', 'owner', 'ownerId',
     'sourceType', 'refSource', 'openDate', 'deliverableId', 'taskId',

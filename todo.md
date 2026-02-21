@@ -1315,3 +1315,13 @@
 - [x] Test invitation flow
 - [x] Test password access flow
 - [x] Create comprehensive collaboration tests (9 tests, all passing)
+
+## Feature Requests (Feb 21, 2026 - Display Owner/Responsible Columns)
+
+- [x] Add Owner column to Requirements table display (already exists)
+- [x] Add Responsible column to Tasks table display (already exists)
+- [x] Add Owner column to Issues table display (already exists)
+- [x] Fix createRequirement to populate owner name from ownerId
+- [x] Fix createIssue to populate owner name from ownerId
+- [x] Verify createTask already populates responsible name from responsibleId
+- [x] Test all three tables show correct stakeholder names (4 tests, all passing)
