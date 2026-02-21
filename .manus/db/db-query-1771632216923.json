@@ -1,0 +1,9 @@
+{
+  "query": "UPDATE users SET password = '$2b$10$QuGCZ37n/8kbfyiZPBrFG.0zISR8hrOLuTVmfOWVEXedmRnMmZWlS' WHERE email = 'eng.kareem492@gmail.com';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4FzqaZAU5mRtC.root --database j37MQHBuWbY6PMBApJWnKm --execute UPDATE users SET password = '$2b$10$QuGCZ37n/8kbfyiZPBrFG.0zISR8hrOLuTVmfOWVEXedmRnMmZWlS' WHERE email = 'eng.kareem492@gmail.com';",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1609
+}

@@ -155,6 +155,13 @@
       "when": 1771630059167,
       "tag": "0021_kind_liz_osborn",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "5",
+      "when": 1771632592269,
+      "tag": "0022_bitter_prodigy",
+      "breakpoints": true
     }
   ]
 }

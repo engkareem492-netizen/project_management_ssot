@@ -1278,3 +1278,33 @@
 - [x] Install bcrypt and jsonwebtoken packages
 - [x] Fix upsertUser to handle optional openId field
 - [ ] Remove Manus OAuth dependency (kept for backward compatibility)
+
+## Password Management Features (Feb 20, 2026)
+
+- [x] Set password for eng.kareem492@gmail.com user (Qassem287)
+- [x] Implement Forgot Password feature
+- [x] Create password reset token generation
+- [x] Create password reset email sending (console log for development)
+- [x] Create Forgot Password page UI
+- [x] Create Reset Password page UI
+- [x] Add password reset link to login page
+- [x] Create password_resets table in database
+- [x] Add passwordResetRouter to main router
+- [ ] Test forgot password flow
+- [ ] Test reset password flow
+
+## Project Collaboration Features (Feb 20, 2026)
+
+- [x] Add forgot password routes to App.tsx
+- [x] Add forgot password link to login page
+- [x] Create project_members table for tracking collaborators
+- [x] Create project_invitations table for email invitations
+- [ ] Implement invite by email functionality
+- [ ] Implement password-protected project access
+- [ ] Create collaboration UI in project settings
+- [ ] Add invite members dialog
+- [ ] Add share project link with password
+- [ ] Show list of current collaborators
+- [ ] Add remove collaborator functionality
+- [ ] Test invitation flow
+- [ ] Test password access flow

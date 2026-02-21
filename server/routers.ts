@@ -11,6 +11,7 @@ import { knowledgeBaseRouter } from "./knowledgeBase.router";
 import { risksRouter } from "./risks.router";
 import { systemConfigRouter } from "./systemConfig.router";
 import { authLocalRouter } from "./auth.local.router";
+import { passwordResetRouter } from "./password.reset.router";
 
 export const appRouter = router({
   system: systemRouter,
@@ -19,6 +20,7 @@ export const appRouter = router({
   risks: risksRouter,
   systemConfig: systemConfigRouter,
   auth: authLocalRouter,
+  passwordReset: passwordResetRouter,
 
   // Excel import/export
   excel: router({

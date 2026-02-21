@@ -1,0 +1,112 @@
+{
+  "query": "SHOW TABLES;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3M4FzqaZAU5mRtC.root --database j37MQHBuWbY6PMBApJWnKm --execute SHOW TABLES;",
+  "rows": [
+    {
+      "Tables_in_j37MQHBuWbY6PMBApJWnKm": "__drizzle_migrations"
+    },
+    {
+      "Tables_in_j37MQHBuWbY6PMBApJWnKm": "actionLogs"
+    },
+    {
+      "Tables_in_j37MQHBuWbY6PMBApJWnKm": "assumptions"
+    },
+    {
+      "Tables_in_j37MQHBuWbY6PMBApJWnKm": "categoryOptions"
+    },
+    {
+      "Tables_in_j37MQHBuWbY6PMBApJWnKm": "classOptions"
+    },
+    {
+      "Tables_in_j37MQHBuWbY6PMBApJWnKm": "deliverableLinks"
+    },
+    {
+      "Tables_in_j37MQHBuWbY6PMBApJWnKm": "deliverableTypes"
+    },
+    {
+      "Tables_in_j37MQHBuWbY6PMBApJWnKm": "deliverables"
+    },
+    {
+      "Tables_in_j37MQHBuWbY6PMBApJWnKm": "dependencies"
+    },
+    {
+      "Tables_in_j37MQHBuWbY6PMBApJWnKm": "idSequences"
+    },
+    {
+      "Tables_in_j37MQHBuWbY6PMBApJWnKm": "issueGroups"
+    },
+    {
+      "Tables_in_j37MQHBuWbY6PMBApJWnKm": "issueLinks"
+    },
+    {
+      "Tables_in_j37MQHBuWbY6PMBApJWnKm": "issueTypes"
+    },
+    {
+      "Tables_in_j37MQHBuWbY6PMBApJWnKm": "issues"
+    },
+    {
+      "Tables_in_j37MQHBuWbY6PMBApJWnKm": "knowledgeBase"
+    },
+    {
+      "Tables_in_j37MQHBuWbY6PMBApJWnKm": "knowledgeBaseCodeConfig"
+    },
+    {
+      "Tables_in_j37MQHBuWbY6PMBApJWnKm": "knowledgeBaseComponents"
+    },
+    {
+      "Tables_in_j37MQHBuWbY6PMBApJWnKm": "knowledgeBaseTypes"
+    },
+    {
+      "Tables_in_j37MQHBuWbY6PMBApJWnKm": "priorityOptions"
+    },
+    {
+      "Tables_in_j37MQHBuWbY6PMBApJWnKm": "projects"
+    },
+    {
+      "Tables_in_j37MQHBuWbY6PMBApJWnKm": "requirements"
+    },
+    {
+      "Tables_in_j37MQHBuWbY6PMBApJWnKm": "responseStrategy"
+    },
+    {
+      "Tables_in_j37MQHBuWbY6PMBApJWnKm": "riskAnalysis"
+    },
+    {
+      "Tables_in_j37MQHBuWbY6PMBApJWnKm": "riskStatus"
+    },
+    {
+      "Tables_in_j37MQHBuWbY6PMBApJWnKm": "riskTypes"
+    },
+    {
+      "Tables_in_j37MQHBuWbY6PMBApJWnKm": "riskUpdates"
+    },
+    {
+      "Tables_in_j37MQHBuWbY6PMBApJWnKm": "risks"
+    },
+    {
+      "Tables_in_j37MQHBuWbY6PMBApJWnKm": "stakeholders"
+    },
+    {
+      "Tables_in_j37MQHBuWbY6PMBApJWnKm": "statusOptions"
+    },
+    {
+      "Tables_in_j37MQHBuWbY6PMBApJWnKm": "taskGroups"
+    },
+    {
+      "Tables_in_j37MQHBuWbY6PMBApJWnKm": "taskTypes"
+    },
+    {
+      "Tables_in_j37MQHBuWbY6PMBApJWnKm": "tasks"
+    },
+    {
+      "Tables_in_j37MQHBuWbY6PMBApJWnKm": "typeOptions"
+    },
+    {
+      "Tables_in_j37MQHBuWbY6PMBApJWnKm": "users"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_j37MQHBuWbY6PMBApJWnKm\n__drizzle_migrations\nactionLogs\nassumptions\ncategoryOptions\nclassOptions\ndeliverableLinks\ndeliverableTypes\ndeliverables\ndependencies\nidSequences\nissueGroups\nissueLinks\nissueTypes\nissues\nknowledgeBase\nknowledgeBaseCodeConfig\nknowledgeBaseComponents\nknowledgeBaseTypes\npriorityOptions\nprojects\nrequirements\nresponseStrategy\nriskAnalysis\nriskStatus\nriskTypes\nriskUpdates\nrisks\nstakeholders\nstatusOptions\ntaskGroups\ntaskTypes\ntasks\ntypeOptions\nusers\n",
+  "stderr": "",
+  "execution_time_ms": 1542
+}
