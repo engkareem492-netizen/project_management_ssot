@@ -14,6 +14,7 @@ import { Settings as SettingsIcon, Save, Plus, Edit, Trash2, Hash, AlertCircle, 
 import { useTheme } from "@/contexts/ThemeContext";
 import { useProject } from "@/contexts/ProjectContext";
 import { ThemeSelector } from "@/components/ThemeSelector";
+import CollaborationTab from "@/components/CollaborationTab";
 
 interface IdConfigEdit {
   prefix: string;
@@ -675,6 +676,7 @@ export default function Settings() {
           <TabsTrigger value="id-config">ID Configuration</TabsTrigger>
           <TabsTrigger value="dropdown-options">Dropdown Options</TabsTrigger>
           <TabsTrigger value="groups">Groups</TabsTrigger>
+          <TabsTrigger value="collaboration">Collaboration</TabsTrigger>
           <TabsTrigger value="theme">Theme</TabsTrigger>
         </TabsList>
 
@@ -1448,6 +1450,11 @@ export default function Settings() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Collaboration Tab */}
+        <TabsContent value="collaboration" className="space-y-6">
+          <CollaborationTab projectId={currentProjectId!} />
         </TabsContent>
 
         {/* Theme Tab */}

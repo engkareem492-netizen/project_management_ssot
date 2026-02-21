@@ -24,6 +24,8 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
+import AcceptInvitation from "./pages/AcceptInvitation";
+import JoinProject from "./pages/JoinProject";
 
 function Router() {
   return (
@@ -32,6 +34,8 @@ function Router() {
       <Route path={"/register"} component={Register} />
       <Route path={"/forgot-password"} component={ForgotPassword} />
       <Route path={"/reset-password"} component={ResetPassword} />
+      <Route path={"/accept-invitation"} component={AcceptInvitation} />
+      <Route path={"/join-project/:projectId"} component={JoinProject} />
       <Route path={"/"} component={Home} />
       <Route path={"/requirements"}>
         <DashboardLayout>

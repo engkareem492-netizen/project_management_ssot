@@ -12,6 +12,7 @@ import { risksRouter } from "./risks.router";
 import { systemConfigRouter } from "./systemConfig.router";
 import { authLocalRouter } from "./auth.local.router";
 import { passwordResetRouter } from "./password.reset.router";
+import { collaborationRouter } from "./routers/collaboration";
 
 export const appRouter = router({
   system: systemRouter,
@@ -21,6 +22,7 @@ export const appRouter = router({
   systemConfig: systemConfigRouter,
   auth: authLocalRouter,
   passwordReset: passwordResetRouter,
+  collaboration: collaborationRouter,
 
   // Excel import/export
   excel: router({

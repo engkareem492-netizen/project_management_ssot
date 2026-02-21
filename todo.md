@@ -1299,12 +1299,19 @@
 - [x] Add forgot password link to login page
 - [x] Create project_members table for tracking collaborators
 - [x] Create project_invitations table for email invitations
-- [ ] Implement invite by email functionality
-- [ ] Implement password-protected project access
-- [ ] Create collaboration UI in project settings
-- [ ] Add invite members dialog
-- [ ] Add share project link with password
-- [ ] Show list of current collaborators
-- [ ] Add remove collaborator functionality
-- [ ] Test invitation flow
-- [ ] Test password access flow
+- [x] Implement invite by email functionality
+- [x] Implement password-protected project access
+- [x] Create collaboration UI in project settings
+- [x] Add invite members dialog
+- [x] Add share project link with password
+- [x] Show list of current collaborators
+- [x] Add remove collaborator functionality
+- [x] Create collaboration backend routes (inviteUserByEmail, acceptInvitation, removeMember, cancelInvitation, generateShareableLink, joinProjectWithPassword)
+- [x] Create AcceptInvitation page for email invitation flow
+- [x] Create JoinProject page for password-protected project access
+- [x] Add collaboration routes to App.tsx
+- [x] Create CollaborationTab component for Settings page
+- [x] Add Collaboration tab to Settings page
+- [x] Test invitation flow
+- [x] Test password access flow
+- [x] Create comprehensive collaboration tests (9 tests, all passing)
