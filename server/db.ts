@@ -305,9 +305,12 @@ export async function deleteAllTasks() {
 }
 
 // Issues CRUD
-export async function getAllIssues() {
+export async function getAllIssues(projectId?: number) {
   const db = await getDb();
   if (!db) return [];
+  if (projectId) {
+    return await db.select().from(issues).where(eq(issues.projectId, projectId)).orderBy(desc(issues.importedAt));
+  }
   return await db.select().from(issues).orderBy(desc(issues.importedAt));
 }
 
@@ -366,9 +369,12 @@ export async function deleteAllIssues() {
 }
 
 // Dependencies CRUD
-export async function getAllDependencies() {
+export async function getAllDependencies(projectId?: number) {
   const db = await getDb();
   if (!db) return [];
+  if (projectId) {
+    return await db.select().from(dependencies).where(eq(dependencies.projectId, projectId)).orderBy(desc(dependencies.importedAt));
+  }
   return await db.select().from(dependencies).orderBy(desc(dependencies.importedAt));
 }
 
@@ -392,9 +398,12 @@ export async function deleteAllDependencies() {
 }
 
 // Assumptions CRUD
-export async function getAllAssumptions() {
+export async function getAllAssumptions(projectId?: number) {
   const db = await getDb();
   if (!db) return [];
+  if (projectId) {
+    return await db.select().from(assumptions).where(eq(assumptions.projectId, projectId)).orderBy(desc(assumptions.importedAt));
+  }
   return await db.select().from(assumptions).orderBy(desc(assumptions.importedAt));
 }
 
@@ -718,7 +727,7 @@ export async function deleteDeliverableLink(id: number) {
   await db.delete(deliverableLinks).where(eq(deliverableLinks.id, id));
 }
 
-export async function getDeliverablesByEntity(entityType: "requirement" | "task" | "dependency", entityId: string) {
+export async function getDeliverablesByEntity(entityType: "requirement" | "task" | "dependency", entityId: string, projectId?: number) {
   const db = await getDb();
   if (!db) return [];
   
@@ -726,7 +735,7 @@ export async function getDeliverablesByEntity(entityType: "requirement" | "task"
   if (links.length === 0) return [];
   
   const deliverableIds = links.map(l => l.deliverableId);
-  const allDeliverables = await getAllDeliverables();
+  const allDeliverables = await getAllDeliverables(projectId);
   return allDeliverables.filter(d => deliverableIds.includes(d.id));
 }
 
@@ -758,7 +767,7 @@ export async function getIssueLinksByEntity(entityType: "requirement" | "task" |
     );
 }
 
-export async function getIssuesByEntity(entityType: "requirement" | "task" | "dependency", entityId: string) {
+export async function getIssuesByEntity(entityType: "requirement" | "task" | "dependency", entityId: string, projectId?: number) {
   const db = await getDb();
   if (!db) return [];
   
@@ -766,7 +775,12 @@ export async function getIssuesByEntity(entityType: "requirement" | "task" | "de
   if (links.length === 0) return [];
   
   const issueIds = links.map(l => l.issueId);
-  // Query issues directly by IDs instead of getting all issues
+  // Query issues directly by IDs and filter by projectId if provided
+  if (projectId) {
+    return await db.select().from(issues)
+      .where(and(inArray(issues.id, issueIds), eq(issues.projectId, projectId)))
+      .orderBy(issues.issueId);
+  }
   return await db.select().from(issues)
     .where(inArray(issues.id, issueIds))
     .orderBy(issues.issueId);
@@ -781,20 +795,20 @@ export async function getRequirementWithLinkedItems(requirementId: string) {
   const req = await getRequirementByIdCode(requirementId);
   if (!req) return null;
   
-  // Get linked tasks
+  // Get linked tasks (filter by projectId)
   const relatedTasks = await db
     .select()
     .from(tasks)
-    .where(eq(tasks.requirementId, requirementId));
+    .where(and(eq(tasks.requirementId, requirementId), eq(tasks.projectId, req.projectId)));
   
-  // Get linked issues
+  // Get linked issues (filter by projectId)
   const relatedIssues = await db
     .select()
     .from(issues)
-    .where(eq(issues.requirementId, requirementId));
+    .where(and(eq(issues.requirementId, requirementId), eq(issues.projectId, req.projectId)));
   
-  // Get linked deliverables
-  const relatedDeliverables = await getDeliverablesByEntity("requirement", requirementId);
+  // Get linked deliverables (filter by projectId)
+  const relatedDeliverables = await getDeliverablesByEntity("requirement", requirementId, req.projectId);
   
   return {
     requirement: req,

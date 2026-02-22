@@ -1357,3 +1357,16 @@
 - [x] Fix table row generation to repeat requirement in all rows (no empty cells)
 - [x] Verify deliverables display correctly for all entity types (code is correct, waiting for data)
 - [x] Test table has no empty requirement cells (fixed by repeating requirement in all rows)
+
+## CRITICAL BUG (Feb 22, 2026 - Project Data Isolation)
+
+- [x] Audit all database queries in server/db.ts for missing projectId filters
+- [x] Add projectId filter to getAllDeliverables query (already had it)
+- [x] Add projectId filter to getAllIssues query
+- [x] Add projectId filter to getAllDependencies query
+- [x] Add projectId filter to getAllAssumptions query
+- [x] Fix getDeliverablesByEntity to pass projectId to getAllDeliverables
+- [x] Fix getIssuesByEntity to filter by projectId
+- [x] Fix getRequirementWithLinkedItems to filter tasks/issues/deliverables by projectId
+- [x] Test with multiple projects to verify isolation (9 tests, all passing)
+- [x] Create unit tests for project isolation (server/project-isolation.test.ts)
