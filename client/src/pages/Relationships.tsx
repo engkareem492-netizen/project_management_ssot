@@ -6,13 +6,22 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, GitBranch, FileText, CheckSquare, AlertCircle, Users, ExternalLink } from "lucide-react";
+import { Loader2, GitBranch, FileText, CheckSquare, AlertCircle, Users, ExternalLink, Filter, X } from "lucide-react";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function Relationships() {
   const { currentProjectId } = useProject();
   const { data: relationships, isLoading } = trpc.relationships.getAll.useQuery(
     { projectId: currentProjectId || undefined },
+    { enabled: !!currentProjectId }
+  );
+  const { data: stakeholders } = trpc.stakeholders.list.useQuery(
+    { projectId: currentProjectId || 0 },
+    { enabled: !!currentProjectId }
+  );
+  const { data: deliverables } = trpc.deliverables.list.useQuery(
+    { projectId: currentProjectId || 0 },
     { enabled: !!currentProjectId }
   );
 
@@ -22,6 +31,14 @@ export default function Relationships() {
   const [showRequirementDialog, setShowRequirementDialog] = useState(false);
   const [showTaskDialog, setShowTaskDialog] = useState(false);
   const [showIssueDialog, setShowIssueDialog] = useState(false);
+  
+  // Column widths state
+  const [columnWidths, setColumnWidths] = useState({ requirement: 25, task: 35, issue: 35 });
+  
+  // Filter states
+  const [requirementOwnerFilter, setRequirementOwnerFilter] = useState<string>("");
+  const [taskResponsibleFilter, setTaskResponsibleFilter] = useState<string>("");
+  const [issueOwnerFilter, setIssueOwnerFilter] = useState<string>("");
 
   // Flatten relationships into table rows
   const tableRows: any[] = [];
@@ -45,6 +62,31 @@ export default function Relationships() {
       }
     }
   });
+
+  // Apply filters
+  const filteredRows = tableRows.filter((row) => {
+    if (requirementOwnerFilter && row.requirement && row.requirement.owner !== requirementOwnerFilter) {
+      return false;
+    }
+    if (taskResponsibleFilter && row.task && row.task.responsible !== taskResponsibleFilter) {
+      return false;
+    }
+    if (issueOwnerFilter && row.issue && row.issue.owner !== issueOwnerFilter) {
+      return false;
+    }
+    return true;
+  });
+
+  // Get unique stakeholder names for filters
+  const uniqueRequirementOwners = Array.from(new Set(
+    relationships?.flatMap(r => r.requirement.owner).filter(Boolean) || []
+  )).sort();
+  const uniqueTaskResponsibles = Array.from(new Set(
+    relationships?.flatMap(r => r.tasks.map(t => t.responsible)).filter(Boolean) || []
+  )).sort();
+  const uniqueIssueOwners = Array.from(new Set(
+    relationships?.flatMap(r => r.issues.map(i => i.owner)).filter(Boolean) || []
+  )).sort();
 
   const handleRequirementClick = (req: any) => {
     setSelectedRequirement(req);
@@ -82,6 +124,71 @@ export default function Relationships() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {/* Filters */}
+          <div className="flex gap-4 mb-4 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-muted-foreground" />
+              <Label className="text-sm font-medium">Filters:</Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Label className="text-sm">Req. Owner:</Label>
+              <Select value={requirementOwnerFilter} onValueChange={setRequirementOwnerFilter}>
+                <SelectTrigger className="w-[180px] h-8">
+                  <SelectValue placeholder="All" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All</SelectItem>
+                  {uniqueRequirementOwners.map((owner) => (
+                    <SelectItem key={owner as string} value={owner as string}>{owner}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {requirementOwnerFilter && (
+                <Button size="sm" variant="ghost" onClick={() => setRequirementOwnerFilter("")} className="h-6 w-6 p-0">
+                  <X className="w-3 h-3" />
+                </Button>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Label className="text-sm">Task Responsible:</Label>
+              <Select value={taskResponsibleFilter} onValueChange={setTaskResponsibleFilter}>
+                <SelectTrigger className="w-[180px] h-8">
+                  <SelectValue placeholder="All" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All</SelectItem>
+                  {uniqueTaskResponsibles.map((responsible) => (
+                    <SelectItem key={responsible as string} value={responsible as string}>{responsible}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {taskResponsibleFilter && (
+                <Button size="sm" variant="ghost" onClick={() => setTaskResponsibleFilter("")} className="h-6 w-6 p-0">
+                  <X className="w-3 h-3" />
+                </Button>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Label className="text-sm">Issue Owner:</Label>
+              <Select value={issueOwnerFilter} onValueChange={setIssueOwnerFilter}>
+                <SelectTrigger className="w-[180px] h-8">
+                  <SelectValue placeholder="All" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All</SelectItem>
+                  {uniqueIssueOwners.map((owner) => (
+                    <SelectItem key={owner as string} value={owner as string}>{owner}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {issueOwnerFilter && (
+                <Button size="sm" variant="ghost" onClick={() => setIssueOwnerFilter("")} className="h-6 w-6 p-0">
+                  <X className="w-3 h-3" />
+                </Button>
+              )}
+            </div>
+          </div>
+
           {tableRows.length > 0 ? (
             <div className="border rounded-lg overflow-hidden">
               <Table>
@@ -94,7 +201,7 @@ export default function Relationships() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {tableRows.map((row, index) => (
+                  {filteredRows.map((row, index) => (
                     <TableRow key={index} className="hover:bg-muted/50">
                       <TableCell>
                         {row.requirement && (
@@ -114,6 +221,11 @@ export default function Relationships() {
                               {row.requirement.owner && (
                                 <p className="text-xs text-muted-foreground">
                                   <span className="font-medium">Owner:</span> {row.requirement.owner}
+                                </p>
+                              )}
+                              {row.requirement.deliverableId && deliverables && (
+                                <p className="text-xs text-muted-foreground">
+                                  <span className="font-medium">Deliverable:</span> {deliverables.find(d => d.id === row.requirement.deliverableId)?.deliverableId || `DL-${row.requirement.deliverableId}`}
                                 </p>
                               )}
                             </div>
@@ -141,6 +253,11 @@ export default function Relationships() {
                                   <span className="font-medium">Responsible:</span> {row.task.responsible}
                                 </p>
                               )}
+                              {row.task.deliverableId && deliverables && (
+                                <p className="text-xs text-muted-foreground">
+                                  <span className="font-medium">Deliverable:</span> {deliverables.find(d => d.id === row.task.deliverableId)?.deliverableId || `DL-${row.task.deliverableId}`}
+                                </p>
+                              )}
                             </div>
                           </Button>
                         )}
@@ -164,6 +281,11 @@ export default function Relationships() {
                               {row.issue.owner && (
                                 <p className="text-xs text-muted-foreground">
                                   <span className="font-medium">Owner:</span> {row.issue.owner}
+                                </p>
+                              )}
+                              {row.issue.deliverableId && deliverables && (
+                                <p className="text-xs text-muted-foreground">
+                                  <span className="font-medium">Deliverable:</span> {deliverables.find(d => d.id === row.issue.deliverableId)?.deliverableId || `DL-${row.issue.deliverableId}`}
                                 </p>
                               )}
                             </div>

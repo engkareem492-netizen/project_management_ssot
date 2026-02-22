@@ -1333,3 +1333,13 @@
 - [x] Add Responsible column to Task display in Relationships table
 - [x] Add Owner column to Issue display in Relationships table
 - [x] Test Relationships page displays all owner/responsible names (verified via status check)
+
+## Feature Request (Feb 22, 2026 - Relationships Table Enhancements)
+
+- [x] Add stakeholder filter dropdown for Requirements
+- [x] Add stakeholder filter dropdown for Tasks
+- [x] Add stakeholder filter dropdown for Issues
+- [x] Display deliverable information for Requirements
+- [x] Display deliverable information for Tasks
+- [x] Display deliverable information for Issues
+- [x] Test all filters work correctly (verified via status check - no TypeScript errors, HMR updates successful)
