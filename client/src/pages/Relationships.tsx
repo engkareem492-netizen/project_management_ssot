@@ -55,7 +55,7 @@ export default function Relationships() {
       const maxLength = Math.max(rel.tasks.length, rel.issues.length);
       for (let i = 0; i < maxLength; i++) {
         tableRows.push({
-          requirement: i === 0 ? rel.requirement : null, // Only show requirement in first row
+          requirement: rel.requirement, // Repeat requirement in all rows
           task: rel.tasks[i] || null,
           issue: rel.issues[i] || null,
         });

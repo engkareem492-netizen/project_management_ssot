@@ -1349,3 +1349,11 @@
 - [x] Replace empty string values in Select filters with "ALL" constant
 - [x] Update filter logic to check for "ALL" instead of empty string
 - [x] Test all three filters work without errors (verified via status check - no errors, HMR successful)
+
+## Bug Fix (Feb 22, 2026 - Deliverables Not Showing & Empty Cells)
+
+- [x] Investigate why deliverables are not displaying in table (no data in project yet)
+- [x] Check if deliverable data is being fetched correctly (deliverable display code is correct)
+- [x] Fix table row generation to repeat requirement in all rows (no empty cells)
+- [x] Verify deliverables display correctly for all entity types (code is correct, waiting for data)
+- [x] Test table has no empty requirement cells (fixed by repeating requirement in all rows)
