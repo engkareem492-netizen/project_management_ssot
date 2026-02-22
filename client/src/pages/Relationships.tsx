@@ -36,9 +36,9 @@ export default function Relationships() {
   const [columnWidths, setColumnWidths] = useState({ requirement: 25, task: 35, issue: 35 });
   
   // Filter states
-  const [requirementOwnerFilter, setRequirementOwnerFilter] = useState<string>("");
-  const [taskResponsibleFilter, setTaskResponsibleFilter] = useState<string>("");
-  const [issueOwnerFilter, setIssueOwnerFilter] = useState<string>("");
+  const [requirementOwnerFilter, setRequirementOwnerFilter] = useState<string>("ALL");
+  const [taskResponsibleFilter, setTaskResponsibleFilter] = useState<string>("ALL");
+  const [issueOwnerFilter, setIssueOwnerFilter] = useState<string>("ALL");
 
   // Flatten relationships into table rows
   const tableRows: any[] = [];
@@ -65,13 +65,13 @@ export default function Relationships() {
 
   // Apply filters
   const filteredRows = tableRows.filter((row) => {
-    if (requirementOwnerFilter && row.requirement && row.requirement.owner !== requirementOwnerFilter) {
+    if (requirementOwnerFilter !== "ALL" && row.requirement && row.requirement.owner !== requirementOwnerFilter) {
       return false;
     }
-    if (taskResponsibleFilter && row.task && row.task.responsible !== taskResponsibleFilter) {
+    if (taskResponsibleFilter !== "ALL" && row.task && row.task.responsible !== taskResponsibleFilter) {
       return false;
     }
-    if (issueOwnerFilter && row.issue && row.issue.owner !== issueOwnerFilter) {
+    if (issueOwnerFilter !== "ALL" && row.issue && row.issue.owner !== issueOwnerFilter) {
       return false;
     }
     return true;
@@ -137,14 +137,14 @@ export default function Relationships() {
                   <SelectValue placeholder="All" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All</SelectItem>
+                  <SelectItem value="ALL">All</SelectItem>
                   {uniqueRequirementOwners.map((owner) => (
                     <SelectItem key={owner as string} value={owner as string}>{owner}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              {requirementOwnerFilter && (
-                <Button size="sm" variant="ghost" onClick={() => setRequirementOwnerFilter("")} className="h-6 w-6 p-0">
+              {requirementOwnerFilter !== "ALL" && (
+                <Button size="sm" variant="ghost" onClick={() => setRequirementOwnerFilter("ALL")} className="h-6 w-6 p-0">
                   <X className="w-3 h-3" />
                 </Button>
               )}
@@ -156,14 +156,14 @@ export default function Relationships() {
                   <SelectValue placeholder="All" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All</SelectItem>
+                  <SelectItem value="ALL">All</SelectItem>
                   {uniqueTaskResponsibles.map((responsible) => (
                     <SelectItem key={responsible as string} value={responsible as string}>{responsible}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              {taskResponsibleFilter && (
-                <Button size="sm" variant="ghost" onClick={() => setTaskResponsibleFilter("")} className="h-6 w-6 p-0">
+              {taskResponsibleFilter !== "ALL" && (
+                <Button size="sm" variant="ghost" onClick={() => setTaskResponsibleFilter("ALL")} className="h-6 w-6 p-0">
                   <X className="w-3 h-3" />
                 </Button>
               )}
@@ -175,14 +175,14 @@ export default function Relationships() {
                   <SelectValue placeholder="All" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All</SelectItem>
+                  <SelectItem value="ALL">All</SelectItem>
                   {uniqueIssueOwners.map((owner) => (
                     <SelectItem key={owner as string} value={owner as string}>{owner}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              {issueOwnerFilter && (
-                <Button size="sm" variant="ghost" onClick={() => setIssueOwnerFilter("")} className="h-6 w-6 p-0">
+              {issueOwnerFilter !== "ALL" && (
+                <Button size="sm" variant="ghost" onClick={() => setIssueOwnerFilter("ALL")} className="h-6 w-6 p-0">
                   <X className="w-3 h-3" />
                 </Button>
               )}
