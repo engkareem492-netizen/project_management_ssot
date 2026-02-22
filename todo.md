@@ -1325,3 +1325,11 @@
 - [x] Fix createIssue to populate owner name from ownerId
 - [x] Verify createTask already populates responsible name from responsibleId
 - [x] Test all three tables show correct stakeholder names (4 tests, all passing)
+
+## Feature Request (Feb 21, 2026 - Display Owner/Responsible in Relationships Table)
+
+- [x] Read Relationships page structure
+- [x] Add Owner column to Requirement display in Relationships table
+- [x] Add Responsible column to Task display in Relationships table
+- [x] Add Owner column to Issue display in Relationships table
+- [x] Test Relationships page displays all owner/responsible names (verified via status check)

@@ -111,6 +111,11 @@ export default function Relationships() {
                               <p className="text-xs text-muted-foreground line-clamp-2">
                                 {row.requirement.description}
                               </p>
+                              {row.requirement.owner && (
+                                <p className="text-xs text-muted-foreground">
+                                  <span className="font-medium">Owner:</span> {row.requirement.owner}
+                                </p>
+                              )}
                             </div>
                           </Button>
                         )}
@@ -131,6 +136,11 @@ export default function Relationships() {
                               <p className="text-xs text-muted-foreground line-clamp-2">
                                 {row.task.description}
                               </p>
+                              {row.task.responsible && (
+                                <p className="text-xs text-muted-foreground">
+                                  <span className="font-medium">Responsible:</span> {row.task.responsible}
+                                </p>
+                              )}
                             </div>
                           </Button>
                         )}
@@ -151,6 +161,11 @@ export default function Relationships() {
                               <p className="text-xs text-muted-foreground line-clamp-2">
                                 {row.issue.description}
                               </p>
+                              {row.issue.owner && (
+                                <p className="text-xs text-muted-foreground">
+                                  <span className="font-medium">Owner:</span> {row.issue.owner}
+                                </p>
+                              )}
                             </div>
                           </Button>
                         )}
