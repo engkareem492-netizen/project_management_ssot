@@ -137,8 +137,12 @@ export default function Requirements() {
     { enabled: historyDialogOpen && !!selectedEntityId }
   );
   const { data: linkedDeliverables } = trpc.deliverables.getByEntity.useQuery(
-    { entityType: "requirement", entityId: selectedRequirement?.idCode || "" },
-    { enabled: viewDialogOpen && !!selectedRequirement?.idCode }
+    { 
+      entityType: "requirement", 
+      entityId: selectedRequirement?.idCode || "",
+      projectId: currentProjectId || undefined
+    },
+    { enabled: viewDialogOpen && !!selectedRequirement?.idCode && !!currentProjectId }
   );
   const { data: allDeliverables } = trpc.deliverables.list.useQuery(
     { projectId: currentProjectId || 0 },

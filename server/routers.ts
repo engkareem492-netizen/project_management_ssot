@@ -1149,9 +1149,10 @@ export const appRouter = router({
       .input(z.object({
         entityType: z.enum(['requirement', 'task', 'dependency']),
         entityId: z.string(),
+        projectId: z.number().optional(),
       }))
       .query(async ({ input }) => {
-        return await db.getDeliverablesByEntity(input.entityType, input.entityId);
+        return await db.getDeliverablesByEntity(input.entityType, input.entityId, input.projectId);
       }),
   }),
 

@@ -1370,3 +1370,11 @@
 - [x] Fix getRequirementWithLinkedItems to filter tasks/issues/deliverables by projectId
 - [x] Test with multiple projects to verify isolation (9 tests, all passing)
 - [x] Create unit tests for project isolation (server/project-isolation.test.ts)
+
+## CRITICAL BUG (Feb 22, 2026 - Frontend Deliverable Dropdown Not Filtered)
+
+- [x] Find where Requirements edit dialog fetches deliverables for dropdown (line 139 in Requirements.tsx)
+- [x] Add projectId parameter to backend deliverables.getByEntity procedure
+- [x] Add projectId parameter to frontend deliverable getByEntity query
+- [x] Check if other entity edit dialogs (Tasks, Dependencies) have same issue (they don't use getByEntity)
+- [x] Test all deliverable dropdowns show only current project deliverables (verified via status check - no errors, HMR successful)
