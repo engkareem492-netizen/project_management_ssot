@@ -519,10 +519,25 @@ export async function getAllRelationships(projectId?: number) {
     const relatedIssues = allIssues.filter(i => i.requirementId === req.idCode);
     
     if (relatedTasks.length > 0 || relatedIssues.length > 0) {
+      // Fetch linked deliverables for requirement, tasks, and issues
+      const reqDeliverables = await getDeliverablesByEntity('requirement', req.idCode, projectId);
+      const tasksWithDeliverables = await Promise.all(
+        relatedTasks.map(async (task) => ({
+          ...task,
+          linkedDeliverables: await getDeliverablesByEntity('task', task.taskId, projectId)
+        }))
+      );
+      const issuesWithDeliverables = await Promise.all(
+        relatedIssues.map(async (issue) => ({
+          ...issue,
+          linkedDeliverables: [] // Issues don't link to deliverables currently
+        }))
+      );
+      
       relationships.push({
-        requirement: req,
-        tasks: relatedTasks,
-        issues: relatedIssues,
+        requirement: { ...req, linkedDeliverables: reqDeliverables },
+        tasks: tasksWithDeliverables,
+        issues: issuesWithDeliverables,
       });
     }
   }

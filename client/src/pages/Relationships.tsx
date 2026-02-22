@@ -223,9 +223,9 @@ export default function Relationships() {
                                   <span className="font-medium">Owner:</span> {row.requirement.owner}
                                 </p>
                               )}
-                              {row.requirement.deliverableId && deliverables && (
+                              {row.requirement.linkedDeliverables && row.requirement.linkedDeliverables.length > 0 && (
                                 <p className="text-xs text-muted-foreground">
-                                  <span className="font-medium">Deliverable:</span> {deliverables.find(d => d.id === row.requirement.deliverableId)?.deliverableId || `DL-${row.requirement.deliverableId}`}
+                                  <span className="font-medium">Deliverable:</span> {row.requirement.linkedDeliverables.map((d: any) => d.deliverableId).join(', ')}
                                 </p>
                               )}
                             </div>
@@ -253,9 +253,9 @@ export default function Relationships() {
                                   <span className="font-medium">Responsible:</span> {row.task.responsible}
                                 </p>
                               )}
-                              {row.task.deliverableId && deliverables && (
+                              {row.task.linkedDeliverables && row.task.linkedDeliverables.length > 0 && (
                                 <p className="text-xs text-muted-foreground">
-                                  <span className="font-medium">Deliverable:</span> {deliverables.find(d => d.id === row.task.deliverableId)?.deliverableId || `DL-${row.task.deliverableId}`}
+                                  <span className="font-medium">Deliverable:</span> {row.task.linkedDeliverables.map((d: any) => d.deliverableId).join(', ')}
                                 </p>
                               )}
                             </div>
@@ -283,9 +283,9 @@ export default function Relationships() {
                                   <span className="font-medium">Owner:</span> {row.issue.owner}
                                 </p>
                               )}
-                              {row.issue.deliverableId && deliverables && (
+                              {row.issue.linkedDeliverables && row.issue.linkedDeliverables.length > 0 && (
                                 <p className="text-xs text-muted-foreground">
-                                  <span className="font-medium">Deliverable:</span> {deliverables.find(d => d.id === row.issue.deliverableId)?.deliverableId || `DL-${row.issue.deliverableId}`}
+                                  <span className="font-medium">Deliverable:</span> {row.issue.linkedDeliverables.map((d: any) => d.deliverableId).join(', ')}
                                 </p>
                               )}
                             </div>

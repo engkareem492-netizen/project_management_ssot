@@ -1378,3 +1378,12 @@
 - [x] Add projectId parameter to frontend deliverable getByEntity query
 - [x] Check if other entity edit dialogs (Tasks, Dependencies) have same issue (they don't use getByEntity)
 - [x] Test all deliverable dropdowns show only current project deliverables (verified via status check - no errors, HMR successful)
+
+## BUG (Feb 22, 2026 - Deliverable Links Not Showing)
+
+- [x] Investigate why deliverable created from requirement doesn't show in Manage Links dialog (deliverableLinks table was missing)
+- [x] Check if deliverable link is being created in database when creating deliverable from requirement (table didn't exist)
+- [x] Investigate why deliverables column is empty in Relationships table (getAllRelationships didn't include deliverable data)
+- [x] Fix Manage Links dialog to show all linked entities (created deliverableLinks table)
+- [x] Fix Relationships table to display deliverable information (updated getAllRelationships and frontend display)
+- [x] Test both fixes work correctly (verified via status check - no errors, HMR successful)
