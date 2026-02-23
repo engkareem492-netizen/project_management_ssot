@@ -1182,7 +1182,7 @@ export default function Issues() {
               <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                 <Label className="text-xs text-muted-foreground uppercase tracking-wide">Issue Group</Label>
                 {isEditMode ? (
-                  <Select value={editFormData.issueGroup} onValueChange={(v) => setEditFormData({...editFormData, issueGroup: v})}>
+                  <Select value={editFormData.issueGroup || ''} onValueChange={(v) => setEditFormData({...editFormData, issueGroup: v})}>
                     <SelectTrigger className="h-8">
                       <SelectValue placeholder="Select issue group" />
                     </SelectTrigger>
@@ -1203,7 +1203,7 @@ export default function Issues() {
               <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                 <Label className="text-xs text-muted-foreground uppercase tracking-wide">Status</Label>
                 {isEditMode ? (
-                  <Select value={editFormData.status} onValueChange={(v) => setEditFormData({...editFormData, status: v})}>
+                  <Select value={editFormData.status || ''} onValueChange={(v) => setEditFormData({...editFormData, status: v})}>
                     <SelectTrigger className="h-8">
                       <SelectValue placeholder="Select status" />
                     </SelectTrigger>
@@ -1254,7 +1254,7 @@ export default function Issues() {
               <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                 <Label className="text-xs text-muted-foreground uppercase tracking-wide">Class</Label>
                 {isEditMode ? (
-                  <Select value={editFormData.class} onValueChange={(value) => setEditFormData({...editFormData, class: value})}>
+                  <Select value={editFormData.class || ''} onValueChange={(value) => setEditFormData({...editFormData, class: value})}>
                     <SelectTrigger className="h-8">
                       <SelectValue placeholder="Select class" />
                     </SelectTrigger>
@@ -1271,7 +1271,7 @@ export default function Issues() {
               <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                 <Label className="text-xs text-muted-foreground uppercase tracking-wide">Owner</Label>
                 {isEditMode ? (
-                  <Select value={editFormData.owner} onValueChange={(v) => setEditFormData({...editFormData, owner: v})}>
+                  <Select value={editFormData.owner || ''} onValueChange={(v) => setEditFormData({...editFormData, owner: v})}>
                     <SelectTrigger className="h-8">
                       <SelectValue placeholder="Select owner" />
                     </SelectTrigger>
@@ -1288,7 +1288,7 @@ export default function Issues() {
               <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                 <Label className="text-xs text-muted-foreground uppercase tracking-wide">Source Type</Label>
                 {isEditMode ? (
-                  <Input value={editFormData.sourceType} onChange={(e) => setEditFormData({...editFormData, sourceType: e.target.value})} className="h-8" />
+                  <Input value={editFormData.sourceType || ''} onChange={(e) => setEditFormData({...editFormData, sourceType: e.target.value})} className="h-8" />
                 ) : (
                   <p className="font-medium">{selectedIssue?.sourceType || '-'}</p>
                 )}
@@ -1296,7 +1296,7 @@ export default function Issues() {
               <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                 <Label className="text-xs text-muted-foreground uppercase tracking-wide">External Source</Label>
                 {isEditMode ? (
-                  <Input value={editFormData.refSource} onChange={(e) => setEditFormData({...editFormData, refSource: e.target.value})} className="h-8" />
+                  <Input value={editFormData.refSource || ''} onChange={(e) => setEditFormData({...editFormData, refSource: e.target.value})} className="h-8" />
                 ) : (
                   <p className="font-medium">{selectedIssue?.refSource || '-'}</p>
                 )}
@@ -1304,7 +1304,7 @@ export default function Issues() {
               <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                 <Label className="text-xs text-muted-foreground uppercase tracking-wide">Open Date</Label>
                 {isEditMode ? (
-                  <Input type="date" value={editFormData.openDate} onChange={(e) => setEditFormData({...editFormData, openDate: e.target.value})} className="h-8" />
+                  <Input type="date" value={editFormData.openDate || ''} onChange={(e) => setEditFormData({...editFormData, openDate: e.target.value})} className="h-8" />
                 ) : (
                   <p className="font-medium">{selectedIssue?.openDate || '-'}</p>
                 )}
@@ -1313,7 +1313,7 @@ export default function Issues() {
                 <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">Knowledge Base Link</Label>
                   <Select 
-                    value={editFormData.knowledgeBaseCode} 
+                    value={editFormData.knowledgeBaseCode || ''} 
                     onValueChange={(v) => setEditFormData({...editFormData, knowledgeBaseCode: v})}
                   >
                     <SelectTrigger className="h-8">
@@ -1334,7 +1334,7 @@ export default function Issues() {
                 <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">Task Link</Label>
                   <Select 
-                    value={editFormData.taskId} 
+                    value={editFormData.taskId || ''} 
                     onValueChange={(v) => setEditFormData({...editFormData, taskId: v})}
                   >
                     <SelectTrigger className="h-8">
@@ -1358,7 +1358,7 @@ export default function Issues() {
               <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                 <Label className="text-xs text-muted-foreground uppercase tracking-wide">Description</Label>
                 {isEditMode ? (
-                  <Textarea value={editFormData.description} onChange={(e) => setEditFormData({...editFormData, description: e.target.value})} className="min-h-[80px]" />
+                  <Textarea value={editFormData.description || ''} onChange={(e) => setEditFormData({...editFormData, description: e.target.value})} className="min-h-[80px]" />
                 ) : (
                   <p className="font-medium whitespace-pre-wrap">{selectedIssue?.description || '-'}</p>
                 )}
@@ -1370,7 +1370,7 @@ export default function Issues() {
               <Label className="text-xs text-muted-foreground uppercase tracking-wide">Last Update</Label>
               {isEditMode ? (
                 <Textarea
-                  value={editFormData.lastUpdate}
+                  value={editFormData.lastUpdate || ''}
                   onChange={(e) => setEditFormData({...editFormData, lastUpdate: e.target.value})}
                   className="min-h-[60px]"
                   placeholder="Enter update notes"
