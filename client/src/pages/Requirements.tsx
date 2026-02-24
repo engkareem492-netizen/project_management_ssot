@@ -775,7 +775,7 @@ export default function Requirements() {
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">Task Group</Label>
                   {isEditMode ? (
                     <div className="flex gap-2">
-                      <Select value={editFormData.taskGroup} onValueChange={(v) => setEditFormData({...editFormData, taskGroup: v})}>
+                      <Select value={editFormData.taskGroup || ''} onValueChange={(v) => setEditFormData({...editFormData, taskGroup: v})}>
                         <SelectTrigger className="h-8">
                           <SelectValue placeholder="Select task group" />
                         </SelectTrigger>
@@ -794,7 +794,7 @@ export default function Requirements() {
                 <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">Issue Group</Label>
                   {isEditMode ? (
-                    <Select value={editFormData.issueGroup} onValueChange={(v) => setEditFormData({...editFormData, issueGroup: v})}>
+                    <Select value={editFormData.issueGroup || ''} onValueChange={(v) => setEditFormData({...editFormData, issueGroup: v})}>
                       <SelectTrigger className="h-8">
                         <SelectValue placeholder="Select issue group" />
                       </SelectTrigger>
@@ -812,7 +812,7 @@ export default function Requirements() {
                 <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">Priority</Label>
                   {isEditMode ? (
-                    <Select value={editFormData.priority} onValueChange={(v) => setEditFormData({...editFormData, priority: v})}>
+                    <Select value={editFormData.priority || ''} onValueChange={(v) => setEditFormData({...editFormData, priority: v})}>
                       <SelectTrigger className="h-8">
                         <SelectValue placeholder="Select priority" />
                       </SelectTrigger>
@@ -837,7 +837,7 @@ export default function Requirements() {
                 <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">Type</Label>
                   {isEditMode ? (
-                    <Select value={editFormData.type} onValueChange={(v) => setEditFormData({...editFormData, type: v})}>
+                    <Select value={editFormData.type || ''} onValueChange={(v) => setEditFormData({...editFormData, type: v})}>
                       <SelectTrigger className="h-8">
                         <SelectValue placeholder="Select type" />
                       </SelectTrigger>
@@ -855,7 +855,7 @@ export default function Requirements() {
                 <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">Category</Label>
                   {isEditMode ? (
-                    <Select value={editFormData.category} onValueChange={(v) => setEditFormData({...editFormData, category: v})}>
+                    <Select value={editFormData.category || ''} onValueChange={(v) => setEditFormData({...editFormData, category: v})}>
                       <SelectTrigger className="h-8">
                         <SelectValue placeholder="Select category" />
                       </SelectTrigger>
@@ -873,7 +873,7 @@ export default function Requirements() {
                 <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">Owner</Label>
                   {isEditMode ? (
-                    <Select value={editFormData.owner} onValueChange={(v) => setEditFormData({...editFormData, owner: v})}>
+                    <Select value={editFormData.owner || ''} onValueChange={(v) => setEditFormData({...editFormData, owner: v})}>
                       <SelectTrigger className="h-8">
                         <SelectValue placeholder="Select owner" />
                       </SelectTrigger>
@@ -892,7 +892,7 @@ export default function Requirements() {
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">Source Type</Label>
                   {isEditMode ? (
                     <Input
-                      value={editFormData.sourceType}
+                      value={editFormData.sourceType || ''}
                       onChange={(e) => setEditFormData({...editFormData, sourceType: e.target.value})}
                       className="h-8"
                       placeholder="Enter source type"
@@ -906,7 +906,7 @@ export default function Requirements() {
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">External Source</Label>
                   {isEditMode ? (
                     <Input
-                      value={editFormData.refSource}
+                      value={editFormData.refSource || ''}
                       onChange={(e) => setEditFormData({...editFormData, refSource: e.target.value})}
                       className="h-8"
                       placeholder="Enter external source"
@@ -920,7 +920,7 @@ export default function Requirements() {
                   <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                     <Label className="text-xs text-muted-foreground uppercase tracking-wide">Knowledge Base Link</Label>
                     <Select 
-                      value={editFormData.knowledgeBaseCode} 
+                      value={editFormData.knowledgeBaseCode || ''} 
                       onValueChange={(v) => setEditFormData({...editFormData, knowledgeBaseCode: v})}
                     >
                       <SelectTrigger className="h-8">
@@ -940,7 +940,7 @@ export default function Requirements() {
                 <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">Status</Label>
                   {isEditMode ? (
-                    <Select value={editFormData.status} onValueChange={(v) => setEditFormData({...editFormData, status: v})}>
+                    <Select value={editFormData.status || ''} onValueChange={(v) => setEditFormData({...editFormData, status: v})}>
                       <SelectTrigger className="h-8">
                         <SelectValue placeholder="Select status" />
                       </SelectTrigger>
@@ -961,7 +961,7 @@ export default function Requirements() {
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">Last Update</Label>
                   {isEditMode ? (
                     <Textarea
-                      value={editFormData.lastUpdate}
+                      value={editFormData.lastUpdate || ''}
                       onChange={(e) => setEditFormData({...editFormData, lastUpdate: e.target.value})}
                       className="min-h-[60px]"
                       placeholder="Enter update notes"
@@ -977,7 +977,7 @@ export default function Requirements() {
                 <Label className="text-xs text-muted-foreground uppercase tracking-wide">Description</Label>
                 {isEditMode ? (
                   <Textarea
-                    value={editFormData.description}
+                    value={editFormData.description || ''}
                     onChange={(e) => setEditFormData({...editFormData, description: e.target.value})}
                     className="min-h-[100px]"
                     placeholder="Enter description"
