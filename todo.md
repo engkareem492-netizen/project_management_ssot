@@ -1407,3 +1407,10 @@
 - [x] Found that newIssue inputs were missing fallbacks (10 fields)
 - [x] Reapply empty string fallbacks (|| '') to all newIssue inputs in Issues page
 - [x] Test Issues page to verify error is resolved (verified via status check - no TypeScript errors, HMR successful)
+
+## BUG (Feb 24, 2026 - Today Page Task Click Not Opening Edit Dialog)
+
+- [x] Investigate how Tasks page opens tasks in edit mode when clicked (uses handleEditDetails function)
+- [x] Check Today page current task click behavior (tasks were not clickable)
+- [x] Update Today page to open task edit dialog on task click (made task description clickable, navigates to /tasks?edit=taskId)
+- [x] Test Today page task click opens edit dialog correctly (verified via status check - no errors, server running)

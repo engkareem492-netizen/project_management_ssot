@@ -596,7 +596,7 @@ export default function Today() {
                 <Card key={task.id} className="p-4 bg-muted/50">
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors" onClick={() => window.location.href = `/tasks?edit=${task.taskId}`}>
                         <span className="font-mono text-sm font-medium">{task.taskId}</span>
                         <span className="text-sm">{task.description || 'No description'}</span>
                       </div>
@@ -670,7 +670,7 @@ export default function Today() {
                 <Card key={task.id} className="p-4 border-red-200">
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors" onClick={() => window.location.href = `/tasks?edit=${task.taskId}`}>
                         <span className="font-mono text-sm font-medium">{task.taskId}</span>
                         <span className="text-sm">{task.description || 'No description'}</span>
                       </div>
@@ -744,7 +744,7 @@ export default function Today() {
                 <Card key={task.id} className="p-4 border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/30">
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors" onClick={() => window.location.href = `/tasks?edit=${task.taskId}`}>
                         <span className="font-mono text-sm font-medium">{task.taskId}</span>
                         <span className="text-sm">{task.description || 'No description'}</span>
                       </div>
