@@ -824,7 +824,7 @@ export default function Issues() {
                   <Label htmlFor="issueGroup">Issue Group</Label>
                   <div className="flex gap-2">
                     <Select
-                      value={newIssue.issueGroup}
+                      value={newIssue.issueGroup || ''}
                       onValueChange={(value) => setNewIssue({ ...newIssue, issueGroup: value })}
                     >
                       <SelectTrigger className="flex-1">
@@ -854,7 +854,7 @@ export default function Issues() {
                   <Label htmlFor="description">Description *</Label>
                   <Input
                     id="description"
-                    value={newIssue.description}
+                    value={newIssue.description || ''}
                     onChange={(e) => setNewIssue({ ...newIssue, description: e.target.value })}
                     placeholder="Issue description..."
                   />
@@ -863,7 +863,7 @@ export default function Issues() {
                   <Label htmlFor="source">Source</Label>
                   <Input
                     id="source"
-                    value={newIssue.source}
+                    value={newIssue.source || ''}
                     onChange={(e) => setNewIssue({ ...newIssue, source: e.target.value })}
                     placeholder="Source (max 20 characters)..."
                     maxLength={20}
@@ -885,7 +885,7 @@ export default function Issues() {
                   </div>
                   <div className="flex gap-2">
                     <Select
-                      value={newIssue.requirementId}
+                      value={newIssue.requirementId || ''}
                       onValueChange={(value) => setNewIssue({ ...newIssue, requirementId: value })}
                       disabled={!linkRequirement}
                     >
@@ -948,7 +948,7 @@ export default function Issues() {
                   <Label htmlFor="taskId">Task</Label>
                   <div className="flex gap-2">
                     <Select
-                      value={newIssue.taskId}
+                      value={newIssue.taskId || ''}
                       onValueChange={(value) => setNewIssue({ ...newIssue, taskId: value })}
                     >
                       <SelectTrigger className="flex-1">
@@ -979,7 +979,7 @@ export default function Issues() {
                   <Label htmlFor="owner">Owner</Label>
                   <SelectWithCreate
                     type="stakeholder"
-                    value={newIssue.owner}
+                    value={newIssue.owner || ''}
                     onValueChange={(value) => setNewIssue({ ...newIssue, owner: value })}
                     placeholder="Select owner..."
                     projectId={currentProjectId || undefined}
@@ -996,7 +996,7 @@ export default function Issues() {
                   <Label htmlFor="status">Status</Label>
                   <SelectWithCreate
                     type="status"
-                    value={newIssue.status}
+                    value={newIssue.status || ''}
                     onValueChange={(value) => setNewIssue({ ...newIssue, status: value })}
                     placeholder="Select status"
                   />
@@ -1005,7 +1005,7 @@ export default function Issues() {
                   <Label htmlFor="priority">Priority</Label>
                   <SelectWithCreate
                     type="priority"
-                    value={newIssue.priority}
+                    value={newIssue.priority || ''}
                     onValueChange={(value) => setNewIssue({ ...newIssue, priority: value })}
                     placeholder="Select priority"
                   />
@@ -1040,7 +1040,7 @@ export default function Issues() {
                 <Input
                   id="openDate"
                   type="date"
-                  value={newIssue.openDate}
+                  value={newIssue.openDate || ''}
                   onChange={(e) => setNewIssue({ ...newIssue, openDate: e.target.value })}
                 />
               </div>
@@ -1052,7 +1052,7 @@ export default function Issues() {
               <div className="space-y-2">
                 <Label htmlFor="knowledgeBaseCode">Knowledge Base Link</Label>
                 <Select
-                  value={newIssue.knowledgeBaseCode}
+                  value={newIssue.knowledgeBaseCode || ''}
                   onValueChange={(value) => setNewIssue({ ...newIssue, knowledgeBaseCode: value })}
                 >
                   <SelectTrigger>

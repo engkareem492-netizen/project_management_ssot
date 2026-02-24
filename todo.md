@@ -1400,3 +1400,10 @@
 - [x] Find input fields in Requirements page that have undefined values (editFormData fields)
 - [x] Add empty string fallbacks (|| '') to all form inputs (12 fields fixed)
 - [x] Test Requirements page to verify error is resolved (verified via status check - no TypeScript errors, HMR successful)
+
+## BUG (Feb 24, 2026 - Controlled Input Error in Issues Page - Reoccurred)
+
+- [x] Check if previous fix from checkpoint 8c2dc66e is missing (editFormData already has fallbacks)
+- [x] Found that newIssue inputs were missing fallbacks (10 fields)
+- [x] Reapply empty string fallbacks (|| '') to all newIssue inputs in Issues page
+- [x] Test Issues page to verify error is resolved (verified via status check - no TypeScript errors, HMR successful)
