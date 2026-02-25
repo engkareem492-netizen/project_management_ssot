@@ -1414,3 +1414,7 @@
 - [x] Check Today page current task click behavior (tasks were not clickable)
 - [x] Update Today page to open task edit dialog on task click (made task description clickable, navigates to /tasks?edit=taskId)
 - [x] Test Today page task click opens edit dialog correctly (verified via status check - no errors, server running)
+
+## Bug Fix (Feb 25, 2026)
+
+- [x] Fix status change button on Today page to show dropdown with all task statuses and update task

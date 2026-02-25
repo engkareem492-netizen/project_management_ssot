@@ -606,16 +606,32 @@ export default function Today() {
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Badge variant={getStatusColor(task.currentStatus)}>
-                        {task.currentStatus || 'N/A'}
-                      </Badge>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleTaskStatusUpdate(task.id)}
+                      <Select
+                        value={task.currentStatus || ""}
+                        onValueChange={(newStatus) => {
+                          const taskData = tasks?.find(t => t.id === task.id);
+                          if (taskData) {
+                            updateTaskMutation.mutate({
+                              id: task.id,
+                              taskId: taskData.taskId,
+                              data: {
+                                currentStatus: newStatus,
+                              },
+                            });
+                          }
+                        }}
                       >
-                        {editingTaskId === task.id ? 'Update' : 'Change Status'}
-                      </Button>
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {statusOptions?.map((status) => (
+                            <SelectItem key={status.id} value={status.value}>
+                              {status.value}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                 </Card>
@@ -680,16 +696,32 @@ export default function Today() {
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Badge variant="destructive">
-                        {task.currentStatus || 'N/A'}
-                      </Badge>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleTaskStatusUpdate(task.id)}
+                      <Select
+                        value={task.currentStatus || ""}
+                        onValueChange={(newStatus) => {
+                          const taskData = tasks?.find(t => t.id === task.id);
+                          if (taskData) {
+                            updateTaskMutation.mutate({
+                              id: task.id,
+                              taskId: taskData.taskId,
+                              data: {
+                                currentStatus: newStatus,
+                              },
+                            });
+                          }
+                        }}
                       >
-                        {editingTaskId === task.id ? 'Update' : 'Change Status'}
-                      </Button>
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {statusOptions?.map((status) => (
+                            <SelectItem key={status.id} value={status.value}>
+                              {status.value}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                 </Card>
@@ -754,16 +786,32 @@ export default function Today() {
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Badge variant="outline">
-                        {task.currentStatus || 'N/A'}
-                      </Badge>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleTaskStatusUpdate(task.id)}
+                      <Select
+                        value={task.currentStatus || ""}
+                        onValueChange={(newStatus) => {
+                          const taskData = tasks?.find(t => t.id === task.id);
+                          if (taskData) {
+                            updateTaskMutation.mutate({
+                              id: task.id,
+                              taskId: taskData.taskId,
+                              data: {
+                                currentStatus: newStatus,
+                              },
+                            });
+                          }
+                        }}
                       >
-                        {editingTaskId === task.id ? 'Update' : 'Change Status'}
-                      </Button>
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {statusOptions?.map((status) => (
+                            <SelectItem key={status.id} value={status.value}>
+                              {status.value}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                 </Card>
