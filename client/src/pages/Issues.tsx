@@ -662,7 +662,7 @@ export default function Issues() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-auto">Issue Details</TableHead>
-                  <TableHead className="w-[180px]">Actions</TableHead>
+                  <TableHead className="w-[220px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

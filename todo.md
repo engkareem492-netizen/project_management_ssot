@@ -1433,3 +1433,7 @@
 ## Bug Fix (Feb 26, 2026 - Part 2)
 
 - [x] Fix overlapping elements on Requirements and Issues pages - Create Task button overlaps with badges
+
+## Bug Fix (Feb 26, 2026 - Part 3)
+
+- [x] Fix remaining overlapping in full view - Actions column too narrow causing buttons to overlap with content

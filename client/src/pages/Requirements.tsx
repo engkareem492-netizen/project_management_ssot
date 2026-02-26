@@ -638,7 +638,7 @@ export default function Requirements() {
               <TableHeader>
                 <TableRow className="bg-primary/5 hover:bg-primary/10">
                   <TableHead className="font-semibold text-primary w-auto">Requirement Details</TableHead>
-                  <TableHead className="w-[180px] font-semibold text-right">Actions</TableHead>
+                  <TableHead className="w-[220px] font-semibold text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
