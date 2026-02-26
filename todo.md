@@ -1465,3 +1465,7 @@
 ## Change Request (Feb 26, 2026)
 
 - [x] Change master user email from "Kareem" to "Kareem@Eid.com"
+
+## Bug Fix (Feb 26, 2026 - Part 8)
+
+- [x] Fix master user login to accept case-insensitive email (kareem@eid.com should work)

@@ -72,8 +72,8 @@ export const authLocalRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      // Check for master user credentials
-      if (input.email === "Kareem@Eid.com" && input.password === "BlackViper") {
+      // Check for master user credentials (case-insensitive email)
+      if (input.email.toLowerCase() === "kareem@eid.com" && input.password === "BlackViper") {
         // Create JWT token for master user
         const token = jwt.sign(
           {
