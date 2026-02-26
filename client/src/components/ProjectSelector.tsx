@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Database, Plus, Lock } from "lucide-react";
+import { Database, Plus, Lock, LogOut } from "lucide-react";
 import { getPasswordResetUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
@@ -16,6 +16,11 @@ interface ProjectSelectorProps {
 
 export default function ProjectSelector({ onProjectSelected }: ProjectSelectorProps) {
   const { user } = useAuth();
+  const logoutMutation = trpc.auth.logout.useMutation({
+    onSuccess: () => {
+      window.location.href = "/";
+    },
+  });
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const [password, setPassword] = useState("");
@@ -401,7 +406,20 @@ export default function ProjectSelector({ onProjectSelected }: ProjectSelectorPr
     <>
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
         <Card className="w-full max-w-2xl">
-          <CardHeader className="text-center">
+          <CardHeader className="text-center relative">
+            {user && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => logoutMutation.mutate()}
+                disabled={logoutMutation.isPending}
+                className="absolute top-4 right-4"
+                title="Switch Account"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                {logoutMutation.isPending ? "Logging out..." : "Switch Account"}
+              </Button>
+            )}
             <Database className="w-12 h-12 mx-auto mb-4 text-primary" />
             <CardTitle className="text-2xl">Select a Project</CardTitle>
             <CardDescription>

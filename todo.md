@@ -1445,3 +1445,7 @@
 ## Bug Fix (Feb 26, 2026 - Part 5)
 
 - [x] Fix inconsistent button appearance for view mode toggles when sidebar is maximized vs minimized
+
+## Feature Request (Feb 26, 2026)
+
+- [x] Add logout/switch account option on project selection page
