@@ -633,12 +633,12 @@ export default function Requirements() {
           </div>
 
           {/* Requirements Table with Vertical Layout */}
-          <div className="rounded-md border border-primary/20">
-            <Table>
+          <div className="rounded-md border border-primary/20 overflow-hidden">
+            <Table className="table-fixed w-full">
               <TableHeader>
                 <TableRow className="bg-primary/5 hover:bg-primary/10">
-                  <TableHead className="font-semibold text-primary">Requirement Details</TableHead>
-                  <TableHead className="w-[200px] font-semibold text-right">Actions</TableHead>
+                  <TableHead className="font-semibold text-primary w-auto">Requirement Details</TableHead>
+                  <TableHead className="w-[180px] font-semibold text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -647,43 +647,43 @@ export default function Requirements() {
                     <TableCell className="py-4">
                       {viewMode === 'compact' ? (
                         /* Compact View */
-                        <div className="flex items-center gap-3">
-                          <span className="font-mono font-bold text-primary text-base">{req.idCode}</span>
-                          <div className="flex items-center gap-2">
+                        <div className="flex items-start gap-3 flex-wrap">
+                          <span className="font-mono font-bold text-primary text-base whitespace-nowrap">{req.idCode}</span>
+                          <div className="flex items-center gap-2 flex-shrink-0">
                             {req.taskGroup && (
-                              <span className="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                              <span className="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 whitespace-nowrap">
                                 {req.taskGroup}
                               </span>
                             )}
                             {req.issueGroup && (
-                              <span className="text-xs px-2 py-0.5 rounded bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300">
+                              <span className="text-xs px-2 py-0.5 rounded bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300 whitespace-nowrap">
                                 {req.issueGroup}
                               </span>
                             )}
                           </div>
-                          <p className="flex-1 text-sm">{req.description || '-'}</p>
-                          <Badge variant={getPriorityColor(req.priority)} className="text-xs">{req.priority || '-'}</Badge>
-                          <Badge variant={getStatusColor(req.status)} className="text-xs">{req.status || '-'}</Badge>
+                          <p className="flex-1 text-sm break-words min-w-0">{req.description || '-'}</p>
+                          <Badge variant={getPriorityColor(req.priority)} className="text-xs whitespace-nowrap">{req.priority || '-'}</Badge>
+                          <Badge variant={getStatusColor(req.status)} className="text-xs whitespace-nowrap">{req.status || '-'}</Badge>
                         </div>
                       ) : (
                         /* Full View */
                         <div className="space-y-3">
                           {/* Line 1: ID, Task Group, Issue Group, Description */}
-                          <div className="flex items-start gap-3">
-                            <span className="font-mono font-bold text-primary text-base">{req.idCode}</span>
-                            <div className="flex items-center gap-2">
+                          <div className="flex items-start gap-3 flex-wrap">
+                            <span className="font-mono font-bold text-primary text-base whitespace-nowrap">{req.idCode}</span>
+                            <div className="flex items-center gap-2 flex-shrink-0">
                               {req.taskGroup && (
-                                <span className="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                                <span className="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 whitespace-nowrap">
                                   {req.taskGroup}
                                 </span>
                               )}
                               {req.issueGroup && (
-                                <span className="text-xs px-2 py-0.5 rounded bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300">
+                                <span className="text-xs px-2 py-0.5 rounded bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300 whitespace-nowrap">
                                   {req.issueGroup}
                                 </span>
                               )}
                             </div>
-                            <p className="flex-1 text-sm">{req.description || '-'}</p>
+                            <p className="flex-1 text-sm break-words min-w-0">{req.description || '-'}</p>
                           </div>
 
                           {/* Line 2: Details Grid */}
@@ -714,7 +714,7 @@ export default function Requirements() {
                             </div>
                             <div className="flex items-center gap-2">
                               <span className="font-medium min-w-[120px]">External Source:</span>
-                              <span className="truncate max-w-[300px]" title={req.refSource || ''}>{req.refSource || '-'}</span>
+                              <span className="break-words" title={req.refSource || ''}>{req.refSource || '-'}</span>
                             </div>
                             <div className="flex items-center gap-2">
                               <span className="font-medium min-w-[120px]">Status:</span>

@@ -1425,3 +1425,7 @@
 - [x] Add compact/full view toggle for Issues page
 - [x] Add direct "Create Task" button on Requirements page that creates task linked to requirement
 - [x] Add direct "Create Task" button on Issues page that creates task linked to issue
+
+## Bug Fix (Feb 26, 2026)
+
+- [x] Fix horizontal scroll on Requirements and Issues pages - implement text wrapping and proper width constraints

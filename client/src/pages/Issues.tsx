@@ -657,12 +657,12 @@ export default function Issues() {
             </Button>
           </div>
 
-          <div className="rounded-md border overflow-x-auto">
-            <Table>
+          <div className="rounded-md border overflow-hidden">
+            <Table className="table-fixed w-full">
               <TableHeader>
                 <TableRow>
-                  <TableHead>Issue Details</TableHead>
-                  <TableHead className="w-[150px]">Actions</TableHead>
+                  <TableHead className="w-auto">Issue Details</TableHead>
+                  <TableHead className="w-[180px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -671,27 +671,25 @@ export default function Issues() {
                     <TableCell colSpan={1}>
                       {viewMode === 'compact' ? (
                         /* Compact View */
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-start gap-3 flex-wrap">
                           <span className="font-bold text-sm whitespace-nowrap">{issue.issueId}</span>
                           {issue.issueGroup && (
-                            <Badge variant="outline" className="whitespace-nowrap">{issue.issueGroup}</Badge>
+                            <Badge variant="outline" className="whitespace-nowrap flex-shrink-0">{issue.issueGroup}</Badge>
                           )}
-                          <span className="text-sm flex-1">{issue.description}</span>
-                          <Badge variant={getPriorityColor(issue.priority)}>{issue.priority || '-'}</Badge>
-                          <Badge variant={getStatusColor(issue.status)}>{issue.status || '-'}</Badge>
+                          <span className="text-sm flex-1 break-words min-w-0">{issue.description}</span>
+                          <Badge variant={getPriorityColor(issue.priority)} className="whitespace-nowrap">{issue.priority || '-'}</Badge>
+                          <Badge variant={getStatusColor(issue.status)} className="whitespace-nowrap">{issue.status || '-'}</Badge>
                         </div>
                       ) : (
                         /* Full View */
                         <div>
                           {/* Line 1: Issue ID, Issue Group badge, Description */}
-                          <div className="flex items-start justify-between gap-4 mb-2">
-                            <div className="flex items-start gap-3 flex-1 min-w-0">
-                              <span className="font-bold text-sm whitespace-nowrap">{issue.issueId}</span>
-                              {issue.issueGroup && (
-                                <Badge variant="outline" className="whitespace-nowrap">{issue.issueGroup}</Badge>
-                              )}
-                              <span className="text-sm flex-1">{issue.description}</span>
-                            </div>
+                          <div className="flex items-start gap-3 mb-2 flex-wrap">
+                            <span className="font-bold text-sm whitespace-nowrap">{issue.issueId}</span>
+                            {issue.issueGroup && (
+                              <Badge variant="outline" className="whitespace-nowrap flex-shrink-0">{issue.issueGroup}</Badge>
+                            )}
+                            <span className="text-sm flex-1 break-words min-w-0">{issue.description}</span>
                           </div>
                           {/* Line 2: Vertical field layout */}
                           <div className="pl-4 border-l-2 border-muted">
