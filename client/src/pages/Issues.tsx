@@ -671,14 +671,18 @@ export default function Issues() {
                     <TableCell colSpan={1}>
                       {viewMode === 'compact' ? (
                         /* Compact View */
-                        <div className="flex items-start gap-3 flex-wrap">
-                          <span className="font-bold text-sm whitespace-nowrap">{issue.issueId}</span>
-                          {issue.issueGroup && (
-                            <Badge variant="outline" className="whitespace-nowrap flex-shrink-0">{issue.issueGroup}</Badge>
-                          )}
-                          <span className="text-sm flex-1 break-words min-w-0">{issue.description}</span>
-                          <Badge variant={getPriorityColor(issue.priority)} className="whitespace-nowrap">{issue.priority || '-'}</Badge>
-                          <Badge variant={getStatusColor(issue.status)} className="whitespace-nowrap">{issue.status || '-'}</Badge>
+                        <div className="space-y-2">
+                          <div className="flex items-start gap-3 flex-wrap">
+                            <span className="font-bold text-sm whitespace-nowrap">{issue.issueId}</span>
+                            {issue.issueGroup && (
+                              <Badge variant="outline" className="whitespace-nowrap flex-shrink-0">{issue.issueGroup}</Badge>
+                            )}
+                            <span className="text-sm flex-1 break-words min-w-0">{issue.description}</span>
+                          </div>
+                          <div className="flex items-center gap-2 pl-4">
+                            <Badge variant={getPriorityColor(issue.priority)} className="whitespace-nowrap">{issue.priority || '-'}</Badge>
+                            <Badge variant={getStatusColor(issue.status)} className="whitespace-nowrap">{issue.status || '-'}</Badge>
+                          </div>
                         </div>
                       ) : (
                         /* Full View */

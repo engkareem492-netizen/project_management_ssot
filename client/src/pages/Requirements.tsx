@@ -647,23 +647,27 @@ export default function Requirements() {
                     <TableCell className="py-4">
                       {viewMode === 'compact' ? (
                         /* Compact View */
-                        <div className="flex items-start gap-3 flex-wrap">
-                          <span className="font-mono font-bold text-primary text-base whitespace-nowrap">{req.idCode}</span>
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            {req.taskGroup && (
-                              <span className="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 whitespace-nowrap">
-                                {req.taskGroup}
-                              </span>
-                            )}
-                            {req.issueGroup && (
-                              <span className="text-xs px-2 py-0.5 rounded bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300 whitespace-nowrap">
-                                {req.issueGroup}
-                              </span>
-                            )}
+                        <div className="space-y-2">
+                          <div className="flex items-start gap-3 flex-wrap">
+                            <span className="font-mono font-bold text-primary text-base whitespace-nowrap">{req.idCode}</span>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              {req.taskGroup && (
+                                <span className="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 whitespace-nowrap">
+                                  {req.taskGroup}
+                                </span>
+                              )}
+                              {req.issueGroup && (
+                                <span className="text-xs px-2 py-0.5 rounded bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300 whitespace-nowrap">
+                                  {req.issueGroup}
+                                </span>
+                              )}
+                            </div>
+                            <p className="flex-1 text-sm break-words min-w-0">{req.description || '-'}</p>
                           </div>
-                          <p className="flex-1 text-sm break-words min-w-0">{req.description || '-'}</p>
-                          <Badge variant={getPriorityColor(req.priority)} className="text-xs whitespace-nowrap">{req.priority || '-'}</Badge>
-                          <Badge variant={getStatusColor(req.status)} className="text-xs whitespace-nowrap">{req.status || '-'}</Badge>
+                          <div className="flex items-center gap-2 pl-4">
+                            <Badge variant={getPriorityColor(req.priority)} className="text-xs whitespace-nowrap">{req.priority || '-'}</Badge>
+                            <Badge variant={getStatusColor(req.status)} className="text-xs whitespace-nowrap">{req.status || '-'}</Badge>
+                          </div>
                         </div>
                       ) : (
                         /* Full View */
