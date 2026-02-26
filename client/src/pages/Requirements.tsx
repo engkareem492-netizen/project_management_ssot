@@ -566,13 +566,13 @@ export default function Requirements() {
               <Badge variant="outline" className="text-sm border-primary/30 bg-primary/5">
                 {requirements?.length || 0} Requirements
               </Badge>
-              <div className="flex items-center border border-primary/30 rounded-md">
+              <div className="flex items-center border border-primary/30 rounded-md flex-shrink-0">
                 <Button
                   size="sm"
                   variant={viewMode === 'compact' ? 'default' : 'ghost'}
                   onClick={() => setViewMode('compact')}
                   title="Compact View"
-                  className="h-8 rounded-r-none border-r border-primary/30"
+                  className="h-8 w-8 p-0 rounded-r-none border-r border-primary/30"
                 >
                   <List className="w-4 h-4" />
                 </Button>
@@ -581,7 +581,7 @@ export default function Requirements() {
                   variant={viewMode === 'full' ? 'default' : 'ghost'}
                   onClick={() => setViewMode('full')}
                   title="Full View"
-                  className="h-8 rounded-l-none"
+                  className="h-8 w-8 p-0 rounded-l-none"
                 >
                   <LayoutGrid className="w-4 h-4" />
                 </Button>
