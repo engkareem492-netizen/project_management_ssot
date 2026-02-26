@@ -1453,3 +1453,11 @@
 ## Bug Fix (Feb 26, 2026 - Part 6)
 
 - [x] Fix Switch Account button for custom auth system - need to clear session and redirect to custom login page
+
+## Bug Fix (Feb 26, 2026 - Part 7)
+
+- [x] Fix tRPC API error - client receiving HTML instead of JSON (resolved - expected behavior after sandbox reset, user needs to log in)
+
+## Feature Request (Feb 26, 2026 - Part 2)
+
+- [x] Add master user login (Email: Kareem, Password: BlackViper) that shows all projects in the system

