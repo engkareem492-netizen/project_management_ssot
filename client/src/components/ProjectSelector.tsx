@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Database, Plus, Lock, LogOut } from "lucide-react";
-import { getPasswordResetUrl, getLoginUrl } from "@/const";
+import { getPasswordResetUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 
@@ -19,8 +19,8 @@ export default function ProjectSelector({ onProjectSelected }: ProjectSelectorPr
   
   const handleLogout = async () => {
     await logout();
-    // Redirect to OAuth login page to force re-authentication
-    window.location.href = getLoginUrl();
+    // Redirect to custom login page
+    window.location.href = "/login";
   };
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);

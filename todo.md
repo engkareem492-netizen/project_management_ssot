@@ -1452,4 +1452,4 @@
 
 ## Bug Fix (Feb 26, 2026 - Part 6)
 
-- [x] Fix Switch Account button - logout works but auto re-login happens, need to redirect to OAuth login page
+- [x] Fix Switch Account button for custom auth system - need to clear session and redirect to custom login page
