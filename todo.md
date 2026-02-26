@@ -1418,3 +1418,10 @@
 ## Bug Fix (Feb 25, 2026)
 
 - [x] Fix status change button on Today page to show dropdown with all task statuses and update task
+
+## Feature Requests (Feb 25, 2026)
+
+- [x] Add compact/full view toggle for Requirements page
+- [x] Add compact/full view toggle for Issues page
+- [x] Add direct "Create Task" button on Requirements page that creates task linked to requirement
+- [x] Add direct "Create Task" button on Issues page that creates task linked to issue

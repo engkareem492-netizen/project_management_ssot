@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Search, Edit, History, Loader2, Plus, Trash2, Eye, CheckSquare, Save, X, Link2, Settings, Calendar, User, FileText, Tag, Clock } from "lucide-react";
+import { Search, Edit, History, Loader2, Plus, Trash2, Eye, CheckSquare, Save, X, Link2, Settings, Calendar, User, FileText, Tag, Clock, List, LayoutGrid } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -58,6 +58,7 @@ export default function Requirements() {
     informed: '',
     consulted: '',
     dueDate: '',
+    requirementId: '',
   });
   const [newIssue, setNewIssue] = useState({
     description: '',
@@ -86,6 +87,7 @@ export default function Requirements() {
     createdAt: new Date().toISOString().split('T')[0],
     knowledgeBaseCode: '',
   });
+  const [viewMode, setViewMode] = useState<'compact' | 'full'>('full');
 
   const utils = trpc.useUtils();
   const { data: requirements, isLoading, refetch } = trpc.requirements.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
@@ -216,6 +218,7 @@ export default function Requirements() {
         informed: '',
         consulted: '',
         dueDate: '',
+        requirementId: '',
       });
       utils.tasks.list.invalidate();
     },
@@ -563,6 +566,26 @@ export default function Requirements() {
               <Badge variant="outline" className="text-sm border-primary/30 bg-primary/5">
                 {requirements?.length || 0} Requirements
               </Badge>
+              <div className="flex items-center border border-primary/30 rounded-md">
+                <Button
+                  size="sm"
+                  variant={viewMode === 'compact' ? 'default' : 'ghost'}
+                  onClick={() => setViewMode('compact')}
+                  title="Compact View"
+                  className="h-8 rounded-r-none border-r border-primary/30"
+                >
+                  <List className="w-4 h-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant={viewMode === 'full' ? 'default' : 'ghost'}
+                  onClick={() => setViewMode('full')}
+                  title="Full View"
+                  className="h-8 rounded-l-none"
+                >
+                  <LayoutGrid className="w-4 h-4" />
+                </Button>
+              </div>
               <Button
                 size="sm"
                 variant="outline"
@@ -622,9 +645,9 @@ export default function Requirements() {
                 {filteredRequirements?.map((req) => (
                   <TableRow key={req.id} className="hover:bg-primary/5">
                     <TableCell className="py-4">
-                      <div className="space-y-3">
-                        {/* Line 1: ID, Task Group, Issue Group, Description */}
-                        <div className="flex items-start gap-3">
+                      {viewMode === 'compact' ? (
+                        /* Compact View */
+                        <div className="flex items-center gap-3">
                           <span className="font-mono font-bold text-primary text-base">{req.idCode}</span>
                           <div className="flex items-center gap-2">
                             {req.taskGroup && (
@@ -639,69 +662,111 @@ export default function Requirements() {
                             )}
                           </div>
                           <p className="flex-1 text-sm">{req.description || '-'}</p>
+                          <Badge variant={getPriorityColor(req.priority)} className="text-xs">{req.priority || '-'}</Badge>
+                          <Badge variant={getStatusColor(req.status)} className="text-xs">{req.status || '-'}</Badge>
                         </div>
+                      ) : (
+                        /* Full View */
+                        <div className="space-y-3">
+                          {/* Line 1: ID, Task Group, Issue Group, Description */}
+                          <div className="flex items-start gap-3">
+                            <span className="font-mono font-bold text-primary text-base">{req.idCode}</span>
+                            <div className="flex items-center gap-2">
+                              {req.taskGroup && (
+                                <span className="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                                  {req.taskGroup}
+                                </span>
+                              )}
+                              {req.issueGroup && (
+                                <span className="text-xs px-2 py-0.5 rounded bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300">
+                                  {req.issueGroup}
+                                </span>
+                              )}
+                            </div>
+                            <p className="flex-1 text-sm">{req.description || '-'}</p>
+                          </div>
 
-                        {/* Line 2: Details Grid */}
-                        <div className="grid grid-cols-1 gap-1 text-sm text-muted-foreground pl-4 border-l-2 border-muted">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium min-w-[120px]">Priority:</span>
-                            <Badge variant={getPriorityColor(req.priority)} className="text-xs">{req.priority || '-'}</Badge>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium min-w-[120px]">Created:</span>
-                            <span>{formatDate(req.createdAt)}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium min-w-[120px]">Type:</span>
-                            <span>{req.type || '-'}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium min-w-[120px]">Category:</span>
-                            <span>{req.category || '-'}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium min-w-[120px]">Owner:</span>
-                            <span>{req.owner || '-'}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium min-w-[120px]">Source Type:</span>
-                            <span>{req.sourceType || '-'}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium min-w-[120px]">External Source:</span>
-                            <span className="truncate max-w-[300px]" title={req.refSource || ''}>{req.refSource || '-'}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium min-w-[120px]">Status:</span>
-                            <Badge variant={getStatusColor(req.status)} className="text-xs">{req.status || '-'}</Badge>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium min-w-[120px]">Last Update:</span>
-                            {req.lastUpdate ? (
-                              <div className="flex items-center gap-1">
-                                <Clock className="w-3 h-3" />
-                                <span>{req.lastUpdate}</span>
-                              </div>
-                            ) : (
-                              <span>-</span>
-                            )}
+                          {/* Line 2: Details Grid */}
+                          <div className="grid grid-cols-1 gap-1 text-sm text-muted-foreground pl-4 border-l-2 border-muted">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium min-w-[120px]">Priority:</span>
+                              <Badge variant={getPriorityColor(req.priority)} className="text-xs">{req.priority || '-'}</Badge>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium min-w-[120px]">Created:</span>
+                              <span>{formatDate(req.createdAt)}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium min-w-[120px]">Type:</span>
+                              <span>{req.type || '-'}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium min-w-[120px]">Category:</span>
+                              <span>{req.category || '-'}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium min-w-[120px]">Owner:</span>
+                              <span>{req.owner || '-'}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium min-w-[120px]">Source Type:</span>
+                              <span>{req.sourceType || '-'}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium min-w-[120px]">External Source:</span>
+                              <span className="truncate max-w-[300px]" title={req.refSource || ''}>{req.refSource || '-'}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium min-w-[120px]">Status:</span>
+                              <Badge variant={getStatusColor(req.status)} className="text-xs">{req.status || '-'}</Badge>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium min-w-[120px]">Last Update:</span>
+                              {req.lastUpdate ? (
+                                <div className="flex items-center gap-1">
+                                  <Clock className="w-3 h-3" />
+                                  <span>{req.lastUpdate}</span>
+                                </div>
+                              ) : (
+                                <span>-</span>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
+                      )}
                     </TableCell>
                     <TableCell className="align-top py-4">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button size="sm" variant="ghost" onClick={() => handleViewDetails(req)} title="View Details" className="h-8 w-8 p-0 hover:bg-primary/10">
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => handleEditDetails(req)} title="Edit" className="h-8 w-8 p-0 hover:bg-primary/10">
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => showHistory(req.idCode)} title="History" className="h-8 w-8 p-0 hover:bg-primary/10">
-                          <History className="w-4 h-4" />
-                        </Button>
-                        <Button size="sm" variant="destructive" onClick={() => handleDelete(req.id)} title="Delete" className="h-8 w-8 p-0">
-                          <Trash2 className="w-4 h-4" />
+                      <div className="flex flex-col items-end gap-1">
+                        <div className="flex items-center gap-1">
+                          <Button size="sm" variant="ghost" onClick={() => handleViewDetails(req)} title="View Details" className="h-8 w-8 p-0 hover:bg-primary/10">
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => handleEditDetails(req)} title="Edit" className="h-8 w-8 p-0 hover:bg-primary/10">
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => showHistory(req.idCode)} title="History" className="h-8 w-8 p-0 hover:bg-primary/10">
+                            <History className="w-4 h-4" />
+                          </Button>
+                          <Button size="sm" variant="destructive" onClick={() => handleDelete(req.id)} title="Delete" className="h-8 w-8 p-0">
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                        <Button 
+                          size="sm" 
+                          variant="default" 
+                          onClick={() => {
+                            setNewTask({
+                              ...newTask,
+                              requirementId: req.idCode,
+                              description: `Task for ${req.idCode}`,
+                            });
+                            setCreateTaskDialogOpen(true);
+                          }} 
+                          title="Create Task" 
+                          className="h-7 text-xs w-full"
+                        >
+                          <Plus className="w-3 h-3 mr-1" />
+                          Task
                         </Button>
                       </div>
                     </TableCell>

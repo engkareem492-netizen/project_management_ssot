@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Search, Edit, History, Loader2, Plus, Trash2, Settings, Eye, Save, X, Info, AlertCircle } from "lucide-react";
+import { Search, Edit, History, Loader2, Plus, Trash2, Settings, Eye, Save, X, Info, AlertCircle, List, LayoutGrid } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -98,6 +98,7 @@ export default function Issues() {
     refSource: '',
     createdAt: new Date().toISOString().split('T')[0],
   });
+  const [viewMode, setViewMode] = useState<'compact' | 'full'>('full');
   const [newIssue, setNewIssue] = useState<any>({
     issueGroup: '',
     description: '',
@@ -592,6 +593,26 @@ export default function Issues() {
               <Badge variant="outline" className="text-sm">
                 {issues?.length || 0} Issues
               </Badge>
+              <div className="flex items-center border border-primary/30 rounded-md">
+                <Button
+                  size="sm"
+                  variant={viewMode === 'compact' ? 'default' : 'ghost'}
+                  onClick={() => setViewMode('compact')}
+                  title="Compact View"
+                  className="h-8 rounded-r-none border-r border-primary/30"
+                >
+                  <List className="w-4 h-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant={viewMode === 'full' ? 'default' : 'ghost'}
+                  onClick={() => setViewMode('full')}
+                  title="Full View"
+                  className="h-8 rounded-l-none"
+                >
+                  <LayoutGrid className="w-4 h-4" />
+                </Button>
+              </div>
               <Button
                 size="sm"
                 variant="outline"
@@ -648,106 +669,141 @@ export default function Issues() {
                 {filteredIssues?.map((issue) => (
                   <TableRow key={issue.id}>
                     <TableCell colSpan={1}>
-                      {/* Line 1: Issue ID, Issue Group badge, Description */}
-                      <div className="flex items-start justify-between gap-4 mb-2">
-                        <div className="flex items-start gap-3 flex-1 min-w-0">
+                      {viewMode === 'compact' ? (
+                        /* Compact View */
+                        <div className="flex items-center gap-3">
                           <span className="font-bold text-sm whitespace-nowrap">{issue.issueId}</span>
                           {issue.issueGroup && (
                             <Badge variant="outline" className="whitespace-nowrap">{issue.issueGroup}</Badge>
                           )}
                           <span className="text-sm flex-1">{issue.description}</span>
+                          <Badge variant={getPriorityColor(issue.priority)}>{issue.priority || '-'}</Badge>
+                          <Badge variant={getStatusColor(issue.status)}>{issue.status || '-'}</Badge>
                         </div>
-                      </div>
-                      {/* Line 2: Vertical field layout */}
-                      <div className="pl-4 border-l-2 border-muted">
-                        <div className="grid grid-cols-1 gap-1 text-sm">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium min-w-[100px]">Requirement:</span>
-                            {issue.requirementId ? (
-                              <div className="flex items-center gap-1">
-                                <Badge variant="secondary">{issue.requirementId}</Badge>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-5 w-5 p-0"
-                                  onClick={() => issue.requirementId && handleViewRequirementDetails(issue.requirementId)}
-                                  title="View requirement details"
-                                >
-                                  <Info className="w-3 h-3" />
-                                </Button>
+                      ) : (
+                        /* Full View */
+                        <div>
+                          {/* Line 1: Issue ID, Issue Group badge, Description */}
+                          <div className="flex items-start justify-between gap-4 mb-2">
+                            <div className="flex items-start gap-3 flex-1 min-w-0">
+                              <span className="font-bold text-sm whitespace-nowrap">{issue.issueId}</span>
+                              {issue.issueGroup && (
+                                <Badge variant="outline" className="whitespace-nowrap">{issue.issueGroup}</Badge>
+                              )}
+                              <span className="text-sm flex-1">{issue.description}</span>
+                            </div>
+                          </div>
+                          {/* Line 2: Vertical field layout */}
+                          <div className="pl-4 border-l-2 border-muted">
+                            <div className="grid grid-cols-1 gap-1 text-sm">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium min-w-[100px]">Requirement:</span>
+                                {issue.requirementId ? (
+                                  <div className="flex items-center gap-1">
+                                    <Badge variant="secondary">{issue.requirementId}</Badge>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-5 w-5 p-0"
+                                      onClick={() => issue.requirementId && handleViewRequirementDetails(issue.requirementId)}
+                                      title="View requirement details"
+                                    >
+                                      <Info className="w-3 h-3" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <span>-</span>
+                                )}
                               </div>
-                            ) : (
-                              <span>-</span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium min-w-[100px]">Deliverable:</span>
-                            {issue.deliverableId ? (
-                              <div className="flex items-center gap-1">
-                                <Badge variant="secondary">
-                                  {deliverables?.find(d => d.id === issue.deliverableId)?.deliverableId || (issue.deliverableId ? `DL-${issue.deliverableId}` : '-')}
-                                </Badge>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-5 w-5 p-0"
-                                  onClick={() => issue.deliverableId && handleViewDeliverableDetails(issue.deliverableId)}
-                                  title="View deliverable details"
-                                >
-                                  <Info className="w-3 h-3" />
-                                </Button>
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium min-w-[100px]">Deliverable:</span>
+                                {issue.deliverableId ? (
+                                  <div className="flex items-center gap-1">
+                                    <Badge variant="secondary">
+                                      {deliverables?.find(d => d.id === issue.deliverableId)?.deliverableId || (issue.deliverableId ? `DL-${issue.deliverableId}` : '-')}
+                                    </Badge>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-5 w-5 p-0"
+                                      onClick={() => issue.deliverableId && handleViewDeliverableDetails(issue.deliverableId)}
+                                      title="View deliverable details"
+                                    >
+                                      <Info className="w-3 h-3" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <span>-</span>
+                                )}
                               </div>
-                            ) : (
-                              <span>-</span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium min-w-[100px]">Task:</span>
-                            {issue.taskId ? (
-                              <div className="flex items-center gap-1">
-                                <Badge variant="secondary">{issue.taskId}</Badge>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-5 w-5 p-0"
-                                  onClick={() => issue.taskId && handleViewTaskDetails(issue.taskId)}
-                                  title="View task details"
-                                >
-                                  <Info className="w-3 h-3" />
-                                </Button>
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium min-w-[100px]">Task:</span>
+                                {issue.taskId ? (
+                                  <div className="flex items-center gap-1">
+                                    <Badge variant="secondary">{issue.taskId}</Badge>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-5 w-5 p-0"
+                                      onClick={() => issue.taskId && handleViewTaskDetails(issue.taskId)}
+                                      title="View task details"
+                                    >
+                                      <Info className="w-3 h-3" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <span>-</span>
+                                )}
                               </div>
-                            ) : (
-                              <span>-</span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium min-w-[100px]">Owner:</span>
-                            <span>{issue.owner || '-'}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium min-w-[100px]">Priority:</span>
-                            <Badge variant={getPriorityColor(issue.priority)}>{issue.priority || '-'}</Badge>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium min-w-[100px]">Status:</span>
-                            <Badge variant={getStatusColor(issue.status)}>{issue.status || '-'}</Badge>
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium min-w-[100px]">Owner:</span>
+                                <span>{issue.owner || '-'}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium min-w-[100px]">Priority:</span>
+                                <Badge variant={getPriorityColor(issue.priority)}>{issue.priority || '-'}</Badge>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium min-w-[100px]">Status:</span>
+                                <Badge variant={getStatusColor(issue.status)}>{issue.status || '-'}</Badge>
+                              </div>
+                            </div>
                           </div>
                         </div>
-                      </div>
+                      )}
                     </TableCell>
                     <TableCell>
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="outline" onClick={() => handleViewDetails(issue)} title="View Details">
-                          <Eye className="w-3 h-3" />
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => handleEditDetails(issue)} title="Edit">
-                          <Edit className="w-3 h-3" />
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => showHistory(issue.issueId)} title="History">
-                          <History className="w-3 h-3" />
-                        </Button>
-                        <Button size="sm" variant="destructive" onClick={() => handleDelete(issue.id)}>
-                          <Trash2 className="w-3 h-3" />
+                      <div className="flex flex-col gap-1">
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline" onClick={() => handleViewDetails(issue)} title="View Details">
+                            <Eye className="w-3 h-3" />
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => handleEditDetails(issue)} title="Edit">
+                            <Edit className="w-3 h-3" />
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => showHistory(issue.issueId)} title="History">
+                            <History className="w-3 h-3" />
+                          </Button>
+                          <Button size="sm" variant="destructive" onClick={() => handleDelete(issue.id)}>
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
+                        <Button 
+                          size="sm" 
+                          variant="default" 
+                          onClick={() => {
+                            setNewTask({
+                              ...newTask,
+                              description: `Task for ${issue.issueId}`,
+                            });
+                            setAddTaskDialogOpen(true);
+                            setSelectedIssue(issue);
+                          }} 
+                          title="Create Task" 
+                          className="h-7 text-xs w-full"
+                        >
+                          <Plus className="w-3 h-3 mr-1" />
+                          Task
                         </Button>
                       </div>
                     </TableCell>
