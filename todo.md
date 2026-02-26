@@ -1437,3 +1437,7 @@
 ## Bug Fix (Feb 26, 2026 - Part 3)
 
 - [x] Fix remaining overlapping in full view - Actions column too narrow causing buttons to overlap with content
+
+## Bug Fix (Feb 26, 2026 - Part 4)
+
+- [x] Fix text overflow when sidebar is maximized - text overlaps with action buttons

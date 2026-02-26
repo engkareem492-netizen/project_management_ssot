@@ -644,7 +644,7 @@ export default function Requirements() {
               <TableBody>
                 {filteredRequirements?.map((req) => (
                   <TableRow key={req.id} className="hover:bg-primary/5">
-                    <TableCell className="py-4">
+                    <TableCell className="py-4 overflow-hidden">
                       {viewMode === 'compact' ? (
                         /* Compact View */
                         <div className="space-y-2">

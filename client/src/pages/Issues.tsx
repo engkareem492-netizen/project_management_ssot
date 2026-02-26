@@ -668,7 +668,7 @@ export default function Issues() {
               <TableBody>
                 {filteredIssues?.map((issue) => (
                   <TableRow key={issue.id}>
-                    <TableCell colSpan={1}>
+                    <TableCell colSpan={1} className="overflow-hidden">
                       {viewMode === 'compact' ? (
                         /* Compact View */
                         <div className="space-y-2">
