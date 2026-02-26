@@ -73,12 +73,12 @@ export const authLocalRouter = router({
     )
     .mutation(async ({ input, ctx }) => {
       // Check for master user credentials
-      if (input.email === "Kareem" && input.password === "BlackViper") {
+      if (input.email === "Kareem@Eid.com" && input.password === "BlackViper") {
         // Create JWT token for master user
         const token = jwt.sign(
           {
             userId: 0,
-            email: "Kareem",
+            email: "Kareem@Eid.com",
             role: "master",
           },
           ENV.cookieSecret,
@@ -101,7 +101,7 @@ export const authLocalRouter = router({
           user: {
             id: 0,
             name: "Kareem (Master)",
-            email: "Kareem",
+            email: "Kareem@Eid.com",
             role: "master",
           },
         };
@@ -217,7 +217,7 @@ export const authLocalRouter = router({
         return {
           id: 0,
           name: "Kareem (Master)",
-          email: "Kareem",
+          email: "Kareem@Eid.com",
           role: "master",
           loginMethod: "local",
           createdAt: new Date(),

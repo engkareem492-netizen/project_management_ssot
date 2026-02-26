@@ -1461,3 +1461,7 @@
 ## Feature Request (Feb 26, 2026 - Part 2)
 
 - [x] Add master user login (Email: Kareem, Password: BlackViper) that shows all projects in the system
+
+## Change Request (Feb 26, 2026)
+
+- [x] Change master user email from "Kareem" to "Kareem@Eid.com"
