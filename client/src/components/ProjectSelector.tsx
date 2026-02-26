@@ -15,12 +15,12 @@ interface ProjectSelectorProps {
 }
 
 export default function ProjectSelector({ onProjectSelected }: ProjectSelectorProps) {
-  const { user } = useAuth();
-  const logoutMutation = trpc.auth.logout.useMutation({
-    onSuccess: () => {
-      window.location.href = "/";
-    },
-  });
+  const { user, logout } = useAuth();
+  
+  const handleLogout = async () => {
+    await logout();
+    window.location.href = "/";
+  };
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const [password, setPassword] = useState("");
@@ -411,13 +411,12 @@ export default function ProjectSelector({ onProjectSelected }: ProjectSelectorPr
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => logoutMutation.mutate()}
-                disabled={logoutMutation.isPending}
+                onClick={handleLogout}
                 className="absolute top-4 right-4"
                 title="Switch Account"
               >
                 <LogOut className="w-4 h-4 mr-2" />
-                {logoutMutation.isPending ? "Logging out..." : "Switch Account"}
+                Switch Account
               </Button>
             )}
             <Database className="w-12 h-12 mx-auto mb-4 text-primary" />

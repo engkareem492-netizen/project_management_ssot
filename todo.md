@@ -1449,3 +1449,7 @@
 ## Feature Request (Feb 26, 2026)
 
 - [x] Add logout/switch account option on project selection page
+
+## Bug Fix (Feb 26, 2026 - Part 6)
+
+- [x] Fix Switch Account button - currently only refreshes screen instead of logging out
