@@ -429,6 +429,21 @@ export default function Today() {
 
   return (
     <div className="space-y-6 p-6">
+      {/* Page Header */}
+      <div className="bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-amber-900 flex items-center gap-2">
+            <Calendar className="w-6 h-6 text-amber-600" />
+            Today's Overview
+          </h1>
+          <p className="text-amber-700 text-sm mt-1">Track tasks due today, overdue items, and upcoming deadlines</p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Badge variant="outline" className="text-amber-700 border-amber-300">{tasksToday.length + requirementsToday.length} Due Today</Badge>
+          <Badge variant="outline" className="text-red-700 border-red-300">{tasksOverdue.length + requirementsOverdue.length} Overdue</Badge>
+          <Badge variant="outline" className="text-blue-700 border-blue-300">{tasksUpcoming.length + requirementsUpcoming.length} Upcoming</Badge>
+        </div>
+      </div>
       {/* Filter Controls */}
       <Card>
         <CardHeader>

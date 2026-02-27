@@ -663,13 +663,16 @@ export default function Settings() {
 
   return (
     <div className="p-8">
-      <div className="flex items-center gap-3 mb-6">
-        <SettingsIcon className="w-8 h-8 text-primary" />
-        <h1 className="text-3xl font-bold">Settings</h1>
+      {/* Page Header */}
+      <div className="bg-gradient-to-r from-gray-50 to-slate-50 border border-gray-200 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4 mb-8">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <SettingsIcon className="w-6 h-6 text-gray-600" />
+            Settings
+          </h1>
+          <p className="text-gray-600 text-sm mt-1">Configure ID formats, number ranges, and manage dropdown options for the entire system</p>
+        </div>
       </div>
-      <p className="text-muted-foreground mb-8">
-        Configure ID formats, number ranges, and manage dropdown options for the entire system
-      </p>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList>

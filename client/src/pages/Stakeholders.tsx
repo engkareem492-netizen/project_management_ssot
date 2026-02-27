@@ -2,6 +2,7 @@ import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useProject } from "@/contexts/ProjectContext";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -168,25 +169,24 @@ export default function Stakeholders() {
   }
 
   return (
-    <div className="space-y-6">
-      <Card className="border-primary/20">
-        <CardHeader className="bg-gradient-to-r from-primary/10 to-primary/5 border-b border-primary/20">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-xl flex items-center gap-2">
-                <Users className="w-5 h-5 text-primary" />
-                Stakeholder Register
-              </CardTitle>
-              <CardDescription className="mt-1">
-                Manage project stakeholders for Owner, Responsible, Accountable, Informed, and Consulted roles
-              </CardDescription>
-            </div>
-            <Button onClick={() => setIsCreateOpen(true)} className="gap-2">
-              <Plus className="h-4 w-4" />
-              Add Stakeholder
-            </Button>
-          </div>
-        </CardHeader>
+    <div className="space-y-6 p-6">
+      {/* Page Header */}
+      <div className="bg-gradient-to-r from-violet-50 to-purple-50 border border-violet-200 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-violet-900 flex items-center gap-2">
+            <Users className="w-6 h-6 text-violet-600" />
+            Stakeholder Register
+          </h1>
+          <p className="text-violet-700 text-sm mt-1">Manage project stakeholders for Owner, Responsible, Accountable, Informed, and Consulted roles</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-violet-700 border-violet-300">{stakeholders?.length || 0} Stakeholders</Badge>
+          <Button onClick={() => setIsCreateOpen(true)} className="bg-violet-600 hover:bg-violet-700 text-white gap-2">
+            <Plus className="h-4 w-4" />Add Stakeholder
+          </Button>
+        </div>
+      </div>
+      <Card className="border-violet-100">
         <CardContent className="pt-6">
 
       {/* Search */}

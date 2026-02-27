@@ -1480,3 +1480,7 @@
 - [x] Build Traceability Matrix (Requirement → Issue → Task → Test Case chain)
 - [x] Build Weekly Report PDF Generator
 - [x] Wire all new modules to sidebar navigation
+
+## UI Consistency (Feb 28, 2026)
+
+- [x] Apply Meetings-style page header (white card, colored icon, bold title, subtitle, count badges) to all pages

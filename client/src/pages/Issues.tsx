@@ -576,70 +576,35 @@ export default function Issues() {
   }
 
   return (
-    <div className="space-y-6">
-      <Card className="border-primary/20">
-        <CardHeader className="bg-gradient-to-r from-primary/10 to-primary/5 border-b border-primary/20">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-xl flex items-center gap-2">
-                <AlertCircle className="w-5 h-5 text-primary" />
-                Issues Management
-              </CardTitle>
-              <CardDescription className="mt-1">
-                View, edit, and track changes to project issues
-              </CardDescription>
-            </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-sm">
-                {issues?.length || 0} Issues
-              </Badge>
-              <div className="flex items-center border border-primary/30 rounded-md flex-shrink-0">
-                <Button
-                  size="sm"
-                  variant={viewMode === 'compact' ? 'default' : 'ghost'}
-                  onClick={() => setViewMode('compact')}
-                  title="Compact View"
-                  className="h-8 w-8 p-0 rounded-r-none border-r border-primary/30"
-                >
-                  <List className="w-4 h-4" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant={viewMode === 'full' ? 'default' : 'ghost'}
-                  onClick={() => setViewMode('full')}
-                  title="Full View"
-                  className="h-8 w-8 p-0 rounded-l-none"
-                >
-                  <LayoutGrid className="w-4 h-4" />
-                </Button>
-              </div>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setSettingsType("status");
-                  setSettingsOpen(true);
-                }}
-                title="Manage Status Options"
-              >
-                <Settings className="w-4 h-4 mr-1" />
-                Status
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setSettingsType("priority");
-                  setSettingsOpen(true);
-                }}
-                title="Manage Priority Options"
-              >
-                <Settings className="w-4 h-4 mr-1" />
-                Priority
-              </Button>
-            </div>
+    <div className="space-y-6 p-6">
+      {/* Page Header */}
+      <div className="bg-gradient-to-r from-red-50 to-orange-50 border border-red-200 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-red-900 flex items-center gap-2">
+            <AlertCircle className="w-6 h-6 text-red-600" />
+            Issues Management
+          </h1>
+          <p className="text-red-700 text-sm mt-1">View, edit, and track changes to project issues</p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Badge variant="outline" className="text-red-700 border-red-300">{issues?.length || 0} Issues</Badge>
+          <div className="flex items-center border border-red-300 rounded-md flex-shrink-0">
+            <Button size="sm" variant={viewMode === 'compact' ? 'default' : 'ghost'} onClick={() => setViewMode('compact')} title="Compact View" className="h-8 w-8 p-0 rounded-r-none border-r border-red-300">
+              <List className="w-4 h-4" />
+            </Button>
+            <Button size="sm" variant={viewMode === 'full' ? 'default' : 'ghost'} onClick={() => setViewMode('full')} title="Full View" className="h-8 w-8 p-0 rounded-l-none">
+              <LayoutGrid className="w-4 h-4" />
+            </Button>
           </div>
-        </CardHeader>
+          <Button size="sm" variant="outline" onClick={() => { setSettingsType("status"); setSettingsOpen(true); }} className="border-red-300 hover:bg-red-50 text-red-700">
+            <Settings className="w-4 h-4 mr-1" />Status
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => { setSettingsType("priority"); setSettingsOpen(true); }} className="border-red-300 hover:bg-red-50 text-red-700">
+            <Settings className="w-4 h-4 mr-1" />Priority
+          </Button>
+        </div>
+      </div>
+      <Card className="border-red-100">
         <CardContent>
           <div className="flex items-center gap-4 mb-6">
             <div className="relative flex-1">

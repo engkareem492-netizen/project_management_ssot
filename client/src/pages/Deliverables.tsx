@@ -261,25 +261,24 @@ export default function Deliverables() {
   }
 
   return (
-    <div className="space-y-6">
-      <Card className="border-primary/20">
-        <CardHeader className="bg-gradient-to-r from-primary/10 to-primary/5 border-b border-primary/20">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-xl flex items-center gap-2">
-                <Package className="w-5 h-5 text-primary" />
-                Deliverables Management
-              </CardTitle>
-              <CardDescription className="mt-1">
-                Create and manage deliverables linked to Requirements, Tasks, and Dependencies
-              </CardDescription>
-            </div>
-            <Button onClick={() => setIsCreateOpen(true)} className="gap-2">
-              <Plus className="h-4 w-4" />
-              Add Deliverable
-            </Button>
-          </div>
-        </CardHeader>
+    <div className="space-y-6 p-6">
+      {/* Page Header */}
+      <div className="bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-orange-900 flex items-center gap-2">
+            <Package className="w-6 h-6 text-orange-600" />
+            Deliverables Management
+          </h1>
+          <p className="text-orange-700 text-sm mt-1">Create and manage deliverables linked to Requirements, Tasks, and Dependencies</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-orange-700 border-orange-300">{deliverables?.length || 0} Deliverables</Badge>
+          <Button onClick={() => setIsCreateOpen(true)} className="bg-orange-600 hover:bg-orange-700 text-white gap-2">
+            <Plus className="h-4 w-4" />Add Deliverable
+          </Button>
+        </div>
+      </div>
+      <Card className="border-orange-100">
         <CardContent className="pt-6">
 
       {/* Search */}

@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Search, Loader2, Plus, Trash2 } from "lucide-react";
+import { Search, Loader2, Plus, Trash2, Link2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
@@ -88,15 +89,25 @@ export default function Dependencies() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
+      {/* Page Header */}
+      <div className="bg-gradient-to-r from-teal-50 to-cyan-50 border border-teal-200 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-teal-900 flex items-center gap-2">
+            <Link2 className="w-6 h-6 text-teal-600" />
+            Dependencies Management
+          </h1>
+          <p className="text-teal-700 text-sm mt-1">View, edit, and track project dependencies</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-teal-700 border-teal-300">{filteredDependencies?.length || 0} Dependencies</Badge>
+          <Button onClick={() => setCreateDialogOpen(true)} className="bg-teal-600 hover:bg-teal-700 text-white gap-2">
+            <Plus className="w-4 h-4" />Create New
+          </Button>
+        </div>
+      </div>
       <Card>
-        <CardHeader>
-          <CardTitle>Dependencies Management</CardTitle>
-          <CardDescription>
-            View, edit, and track project dependencies
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <div className="flex items-center gap-4 mb-6">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
@@ -107,10 +118,6 @@ export default function Dependencies() {
                 className="pl-10"
               />
             </div>
-            <Button onClick={() => setCreateDialogOpen(true)}>
-              <Plus className="w-4 h-4 mr-2" />
-              Create New
-            </Button>
           </div>
 
           <div className="rounded-md border overflow-x-auto">

@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Settings, Trash2, Edit, BookOpen, Paperclip } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -259,17 +260,17 @@ export default function KnowledgeBase() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+      {/* Page Header */}
+      <div className="bg-gradient-to-r from-indigo-50 to-violet-50 border border-indigo-200 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <BookOpen className="h-8 w-8" />
+          <h1 className="text-2xl font-bold text-indigo-900 flex items-center gap-2">
+            <BookOpen className="w-6 h-6 text-indigo-600" />
             Knowledge Base
           </h1>
-          <p className="text-muted-foreground mt-1">
-            Manage your project's knowledge base with configurable codes, types, and components
-          </p>
+          <p className="text-indigo-700 text-sm mt-1">Manage your project's knowledge base with configurable codes, types, and components</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-indigo-700 border-indigo-300">{entries?.length || 0} Entries</Badge>
           <Dialog open={configDialogOpen} onOpenChange={setConfigDialogOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" onClick={() => setCodePrefix(config?.prefix || "KB")}>
@@ -422,8 +423,8 @@ export default function KnowledgeBase() {
             }}
           >
             <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
+              <Button className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2">
+                <Plus className="h-4 w-4" />
                 New Entry
               </Button>
             </DialogTrigger>

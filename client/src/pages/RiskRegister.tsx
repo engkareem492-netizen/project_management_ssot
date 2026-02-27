@@ -27,7 +27,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Edit, Trash2, FileText, AlertTriangle } from "lucide-react";
+import { Plus, Edit, Trash2, FileText, AlertTriangle, ShieldAlert } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useProject } from "@/contexts/ProjectContext";
 
@@ -242,19 +243,25 @@ export default function RiskRegister() {
 
   return (
     <div className="container mx-auto py-8 space-y-6">
-      <div className="flex justify-between items-center">
+      {/* Page Header */}
+      <div className="bg-gradient-to-r from-red-50 to-rose-50 border border-red-200 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Risk Register</h1>
-          <p className="text-muted-foreground">Manage project risks and mitigation strategies</p>
+          <h1 className="text-2xl font-bold text-red-900 flex items-center gap-2">
+            <ShieldAlert className="w-6 h-6 text-red-600" />
+            Risk Register
+          </h1>
+          <p className="text-red-700 text-sm mt-1">Manage project risks and mitigation strategies</p>
         </div>
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => resetForm()}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Risk
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-red-700 border-red-300">{risks?.length || 0} Risks</Badge>
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={() => resetForm()} className="bg-red-600 hover:bg-red-700 text-white gap-2">
+                <Plus className="h-4 w-4" />
+                Add Risk
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Create New Risk</DialogTitle>
             </DialogHeader>
@@ -512,6 +519,7 @@ export default function RiskRegister() {
             </div>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {isLoading ? (

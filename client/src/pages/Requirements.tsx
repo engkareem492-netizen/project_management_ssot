@@ -550,71 +550,34 @@ export default function Requirements() {
 
   return (
     <div className="space-y-6 p-6">
-      <Card className="border-primary/20">
-        <CardHeader className="bg-gradient-to-r from-primary/10 to-primary/5 border-b border-primary/20">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-xl flex items-center gap-2">
-                <FileText className="w-5 h-5 text-primary" />
-                Requirements Management
-              </CardTitle>
-              <CardDescription className="mt-1">
-                View, edit, and track changes to project requirements. IDs are auto-generated.
-              </CardDescription>
-            </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-sm border-primary/30 bg-primary/5">
-                {requirements?.length || 0} Requirements
-              </Badge>
-              <div className="flex items-center border border-primary/30 rounded-md flex-shrink-0">
-                <Button
-                  size="sm"
-                  variant={viewMode === 'compact' ? 'default' : 'ghost'}
-                  onClick={() => setViewMode('compact')}
-                  title="Compact View"
-                  className="h-8 w-8 p-0 rounded-r-none border-r border-primary/30"
-                >
-                  <List className="w-4 h-4" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant={viewMode === 'full' ? 'default' : 'ghost'}
-                  onClick={() => setViewMode('full')}
-                  title="Full View"
-                  className="h-8 w-8 p-0 rounded-l-none"
-                >
-                  <LayoutGrid className="w-4 h-4" />
-                </Button>
-              </div>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setSettingsType("status");
-                  setSettingsOpen(true);
-                }}
-                title="Manage Status Options"
-                className="border-primary/30 hover:bg-primary/10"
-              >
-                <Settings className="w-4 h-4 mr-1" />
-                Status
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setSettingsType("priority");
-                  setSettingsOpen(true);
-                }}
-                title="Manage Priority Options"
-                className="border-primary/30 hover:bg-primary/10"
-              >
-                <Settings className="w-4 h-4 mr-1" />
-                Priority
-              </Button>
-            </div>
+      {/* Page Header */}
+      <div className="bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-200 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-emerald-900 flex items-center gap-2">
+            <FileText className="w-6 h-6 text-emerald-600" />
+            Requirements Management
+          </h1>
+          <p className="text-emerald-700 text-sm mt-1">View, edit, and track changes to project requirements. IDs are auto-generated.</p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Badge variant="outline" className="text-emerald-700 border-emerald-300">{requirements?.length || 0} Requirements</Badge>
+          <div className="flex items-center border border-emerald-300 rounded-md flex-shrink-0">
+            <Button size="sm" variant={viewMode === 'compact' ? 'default' : 'ghost'} onClick={() => setViewMode('compact')} title="Compact View" className="h-8 w-8 p-0 rounded-r-none border-r border-emerald-300">
+              <List className="w-4 h-4" />
+            </Button>
+            <Button size="sm" variant={viewMode === 'full' ? 'default' : 'ghost'} onClick={() => setViewMode('full')} title="Full View" className="h-8 w-8 p-0 rounded-l-none">
+              <LayoutGrid className="w-4 h-4" />
+            </Button>
           </div>
-        </CardHeader>
+          <Button size="sm" variant="outline" onClick={() => { setSettingsType("status"); setSettingsOpen(true); }} className="border-emerald-300 hover:bg-emerald-50 text-emerald-700">
+            <Settings className="w-4 h-4 mr-1" />Status
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => { setSettingsType("priority"); setSettingsOpen(true); }} className="border-emerald-300 hover:bg-emerald-50 text-emerald-700">
+            <Settings className="w-4 h-4 mr-1" />Priority
+          </Button>
+        </div>
+      </div>
+      <Card className="border-emerald-100">
         <CardContent className="pt-6">
           <div className="flex items-center gap-4 mb-6">
             <div className="relative flex-1">

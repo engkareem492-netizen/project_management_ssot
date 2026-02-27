@@ -112,18 +112,20 @@ export default function Relationships() {
   }
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <GitBranch className="w-5 h-5" />
+    <div className="space-y-6 p-6">
+      {/* Page Header */}
+      <div className="bg-gradient-to-r from-purple-50 to-fuchsia-50 border border-purple-200 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-purple-900 flex items-center gap-2">
+            <GitBranch className="w-6 h-6 text-purple-600" />
             Entity Relationships
-          </CardTitle>
-          <CardDescription>
-            Table view of requirements linked to tasks and issues. Click on any entity to view details.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+          </h1>
+          <p className="text-purple-700 text-sm mt-1">Table view of requirements linked to tasks and issues. Click on any entity to view details.</p>
+        </div>
+        <Badge variant="outline" className="text-purple-700 border-purple-300">{filteredRows?.length || 0} Relationships</Badge>
+      </div>
+      <Card>
+        <CardContent className="pt-6">
           {/* Filters */}
           <div className="flex gap-4 mb-4 flex-wrap">
             <div className="flex items-center gap-2">

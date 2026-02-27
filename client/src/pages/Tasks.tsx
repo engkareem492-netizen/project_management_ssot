@@ -623,49 +623,26 @@ export default function Tasks() {
       {/* Dashboard Chart */}
       <TasksByResponsibleChart tasks={tasks || []} />
 
-      <Card className="border-primary/20">
-        <CardHeader className="bg-gradient-to-r from-primary/10 to-primary/5 border-b border-primary/20">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-xl flex items-center gap-2">
-                <CheckSquare className="w-5 h-5 text-primary" />
-                Tasks Management
-              </CardTitle>
-              <CardDescription className="mt-1">
-                View, edit, and track changes to project tasks
-              </CardDescription>
-            </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-sm">
-                {tasks?.length || 0} Tasks
-              </Badge>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setSettingsType("status");
-                  setSettingsOpen(true);
-                }}
-                title="Manage Status Options"
-              >
-                <Settings className="w-4 h-4 mr-1" />
-                Status
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setSettingsType("priority");
-                  setSettingsOpen(true);
-                }}
-                title="Manage Priority Options"
-              >
-                <Settings className="w-4 h-4 mr-1" />
-                Priority
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
+      {/* Page Header */}
+      <div className="bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-blue-900 flex items-center gap-2">
+            <CheckSquare className="w-6 h-6 text-blue-600" />
+            Tasks Management
+          </h1>
+          <p className="text-blue-700 text-sm mt-1">View, edit, and track changes to project tasks</p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Badge variant="outline" className="text-blue-700 border-blue-300">{tasks?.length || 0} Tasks</Badge>
+          <Button size="sm" variant="outline" onClick={() => { setSettingsType("status"); setSettingsOpen(true); }} className="border-blue-300 hover:bg-blue-50 text-blue-700">
+            <Settings className="w-4 h-4 mr-1" />Status
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => { setSettingsType("priority"); setSettingsOpen(true); }} className="border-blue-300 hover:bg-blue-50 text-blue-700">
+            <Settings className="w-4 h-4 mr-1" />Priority
+          </Button>
+        </div>
+      </div>
+      <Card className="border-blue-100">
         <CardContent>
           <div className="flex items-center gap-4 mb-6">
             <div className="relative flex-1">
