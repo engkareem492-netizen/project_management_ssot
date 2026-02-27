@@ -1484,3 +1484,7 @@
 ## UI Consistency (Feb 28, 2026)
 
 - [x] Apply Meetings-style page header (white card, colored icon, bold title, subtitle, count badges) to all pages
+
+## Bug Fix (Feb 28, 2026 - Sidebar Overlap)
+
+- [x] Fix Excel import/export submenu overlapping with Gantt Chart and other sidebar items
