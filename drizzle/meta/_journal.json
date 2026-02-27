@@ -169,6 +169,13 @@
       "when": 1772115400226,
       "tag": "0023_adorable_shaman",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "5",
+      "when": 1772232402853,
+      "tag": "0024_huge_vermin",
+      "breakpoints": true
     }
   ]
 }

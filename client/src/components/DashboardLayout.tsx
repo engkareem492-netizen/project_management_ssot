@@ -56,7 +56,13 @@ import {
   Database,
   Palette,
   BookOpen,
-  AlertTriangle
+  AlertTriangle,
+  GitPullRequest,
+  MessageSquare,
+  FlaskConical,
+  BarChart2,
+  Layers,
+  FileBarChart
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -79,6 +85,12 @@ const menuItems = [
   { icon: BookOpen, label: "Knowledge Base", path: "/knowledge-base" },
   { icon: AlertTriangle, label: "Risk Register", path: "/risk-register" },
   { icon: GitBranch, label: "Relationships", path: "/relationships" },
+  { icon: GitPullRequest, label: "Change Requests", path: "/change-requests" },
+  { icon: MessageSquare, label: "Meetings & Decisions", path: "/meetings" },
+  { icon: FlaskConical, label: "Test Cases", path: "/test-cases" },
+  { icon: BarChart2, label: "Gantt Chart", path: "/gantt" },
+  { icon: Layers, label: "Traceability Matrix", path: "/traceability" },
+  { icon: FileBarChart, label: "Weekly Report", path: "/weekly-report" },
   { icon: SettingsIcon, label: "Settings", path: "/settings" },
 ];
 

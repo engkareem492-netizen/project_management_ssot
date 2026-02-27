@@ -697,3 +697,135 @@ export const dropdownCategories = mysqlTable("dropdownCategories", {
 
 export type DropdownCategory = typeof dropdownCategories.$inferSelect;
 export type InsertDropdownCategory = typeof dropdownCategories.$inferInsert;
+
+/**
+ * Change Requests table - formal change request management with approval workflow
+ */
+export const changeRequests = mysqlTable("changeRequests", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  crId: varchar("crId", { length: 50 }).notNull(), // e.g., CR-0001
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  requestedBy: varchar("requestedBy", { length: 200 }),
+  requestedById: int("requestedById"),
+  assignedTo: varchar("assignedTo", { length: 200 }),
+  assignedToId: int("assignedToId"),
+  priority: varchar("priority", { length: 50 }).default("Medium"),
+  status: mysqlEnum("crStatus", ["Draft", "Submitted", "Under Review", "Approved", "Rejected", "Implemented", "Closed"]).default("Draft").notNull(),
+  impactAssessment: text("impactAssessment"),
+  requirementId: varchar("requirementId", { length: 50 }),
+  taskId: varchar("taskId", { length: 50 }),
+  issueId: varchar("issueId", { length: 50 }),
+  submittedAt: timestamp("submittedAt"),
+  reviewedAt: timestamp("reviewedAt"),
+  approvedAt: timestamp("approvedAt"),
+  implementedAt: timestamp("implementedAt"),
+  reviewedBy: varchar("reviewedBy", { length: 200 }),
+  approvedBy: varchar("approvedBy", { length: 200 }),
+  rejectionReason: text("rejectionReason"),
+  estimatedEffort: varchar("estimatedEffort", { length: 100 }),
+  actualEffort: varchar("actualEffort", { length: 100 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ChangeRequest = typeof changeRequests.$inferSelect;
+export type InsertChangeRequest = typeof changeRequests.$inferInsert;
+
+/**
+ * Meetings table - meeting log with agenda, attendees, and outcomes
+ */
+export const meetings = mysqlTable("meetings", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  meetingId: varchar("meetingId", { length: 50 }).notNull(), // e.g., MTG-0001
+  title: varchar("title", { length: 255 }).notNull(),
+  meetingDate: date("meetingDate").notNull(),
+  startTime: varchar("startTime", { length: 10 }),
+  endTime: varchar("endTime", { length: 10 }),
+  location: varchar("location", { length: 255 }),
+  organizer: varchar("organizer", { length: 200 }),
+  organizerId: int("organizerId"),
+  attendees: json("attendees"), // array of stakeholder names/ids
+  agenda: text("agenda"),
+  minutes: text("minutes"),
+  status: mysqlEnum("meetingStatus", ["Scheduled", "In Progress", "Completed", "Cancelled"]).default("Scheduled").notNull(),
+  nextMeetingDate: date("nextMeetingDate"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Meeting = typeof meetings.$inferSelect;
+export type InsertMeeting = typeof meetings.$inferInsert;
+
+/**
+ * Decisions table - decisions made during meetings or project lifecycle
+ */
+export const decisions = mysqlTable("decisions", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  decisionId: varchar("decisionId", { length: 50 }).notNull(), // e.g., DEC-0001
+  meetingId: int("meetingId"), // optional link to a meeting
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  decisionDate: date("decisionDate").notNull(),
+  decidedBy: varchar("decidedBy", { length: 200 }),
+  decidedById: int("decidedById"),
+  status: mysqlEnum("decisionStatus", ["Open", "Implemented", "Deferred", "Cancelled"]).default("Open").notNull(),
+  impact: varchar("impact", { length: 100 }),
+  requirementId: varchar("requirementId", { length: 50 }),
+  taskId: varchar("taskId", { length: 50 }),
+  issueId: varchar("issueId", { length: 50 }),
+  actionItems: json("actionItems"), // array of {description, owner, dueDate, done}
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Decision = typeof decisions.$inferSelect;
+export type InsertDecision = typeof decisions.$inferInsert;
+
+/**
+ * Test Cases table - test cases linked to requirements
+ */
+export const testCases = mysqlTable("testCases", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  testId: varchar("testId", { length: 50 }).notNull(), // e.g., TC-0001
+  requirementId: varchar("requirementId", { length: 50 }),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  preconditions: text("preconditions"),
+  testSteps: json("testSteps"), // array of {step, expectedResult}
+  expectedResult: text("expectedResult"),
+  actualResult: text("actualResult"),
+  tester: varchar("tester", { length: 200 }),
+  testerId: int("testerId"),
+  priority: varchar("priority", { length: 50 }).default("Medium"),
+  status: mysqlEnum("testStatus", ["Not Executed", "In Progress", "Passed", "Failed", "Blocked", "Skipped"]).default("Not Executed").notNull(),
+  testType: varchar("testType", { length: 100 }), // Unit, Integration, UAT, Regression
+  executionDate: date("executionDate"),
+  defectId: varchar("defectId", { length: 50 }), // link to issue if failed
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type TestCase = typeof testCases.$inferSelect;
+export type InsertTestCase = typeof testCases.$inferInsert;
+
+/**
+ * Task Dependencies table - predecessor/successor relationships between tasks
+ */
+export const taskDependencies = mysqlTable("taskDependencies", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  predecessorTaskId: varchar("predecessorTaskId", { length: 50 }).notNull(), // taskId of predecessor
+  successorTaskId: varchar("successorTaskId", { length: 50 }).notNull(),   // taskId of successor
+  dependencyType: mysqlEnum("dependencyType", ["Finish-to-Start", "Start-to-Start", "Finish-to-Finish", "Start-to-Finish"]).default("Finish-to-Start").notNull(),
+  lagDays: int("lagDays").default(0), // positive = lag, negative = lead
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type TaskDependency = typeof taskDependencies.$inferSelect;
+export type InsertTaskDependency = typeof taskDependencies.$inferInsert;

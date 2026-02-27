@@ -1469,3 +1469,14 @@
 ## Bug Fix (Feb 26, 2026 - Part 8)
 
 - [x] Fix master user login to accept case-insensitive email (kareem@eid.com should work)
+
+## Major Feature Sprint (Feb 28, 2026)
+
+- [x] DB schema: Add changeRequests, meetings, decisions, testCases, taskDependencies tables
+- [x] Build Change Request (CR) Management module with approval workflow
+- [x] Build Meeting & Decision Log module
+- [x] Build Test Cases module linked to Requirements
+- [x] Build Task Dependencies (predecessor/successor) and Gantt Chart view
+- [x] Build Traceability Matrix (Requirement → Issue → Task → Test Case chain)
+- [x] Build Weekly Report PDF Generator
+- [x] Wire all new modules to sidebar navigation

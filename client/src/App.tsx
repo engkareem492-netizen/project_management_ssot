@@ -19,6 +19,12 @@ import Today from "./pages/Today";
 import Settings from "./pages/Settings";
 import KnowledgeBase from "./pages/KnowledgeBase";
 import RiskRegister from "./pages/RiskRegister";
+import ChangeRequests from "./pages/ChangeRequests";
+import Meetings from "./pages/Meetings";
+import TestCases from "./pages/TestCases";
+import GanttChart from "./pages/GanttChart";
+import TraceabilityMatrix from "./pages/TraceabilityMatrix";
+import WeeklyReport from "./pages/WeeklyReport";
 import DashboardLayout from "./components/DashboardLayout";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -100,6 +106,36 @@ function Router() {
        <Route path={"/relationships"}>
         <DashboardLayout>
           <Relationships />
+        </DashboardLayout>
+      </Route>
+      <Route path={"/change-requests"}>
+        <DashboardLayout>
+          <ChangeRequests />
+        </DashboardLayout>
+      </Route>
+      <Route path={"/meetings"}>
+        <DashboardLayout>
+          <Meetings />
+        </DashboardLayout>
+      </Route>
+      <Route path={"/test-cases"}>
+        <DashboardLayout>
+          <TestCases />
+        </DashboardLayout>
+      </Route>
+      <Route path={"/gantt"}>
+        <DashboardLayout>
+          <GanttChart />
+        </DashboardLayout>
+      </Route>
+      <Route path={"/traceability"}>
+        <DashboardLayout>
+          <TraceabilityMatrix />
+        </DashboardLayout>
+      </Route>
+      <Route path={"/weekly-report"}>
+        <DashboardLayout>
+          <WeeklyReport />
         </DashboardLayout>
       </Route>
       <Route path={"/404"} component={NotFound} />

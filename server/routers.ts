@@ -13,6 +13,11 @@ import { systemConfigRouter } from "./systemConfig.router";
 import { authLocalRouter } from "./auth.local.router";
 import { passwordResetRouter } from "./password.reset.router";
 import { collaborationRouter } from "./routers/collaboration";
+import { changeRequestsRouter } from "./routers/changeRequests.router";
+import { meetingsRouter } from "./routers/meetings.router";
+import { testCasesRouter } from "./routers/testCases.router";
+import { taskDependenciesRouter } from "./routers/taskDependencies.router";
+import { traceabilityRouter } from "./routers/traceability.router";
 
 export const appRouter = router({
   system: systemRouter,
@@ -23,6 +28,11 @@ export const appRouter = router({
   auth: authLocalRouter,
   passwordReset: passwordResetRouter,
   collaboration: collaborationRouter,
+  changeRequests: changeRequestsRouter,
+  meetings: meetingsRouter,
+  testCases: testCasesRouter,
+  taskDependencies: taskDependenciesRouter,
+  traceability: traceabilityRouter,
 
   // Excel import/export
   excel: router({
