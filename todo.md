@@ -1488,3 +1488,4 @@
 ## Bug Fix (Feb 28, 2026 - Sidebar Overlap)
 
 - [x] Fix Excel import/export submenu overlapping with Gantt Chart and other sidebar items
+- [x] Move Excel Import/Export to sidebar footer to permanently eliminate overlap with nav items

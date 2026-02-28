@@ -328,57 +328,64 @@ function DashboardLayoutContent({
                 );
               })}
             </SidebarMenu>
-
-            {/* Excel Import/Export Section */}
-            <div className="mt-4 pt-4 border-t">
-              <SidebarMenu className="px-2">
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      onClick={() => setExcelMenuOpen(!excelMenuOpen)}
-                      tooltip="Excel Operations"
-                      className="h-8 transition-all font-normal text-sm"
-                    >
-                      <FileSpreadsheet className="h-4 w-4" />
-                      <span>Excel</span>
-                      <ChevronRight className={`ml-auto h-4 w-4 transition-transform ${excelMenuOpen ? 'rotate-90' : ''}`} />
-                    </SidebarMenuButton>
-                    {excelMenuOpen && (
-                      <SidebarMenuSub>
-                        <SidebarMenuSubItem>
-                          <input
-                            type="file"
-                            accept=".xlsx,.xls"
-                            onChange={handleFileUpload}
-                            className="hidden"
-                            id="sidebar-file-upload"
-                            disabled={uploading}
-                          />
-                          <label htmlFor="sidebar-file-upload" className="cursor-pointer w-full">
-                            <SidebarMenuSubButton asChild>
-                              <span className={uploading ? 'opacity-50 pointer-events-none' : ''}>
-                                <Upload className="h-4 w-4" />
-                                <span>{uploading ? "Importing..." : "Import"}</span>
-                              </span>
-                            </SidebarMenuSubButton>
-                          </label>
-                        </SidebarMenuSubItem>
-                        <SidebarMenuSubItem>
-                          <SidebarMenuSubButton
-                            onClick={handleExport}
-                            className={exportQuery.isLoading ? 'opacity-50 pointer-events-none' : ''}
-                          >
-                            <Download className="h-4 w-4" />
-                            <span>{exportQuery.isLoading ? "Exporting..." : "Export"}</span>
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
-                      </SidebarMenuSub>
-                    )}
-                  </SidebarMenuItem>
-              </SidebarMenu>
-            </div>
           </SidebarContent>
 
-          <SidebarFooter className="p-3">
+          <SidebarFooter className="p-3 gap-2">
+            {/* Excel Import/Export - in footer to avoid overlap with nav items */}
+            <div className="border-t pt-2 group-data-[collapsible=icon]:hidden">
+              <div className="flex gap-1 px-1">
+                <div className="flex-1">
+                  <input
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                    id="sidebar-file-upload"
+                    disabled={uploading}
+                  />
+                  <label htmlFor="sidebar-file-upload" className="cursor-pointer w-full">
+                    <button
+                      type="button"
+                      className="w-full flex items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-accent transition-colors text-muted-foreground hover:text-foreground pointer-events-none"
+                      tabIndex={-1}
+                    >
+                      <Upload className="h-3.5 w-3.5 shrink-0" />
+                      <span>{uploading ? "Importing..." : "Import Excel"}</span>
+                    </button>
+                  </label>
+                </div>
+                <button
+                  onClick={handleExport}
+                  disabled={exportQuery.isLoading}
+                  className="flex-1 flex items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-accent transition-colors text-muted-foreground hover:text-foreground disabled:opacity-50"
+                >
+                  <Download className="h-3.5 w-3.5 shrink-0" />
+                  <span>{exportQuery.isLoading ? "Exporting..." : "Export Excel"}</span>
+                </button>
+              </div>
+            </div>
+            {/* Collapsed icon-only Excel buttons */}
+            <div className="hidden group-data-[collapsible=icon]:flex flex-col gap-1 border-t pt-2">
+              <label htmlFor="sidebar-file-upload-icon" title="Import Excel" className="cursor-pointer flex items-center justify-center h-8 w-8 mx-auto rounded-md hover:bg-accent transition-colors text-muted-foreground hover:text-foreground">
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  id="sidebar-file-upload-icon"
+                  disabled={uploading}
+                />
+                <Upload className="h-4 w-4" />
+              </label>
+              <button
+                onClick={handleExport}
+                disabled={exportQuery.isLoading}
+                title="Export Excel"
+                className="flex items-center justify-center h-8 w-8 mx-auto rounded-md hover:bg-accent transition-colors text-muted-foreground hover:text-foreground disabled:opacity-50"
+              >
+                <Download className="h-4 w-4" />
+              </button>
+            </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-3 rounded-lg px-1 py-1 hover:bg-accent/50 transition-colors w-full text-left group-data-[collapsible=icon]:justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
