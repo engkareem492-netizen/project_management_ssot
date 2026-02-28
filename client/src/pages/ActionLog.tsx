@@ -25,10 +25,10 @@ export default function ActionLog() {
   return (
     <div className="space-y-6 p-6">
       {/* Page Header */}
-      <div className="bg-gradient-to-r from-slate-50 to-gray-50 border border-slate-200 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
+      <div className="bg-white border border-gray-200 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-            <History className="w-6 h-6 text-slate-600" />
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <History className="w-6 h-6 text-gray-500" />
             Action Log
           </h1>
           <p className="text-slate-600 text-sm mt-1">Complete history of all changes made to requirements, tasks, and issues</p>

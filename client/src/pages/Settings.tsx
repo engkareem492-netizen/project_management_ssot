@@ -664,10 +664,10 @@ export default function Settings() {
   return (
     <div className="p-8">
       {/* Page Header */}
-      <div className="bg-gradient-to-r from-gray-50 to-slate-50 border border-gray-200 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4 mb-8">
+      <div className="bg-white border border-gray-200 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <SettingsIcon className="w-6 h-6 text-gray-600" />
+            <SettingsIcon className="w-6 h-6 text-gray-500" />
             Settings
           </h1>
           <p className="text-gray-600 text-sm mt-1">Configure ID formats, number ranges, and manage dropdown options for the entire system</p>

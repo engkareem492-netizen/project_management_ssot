@@ -203,14 +203,14 @@ export default function TestCases() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl p-5">
+      <div className="bg-white border border-gray-200 rounded-xl p-5">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-emerald-900 flex items-center gap-2">
-              <FlaskConical className="w-6 h-6 text-emerald-600" />
+            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+              <FlaskConical className="w-6 h-6 text-gray-500" />
               Test Cases
             </h1>
-            <p className="text-emerald-700 text-sm mt-1">Manage test cases linked to requirements with execution tracking</p>
+            <p className="text-gray-500 text-sm mt-1">Manage test cases linked to requirements with execution tracking</p>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
             <div className="text-center"><div className="text-2xl font-bold text-emerald-700">{passRate}%</div><div className="text-xs text-muted-foreground">Pass Rate</div></div>
@@ -240,7 +240,7 @@ export default function TestCases() {
             </SelectContent>
           </Select>
         </div>
-        <Button onClick={() => { setForm(emptyForm); setShowCreate(true); }} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+        <Button onClick={() => { setForm(emptyForm); setShowCreate(true); }} className="bg-gray-900 hover:bg-gray-800 text-white">
           <Plus className="w-4 h-4 mr-1" /> New Test Case
         </Button>
       </div>
@@ -308,7 +308,7 @@ export default function TestCases() {
           <TestFormContent />
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
-            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => createMutation.mutate({ projectId, ...form, executionDate: form.executionDate || undefined, requirementId: form.requirementId || undefined })} disabled={!form.title || createMutation.isPending}>
+            <Button className="bg-gray-900 hover:bg-gray-800 text-white" onClick={() => createMutation.mutate({ projectId, ...form, executionDate: form.executionDate || undefined, requirementId: form.requirementId || undefined })} disabled={!form.title || createMutation.isPending}>
               {createMutation.isPending ? "Saving..." : "Create Test Case"}
             </Button>
           </DialogFooter>
@@ -322,7 +322,7 @@ export default function TestCases() {
           <TestFormContent />
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowEdit(false)}>Cancel</Button>
-            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => selectedId && updateMutation.mutate({ id: selectedId, ...form, executionDate: form.executionDate || undefined, requirementId: form.requirementId || undefined })} disabled={!form.title || updateMutation.isPending}>
+            <Button className="bg-gray-900 hover:bg-gray-800 text-white" onClick={() => selectedId && updateMutation.mutate({ id: selectedId, ...form, executionDate: form.executionDate || undefined, requirementId: form.requirementId || undefined })} disabled={!form.title || updateMutation.isPending}>
               {updateMutation.isPending ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>

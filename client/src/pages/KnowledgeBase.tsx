@@ -261,13 +261,13 @@ export default function KnowledgeBase() {
   return (
     <div className="p-6 space-y-6">
       {/* Page Header */}
-      <div className="bg-gradient-to-r from-indigo-50 to-violet-50 border border-indigo-200 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
+      <div className="bg-white border border-gray-200 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-indigo-900 flex items-center gap-2">
-            <BookOpen className="w-6 h-6 text-indigo-600" />
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <BookOpen className="w-6 h-6 text-gray-500" />
             Knowledge Base
           </h1>
-          <p className="text-indigo-700 text-sm mt-1">Manage your project's knowledge base with configurable codes, types, and components</p>
+          <p className="text-gray-500 text-sm mt-1">Manage your project's knowledge base with configurable codes, types, and components</p>
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="text-indigo-700 border-indigo-300">{entries?.length || 0} Entries</Badge>
@@ -423,7 +423,7 @@ export default function KnowledgeBase() {
             }}
           >
             <DialogTrigger asChild>
-              <Button className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2">
+              <Button className="bg-gray-900 hover:bg-gray-800 text-white gap-2">
                 <Plus className="h-4 w-4" />
                 New Entry
               </Button>

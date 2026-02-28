@@ -91,17 +91,17 @@ export default function Dependencies() {
   return (
     <div className="space-y-6 p-6">
       {/* Page Header */}
-      <div className="bg-gradient-to-r from-teal-50 to-cyan-50 border border-teal-200 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
+      <div className="bg-white border border-gray-200 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-teal-900 flex items-center gap-2">
-            <Link2 className="w-6 h-6 text-teal-600" />
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <Link2 className="w-6 h-6 text-gray-500" />
             Dependencies Management
           </h1>
-          <p className="text-teal-700 text-sm mt-1">View, edit, and track project dependencies</p>
+          <p className="text-gray-500 text-sm mt-1">View, edit, and track project dependencies</p>
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="text-teal-700 border-teal-300">{filteredDependencies?.length || 0} Dependencies</Badge>
-          <Button onClick={() => setCreateDialogOpen(true)} className="bg-teal-600 hover:bg-teal-700 text-white gap-2">
+          <Button onClick={() => setCreateDialogOpen(true)} className="bg-gray-900 hover:bg-gray-800 text-white gap-2">
             <Plus className="w-4 h-4" />Create New
           </Button>
         </div>

@@ -1489,3 +1489,7 @@
 
 - [x] Fix Excel import/export submenu overlapping with Gantt Chart and other sidebar items
 - [x] Move Excel Import/Export to sidebar footer to permanently eliminate overlap with nav items
+
+## UI Consistency (Feb 28, 2026 - Part 2)
+
+- [x] Standardize all page headers to use one consistent neutral white/gray theme (remove per-page color variations)

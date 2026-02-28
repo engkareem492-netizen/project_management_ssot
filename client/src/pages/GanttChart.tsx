@@ -139,14 +139,14 @@ export default function GanttChart() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-violet-50 to-purple-50 border border-violet-200 rounded-xl p-5">
+      <div className="bg-white border border-gray-200 rounded-xl p-5">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-violet-900 flex items-center gap-2">
-              <BarChart3 className="w-6 h-6 text-violet-600" />
+            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+              <BarChart3 className="w-6 h-6 text-gray-500" />
               Gantt Chart & Task Dependencies
             </h1>
-            <p className="text-violet-700 text-sm mt-1">Visualize task timelines and manage dependencies between tasks</p>
+            <p className="text-gray-500 text-sm mt-1">Visualize task timelines and manage dependencies between tasks</p>
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="text-violet-700 border-violet-300">{allTasks.length} Tasks</Badge>
@@ -164,7 +164,7 @@ export default function GanttChart() {
           <div className="flex gap-2">
             <Input placeholder="Search tasks..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-52" />
             {tab === "dependencies" && (
-              <Button onClick={() => setShowAddDep(true)} className="bg-violet-600 hover:bg-violet-700 text-white">
+              <Button onClick={() => setShowAddDep(true)} className="bg-gray-900 hover:bg-gray-800 text-white">
                 <Plus className="w-4 h-4 mr-1" /> Add Dependency
               </Button>
             )}
@@ -363,7 +363,7 @@ export default function GanttChart() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAddDep(false)}>Cancel</Button>
-            <Button className="bg-violet-600 hover:bg-violet-700 text-white" onClick={() => createDepMutation.mutate({ projectId, ...depForm })} disabled={!depForm.predecessorTaskId || !depForm.successorTaskId || createDepMutation.isPending}>
+            <Button className="bg-gray-900 hover:bg-gray-800 text-white" onClick={() => createDepMutation.mutate({ projectId, ...depForm })} disabled={!depForm.predecessorTaskId || !depForm.successorTaskId || createDepMutation.isPending}>
               {createDepMutation.isPending ? "Adding..." : "Add Dependency"}
             </Button>
           </DialogFooter>

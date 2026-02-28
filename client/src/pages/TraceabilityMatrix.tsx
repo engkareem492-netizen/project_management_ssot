@@ -73,14 +73,14 @@ export default function TraceabilityMatrix() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-teal-50 to-cyan-50 border border-teal-200 rounded-xl p-5">
+      <div className="bg-white border border-gray-200 rounded-xl p-5">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-teal-900 flex items-center gap-2">
-              <Network className="w-6 h-6 text-teal-600" />
+            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+              <Network className="w-6 h-6 text-gray-500" />
               Traceability Matrix
             </h1>
-            <p className="text-teal-700 text-sm mt-1">End-to-end traceability from Requirements → Tasks → Issues → Test Cases → Change Requests → Decisions</p>
+            <p className="text-gray-500 text-sm mt-1">End-to-end traceability from Requirements → Tasks → Issues → Test Cases → Change Requests → Decisions</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <CountBadge count={totalReqs} label="Requirements" icon={<BookOpen className="w-4 h-4" />} color="bg-teal-50 border-teal-200 text-teal-700" />

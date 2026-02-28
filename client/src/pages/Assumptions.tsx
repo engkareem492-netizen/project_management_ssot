@@ -93,17 +93,17 @@ export default function Assumptions() {
   return (
     <div className="space-y-6 p-6">
       {/* Page Header */}
-      <div className="bg-gradient-to-r from-yellow-50 to-amber-50 border border-yellow-200 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
+      <div className="bg-white border border-gray-200 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-yellow-900 flex items-center gap-2">
-            <Lightbulb className="w-6 h-6 text-yellow-600" />
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <Lightbulb className="w-6 h-6 text-gray-500" />
             Assumptions Management
           </h1>
-          <p className="text-yellow-700 text-sm mt-1">View, create, and track project assumptions</p>
+          <p className="text-gray-500 text-sm mt-1">View, create, and track project assumptions</p>
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="text-yellow-700 border-yellow-300">{filteredAssumptions?.length || 0} Assumptions</Badge>
-          <Button onClick={() => setCreateDialogOpen(true)} className="bg-yellow-600 hover:bg-yellow-700 text-white gap-2">
+          <Button onClick={() => setCreateDialogOpen(true)} className="bg-gray-900 hover:bg-gray-800 text-white gap-2">
             <Plus className="w-4 h-4" />Create New
           </Button>
         </div>

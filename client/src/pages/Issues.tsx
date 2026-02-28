@@ -578,13 +578,13 @@ export default function Issues() {
   return (
     <div className="space-y-6 p-6">
       {/* Page Header */}
-      <div className="bg-gradient-to-r from-red-50 to-orange-50 border border-red-200 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
+      <div className="bg-white border border-gray-200 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-red-900 flex items-center gap-2">
-            <AlertCircle className="w-6 h-6 text-red-600" />
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <AlertCircle className="w-6 h-6 text-gray-500" />
             Issues Management
           </h1>
-          <p className="text-red-700 text-sm mt-1">View, edit, and track changes to project issues</p>
+          <p className="text-gray-500 text-sm mt-1">View, edit, and track changes to project issues</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Badge variant="outline" className="text-red-700 border-red-300">{issues?.length || 0} Issues</Badge>

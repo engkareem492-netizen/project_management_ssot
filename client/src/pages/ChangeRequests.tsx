@@ -126,17 +126,17 @@ export default function ChangeRequests() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
+      <div className="bg-white border border-gray-200 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-orange-900 flex items-center gap-2">
-            <ArrowRight className="w-6 h-6 text-orange-600" />
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <ArrowRight className="w-6 h-6 text-gray-500" />
             Change Request Management
           </h1>
-          <p className="text-orange-700 text-sm mt-1">Manage and track formal change requests with approval workflow</p>
+          <p className="text-gray-500 text-sm mt-1">Manage and track formal change requests with approval workflow</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Badge variant="outline" className="text-orange-700 border-orange-300">{crs.length} CRs</Badge>
-          <Button onClick={() => { setForm(emptyForm); setShowCreate(true); }} className="bg-orange-600 hover:bg-orange-700 text-white">
+          <Button onClick={() => { setForm(emptyForm); setShowCreate(true); }} className="bg-gray-900 hover:bg-gray-800 text-white">
             <Plus className="w-4 h-4 mr-1" /> Create CR
           </Button>
         </div>
@@ -234,7 +234,7 @@ export default function ChangeRequests() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
-            <Button className="bg-orange-600 hover:bg-orange-700 text-white" onClick={() => createMutation.mutate({ projectId, ...form })} disabled={!form.title || createMutation.isPending}>
+            <Button className="bg-gray-900 hover:bg-gray-800 text-white" onClick={() => createMutation.mutate({ projectId, ...form })} disabled={!form.title || createMutation.isPending}>
               {createMutation.isPending ? "Creating..." : "Create CR"}
             </Button>
           </DialogFooter>
@@ -297,7 +297,7 @@ export default function ChangeRequests() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowEdit(false)}>Cancel</Button>
-            <Button className="bg-orange-600 hover:bg-orange-700 text-white" onClick={() => selectedCR && updateMutation.mutate({ id: selectedCR, ...form })} disabled={!form.title || updateMutation.isPending}>
+            <Button className="bg-gray-900 hover:bg-gray-800 text-white" onClick={() => selectedCR && updateMutation.mutate({ id: selectedCR, ...form })} disabled={!form.title || updateMutation.isPending}>
               {updateMutation.isPending ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>
@@ -324,7 +324,7 @@ export default function ChangeRequests() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowStatusChange(false)}>Cancel</Button>
-            <Button className="bg-orange-600 hover:bg-orange-700 text-white" onClick={() => {
+            <Button className="bg-gray-900 hover:bg-gray-800 text-white" onClick={() => {
               if (!selectedCR) return;
               statusMutation.mutate({
                 id: selectedCR,

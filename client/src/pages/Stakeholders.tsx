@@ -171,17 +171,17 @@ export default function Stakeholders() {
   return (
     <div className="space-y-6 p-6">
       {/* Page Header */}
-      <div className="bg-gradient-to-r from-violet-50 to-purple-50 border border-violet-200 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
+      <div className="bg-white border border-gray-200 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-violet-900 flex items-center gap-2">
-            <Users className="w-6 h-6 text-violet-600" />
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <Users className="w-6 h-6 text-gray-500" />
             Stakeholder Register
           </h1>
-          <p className="text-violet-700 text-sm mt-1">Manage project stakeholders for Owner, Responsible, Accountable, Informed, and Consulted roles</p>
+          <p className="text-gray-500 text-sm mt-1">Manage project stakeholders for Owner, Responsible, Accountable, Informed, and Consulted roles</p>
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="text-violet-700 border-violet-300">{stakeholders?.length || 0} Stakeholders</Badge>
-          <Button onClick={() => setIsCreateOpen(true)} className="bg-violet-600 hover:bg-violet-700 text-white gap-2">
+          <Button onClick={() => setIsCreateOpen(true)} className="bg-gray-900 hover:bg-gray-800 text-white gap-2">
             <Plus className="h-4 w-4" />Add Stakeholder
           </Button>
         </div>

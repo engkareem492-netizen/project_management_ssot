@@ -624,13 +624,13 @@ export default function Tasks() {
       <TasksByResponsibleChart tasks={tasks || []} />
 
       {/* Page Header */}
-      <div className="bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
+      <div className="bg-white border border-gray-200 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-blue-900 flex items-center gap-2">
-            <CheckSquare className="w-6 h-6 text-blue-600" />
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <CheckSquare className="w-6 h-6 text-gray-500" />
             Tasks Management
           </h1>
-          <p className="text-blue-700 text-sm mt-1">View, edit, and track changes to project tasks</p>
+          <p className="text-gray-500 text-sm mt-1">View, edit, and track changes to project tasks</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Badge variant="outline" className="text-blue-700 border-blue-300">{tasks?.length || 0} Tasks</Badge>

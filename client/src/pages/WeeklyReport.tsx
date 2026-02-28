@@ -107,20 +107,20 @@ export default function WeeklyReport() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-5">
+      <div className="bg-white border border-gray-200 rounded-xl p-5">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-blue-900 flex items-center gap-2">
-              <FileText className="w-6 h-6 text-blue-600" />
+            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+              <FileText className="w-6 h-6 text-gray-500" />
               Weekly Report Generator
             </h1>
-            <p className="text-blue-700 text-sm mt-1">Generate a formatted status report for stakeholders</p>
+            <p className="text-gray-500 text-sm mt-1">Generate a formatted status report for stakeholders</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={handlePrint} className="gap-2">
               <Printer className="w-4 h-4" /> Print
             </Button>
-            <Button onClick={handleDownloadHTML} className="bg-blue-600 hover:bg-blue-700 text-white gap-2">
+            <Button onClick={handleDownloadHTML} className="bg-gray-900 hover:bg-gray-800 text-white gap-2">
               <Download className="w-4 h-4" /> Download Report
             </Button>
           </div>

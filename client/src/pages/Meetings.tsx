@@ -165,13 +165,13 @@ export default function Meetings() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
+      <div className="bg-white border border-gray-200 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-indigo-900 flex items-center gap-2">
-            <Users className="w-6 h-6 text-indigo-600" />
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <Users className="w-6 h-6 text-gray-500" />
             Meetings & Decision Log
           </h1>
-          <p className="text-indigo-700 text-sm mt-1">Record meeting minutes, action items, and key project decisions</p>
+          <p className="text-gray-500 text-sm mt-1">Record meeting minutes, action items, and key project decisions</p>
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="text-indigo-700 border-indigo-300">{meetings.length} Meetings</Badge>
@@ -188,11 +188,11 @@ export default function Meetings() {
           <div className="flex gap-2">
             <Input placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-56" />
             {tab === "meetings" ? (
-              <Button onClick={() => { setMeetingForm(emptyMeetingForm); setAttendeesText(""); setShowCreateMeeting(true); }} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+              <Button onClick={() => { setMeetingForm(emptyMeetingForm); setAttendeesText(""); setShowCreateMeeting(true); }} className="bg-gray-900 hover:bg-gray-800 text-white">
                 <Plus className="w-4 h-4 mr-1" /> Add Meeting
               </Button>
             ) : (
-              <Button onClick={() => { setDecisionForm(emptyDecisionForm); setShowCreateDecision(true); }} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+              <Button onClick={() => { setDecisionForm(emptyDecisionForm); setShowCreateDecision(true); }} className="bg-gray-900 hover:bg-gray-800 text-white">
                 <Plus className="w-4 h-4 mr-1" /> Log Decision
               </Button>
             )}
@@ -313,7 +313,7 @@ export default function Meetings() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCreateMeeting(false)}>Cancel</Button>
-            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white" onClick={() => createMeetingMutation.mutate({ projectId, title: meetingForm.title, meetingDate: meetingForm.meetingDate, location: meetingForm.location, organizer: meetingForm.organizer, attendees: meetingForm.attendees, agenda: meetingForm.agenda, minutes: meetingForm.minutes, status: meetingForm.status })} disabled={!meetingForm.title || createMeetingMutation.isPending}>
+            <Button className="bg-gray-900 hover:bg-gray-800 text-white" onClick={() => createMeetingMutation.mutate({ projectId, title: meetingForm.title, meetingDate: meetingForm.meetingDate, location: meetingForm.location, organizer: meetingForm.organizer, attendees: meetingForm.attendees, agenda: meetingForm.agenda, minutes: meetingForm.minutes, status: meetingForm.status })} disabled={!meetingForm.title || createMeetingMutation.isPending}>
               {createMeetingMutation.isPending ? "Saving..." : "Save Meeting"}
             </Button>
           </DialogFooter>
@@ -341,7 +341,7 @@ export default function Meetings() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowEditMeeting(false)}>Cancel</Button>
-            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white" onClick={() => selectedMeeting && updateMeetingMutation.mutate({ id: selectedMeeting, title: meetingForm.title, meetingDate: meetingForm.meetingDate, location: meetingForm.location, organizer: meetingForm.organizer, attendees: meetingForm.attendees, agenda: meetingForm.agenda, minutes: meetingForm.minutes, status: meetingForm.status })} disabled={!meetingForm.title || updateMeetingMutation.isPending}>
+            <Button className="bg-gray-900 hover:bg-gray-800 text-white" onClick={() => selectedMeeting && updateMeetingMutation.mutate({ id: selectedMeeting, title: meetingForm.title, meetingDate: meetingForm.meetingDate, location: meetingForm.location, organizer: meetingForm.organizer, attendees: meetingForm.attendees, agenda: meetingForm.agenda, minutes: meetingForm.minutes, status: meetingForm.status })} disabled={!meetingForm.title || updateMeetingMutation.isPending}>
               {updateMeetingMutation.isPending ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>
@@ -394,7 +394,7 @@ export default function Meetings() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCreateDecision(false)}>Cancel</Button>
-            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white" onClick={() => createDecisionMutation.mutate({ projectId, title: decisionForm.title, description: decisionForm.description, decidedBy: decisionForm.decidedBy, decisionDate: decisionForm.decisionDate, status: decisionForm.status, impact: decisionForm.impact, requirementId: decisionForm.requirementId, taskId: decisionForm.taskId, issueId: decisionForm.issueId })} disabled={!decisionForm.title || createDecisionMutation.isPending}>
+            <Button className="bg-gray-900 hover:bg-gray-800 text-white" onClick={() => createDecisionMutation.mutate({ projectId, title: decisionForm.title, description: decisionForm.description, decidedBy: decisionForm.decidedBy, decisionDate: decisionForm.decisionDate, status: decisionForm.status, impact: decisionForm.impact, requirementId: decisionForm.requirementId, taskId: decisionForm.taskId, issueId: decisionForm.issueId })} disabled={!decisionForm.title || createDecisionMutation.isPending}>
               {createDecisionMutation.isPending ? "Saving..." : "Log Decision"}
             </Button>
           </DialogFooter>
@@ -423,7 +423,7 @@ export default function Meetings() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowEditDecision(false)}>Cancel</Button>
-            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white" onClick={() => selectedDecision && updateDecisionMutation.mutate({ id: selectedDecision, title: decisionForm.title, description: decisionForm.description, decidedBy: decisionForm.decidedBy, decisionDate: decisionForm.decisionDate, status: decisionForm.status, impact: decisionForm.impact, requirementId: decisionForm.requirementId, taskId: decisionForm.taskId, issueId: decisionForm.issueId })} disabled={!decisionForm.title || updateDecisionMutation.isPending}>
+            <Button className="bg-gray-900 hover:bg-gray-800 text-white" onClick={() => selectedDecision && updateDecisionMutation.mutate({ id: selectedDecision, title: decisionForm.title, description: decisionForm.description, decidedBy: decisionForm.decidedBy, decisionDate: decisionForm.decisionDate, status: decisionForm.status, impact: decisionForm.impact, requirementId: decisionForm.requirementId, taskId: decisionForm.taskId, issueId: decisionForm.issueId })} disabled={!decisionForm.title || updateDecisionMutation.isPending}>
               {updateDecisionMutation.isPending ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>

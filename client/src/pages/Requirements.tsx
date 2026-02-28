@@ -551,13 +551,13 @@ export default function Requirements() {
   return (
     <div className="space-y-6 p-6">
       {/* Page Header */}
-      <div className="bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-200 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
+      <div className="bg-white border border-gray-200 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-emerald-900 flex items-center gap-2">
-            <FileText className="w-6 h-6 text-emerald-600" />
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <FileText className="w-6 h-6 text-gray-500" />
             Requirements Management
           </h1>
-          <p className="text-emerald-700 text-sm mt-1">View, edit, and track changes to project requirements. IDs are auto-generated.</p>
+          <p className="text-gray-500 text-sm mt-1">View, edit, and track changes to project requirements. IDs are auto-generated.</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Badge variant="outline" className="text-emerald-700 border-emerald-300">{requirements?.length || 0} Requirements</Badge>
