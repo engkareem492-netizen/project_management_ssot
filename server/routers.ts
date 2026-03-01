@@ -18,12 +18,6 @@ import { meetingsRouter } from "./routers/meetings.router";
 import { testCasesRouter } from "./routers/testCases.router";
 import { taskDependenciesRouter } from "./routers/taskDependencies.router";
 import { traceabilityRouter } from "./routers/traceability.router";
-import { commentsRouter } from "./routers/comments.router";
-import { attachmentsRouter } from "./routers/attachments.router";
-import { tagsRouter } from "./routers/tags.router";
-import { checklistsRouter } from "./routers/checklists.router";
-import { notificationsRouter } from "./routers/notifications.router";
-import { searchRouter } from "./routers/search.router";
 
 export const appRouter = router({
   system: systemRouter,
@@ -39,12 +33,6 @@ export const appRouter = router({
   testCases: testCasesRouter,
   taskDependencies: taskDependenciesRouter,
   traceability: traceabilityRouter,
-  comments: commentsRouter,
-  attachments: attachmentsRouter,
-  tags: tagsRouter,
-  checklists: checklistsRouter,
-  notifications: notificationsRouter,
-  search: searchRouter,
 
   // Excel import/export
   excel: router({
@@ -606,23 +594,9 @@ export const appRouter = router({
         statusUpdate: z.string().optional(),
         status: z.string().optional(),
         priority: z.string().optional(),
-        parentTaskId: z.number().optional(),
       }))
       .mutation(async ({ input }) => {
         try {
-          // Calculate hierarchy level from parent
-          let hierarchyLevel = 0;
-          if (input.parentTaskId) {
-            const allTasks = await db.getAllTasks(input.projectId);
-            const parent = allTasks.find(t => t.id === input.parentTaskId);
-            if (parent) {
-              hierarchyLevel = (parent.hierarchyLevel || 0) + 1;
-              if (hierarchyLevel > 2) {
-                throw new TRPCError({ code: 'BAD_REQUEST', message: 'Maximum nesting depth (3 levels) exceeded' });
-              }
-            }
-          }
-
           // Clean up empty strings and convert to undefined
           const cleanedInput: any = {};
           Object.keys(input).forEach(key => {
@@ -634,7 +608,7 @@ export const appRouter = router({
           
           // Generate auto ID for task
           const taskId = await db.getNextId('task', 'T', input.projectId);
-          await db.createTask({ ...cleanedInput, taskId, projectId: input.projectId, parentTaskId: input.parentTaskId ?? null, hierarchyLevel });
+          await db.createTask({ ...cleanedInput, taskId, projectId: input.projectId });
           
           return { success: true, taskId };
         } catch (error: any) {
@@ -719,29 +693,6 @@ export const appRouter = router({
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
         await db.deleteTask(input.id);
-        return { success: true };
-      }),
-
-    getChildren: protectedProcedure
-      .input(z.object({ parentTaskId: z.number(), projectId: z.number() }))
-      .query(async ({ input }) => {
-        return await db.getChildTasks(input.parentTaskId, input.projectId);
-      }),
-
-    getHierarchy: protectedProcedure
-      .input(z.object({ projectId: z.number() }))
-      .query(async ({ input }) => {
-        return await db.getTaskHierarchy(input.projectId);
-      }),
-
-    moveTask: protectedProcedure
-      .input(z.object({
-        taskId: z.number(),
-        newParentId: z.number().nullable(),
-        projectId: z.number(),
-      }))
-      .mutation(async ({ input }) => {
-        await db.moveTask(input.taskId, input.newParentId, input.projectId);
         return { success: true };
       }),
   }),
