@@ -577,12 +577,28 @@ export async function getNextId(entityType: string, defaultPrefix: string, proje
   
   if (existing.length === 0) {
     // Create new sequence starting at 1 with default prefix
-    await db.insert(idSequences).values({
-      projectId,
-      entityType,
-      prefix: defaultPrefix,
-      currentNumber: 1,
-    });
+    // Use raw SQL to avoid Drizzle schema mismatch with extra DB columns (padding, startNumber, entityLabel)
+    try {
+      await db.execute(
+        sql`INSERT INTO idSequences (projectId, entityType, prefix, currentNumber) VALUES (${projectId}, ${entityType}, ${defaultPrefix}, 1)`
+      );
+    } catch (insertErr: any) {
+      // If insert fails (e.g. duplicate), try to fetch again
+      const retry = await db
+        .select()
+        .from(idSequences)
+        .where(and(eq(idSequences.entityType, entityType), eq(idSequences.projectId, projectId)))
+        .limit(1);
+      if (retry.length > 0) {
+        const retryNumber = retry[0].currentNumber + 1;
+        await db
+          .update(idSequences)
+          .set({ currentNumber: retryNumber })
+          .where(and(eq(idSequences.entityType, entityType), eq(idSequences.projectId, projectId)));
+        return `${retry[0].prefix}-${retryNumber.toString().padStart(4, '0')}`;
+      }
+      throw insertErr;
+    }
     nextNumber = 1;
     actualPrefix = defaultPrefix;
   } else {

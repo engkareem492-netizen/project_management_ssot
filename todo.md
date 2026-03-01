@@ -1497,3 +1497,7 @@
 ## Bug Fix (Mar 01, 2026)
 
 - [x] Fix "Select Project" prompt appearing when creating a Task — removed mandatory Task Group requirement, added missing status options (Not Started, In Progress, Completed, On Hold, Medium priority) to DB
+
+## Bug Fix (Mar 01, 2026 - Part 2)
+
+- [x] Fix "No project selected" error when creating a Task from Requirements detail view — root cause was missing idSequences for task/issue/deliverable entity types; added all missing sequences and hardened getNextId to use raw SQL insert to avoid Drizzle schema mismatch
