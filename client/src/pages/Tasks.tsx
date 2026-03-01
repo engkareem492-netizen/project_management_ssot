@@ -19,32 +19,6 @@ import { DropdownOptionsManager } from "@/components/DropdownOptionsManager";
 import { SelectWithCreate } from "@/components/SelectWithCreate";
 import { DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { CommentsPanel } from "@/components/CommentsPanel";
-import { ChecklistPanel } from "@/components/ChecklistPanel";
-import { TagSelector } from "@/components/TagSelector";
-
-function SubTasksList({ parentTaskId, projectId, onView }: { parentTaskId: number; projectId: number; onView: (task: any) => void }) {
-  const { data: children } = trpc.tasks.getChildren.useQuery(
-    { parentTaskId, projectId },
-    { enabled: !!parentTaskId && !!projectId }
-  );
-
-  if (!children || children.length === 0) {
-    return <p className="text-sm text-gray-500">No sub-tasks yet.</p>;
-  }
-
-  return (
-    <div className="space-y-1">
-      {children.map((child) => (
-        <div key={child.id} className="flex items-center gap-3 p-2 rounded-lg bg-muted/50 hover:bg-muted cursor-pointer" onClick={() => onView(child)}>
-          <span className="text-xs font-mono text-primary">{child.taskId}</span>
-          <span className="text-sm flex-1 truncate">{child.description || 'No description'}</span>
-          <Badge variant="outline" className="text-xs">{child.status || 'No Status'}</Badge>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 export default function Tasks() {
   const { currentProjectId } = useProject();
@@ -710,16 +684,8 @@ export default function Tasks() {
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-3">
-                              {(task as any).hierarchyLevel > 0 && (
-                                <span className="text-gray-300" style={{ paddingLeft: `${((task as any).hierarchyLevel || 0) * 16}px` }}>
-                                  {'└'}
-                                </span>
-                              )}
                               <span className="font-bold text-base">{task.taskId}</span>
                               <span className="text-xs px-2 py-0.5 rounded bg-muted">{task.taskGroup || '-'}</span>
-                              {(task as any).parentTaskId && (
-                                <Badge variant="outline" className="text-[10px] px-1.5 py-0">Sub-task</Badge>
-                              )}
                             </div>
                             <p className="mt-1 text-sm">{task.description}</p>
                           </div>
@@ -878,12 +844,9 @@ export default function Tasks() {
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{newTask.parentTaskId ? 'Create Sub-Task' : 'Create New Task'}</DialogTitle>
+            <DialogTitle>Create New Task</DialogTitle>
             <DialogDescription>
-              {newTask.parentTaskId
-                ? 'Add a sub-task under the selected parent task. Task ID will be auto-generated.'
-                : 'Add a new task to the project. Task ID will be auto-generated (T-XXXX format).'
-              }
+              Add a new task to the project. Task ID will be auto-generated (T-XXXX format).
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-6 py-4">
@@ -1630,44 +1593,6 @@ export default function Tasks() {
                 <p className="font-medium whitespace-pre-wrap">{selectedTask?.currentStatus || 'No status updates yet'}</p>
               </div>
             </div>
-
-            {/* Sub-Tasks */}
-            {selectedTask && (
-              <div className="border-t pt-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="font-medium">Sub-Tasks</h4>
-                  <Button size="sm" variant="outline" onClick={() => {
-                    setViewDialogOpen(false);
-                    setCreateDialogOpen(true);
-                    setNewTask((prev: any) => ({ ...prev, parentTaskId: selectedTask.id }));
-                  }}>
-                    <Plus className="h-3 w-3 mr-1" /> Add Sub-Task
-                  </Button>
-                </div>
-                <SubTasksList parentTaskId={selectedTask.id} projectId={currentProjectId!} onView={handleViewDetails} />
-              </div>
-            )}
-
-            {/* Checklist */}
-            {selectedTask && (
-              <div className="border-t pt-4">
-                <ChecklistPanel taskId={selectedTask.id} />
-              </div>
-            )}
-
-            {/* Tags */}
-            {selectedTask && currentProjectId && (
-              <div className="border-t pt-4">
-                <TagSelector entityType="task" entityId={selectedTask.id} projectId={currentProjectId} />
-              </div>
-            )}
-
-            {/* Comments */}
-            {selectedTask && currentProjectId && (
-              <div className="border-t pt-4">
-                <CommentsPanel entityType="task" entityId={selectedTask.id} projectId={currentProjectId} />
-              </div>
-            )}
           </div>
         </DialogContent>
       </Dialog>
