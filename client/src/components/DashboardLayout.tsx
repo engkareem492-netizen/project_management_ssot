@@ -1,3 +1,5 @@
+import { NotificationBell } from "@/components/NotificationBell";
+import { GlobalSearch } from "@/components/GlobalSearch";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -454,7 +456,19 @@ function DashboardLayoutContent({
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <NotificationBell />
               <ThemeSelector />
+            </div>
+          </div>
+        )}
+        {!isMobile && (
+          <div className="flex border-b h-12 items-center justify-between px-4 bg-background/95 backdrop-blur supports-[backdrop-filter]:backdrop-blur sticky top-0 z-40">
+            <div className="flex items-center gap-3">
+              <SidebarTrigger className="h-8 w-8 rounded-lg" />
+              <GlobalSearch />
+            </div>
+            <div className="flex items-center gap-2">
+              <NotificationBell />
             </div>
           </div>
         )}
