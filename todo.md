@@ -1493,3 +1493,7 @@
 ## UI Consistency (Feb 28, 2026 - Part 2)
 
 - [x] Standardize all page headers to use one consistent neutral white/gray theme (remove per-page color variations)
+
+## Bug Fix (Mar 01, 2026)
+
+- [x] Fix "Select Project" prompt appearing when creating a Task — removed mandatory Task Group requirement, added missing status options (Not Started, In Progress, Completed, On Hold, Medium priority) to DB

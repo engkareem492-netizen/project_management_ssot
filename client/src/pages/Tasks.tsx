@@ -432,8 +432,8 @@ export default function Tasks() {
   };
 
   const handleCreate = () => {
-    if (!newTask.taskGroup || !newTask.taskGroup.trim()) {
-      toast.error('Task Group is required');
+    if (!currentProjectId) {
+      toast.error('No project selected. Please select a project first.');
       return;
     }
     if (!newTask.description || !newTask.description.trim()) {
@@ -855,14 +855,14 @@ export default function Tasks() {
               <h4 className="text-sm font-semibold border-b pb-2">Basic Information</h4>
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="taskGroup">Task Group *</Label>
+                  <Label htmlFor="taskGroup">Task Group</Label>
                   <div className="flex gap-2">
                     <Select
                       value={newTask.taskGroup}
                       onValueChange={(value) => setNewTask({ ...newTask, taskGroup: value })}
                     >
                       <SelectTrigger className="flex-1">
-                        <SelectValue placeholder="Select task group..." />
+                        <SelectValue placeholder="Select task group (optional)..." />
                       </SelectTrigger>
                       <SelectContent>
                         {taskGroups?.map((group) => (
