@@ -253,6 +253,7 @@ export const issues = mysqlTable("issues", {
   d2Status: varchar("d2Status", { length: 100 }),
   lastUpdate: text("lastUpdate"),
   updateDate: varchar("updateDate", { length: 50 }),
+  resolutionDate: varchar("resolutionDate", { length: 50 }),
   knowledgeBaseCode: varchar("knowledgeBaseCode", { length: 50 }),
   importedAt: timestamp("importedAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

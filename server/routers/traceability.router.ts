@@ -1,7 +1,7 @@
 import { protectedProcedure, router } from "../_core/trpc";
 import { z } from "zod";
 import { getDb } from "../db";
-import { requirements, tasks, issues, testCases, changeRequests, decisions } from "../../drizzle/schema";
+import { requirements, tasks, issues, testCases, changeRequests, decisions, risks, riskStatus, stakeholders } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 
 export const traceabilityRouter = router({
@@ -61,19 +61,29 @@ export const traceabilityRouter = router({
 
   // Weekly report data - aggregates all key metrics for the project
   weeklyReportData: protectedProcedure
-    .input(z.object({ projectId: z.number() }))
+    .input(z.object({
+      projectId: z.number(),
+      periodStart: z.string().optional(), // ISO date string e.g. "2026-03-01"
+      periodEnd: z.string().optional(),   // ISO date string e.g. "2026-03-07"
+    }))
     .query(async ({ input }) => {
       const db = await getDb();
       if (!db) return null;
 
-      const [allReqs, allTasks, allIssues, allTests, allCRs, allDecisions] = await Promise.all([
+      const [allReqs, allTasks, allIssues, allTests, allCRs, allDecisions, allRisks, allStakeholders] = await Promise.all([
         db.select().from(requirements).where(eq(requirements.projectId, input.projectId)),
         db.select().from(tasks).where(eq(tasks.projectId, input.projectId)),
         db.select().from(issues).where(eq(issues.projectId, input.projectId)),
         db.select().from(testCases).where(eq(testCases.projectId, input.projectId)),
         db.select().from(changeRequests).where(eq(changeRequests.projectId, input.projectId)),
         db.select().from(decisions).where(eq(decisions.projectId, input.projectId)),
+        db.select().from(risks).where(eq(risks.projectId, input.projectId)),
+        db.select().from(stakeholders).where(eq(stakeholders.projectId, input.projectId)),
       ]);
+
+      // Determine period boundaries
+      const periodStart = input.periodStart ?? new Date(new Date().setDate(new Date().getDate() - new Date().getDay())).toISOString().split("T")[0];
+      const periodEnd = input.periodEnd ?? new Date(new Date(periodStart).setDate(new Date(periodStart).getDate() + 6)).toISOString().split("T")[0];
 
       // Task stats
       const tasksByStatus: Record<string, number> = {};
@@ -127,7 +137,66 @@ export const traceabilityRouter = router({
         i.status?.toLowerCase() !== "closed"
       );
 
+      // === PERIOD-BASED DATA ===
+
+      // Tasks with due date within period
+      const tasksInPeriod = allTasks.filter((t) => {
+        if (!t.dueDate) return false;
+        return t.dueDate >= periodStart && t.dueDate <= periodEnd;
+      });
+
+      // Issues that need resolution in the period (resolutionDate within period)
+      const issuesNeedingResolution = allIssues.filter((i) => {
+        const rd = (i as any).resolutionDate;
+        if (!rd) return false;
+        return rd >= periodStart && rd <= periodEnd && i.status?.toLowerCase() !== "closed";
+      });
+
+      // Requirements gathered in period (createdAt within period)
+      const requirementsInPeriod = allReqs.filter((r) => {
+        const ca = r.createdAt ?? (r as any).importedAt?.toISOString?.()?.split("T")[0];
+        if (!ca) return false;
+        const caStr = typeof ca === "string" ? ca.split("T")[0] : String(ca);
+        return caStr >= periodStart && caStr <= periodEnd;
+      });
+
+      // Task status breakdown per responsible
+      const taskStatusByResponsible: Record<string, Record<string, number>> = {};
+      for (const t of allTasks) {
+        const responsible = t.responsible ?? "Unassigned";
+        const status = t.status ?? "Unknown";
+        if (!taskStatusByResponsible[responsible]) taskStatusByResponsible[responsible] = {};
+        taskStatusByResponsible[responsible][status] = (taskStatusByResponsible[responsible][status] ?? 0) + 1;
+      }
+
+      // Task count per responsible (all tasks)
+      const tasksByResponsible: Record<string, number> = {};
+      for (const t of allTasks) {
+        const responsible = t.responsible ?? "Unassigned";
+        tasksByResponsible[responsible] = (tasksByResponsible[responsible] ?? 0) + 1;
+      }
+
+      // Issue count per owner
+      const issuesByOwner: Record<string, number> = {};
+      for (const i of allIssues) {
+        const owner = i.owner ?? "Unassigned";
+        issuesByOwner[owner] = (issuesByOwner[owner] ?? 0) + 1;
+      }
+
+      // Risk status summary
+      const risksByStatus: Record<string, number> = {};
+      const riskScoreBreakdown = { low: 0, medium: 0, high: 0, critical: 0 };
+      for (const r of allRisks) {
+        const score = r.score ?? 0;
+        if (score >= 20) riskScoreBreakdown.critical++;
+        else if (score >= 12) riskScoreBreakdown.high++;
+        else if (score >= 6) riskScoreBreakdown.medium++;
+        else riskScoreBreakdown.low++;
+      }
+
       return {
+        periodStart,
+        periodEnd,
         summary: {
           totalRequirements: allReqs.length,
           totalTasks: allTasks.length,
@@ -137,6 +206,7 @@ export const traceabilityRouter = router({
           totalDecisions: allDecisions.length,
           overdueTasks: overdueTasks.length,
           highPriorityOpenIssues: highPriorityOpenIssues.length,
+          totalRisks: allRisks.length,
           testPassRate: allTests.length > 0
             ? Math.round((allTests.filter((t) => t.status === "Passed").length / allTests.length) * 100)
             : 0,
@@ -147,7 +217,35 @@ export const traceabilityRouter = router({
         reqsByStatus,
         testsByStatus,
         crsByStatus,
-        overdueTasks: overdueTasks.slice(0, 10).map((t) => ({
+        tasksByResponsible,
+        issuesByOwner,
+        taskStatusByResponsible,
+        riskScoreBreakdown,
+        // Period-specific data
+        tasksInPeriod: tasksInPeriod.map((t) => ({
+          taskId: t.taskId,
+          description: t.description,
+          dueDate: t.dueDate,
+          status: t.status,
+          responsible: t.responsible,
+          priority: t.priority,
+        })),
+        issuesNeedingResolution: issuesNeedingResolution.map((i) => ({
+          issueId: i.issueId,
+          description: i.description,
+          resolutionDate: (i as any).resolutionDate,
+          priority: i.priority,
+          status: i.status,
+          owner: i.owner,
+        })),
+        requirementsInPeriod: requirementsInPeriod.map((r) => ({
+          idCode: r.idCode,
+          description: r.description,
+          status: r.status,
+          priority: r.priority,
+          owner: r.owner,
+        })),
+        overdueTasks: overdueTasks.slice(0, 20).map((t) => ({
           taskId: t.taskId,
           description: t.description,
           dueDate: t.dueDate,

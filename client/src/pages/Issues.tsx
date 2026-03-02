@@ -51,6 +51,7 @@ export default function Issues() {
     openDate: '',
     knowledgeBaseCode: '',
     taskId: '',
+    resolutionDate: '',
   });
   const [addStakeholderDialogOpen, setAddStakeholderDialogOpen] = useState(false);
   const [newStakeholder, setNewStakeholder] = useState({ fullName: '', position: '', role: '' });
@@ -113,6 +114,7 @@ export default function Issues() {
     taskId: '',
     openDate: new Date().toISOString().split('T')[0],
     knowledgeBaseCode: '',
+    resolutionDate: '',
   });  const { data: issues, isLoading, refetch } = trpc.issues.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
   const { data: stakeholders } = trpc.stakeholders.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
   const { data: requirements } = trpc.requirements.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
@@ -421,6 +423,7 @@ export default function Issues() {
       openDate: issue.openDate || '',
       knowledgeBaseCode: issue.knowledgeBaseCode || '',
       taskId: issue.taskId || '',
+      resolutionDate: issue.resolutionDate || '',
     });
     setViewDialogOpen(true);
   };
@@ -446,6 +449,7 @@ export default function Issues() {
       openDate: issue.openDate || '',
       knowledgeBaseCode: issue.knowledgeBaseCode || '',
       taskId: issue.taskId || '',
+      resolutionDate: issue.resolutionDate || '',
     });
     setViewDialogOpen(true);
   };
@@ -734,6 +738,14 @@ export default function Issues() {
                                 <span className="font-medium min-w-[100px]">Status:</span>
                                 <Badge variant={getStatusColor(issue.status)}>{issue.status || '-'}</Badge>
                               </div>
+                              {issue.resolutionDate && (
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium min-w-[100px] text-amber-700">Resolve By:</span>
+                                  <span className={`text-sm font-medium ${new Date(issue.resolutionDate) < new Date() && issue.status?.toLowerCase() !== 'closed' ? 'text-red-600' : 'text-amber-700'}`}>
+                                    {issue.resolutionDate}
+                                  </span>
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -1058,14 +1070,25 @@ export default function Issues() {
             {/* Dates Section */}
             <div className="space-y-4">
               <h4 className="text-sm font-semibold border-b pb-2">Dates</h4>
-              <div className="space-y-2">
-                <Label htmlFor="openDate">Open Date</Label>
-                <Input
-                  id="openDate"
-                  type="date"
-                  value={newIssue.openDate || ''}
-                  onChange={(e) => setNewIssue({ ...newIssue, openDate: e.target.value })}
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="openDate">Open Date</Label>
+                  <Input
+                    id="openDate"
+                    type="date"
+                    value={newIssue.openDate || ''}
+                    onChange={(e) => setNewIssue({ ...newIssue, openDate: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="resolutionDate">Required Resolution Date</Label>
+                  <Input
+                    id="resolutionDate"
+                    type="date"
+                    value={newIssue.resolutionDate || ''}
+                    onChange={(e) => setNewIssue({ ...newIssue, resolutionDate: e.target.value })}
+                  />
+                </div>
               </div>
             </div>
 
@@ -1330,6 +1353,14 @@ export default function Issues() {
                   <Input type="date" value={editFormData.openDate || ''} onChange={(e) => setEditFormData({...editFormData, openDate: e.target.value})} className="h-8" />
                 ) : (
                   <p className="font-medium">{selectedIssue?.openDate || '-'}</p>
+                )}
+              </div>
+              <div className="space-y-1 p-3 bg-amber-50 rounded-lg border border-amber-200">
+                <Label className="text-xs text-amber-700 uppercase tracking-wide font-semibold">Required Resolution Date</Label>
+                {isEditMode ? (
+                  <Input type="date" value={editFormData.resolutionDate || ''} onChange={(e) => setEditFormData({...editFormData, resolutionDate: e.target.value})} className="h-8 border-amber-300" />
+                ) : (
+                  <p className="font-medium text-amber-800">{selectedIssue?.resolutionDate || '-'}</p>
                 )}
               </div>
               {isEditMode && (
