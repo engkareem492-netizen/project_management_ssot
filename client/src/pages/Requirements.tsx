@@ -698,6 +698,29 @@ export default function Requirements() {
                                 <span>-</span>
                               )}
                             </div>
+                            {/* Linked Tasks summary */}
+                            {(() => {
+                              const linkedTasks = tasks?.filter(t => t.requirementId === req.idCode) || [];
+                              const linkedIssues = issues?.filter(i => i.requirementId === req.idCode) || [];
+                              if (linkedTasks.length === 0 && linkedIssues.length === 0) return null;
+                              return (
+                                <div className="flex items-start gap-2 mt-1">
+                                  <span className="font-medium min-w-[120px]">Linked:</span>
+                                  <div className="flex flex-wrap gap-1">
+                                    {linkedTasks.map(t => (
+                                      <Badge key={t.id} variant="secondary" className="text-xs font-mono" title={t.description || ''}>
+                                        {t.taskId} <span className="ml-1 opacity-60">[{t.status || '?'}]</span>
+                                      </Badge>
+                                    ))}
+                                    {linkedIssues.map(i => (
+                                      <Badge key={i.id} variant="outline" className="text-xs font-mono text-orange-700 border-orange-300" title={i.description || ''}>
+                                        {i.issueId} <span className="ml-1 opacity-60">[{i.status || '?'}]</span>
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })()}
                           </div>
                         </div>
                       )}
@@ -718,18 +741,20 @@ export default function Requirements() {
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
-                        <Button 
-                          size="sm" 
-                          variant="default" 
+                        <Button
+                          size="sm"
+                          variant="default"
                           onClick={() => {
+                            setSelectedRequirement(req);
                             setNewTask({
                               ...newTask,
                               requirementId: req.idCode,
                               description: `Task for ${req.idCode}`,
+                              taskGroup: req.taskGroup || '',
                             });
                             setCreateTaskDialogOpen(true);
-                          }} 
-                          title="Create Task" 
+                          }}
+                          title="Create Task"
                           className="h-7 text-xs w-full"
                         >
                           <Plus className="w-3 h-3 mr-1" />

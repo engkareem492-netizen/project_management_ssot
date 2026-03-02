@@ -128,7 +128,16 @@ export default function Today() {
       const dueDate = parseDate(t.dueDate);
       return dueDate && dueDate.getTime() > today.getTime() && dueDate.getTime() <= sevenDaysLater.getTime();
     }) || [];
-    return applyFilters(filtered);
+    const filteredResult = applyFilters(filtered);
+    // Sort ascending by due date
+    return filteredResult.sort((a, b) => {
+      const da = parseDate(a.dueDate);
+      const db = parseDate(b.dueDate);
+      if (!da && !db) return 0;
+      if (!da) return 1;
+      if (!db) return -1;
+      return da.getTime() - db.getTime();
+    });
   }, [tasks, today, sevenDaysLater, filterResponsible, filterStatus, filterPriority, filterTaskCode]);
 
   // Categorize requirements
@@ -782,7 +791,8 @@ export default function Today() {
               Upcoming (Next 7 Days)
             </CardTitle>
             <CardDescription>
-              {totalUpcoming} items due in the next week
+              {totalUpcoming} items due in the next week — tasks sorted by due date
+              {filterResponsible !== "all" && ` · Filtered by: ${filterResponsible}`}
             </CardDescription>
           </CardHeader>
           <CardContent>

@@ -9,7 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { FileText, Download, Printer, CheckCircle2, AlertTriangle, Clock, Bug, FlaskConical, GitPullRequest, BookOpen, TrendingUp } from "lucide-react";
+import { FileText, Download, Printer, CheckCircle2, AlertTriangle, Clock, Bug, FlaskConical, GitPullRequest, BookOpen, TrendingUp, Calendar } from "lucide-react";
 import { toast } from "sonner";
 
 function formatDate(d: Date | string | null | undefined): string {
@@ -17,17 +17,20 @@ function formatDate(d: Date | string | null | undefined): string {
   try { return new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }); } catch { return String(d); }
 }
 
-function today(): string {
+function todayStr(): string {
   return new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" });
 }
 
-function weekRange(): string {
+function getDefaultPeriod(): { start: string; end: string } {
   const now = new Date();
   const start = new Date(now);
-  start.setDate(now.getDate() - now.getDay());
+  start.setDate(now.getDate() - now.getDay() + 1); // Monday
   const end = new Date(start);
-  end.setDate(start.getDate() + 6);
-  return `${formatDate(start)} – ${formatDate(end)}`;
+  end.setDate(start.getDate() + 6); // Sunday
+  return {
+    start: start.toISOString().split("T")[0],
+    end: end.toISOString().split("T")[0],
+  };
 }
 
 export default function WeeklyReport() {
@@ -35,13 +38,19 @@ export default function WeeklyReport() {
   const projectId = currentProjectId ?? 0;
   const reportRef = useRef<HTMLDivElement>(null);
 
+  const defaultPeriod = getDefaultPeriod();
+  const [periodStart, setPeriodStart] = useState(defaultPeriod.start);
+  const [periodEnd, setPeriodEnd] = useState(defaultPeriod.end);
   const [reportTitle, setReportTitle] = useState("Weekly Status Report");
   const [preparedBy, setPreparedBy] = useState("");
   const [highlights, setHighlights] = useState("");
-  const [risks, setRisks] = useState("");
+  const [risksText, setRisksText] = useState("");
   const [nextSteps, setNextSteps] = useState("");
 
-  const { data, isLoading } = trpc.traceability.weeklyReportData.useQuery({ projectId }, { enabled: !!projectId });
+  const { data, isLoading } = trpc.traceability.weeklyReportData.useQuery(
+    { projectId, periodStart, periodEnd },
+    { enabled: !!projectId }
+  );
 
   const handlePrint = () => {
     window.print();
@@ -93,7 +102,7 @@ export default function WeeklyReport() {
   if (isLoading) return <div className="p-6 text-center text-muted-foreground">Loading report data...</div>;
   if (!data) return <div className="p-6 text-center text-muted-foreground">No data available. Please select a project.</div>;
 
-  const { summary, tasksByStatus, issuesByStatus, issuesByPriority, reqsByStatus, testsByStatus, crsByStatus, overdueTasks, highPriorityOpenIssues, recentDecisions, pendingCRs } = data;
+  const { summary, tasksByStatus, issuesByStatus, issuesByPriority, reqsByStatus, testsByStatus, crsByStatus, overdueTasks, highPriorityOpenIssues, recentDecisions, pendingCRs, tasksByResponsible, issuesByOwner, taskStatusByResponsible, riskScoreBreakdown, tasksInPeriod, issuesNeedingResolution, requirementsInPeriod } = data;
 
   const statusColor = (s: string) => {
     const l = s.toLowerCase();
@@ -129,13 +138,21 @@ export default function WeeklyReport() {
 
       {/* Report Customization */}
       <Card>
-        <CardHeader><CardTitle className="text-base">Report Settings</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base flex items-center gap-2"><Calendar className="w-4 h-4" /> Report Settings & Period</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1"><Label>Report Title</Label><Input value={reportTitle} onChange={(e) => setReportTitle(e.target.value)} /></div>
           <div className="space-y-1"><Label>Prepared By</Label><Input value={preparedBy} onChange={(e) => setPreparedBy(e.target.value)} placeholder="Your name / role" /></div>
-          <div className="space-y-1 md:col-span-2"><Label>Key Highlights / Accomplishments this week</Label><Textarea value={highlights} onChange={(e) => setHighlights(e.target.value)} placeholder="e.g., Completed UAT for Module X, resolved 5 critical issues..." rows={2} /></div>
-          <div className="space-y-1"><Label>Risks & Blockers</Label><Textarea value={risks} onChange={(e) => setRisks(e.target.value)} placeholder="e.g., Dependency on SAP transport approval pending..." rows={2} /></div>
-          <div className="space-y-1"><Label>Next Week's Plan</Label><Textarea value={nextSteps} onChange={(e) => setNextSteps(e.target.value)} placeholder="e.g., Begin SIT for Module Y, review open CRs..." rows={2} /></div>
+          <div className="space-y-1">
+            <Label>Report Period — Start Date</Label>
+            <Input type="date" value={periodStart} onChange={(e) => setPeriodStart(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label>Report Period — End Date</Label>
+            <Input type="date" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} />
+          </div>
+          <div className="space-y-1 md:col-span-2"><Label>Key Highlights / Accomplishments</Label><Textarea value={highlights} onChange={(e) => setHighlights(e.target.value)} placeholder="e.g., Completed UAT for Module X, resolved 5 critical issues..." rows={2} /></div>
+          <div className="space-y-1"><Label>Risks & Blockers</Label><Textarea value={risksText} onChange={(e) => setRisksText(e.target.value)} placeholder="e.g., Dependency on SAP transport approval pending..." rows={2} /></div>
+          <div className="space-y-1"><Label>Next Period's Plan</Label><Textarea value={nextSteps} onChange={(e) => setNextSteps(e.target.value)} placeholder="e.g., Begin SIT for Module Y, review open CRs..." rows={2} /></div>
         </CardContent>
       </Card>
 
@@ -148,20 +165,20 @@ export default function WeeklyReport() {
             <h1 style={{ color: "#0f4c75", fontSize: "22px", margin: "0 0 4px 0" }}>{reportTitle}</h1>
             <div style={{ color: "#555", fontSize: "12px" }}>
               <strong>Project:</strong> Project #{currentProjectId ?? "—"} &nbsp;|&nbsp;
-              <strong>Period:</strong> {weekRange()} &nbsp;|&nbsp;
-              <strong>Date:</strong> {today()}
+              <strong>Period:</strong> {formatDate(periodStart)} – {formatDate(periodEnd)} &nbsp;|&nbsp;
+              <strong>Date:</strong> {todayStr()}
               {preparedBy && <>&nbsp;|&nbsp;<strong>Prepared by:</strong> {preparedBy}</>}
             </div>
           </div>
 
-          {/* KPI Summary */}
+          {/* 1. Executive Summary KPIs */}
           <h2 style={{ color: "#0f4c75", fontSize: "15px", borderBottom: "2px solid #0f4c75", paddingBottom: "4px", marginTop: "0" }}>1. Executive Summary</h2>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px", margin: "16px 0" }}>
             {[
               { value: summary.totalRequirements, label: "Requirements", icon: "📋" },
               { value: summary.totalTasks, label: "Total Tasks", icon: "✅" },
               { value: summary.totalIssues, label: "Total Issues", icon: "🐛" },
-              { value: summary.totalTestCases, label: "Test Cases", icon: "🧪" },
+              { value: summary.totalRisks ?? 0, label: "Total Risks", icon: "⚡" },
               { value: summary.overdueTasks, label: "Overdue Tasks", icon: "⚠️", highlight: summary.overdueTasks > 0 },
               { value: summary.highPriorityOpenIssues, label: "High Priority Issues", icon: "🔴", highlight: summary.highPriorityOpenIssues > 0 },
               { value: summary.testPassRate + "%", label: "Test Pass Rate", icon: "📊" },
@@ -174,6 +191,7 @@ export default function WeeklyReport() {
             ))}
           </div>
 
+          {/* 2. Key Highlights */}
           {highlights && (
             <>
               <h2 style={{ color: "#0f4c75", fontSize: "15px", borderBottom: "2px solid #0f4c75", paddingBottom: "4px", marginTop: "28px" }}>2. Key Highlights</h2>
@@ -181,8 +199,28 @@ export default function WeeklyReport() {
             </>
           )}
 
-          {/* Task Status */}
-          <h2 style={{ color: "#0f4c75", fontSize: "15px", borderBottom: "2px solid #0f4c75", paddingBottom: "4px", marginTop: "28px" }}>{highlights ? "3" : "2"}. Task Status Breakdown</h2>
+          {/* 3. Tasks in Period */}
+          <h2 style={{ color: "#0f4c75", fontSize: "15px", borderBottom: "2px solid #0f4c75", paddingBottom: "4px", marginTop: "28px" }}>3. Tasks Due in Period ({tasksInPeriod?.length ?? 0})</h2>
+          {tasksInPeriod && tasksInPeriod.length > 0 ? (
+            <table style={{ width: "100%", borderCollapse: "collapse", margin: "12px 0", fontSize: "12px" }}>
+              <thead><tr>{["Task ID", "Description", "Due Date", "Status", "Responsible", "Priority"].map((h) => <th key={h} style={{ background: "#0f4c75", color: "white", padding: "8px 10px", textAlign: "left" }}>{h}</th>)}</tr></thead>
+              <tbody>
+                {tasksInPeriod.map((t, i) => (
+                  <tr key={t.taskId}>
+                    <td style={{ padding: "7px 10px", borderBottom: "1px solid #e5e7eb", background: i % 2 === 0 ? "white" : "#f9fafb", fontFamily: "monospace", fontWeight: "bold", color: "#0f4c75" }}>{t.taskId}</td>
+                    <td style={{ padding: "7px 10px", borderBottom: "1px solid #e5e7eb", background: i % 2 === 0 ? "white" : "#f9fafb" }}>{t.description?.slice(0, 60)}</td>
+                    <td style={{ padding: "7px 10px", borderBottom: "1px solid #e5e7eb", background: i % 2 === 0 ? "white" : "#f9fafb" }}>{t.dueDate ?? "—"}</td>
+                    <td style={{ padding: "7px 10px", borderBottom: "1px solid #e5e7eb", background: i % 2 === 0 ? "white" : "#f9fafb" }}>{t.status ?? "—"}</td>
+                    <td style={{ padding: "7px 10px", borderBottom: "1px solid #e5e7eb", background: i % 2 === 0 ? "white" : "#f9fafb" }}>{t.responsible ?? "—"}</td>
+                    <td style={{ padding: "7px 10px", borderBottom: "1px solid #e5e7eb", background: i % 2 === 0 ? "white" : "#f9fafb" }}>{t.priority ?? "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : <p style={{ color: "#888", fontSize: "12px", margin: "8px 0" }}>No tasks due in this period.</p>}
+
+          {/* 4. Task Status Breakdown */}
+          <h2 style={{ color: "#0f4c75", fontSize: "15px", borderBottom: "2px solid #0f4c75", paddingBottom: "4px", marginTop: "28px" }}>4. Overall Task Status Breakdown</h2>
           <table style={{ width: "100%", borderCollapse: "collapse", margin: "12px 0", fontSize: "12px" }}>
             <thead><tr>{["Status", "Count", "% of Total"].map((h) => <th key={h} style={{ background: "#0f4c75", color: "white", padding: "8px 10px", textAlign: "left" }}>{h}</th>)}</tr></thead>
             <tbody>
@@ -192,10 +230,126 @@ export default function WeeklyReport() {
             </tbody>
           </table>
 
-          {/* Overdue Tasks */}
+          {/* 5. Task Status per Responsible */}
+          {taskStatusByResponsible && Object.keys(taskStatusByResponsible).length > 0 && (
+            <>
+              <h2 style={{ color: "#0f4c75", fontSize: "15px", borderBottom: "2px solid #0f4c75", paddingBottom: "4px", marginTop: "28px" }}>5. Task Status per Responsible</h2>
+              <table style={{ width: "100%", borderCollapse: "collapse", margin: "12px 0", fontSize: "12px" }}>
+                <thead>
+                  <tr>
+                    <th style={{ background: "#0f4c75", color: "white", padding: "8px 10px", textAlign: "left" }}>Responsible</th>
+                    {Array.from(new Set(Object.values(taskStatusByResponsible).flatMap(s => Object.keys(s)))).map(status => (
+                      <th key={status} style={{ background: "#0f4c75", color: "white", padding: "8px 10px", textAlign: "center" }}>{status}</th>
+                    ))}
+                    <th style={{ background: "#0f4c75", color: "white", padding: "8px 10px", textAlign: "center" }}>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(taskStatusByResponsible).map(([resp, statuses], i) => {
+                    const allStatuses = Array.from(new Set(Object.values(taskStatusByResponsible).flatMap(s => Object.keys(s))));
+                    const total = Object.values(statuses).reduce((a, b) => a + b, 0);
+                    return (
+                      <tr key={resp}>
+                        <td style={{ padding: "7px 10px", borderBottom: "1px solid #e5e7eb", background: i % 2 === 0 ? "white" : "#f9fafb", fontWeight: "bold" }}>{resp}</td>
+                        {allStatuses.map(status => (
+                          <td key={status} style={{ padding: "7px 10px", borderBottom: "1px solid #e5e7eb", background: i % 2 === 0 ? "white" : "#f9fafb", textAlign: "center" }}>{statuses[status] ?? 0}</td>
+                        ))}
+                        <td style={{ padding: "7px 10px", borderBottom: "1px solid #e5e7eb", background: i % 2 === 0 ? "white" : "#f9fafb", textAlign: "center", fontWeight: "bold" }}>{total}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </>
+          )}
+
+          {/* 6. Issues Needing Resolution in Period */}
+          <h2 style={{ color: "#d97706", fontSize: "15px", borderBottom: "2px solid #d97706", paddingBottom: "4px", marginTop: "28px" }}>6. Issues Requiring Resolution in Period ({issuesNeedingResolution?.length ?? 0})</h2>
+          {issuesNeedingResolution && issuesNeedingResolution.length > 0 ? (
+            <table style={{ width: "100%", borderCollapse: "collapse", margin: "12px 0", fontSize: "12px" }}>
+              <thead><tr>{["Issue ID", "Description", "Resolution Date", "Priority", "Status", "Owner"].map((h) => <th key={h} style={{ background: "#d97706", color: "white", padding: "8px 10px", textAlign: "left" }}>{h}</th>)}</tr></thead>
+              <tbody>
+                {issuesNeedingResolution.map((i, idx) => (
+                  <tr key={i.issueId}>
+                    <td style={{ padding: "7px 10px", borderBottom: "1px solid #e5e7eb", background: idx % 2 === 0 ? "white" : "#fffbeb", fontFamily: "monospace", fontWeight: "bold", color: "#d97706" }}>{i.issueId}</td>
+                    <td style={{ padding: "7px 10px", borderBottom: "1px solid #e5e7eb", background: idx % 2 === 0 ? "white" : "#fffbeb" }}>{i.description?.slice(0, 60)}</td>
+                    <td style={{ padding: "7px 10px", borderBottom: "1px solid #e5e7eb", background: idx % 2 === 0 ? "white" : "#fffbeb", fontWeight: "bold", color: "#dc2626" }}>{i.resolutionDate ?? "—"}</td>
+                    <td style={{ padding: "7px 10px", borderBottom: "1px solid #e5e7eb", background: idx % 2 === 0 ? "white" : "#fffbeb" }}>{i.priority ?? "—"}</td>
+                    <td style={{ padding: "7px 10px", borderBottom: "1px solid #e5e7eb", background: idx % 2 === 0 ? "white" : "#fffbeb" }}>{i.status ?? "—"}</td>
+                    <td style={{ padding: "7px 10px", borderBottom: "1px solid #e5e7eb", background: idx % 2 === 0 ? "white" : "#fffbeb" }}>{i.owner ?? "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : <p style={{ color: "#888", fontSize: "12px", margin: "8px 0" }}>No issues requiring resolution in this period.</p>}
+
+          {/* 7. High Priority Open Issues */}
+          {highPriorityOpenIssues.length > 0 && (
+            <>
+              <h2 style={{ color: "#dc2626", fontSize: "15px", borderBottom: "2px solid #dc2626", paddingBottom: "4px", marginTop: "28px" }}>7. High Priority Open Issues ({highPriorityOpenIssues.length})</h2>
+              <table style={{ width: "100%", borderCollapse: "collapse", margin: "12px 0", fontSize: "12px" }}>
+                <thead><tr>{["Issue ID", "Description", "Priority", "Status", "Owner"].map((h) => <th key={h} style={{ background: "#dc2626", color: "white", padding: "8px 10px", textAlign: "left" }}>{h}</th>)}</tr></thead>
+                <tbody>
+                  {highPriorityOpenIssues.map((i, idx) => (
+                    <tr key={i.issueId}><td style={{ padding: "7px 10px", borderBottom: "1px solid #e5e7eb", background: idx % 2 === 0 ? "white" : "#fef2f2", fontFamily: "monospace", fontWeight: "bold", color: "#dc2626" }}>{i.issueId}</td><td style={{ padding: "7px 10px", borderBottom: "1px solid #e5e7eb", background: idx % 2 === 0 ? "white" : "#fef2f2" }}>{i.description?.slice(0, 60)}</td><td style={{ padding: "7px 10px", borderBottom: "1px solid #e5e7eb", background: idx % 2 === 0 ? "white" : "#fef2f2" }}>{i.priority ?? "—"}</td><td style={{ padding: "7px 10px", borderBottom: "1px solid #e5e7eb", background: idx % 2 === 0 ? "white" : "#fef2f2" }}>{i.status ?? "—"}</td><td style={{ padding: "7px 10px", borderBottom: "1px solid #e5e7eb", background: idx % 2 === 0 ? "white" : "#fef2f2" }}>{i.owner ?? "—"}</td></tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          )}
+
+          {/* 8. Issue per Owner */}
+          {issuesByOwner && Object.keys(issuesByOwner).length > 0 && (
+            <>
+              <h2 style={{ color: "#d97706", fontSize: "15px", borderBottom: "2px solid #d97706", paddingBottom: "4px", marginTop: "28px" }}>8. Issues per Owner</h2>
+              <table style={{ width: "100%", borderCollapse: "collapse", margin: "12px 0", fontSize: "12px" }}>
+                <thead><tr>{["Owner", "Issue Count"].map((h) => <th key={h} style={{ background: "#d97706", color: "white", padding: "8px 10px", textAlign: "left" }}>{h}</th>)}</tr></thead>
+                <tbody>
+                  {Object.entries(issuesByOwner).sort((a, b) => b[1] - a[1]).map(([owner, count], i) => (
+                    <tr key={owner}><td style={{ padding: "7px 10px", borderBottom: "1px solid #e5e7eb", background: i % 2 === 0 ? "white" : "#fffbeb" }}>{owner}</td><td style={{ padding: "7px 10px", borderBottom: "1px solid #e5e7eb", background: i % 2 === 0 ? "white" : "#fffbeb", fontWeight: "bold" }}>{count}</td></tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          )}
+
+          {/* 9. Requirements Gathered in Period */}
+          <h2 style={{ color: "#0f766e", fontSize: "15px", borderBottom: "2px solid #0f766e", paddingBottom: "4px", marginTop: "28px" }}>9. Requirements Gathered in Period ({requirementsInPeriod?.length ?? 0})</h2>
+          {requirementsInPeriod && requirementsInPeriod.length > 0 ? (
+            <table style={{ width: "100%", borderCollapse: "collapse", margin: "12px 0", fontSize: "12px" }}>
+              <thead><tr>{["Req ID", "Description", "Status", "Priority", "Owner"].map((h) => <th key={h} style={{ background: "#0f766e", color: "white", padding: "8px 10px", textAlign: "left" }}>{h}</th>)}</tr></thead>
+              <tbody>
+                {requirementsInPeriod.map((r, i) => (
+                  <tr key={r.idCode}><td style={{ padding: "7px 10px", borderBottom: "1px solid #e5e7eb", background: i % 2 === 0 ? "white" : "#f0fdfa", fontFamily: "monospace", fontWeight: "bold", color: "#0f766e" }}>{r.idCode}</td><td style={{ padding: "7px 10px", borderBottom: "1px solid #e5e7eb", background: i % 2 === 0 ? "white" : "#f0fdfa" }}>{(r.description ?? "")?.slice(0, 70)}</td><td style={{ padding: "7px 10px", borderBottom: "1px solid #e5e7eb", background: i % 2 === 0 ? "white" : "#f0fdfa" }}>{r.status ?? "—"}</td><td style={{ padding: "7px 10px", borderBottom: "1px solid #e5e7eb", background: i % 2 === 0 ? "white" : "#f0fdfa" }}>{r.priority ?? "—"}</td><td style={{ padding: "7px 10px", borderBottom: "1px solid #e5e7eb", background: i % 2 === 0 ? "white" : "#f0fdfa" }}>{r.owner ?? "—"}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          ) : <p style={{ color: "#888", fontSize: "12px", margin: "8px 0" }}>No requirements gathered in this period.</p>}
+
+          {/* 10. Risk Status */}
+          {riskScoreBreakdown && (
+            <>
+              <h2 style={{ color: "#7c3aed", fontSize: "15px", borderBottom: "2px solid #7c3aed", paddingBottom: "4px", marginTop: "28px" }}>10. Risk Status Overview (Total: {summary.totalRisks ?? 0})</h2>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px", margin: "12px 0" }}>
+                {[
+                  { label: "Critical (≥20)", value: riskScoreBreakdown.critical, color: "#dc2626", bg: "#fee2e2" },
+                  { label: "High (12–19)", value: riskScoreBreakdown.high, color: "#d97706", bg: "#fef3c7" },
+                  { label: "Medium (6–11)", value: riskScoreBreakdown.medium, color: "#2563eb", bg: "#dbeafe" },
+                  { label: "Low (<6)", value: riskScoreBreakdown.low, color: "#16a34a", bg: "#dcfce7" },
+                ].map((r) => (
+                  <div key={r.label} style={{ background: r.bg, border: `1px solid ${r.color}40`, borderRadius: "8px", padding: "12px", textAlign: "center" }}>
+                    <div style={{ fontSize: "28px", fontWeight: "bold", color: r.color }}>{r.value}</div>
+                    <div style={{ fontSize: "11px", color: "#555", marginTop: "4px" }}>{r.label}</div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* 11. Overdue Tasks */}
           {overdueTasks.length > 0 && (
             <>
-              <h2 style={{ color: "#dc2626", fontSize: "15px", borderBottom: "2px solid #dc2626", paddingBottom: "4px", marginTop: "28px" }}>⚠️ Overdue Tasks ({overdueTasks.length})</h2>
+              <h2 style={{ color: "#dc2626", fontSize: "15px", borderBottom: "2px solid #dc2626", paddingBottom: "4px", marginTop: "28px" }}>11. Overdue Tasks ({overdueTasks.length})</h2>
               <table style={{ width: "100%", borderCollapse: "collapse", margin: "12px 0", fontSize: "12px" }}>
                 <thead><tr>{["Task ID", "Description", "Due Date", "Status", "Responsible"].map((h) => <th key={h} style={{ background: "#dc2626", color: "white", padding: "8px 10px", textAlign: "left" }}>{h}</th>)}</tr></thead>
                 <tbody>
@@ -207,25 +361,10 @@ export default function WeeklyReport() {
             </>
           )}
 
-          {/* Issues */}
-          {highPriorityOpenIssues.length > 0 && (
-            <>
-              <h2 style={{ color: "#d97706", fontSize: "15px", borderBottom: "2px solid #d97706", paddingBottom: "4px", marginTop: "28px" }}>🔴 High Priority Open Issues ({highPriorityOpenIssues.length})</h2>
-              <table style={{ width: "100%", borderCollapse: "collapse", margin: "12px 0", fontSize: "12px" }}>
-                <thead><tr>{["Issue ID", "Description", "Priority", "Status", "Owner"].map((h) => <th key={h} style={{ background: "#d97706", color: "white", padding: "8px 10px", textAlign: "left" }}>{h}</th>)}</tr></thead>
-                <tbody>
-                  {highPriorityOpenIssues.map((i, idx) => (
-                    <tr key={i.issueId}><td style={{ padding: "7px 10px", borderBottom: "1px solid #e5e7eb", background: idx % 2 === 0 ? "white" : "#fffbeb", fontFamily: "monospace", fontWeight: "bold", color: "#d97706" }}>{i.issueId}</td><td style={{ padding: "7px 10px", borderBottom: "1px solid #e5e7eb", background: idx % 2 === 0 ? "white" : "#fffbeb" }}>{i.description?.slice(0, 60)}</td><td style={{ padding: "7px 10px", borderBottom: "1px solid #e5e7eb", background: idx % 2 === 0 ? "white" : "#fffbeb" }}>{i.priority ?? "—"}</td><td style={{ padding: "7px 10px", borderBottom: "1px solid #e5e7eb", background: idx % 2 === 0 ? "white" : "#fffbeb" }}>{i.status ?? "—"}</td><td style={{ padding: "7px 10px", borderBottom: "1px solid #e5e7eb", background: idx % 2 === 0 ? "white" : "#fffbeb" }}>{i.owner ?? "—"}</td></tr>
-                  ))}
-                </tbody>
-              </table>
-            </>
-          )}
-
-          {/* Pending CRs */}
+          {/* 12. Pending CRs */}
           {pendingCRs.length > 0 && (
             <>
-              <h2 style={{ color: "#7c3aed", fontSize: "15px", borderBottom: "2px solid #7c3aed", paddingBottom: "4px", marginTop: "28px" }}>🔄 Pending Change Requests ({pendingCRs.length})</h2>
+              <h2 style={{ color: "#7c3aed", fontSize: "15px", borderBottom: "2px solid #7c3aed", paddingBottom: "4px", marginTop: "28px" }}>12. Pending Change Requests ({pendingCRs.length})</h2>
               <table style={{ width: "100%", borderCollapse: "collapse", margin: "12px 0", fontSize: "12px" }}>
                 <thead><tr>{["CR ID", "Title", "Priority", "Status", "Requested By"].map((h) => <th key={h} style={{ background: "#7c3aed", color: "white", padding: "8px 10px", textAlign: "left" }}>{h}</th>)}</tr></thead>
                 <tbody>
@@ -237,10 +376,10 @@ export default function WeeklyReport() {
             </>
           )}
 
-          {/* Recent Decisions */}
+          {/* 13. Recent Decisions */}
           {recentDecisions.length > 0 && (
             <>
-              <h2 style={{ color: "#0f766e", fontSize: "15px", borderBottom: "2px solid #0f766e", paddingBottom: "4px", marginTop: "28px" }}>📋 Recent Decisions</h2>
+              <h2 style={{ color: "#0f766e", fontSize: "15px", borderBottom: "2px solid #0f766e", paddingBottom: "4px", marginTop: "28px" }}>13. Recent Decisions</h2>
               <table style={{ width: "100%", borderCollapse: "collapse", margin: "12px 0", fontSize: "12px" }}>
                 <thead><tr>{["Decision ID", "Title", "Date", "Status", "Decided By"].map((h) => <th key={h} style={{ background: "#0f766e", color: "white", padding: "8px 10px", textAlign: "left" }}>{h}</th>)}</tr></thead>
                 <tbody>
@@ -252,23 +391,23 @@ export default function WeeklyReport() {
             </>
           )}
 
-          {risks && (
+          {risksText && (
             <>
-              <h2 style={{ color: "#dc2626", fontSize: "15px", borderBottom: "2px solid #dc2626", paddingBottom: "4px", marginTop: "28px" }}>⚠️ Risks & Blockers</h2>
-              <div style={{ background: "#fff1f2", borderLeft: "4px solid #dc2626", padding: "12px 16px", borderRadius: "4px", margin: "8px 0", whiteSpace: "pre-wrap" }}>{risks}</div>
+              <h2 style={{ color: "#dc2626", fontSize: "15px", borderBottom: "2px solid #dc2626", paddingBottom: "4px", marginTop: "28px" }}>14. Risks & Blockers</h2>
+              <div style={{ background: "#fff1f2", borderLeft: "4px solid #dc2626", padding: "12px 16px", borderRadius: "4px", margin: "8px 0", whiteSpace: "pre-wrap" }}>{risksText}</div>
             </>
           )}
 
           {nextSteps && (
             <>
-              <h2 style={{ color: "#0f4c75", fontSize: "15px", borderBottom: "2px solid #0f4c75", paddingBottom: "4px", marginTop: "28px" }}>🎯 Next Week's Plan</h2>
+              <h2 style={{ color: "#0f4c75", fontSize: "15px", borderBottom: "2px solid #0f4c75", paddingBottom: "4px", marginTop: "28px" }}>15. Next Period's Plan</h2>
               <div style={{ background: "#f0f7ff", borderLeft: "4px solid #0f4c75", padding: "12px 16px", borderRadius: "4px", margin: "8px 0", whiteSpace: "pre-wrap" }}>{nextSteps}</div>
             </>
           )}
 
           {/* Footer */}
           <div style={{ marginTop: "40px", borderTop: "1px solid #e5e7eb", paddingTop: "12px", color: "#888", fontSize: "11px" }}>
-            Generated by Project Management SSOT &nbsp;|&nbsp; {today()} &nbsp;|&nbsp; {preparedBy || "Project Manager"}
+            Generated by Project Management SSOT &nbsp;|&nbsp; {todayStr()} &nbsp;|&nbsp; {preparedBy || "Project Manager"}
           </div>
         </div>
       </div>

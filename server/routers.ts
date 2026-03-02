@@ -735,6 +735,7 @@ export const appRouter = router({
         d2Status: z.string().optional(),
         lastUpdate: z.string().optional(),
         updateDate: z.string().optional(),
+        resolutionDate: z.string().optional(),
       }))
       .mutation(async ({ input }) => {
         try {
@@ -746,7 +747,7 @@ export const appRouter = router({
               cleanedInput[key] = value;
             }
           });
-          
+
           // Generate auto ID
           const issueId = await db.getNextId('issue', 'I', input.projectId);
           await db.createIssue({ ...cleanedInput, issueId });
@@ -788,6 +789,21 @@ export const appRouter = router({
           d2Status: z.string().optional(),
           lastUpdate: z.string().optional(),
           updateDate: z.string().optional(),
+          resolutionDate: z.string().optional(),
+          description: z.string().optional(),
+          owner: z.string().optional(),
+          ownerId: z.number().optional(),
+          issueGroup: z.string().optional(),
+          taskGroup: z.string().optional(),
+          requirementId: z.string().optional(),
+          type: z.string().optional(),
+          class: z.string().optional(),
+          sourceType: z.string().optional(),
+          refSource: z.string().optional(),
+          openDate: z.string().optional(),
+          deliverableId: z.number().optional(),
+          taskId: z.string().optional(),
+          knowledgeBaseCode: z.string().optional(),
         }),
       }))
       .mutation(async ({ input, ctx }) => {
@@ -797,7 +813,7 @@ export const appRouter = router({
         }
 
         const changedFields: Record<string, { oldValue: any; newValue: any }> = {};
-        const trackFields = ['status', 'priority', 'deliverables1', 'd1Status', 'deliverables2', 'd2Status', 'lastUpdate', 'updateDate'];
+        const trackFields = ['status', 'priority', 'deliverables1', 'd1Status', 'deliverables2', 'd2Status', 'lastUpdate', 'updateDate', 'resolutionDate', 'description', 'owner', 'openDate'];
         
         for (const field of trackFields) {
           if (input.data[field as keyof typeof input.data] !== undefined && 
