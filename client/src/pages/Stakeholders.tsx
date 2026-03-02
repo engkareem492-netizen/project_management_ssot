@@ -2,8 +2,10 @@ import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useProject } from "@/contexts/ProjectContext";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -34,6 +36,7 @@ import { toast } from "sonner";
 import { Plus, Trash2, Pencil, Search, Users, Mail, Phone, Briefcase } from "lucide-react";
 
 export default function Stakeholders() {
+  const { currentProjectId } = useProject();
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -51,10 +54,7 @@ export default function Stakeholders() {
   });
 
   const utils = trpc.useUtils();
-  const { data: stakeholders, isLoading } = trpc.stakeholders.list.useQuery();
-  const { currentProjectId } = useProject();
-  
-  const createMutation = trpc.stakeholders.create.useMutation({
+  const { data: stakeholders, isLoading } = trpc.stakeholders.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });  const createMutation = trpc.stakeholders.create.useMutation({
     onSuccess: () => {
       utils.stakeholders.list.invalidate();
       setIsCreateOpen(false);
@@ -169,23 +169,25 @@ export default function Stakeholders() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 p-6">
+      {/* Page Header */}
+      <div className="bg-white border border-gray-200 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <Users className="h-6 w-6" />
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <Users className="w-6 h-6 text-gray-500" />
             Stakeholder Register
           </h1>
-          <p className="text-muted-foreground mt-1">
-            Manage project stakeholders for Owner, Responsible, Accountable, Informed, and Consulted roles
-          </p>
+          <p className="text-gray-500 text-sm mt-1">Manage project stakeholders for Owner, Responsible, Accountable, Informed, and Consulted roles</p>
         </div>
-        <Button onClick={() => setIsCreateOpen(true)} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Add Stakeholder
-        </Button>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-violet-700 border-violet-300">{stakeholders?.length || 0} Stakeholders</Badge>
+          <Button onClick={() => setIsCreateOpen(true)} className="bg-gray-900 hover:bg-gray-800 text-white gap-2">
+            <Plus className="h-4 w-4" />Add Stakeholder
+          </Button>
+        </div>
       </div>
+      <Card className="border-violet-100">
+        <CardContent className="pt-6">
 
       {/* Search */}
       <div className="relative max-w-md">
@@ -468,6 +470,8 @@ export default function Stakeholders() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+        </CardContent>
+      </Card>
     </div>
   );
 }

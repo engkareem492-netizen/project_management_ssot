@@ -1,11 +1,107 @@
+import { useState } from "react";
 import { trpc } from "@/lib/trpc";
+import { useProject } from "@/contexts/ProjectContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, GitBranch, FileText, CheckSquare, AlertCircle } from "lucide-react";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Loader2, GitBranch, FileText, CheckSquare, AlertCircle, Users, ExternalLink, Filter, X } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function Relationships() {
-  const { data: relationships, isLoading } = trpc.relationships.getAll.useQuery();
+  const { currentProjectId } = useProject();
+  const { data: relationships, isLoading } = trpc.relationships.getAll.useQuery(
+    { projectId: currentProjectId || undefined },
+    { enabled: !!currentProjectId }
+  );
+  const { data: stakeholders } = trpc.stakeholders.list.useQuery(
+    { projectId: currentProjectId || 0 },
+    { enabled: !!currentProjectId }
+  );
+  const { data: deliverables } = trpc.deliverables.list.useQuery(
+    { projectId: currentProjectId || 0 },
+    { enabled: !!currentProjectId }
+  );
+
+  const [selectedRequirement, setSelectedRequirement] = useState<any>(null);
+  const [selectedTask, setSelectedTask] = useState<any>(null);
+  const [selectedIssue, setSelectedIssue] = useState<any>(null);
+  const [showRequirementDialog, setShowRequirementDialog] = useState(false);
+  const [showTaskDialog, setShowTaskDialog] = useState(false);
+  const [showIssueDialog, setShowIssueDialog] = useState(false);
+  
+  // Column widths state
+  const [columnWidths, setColumnWidths] = useState({ requirement: 25, task: 35, issue: 35 });
+  
+  // Filter states
+  const [requirementOwnerFilter, setRequirementOwnerFilter] = useState<string>("ALL");
+  const [taskResponsibleFilter, setTaskResponsibleFilter] = useState<string>("ALL");
+  const [issueOwnerFilter, setIssueOwnerFilter] = useState<string>("ALL");
+
+  // Flatten relationships into table rows
+  const tableRows: any[] = [];
+  relationships?.forEach((rel) => {
+    if (rel.tasks.length === 0 && rel.issues.length === 0) {
+      // Requirement with no tasks or issues
+      tableRows.push({
+        requirement: rel.requirement,
+        task: null,
+        issue: null,
+      });
+    } else {
+      // Create rows for each task-issue combination
+      const maxLength = Math.max(rel.tasks.length, rel.issues.length);
+      for (let i = 0; i < maxLength; i++) {
+        tableRows.push({
+          requirement: rel.requirement, // Repeat requirement in all rows
+          task: rel.tasks[i] || null,
+          issue: rel.issues[i] || null,
+        });
+      }
+    }
+  });
+
+  // Apply filters
+  const filteredRows = tableRows.filter((row) => {
+    if (requirementOwnerFilter !== "ALL" && row.requirement && row.requirement.owner !== requirementOwnerFilter) {
+      return false;
+    }
+    if (taskResponsibleFilter !== "ALL" && row.task && row.task.responsible !== taskResponsibleFilter) {
+      return false;
+    }
+    if (issueOwnerFilter !== "ALL" && row.issue && row.issue.owner !== issueOwnerFilter) {
+      return false;
+    }
+    return true;
+  });
+
+  // Get unique stakeholder names for filters
+  const uniqueRequirementOwners = Array.from(new Set(
+    relationships?.flatMap(r => r.requirement.owner).filter(Boolean) || []
+  )).sort();
+  const uniqueTaskResponsibles = Array.from(new Set(
+    relationships?.flatMap(r => r.tasks.map(t => t.responsible)).filter(Boolean) || []
+  )).sort();
+  const uniqueIssueOwners = Array.from(new Set(
+    relationships?.flatMap(r => r.issues.map(i => i.owner)).filter(Boolean) || []
+  )).sort();
+
+  const handleRequirementClick = (req: any) => {
+    setSelectedRequirement(req);
+    setShowRequirementDialog(true);
+  };
+
+  const handleTaskClick = (task: any) => {
+    setSelectedTask(task);
+    setShowTaskDialog(true);
+  };
+
+  const handleIssueClick = (issue: any) => {
+    setSelectedIssue(issue);
+    setShowIssueDialog(true);
+  };
 
   if (isLoading) {
     return (
@@ -16,117 +112,196 @@ export default function Relationships() {
   }
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <GitBranch className="w-5 h-5" />
+    <div className="space-y-6 p-6">
+      {/* Page Header */}
+      <div className="bg-white border border-gray-200 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <GitBranch className="w-6 h-6 text-gray-500" />
             Entity Relationships
-          </CardTitle>
-          <CardDescription>
-            Hierarchical view of requirements linked to tasks and issues
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {relationships && relationships.length > 0 ? (
-            <Accordion type="multiple" className="w-full">
-              {relationships.map((rel, index) => (
-                <AccordionItem key={rel.requirement.id} value={`item-${index}`}>
-                  <AccordionTrigger className="hover:no-underline">
-                    <div className="flex items-center gap-4 w-full">
-                      <FileText className="w-4 h-4 text-blue-600" />
-                      <span className="font-mono font-semibold">{rel.requirement.idCode}</span>
-                      <span className="text-sm text-muted-foreground truncate flex-1 text-left">
-                        {rel.requirement.description}
-                      </span>
-                      <div className="flex gap-2">
-                        {rel.tasks.length > 0 && (
-                          <Badge variant="secondary" className="text-xs">
-                            <CheckSquare className="w-3 h-3 mr-1" />
-                            {rel.tasks.length} {rel.tasks.length === 1 ? 'Task' : 'Tasks'}
-                          </Badge>
-                        )}
-                        {rel.issues.length > 0 && (
-                          <Badge variant="destructive" className="text-xs">
-                            <AlertCircle className="w-3 h-3 mr-1" />
-                            {rel.issues.length} {rel.issues.length === 1 ? 'Issue' : 'Issues'}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    <div className="pl-8 space-y-4 pt-4">
-                      {rel.tasks.length > 0 && (
-                        <div>
-                          <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
-                            <CheckSquare className="w-4 h-4 text-green-600" />
-                            Related Tasks
-                          </h4>
-                          <div className="space-y-2">
-                            {rel.tasks.map((task) => (
-                              <Card key={task.id} className="bg-muted/50">
-                                <CardContent className="p-4">
-                                  <div className="flex items-start gap-3">
-                                    <Badge variant="outline" className="font-mono">
-                                      {task.taskId}
-                                    </Badge>
-                                    <div className="flex-1">
-                                      <p className="text-sm">{task.description}</p>
-                                      <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
-                                        <span>Responsible: {task.responsible || 'N/A'}</span>
-                                        <span>Due: {task.dueDate || 'N/A'}</span>
-                                        <span>Status: {task.currentStatus || 'N/A'}</span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </CardContent>
-                              </Card>
-                            ))}
-                          </div>
-                        </div>
-                      )}
+          </h1>
+          <p className="text-gray-500 text-sm mt-1">Table view of requirements linked to tasks and issues. Click on any entity to view details.</p>
+        </div>
+        <Badge variant="outline" className="text-purple-700 border-purple-300">{filteredRows?.length || 0} Relationships</Badge>
+      </div>
+      <Card>
+        <CardContent className="pt-6">
+          {/* Filters */}
+          <div className="flex gap-4 mb-4 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-muted-foreground" />
+              <Label className="text-sm font-medium">Filters:</Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Label className="text-sm">Req. Owner:</Label>
+              <Select value={requirementOwnerFilter} onValueChange={setRequirementOwnerFilter}>
+                <SelectTrigger className="w-[180px] h-8">
+                  <SelectValue placeholder="All" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All</SelectItem>
+                  {uniqueRequirementOwners.map((owner) => (
+                    <SelectItem key={owner as string} value={owner as string}>{owner}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {requirementOwnerFilter !== "ALL" && (
+                <Button size="sm" variant="ghost" onClick={() => setRequirementOwnerFilter("ALL")} className="h-6 w-6 p-0">
+                  <X className="w-3 h-3" />
+                </Button>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Label className="text-sm">Task Responsible:</Label>
+              <Select value={taskResponsibleFilter} onValueChange={setTaskResponsibleFilter}>
+                <SelectTrigger className="w-[180px] h-8">
+                  <SelectValue placeholder="All" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All</SelectItem>
+                  {uniqueTaskResponsibles.map((responsible) => (
+                    <SelectItem key={responsible as string} value={responsible as string}>{responsible}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {taskResponsibleFilter !== "ALL" && (
+                <Button size="sm" variant="ghost" onClick={() => setTaskResponsibleFilter("ALL")} className="h-6 w-6 p-0">
+                  <X className="w-3 h-3" />
+                </Button>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Label className="text-sm">Issue Owner:</Label>
+              <Select value={issueOwnerFilter} onValueChange={setIssueOwnerFilter}>
+                <SelectTrigger className="w-[180px] h-8">
+                  <SelectValue placeholder="All" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All</SelectItem>
+                  {uniqueIssueOwners.map((owner) => (
+                    <SelectItem key={owner as string} value={owner as string}>{owner}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {issueOwnerFilter !== "ALL" && (
+                <Button size="sm" variant="ghost" onClick={() => setIssueOwnerFilter("ALL")} className="h-6 w-6 p-0">
+                  <X className="w-3 h-3" />
+                </Button>
+              )}
+            </div>
+          </div>
 
-                      {rel.issues.length > 0 && (
-                        <div>
-                          <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
-                            <AlertCircle className="w-4 h-4 text-red-600" />
-                            Related Issues
-                          </h4>
-                          <div className="space-y-2">
-                            {rel.issues.map((issue) => (
-                              <Card key={issue.id} className="bg-muted/50">
-                                <CardContent className="p-4">
-                                  <div className="flex items-start gap-3">
-                                    <Badge variant="outline" className="font-mono">
-                                      {issue.issueId}
-                                    </Badge>
-                                    <div className="flex-1">
-                                      <p className="text-sm">{issue.description}</p>
-                                      <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
-                                        <span>Owner: {issue.owner || 'N/A'}</span>
-                                        <span>Priority: {issue.priority || 'N/A'}</span>
-                                        <span>Status: {issue.status || 'N/A'}</span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </CardContent>
-                              </Card>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {rel.tasks.length === 0 && rel.issues.length === 0 && (
-                        <p className="text-sm text-muted-foreground">
-                          No tasks or issues linked to this requirement
-                        </p>
-                      )}
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
+          {tableRows.length > 0 ? (
+            <div className="border rounded-lg overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[25%]">Requirement</TableHead>
+                    <TableHead className="w-[35%]">Task</TableHead>
+                    <TableHead className="w-[35%]">Issue</TableHead>
+                    <TableHead className="w-[5%]"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredRows.map((row, index) => (
+                    <TableRow key={index} className="hover:bg-muted/50">
+                      <TableCell>
+                        {row.requirement && (
+                          <Button
+                            variant="ghost"
+                            className="h-auto p-2 w-full justify-start text-left"
+                            onClick={() => handleRequirementClick(row.requirement)}
+                          >
+                            <div className="flex flex-col gap-1 w-full">
+                              <div className="flex items-center gap-2">
+                                <FileText className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                                <span className="font-mono font-semibold text-sm">{row.requirement.idCode}</span>
+                              </div>
+                              <p className="text-xs text-muted-foreground line-clamp-2">
+                                {row.requirement.description}
+                              </p>
+                              {row.requirement.owner && (
+                                <p className="text-xs text-muted-foreground">
+                                  <span className="font-medium">Owner:</span> {row.requirement.owner}
+                                </p>
+                              )}
+                              {row.requirement.linkedDeliverables && row.requirement.linkedDeliverables.length > 0 && (
+                                <p className="text-xs text-muted-foreground">
+                                  <span className="font-medium">Deliverable:</span> {row.requirement.linkedDeliverables.map((d: any) => d.deliverableId).join(', ')}
+                                </p>
+                              )}
+                            </div>
+                          </Button>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {row.task && (
+                          <Button
+                            variant="ghost"
+                            className="h-auto p-2 w-full justify-start text-left"
+                            onClick={() => handleTaskClick(row.task)}
+                          >
+                            <div className="flex flex-col gap-1 w-full">
+                              <div className="flex items-center gap-2">
+                                <CheckSquare className="w-4 h-4 text-green-600 flex-shrink-0" />
+                                <span className="font-mono font-semibold text-sm">{row.task.taskId}</span>
+                                <Badge variant="outline" className="text-xs">{row.task.currentStatus}</Badge>
+                              </div>
+                              <p className="text-xs text-muted-foreground line-clamp-2">
+                                {row.task.description}
+                              </p>
+                              {row.task.responsible && (
+                                <p className="text-xs text-muted-foreground">
+                                  <span className="font-medium">Responsible:</span> {row.task.responsible}
+                                </p>
+                              )}
+                              {row.task.linkedDeliverables && row.task.linkedDeliverables.length > 0 && (
+                                <p className="text-xs text-muted-foreground">
+                                  <span className="font-medium">Deliverable:</span> {row.task.linkedDeliverables.map((d: any) => d.deliverableId).join(', ')}
+                                </p>
+                              )}
+                            </div>
+                          </Button>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {row.issue && (
+                          <Button
+                            variant="ghost"
+                            className="h-auto p-2 w-full justify-start text-left"
+                            onClick={() => handleIssueClick(row.issue)}
+                          >
+                            <div className="flex flex-col gap-1 w-full">
+                              <div className="flex items-center gap-2">
+                                <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
+                                <span className="font-mono font-semibold text-sm">{row.issue.issueId}</span>
+                                <Badge variant="destructive" className="text-xs">{row.issue.priority}</Badge>
+                              </div>
+                              <p className="text-xs text-muted-foreground line-clamp-2">
+                                {row.issue.description}
+                              </p>
+                              {row.issue.owner && (
+                                <p className="text-xs text-muted-foreground">
+                                  <span className="font-medium">Owner:</span> {row.issue.owner}
+                                </p>
+                              )}
+                              {row.issue.linkedDeliverables && row.issue.linkedDeliverables.length > 0 && (
+                                <p className="text-xs text-muted-foreground">
+                                  <span className="font-medium">Deliverable:</span> {row.issue.linkedDeliverables.map((d: any) => d.deliverableId).join(', ')}
+                                </p>
+                              )}
+                            </div>
+                          </Button>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <ExternalLink className="w-4 h-4 text-muted-foreground" />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           ) : (
             <div className="text-center py-12 text-muted-foreground">
               <GitBranch className="w-12 h-12 mx-auto mb-4 opacity-50" />
@@ -184,6 +359,198 @@ export default function Relationships() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Requirement Details Dialog */}
+      <Dialog open={showRequirementDialog} onOpenChange={setShowRequirementDialog}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-blue-600" />
+              Requirement Details
+            </DialogTitle>
+          </DialogHeader>
+          {selectedRequirement && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground uppercase">ID Code</Label>
+                  <p className="font-mono font-semibold">{selectedRequirement.idCode}</p>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground uppercase">Priority</Label>
+                  <Badge>{selectedRequirement.priority || 'N/A'}</Badge>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground uppercase">Description</Label>
+                <p className="text-sm">{selectedRequirement.description}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground uppercase">Type</Label>
+                  <p className="text-sm">{selectedRequirement.type || 'N/A'}</p>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground uppercase">Category</Label>
+                  <p className="text-sm">{selectedRequirement.category || 'N/A'}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground uppercase">Owner</Label>
+                  <p className="text-sm">{selectedRequirement.owner || 'N/A'}</p>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground uppercase">Creation Date</Label>
+                  <p className="text-sm">{selectedRequirement.creationDate || 'N/A'}</p>
+                </div>
+              </div>
+              {selectedRequirement.sourceType && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground uppercase">Source Type</Label>
+                    <p className="text-sm">{selectedRequirement.sourceType}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground uppercase">External Source</Label>
+                    <p className="text-sm">{selectedRequirement.refSource || 'N/A'}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Task Details Dialog */}
+      <Dialog open={showTaskDialog} onOpenChange={setShowTaskDialog}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckSquare className="w-5 h-5 text-green-600" />
+              Task Details
+            </DialogTitle>
+          </DialogHeader>
+          {selectedTask && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground uppercase">Task ID</Label>
+                  <p className="font-mono font-semibold">{selectedTask.taskId}</p>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground uppercase">Status</Label>
+                  <Badge>{selectedTask.currentStatus || 'N/A'}</Badge>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground uppercase">Description</Label>
+                <p className="text-sm">{selectedTask.description}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground uppercase">Priority</Label>
+                  <p className="text-sm">{selectedTask.priority || 'N/A'}</p>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground uppercase">Due Date</Label>
+                  <p className="text-sm">{selectedTask.dueDate || 'N/A'}</p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground uppercase flex items-center gap-2">
+                  <Users className="w-4 h-4" />
+                  RACI Assignment
+                </Label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                    <Label className="text-xs text-muted-foreground uppercase">Responsible</Label>
+                    <p className="text-sm font-medium">{selectedTask.responsible || 'N/A'}</p>
+                  </div>
+                  <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                    <Label className="text-xs text-muted-foreground uppercase">Accountable</Label>
+                    <p className="text-sm font-medium">{selectedTask.accountable || 'N/A'}</p>
+                  </div>
+                  <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                    <Label className="text-xs text-muted-foreground uppercase">Consulted</Label>
+                    <p className="text-sm font-medium">{selectedTask.consulted || 'N/A'}</p>
+                  </div>
+                  <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                    <Label className="text-xs text-muted-foreground uppercase">Informed</Label>
+                    <p className="text-sm font-medium">{selectedTask.informed || 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Issue Details Dialog */}
+      <Dialog open={showIssueDialog} onOpenChange={setShowIssueDialog}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-red-600" />
+              Issue Details
+            </DialogTitle>
+          </DialogHeader>
+          {selectedIssue && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground uppercase">Issue ID</Label>
+                  <p className="font-mono font-semibold">{selectedIssue.issueId}</p>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground uppercase">Status</Label>
+                  <Badge>{selectedIssue.status || 'N/A'}</Badge>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground uppercase">Description</Label>
+                <p className="text-sm">{selectedIssue.description}</p>
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground uppercase">Priority</Label>
+                  <Badge variant="destructive">{selectedIssue.priority || 'N/A'}</Badge>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground uppercase">Type</Label>
+                  <p className="text-sm">{selectedIssue.type || 'N/A'}</p>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground uppercase">Class</Label>
+                  <p className="text-sm">{selectedIssue.class || 'N/A'}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground uppercase">Owner</Label>
+                  <p className="text-sm">{selectedIssue.owner || 'N/A'}</p>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground uppercase">Open Date</Label>
+                  <p className="text-sm">{selectedIssue.openDate || 'N/A'}</p>
+                </div>
+              </div>
+              {selectedIssue.sourceType && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground uppercase">Source Type</Label>
+                    <p className="text-sm">{selectedIssue.sourceType}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground uppercase">External Source</Label>
+                    <p className="text-sm">{selectedIssue.refSource || 'N/A'}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

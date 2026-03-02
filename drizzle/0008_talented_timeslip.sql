@@ -1,0 +1,1 @@
+ALTER TABLE `issues` ADD `taskId` varchar(50);

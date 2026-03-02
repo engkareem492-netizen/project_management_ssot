@@ -2,7 +2,7 @@ import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2 } from "lucide-react";
+import { Loader2, History } from "lucide-react";
 
 export default function ActionLog() {
   const { data: actionLogs, isLoading } = trpc.actionLogs.list.useQuery();
@@ -23,15 +23,20 @@ export default function ActionLog() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
+      {/* Page Header */}
+      <div className="bg-white border border-gray-200 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <History className="w-6 h-6 text-gray-500" />
+            Action Log
+          </h1>
+          <p className="text-slate-600 text-sm mt-1">Complete history of all changes made to requirements, tasks, and issues</p>
+        </div>
+        <Badge variant="outline" className="text-slate-700 border-slate-300">{actionLogs?.length || 0} Entries</Badge>
+      </div>
       <Card>
-        <CardHeader>
-          <CardTitle>Action Log</CardTitle>
-          <CardDescription>
-            Complete history of all changes made to requirements, tasks, and issues
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <div className="rounded-md border overflow-x-auto">
             <Table>
               <TableHeader>

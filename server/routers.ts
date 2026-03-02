@@ -7,20 +7,32 @@ import * as db from "./db";
 import * as XLSX from "xlsx";
 import { TRPCError } from "@trpc/server";
 import { projectsRouter } from "./projects.router";
+import { knowledgeBaseRouter } from "./knowledgeBase.router";
+import { risksRouter } from "./risks.router";
+import { systemConfigRouter } from "./systemConfig.router";
+import { authLocalRouter } from "./auth.local.router";
+import { passwordResetRouter } from "./password.reset.router";
+import { collaborationRouter } from "./routers/collaboration";
+import { changeRequestsRouter } from "./routers/changeRequests.router";
+import { meetingsRouter } from "./routers/meetings.router";
+import { testCasesRouter } from "./routers/testCases.router";
+import { taskDependenciesRouter } from "./routers/taskDependencies.router";
+import { traceabilityRouter } from "./routers/traceability.router";
 
 export const appRouter = router({
   system: systemRouter,
   projects: projectsRouter,
-  auth: router({
-    me: publicProcedure.query(opts => opts.ctx.user),
-    logout: publicProcedure.mutation(({ ctx }) => {
-      const cookieOptions = getSessionCookieOptions(ctx.req);
-      ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
-      return {
-        success: true,
-      } as const;
-    }),
-  }),
+  knowledgeBase: knowledgeBaseRouter,
+  risks: risksRouter,
+  systemConfig: systemConfigRouter,
+  auth: authLocalRouter,
+  passwordReset: passwordResetRouter,
+  collaboration: collaborationRouter,
+  changeRequests: changeRequestsRouter,
+  meetings: meetingsRouter,
+  testCases: testCasesRouter,
+  taskDependencies: taskDependenciesRouter,
+  traceability: traceabilityRouter,
 
   // Excel import/export
   excel: router({
@@ -345,9 +357,11 @@ export const appRouter = router({
 
   // Requirements
   requirements: router({
-    list: protectedProcedure.query(async () => {
-      return await db.getAllRequirementsSorted();
-    }),
+    list: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ input }) => {
+        return await db.getAllRequirementsSorted(input.projectId);
+      }),
 
     get: protectedProcedure
       .input(z.object({ idCode: z.string() }))
@@ -379,10 +393,50 @@ export const appRouter = router({
         updateDate: z.string().optional(),
       }))
       .mutation(async ({ input }) => {
-        // Generate auto ID
-        const idCode = await db.getNextId('requirement', 'Q', input.projectId);
-        await db.createRequirement({ ...input, idCode, projectId: input.projectId });
-        return { success: true, idCode };
+        try {
+          // Generate auto ID
+          const idCode = await db.getNextId('requirement', 'Q', input.projectId);
+          
+          // Look up owner name from ownerId if provided
+          let ownerName = input.owner;
+          if (input.ownerId && !ownerName) {
+            const stakeholder = await db.getStakeholderById(input.ownerId);
+            if (stakeholder) {
+              ownerName = stakeholder.fullName;
+            }
+          }
+          
+          const requirementData = { 
+            ...input, 
+            idCode, 
+            projectId: input.projectId,
+            owner: ownerName,
+            ownerId: input.ownerId,
+          };
+          
+          console.log('[requirements.create] Creating requirement with data:', requirementData);
+          
+          await db.createRequirement(requirementData);
+          return { success: true, idCode };
+        } catch (error: any) {
+          console.error('[requirements.create] Error:', error);
+          console.error('[requirements.create] Error details:', {
+            message: error.message,
+            cause: error.cause,
+            sqlMessage: error.cause?.sqlMessage,
+            errno: error.cause?.errno,
+          });
+          
+          // User-friendly error for duplicate IDs
+          if (error.cause?.errno === 1062 && error.cause?.sqlMessage?.includes('idCode_unique')) {
+            throw new TRPCError({
+              code: 'CONFLICT',
+              message: 'A requirement with this ID already exists. Please increment the counter in Settings or delete the existing requirement.',
+            });
+          }
+          
+          throw error;
+        }
       }),
 
     createTask: protectedProcedure
@@ -504,9 +558,11 @@ export const appRouter = router({
 
   // Tasks
   tasks: router({
-    list: protectedProcedure.query(async () => {
-      return await db.getAllTasksSorted();
-    }),
+    list: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ input }) => {
+        return await db.getAllTasksSorted(input.projectId);
+      }),
 
     get: protectedProcedure
       .input(z.object({ taskId: z.string() }))
@@ -520,6 +576,7 @@ export const appRouter = router({
         taskGroup: z.string().optional(),
         dependencyId: z.string().optional(),
         requirementId: z.string().optional(),
+        deliverableId: z.number().optional(),
         description: z.string().optional(),
         responsible: z.string().optional(),
         responsibleId: z.number().optional(),
@@ -532,16 +589,59 @@ export const appRouter = router({
         owner: z.string().optional(),
         ownerId: z.number().optional(),
         dueDate: z.string().optional(),
+        assignDate: z.string().optional(),
         currentStatus: z.string().optional(),
         statusUpdate: z.string().optional(),
         status: z.string().optional(),
         priority: z.string().optional(),
       }))
       .mutation(async ({ input }) => {
-        // Generate auto ID
-        const taskId = await db.getNextId('task', 'T', input.projectId);
-        await db.createTask({ ...input, taskId, projectId: input.projectId });
-        return { success: true, taskId };
+        try {
+          // Clean up empty strings and convert to undefined
+          const cleanedInput: any = {};
+          Object.keys(input).forEach(key => {
+            const value = (input as any)[key];
+            if (value !== '' && value !== 'none' && value !== undefined) {
+              cleanedInput[key] = value;
+            }
+          });
+          
+          // Generate auto ID for task
+          const taskId = await db.getNextId('task', 'T', input.projectId);
+          await db.createTask({ ...cleanedInput, taskId, projectId: input.projectId });
+          
+          return { success: true, taskId };
+        } catch (error: any) {
+          console.error('[tasks.create] Error creating task:', error);
+          console.error('[tasks.create] Error details:', {
+            message: error.message,
+            cause: error.cause,
+            sqlMessage: error.cause?.sqlMessage,
+            errno: error.cause?.errno,
+          });
+          
+          // User-friendly error for duplicate task IDs
+          if (error.cause?.errno === 1062 && error.cause?.sqlMessage?.includes('taskId_unique')) {
+            throw new TRPCError({
+              code: 'CONFLICT',
+              message: 'A task with this ID already exists. Please increment the counter in Settings or delete the existing task.',
+            });
+          }
+          
+          // User-friendly error for duplicate requirement IDs (when creating linked requirement)
+          if (error.cause?.errno === 1062 && error.cause?.sqlMessage?.includes('idCode_unique')) {
+            throw new TRPCError({
+              code: 'CONFLICT',
+              message: 'A requirement with this ID already exists. The task was not created. Please increment the requirement counter in Settings.',
+            });
+          }
+          
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: 'Failed to create task. Please try again.',
+            cause: error,
+          });
+        }
       }),
 
     update: protectedProcedure
@@ -553,6 +653,18 @@ export const appRouter = router({
           statusUpdate: z.string().optional(),
           description: z.string().optional(),
           dueDate: z.string().optional(),
+          taskGroup: z.string().optional(),
+          status: z.string().optional(),
+          priority: z.string().optional(),
+          requirementId: z.string().nullable().optional(),
+          deliverableId: z.number().nullable().optional(),
+          issueId: z.string().nullable().optional(),
+          assignDate: z.string().optional(),
+          responsibleId: z.number().nullable().optional(),
+          accountableId: z.number().nullable().optional(),
+          consultedId: z.number().nullable().optional(),
+          informedId: z.number().nullable().optional(),
+          ownerId: z.number().nullable().optional(),
         }),
       }))
       .mutation(async ({ input, ctx }) => {
@@ -562,7 +674,12 @@ export const appRouter = router({
         }
 
         const changedFields: Record<string, { oldValue: any; newValue: any }> = {};
-        const trackFields = ['currentStatus', 'statusUpdate'];
+        const trackFields = [
+          'currentStatus', 'statusUpdate', 'taskGroup', 'status', 'priority',
+          'description', 'requirementId', 'deliverableId', 'issueId',
+          'responsibleId', 'accountableId', 'consultedId', 'informedId', 'ownerId',
+          'dueDate', 'assignDate'
+        ];
         
         for (const field of trackFields) {
           if (input.data[field as keyof typeof input.data] !== undefined && 
@@ -599,8 +716,10 @@ export const appRouter = router({
 
   // Issues
   issues: router({
-    list: protectedProcedure.query(async () => {
-      return await db.getAllIssuesSorted();
+    list: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ input }) => {
+        return await db.getAllIssuesSorted(input.projectId);
     }),
 
     get: protectedProcedure
@@ -623,19 +742,55 @@ export const appRouter = router({
         description: z.string().optional(),
         sourceType: z.string().optional(),
         refSource: z.string().optional(),
+        openDate: z.string().optional(),
         priority: z.string().optional(),
+        deliverableId: z.number().optional(),
+        taskId: z.string().optional(),
         deliverables1: z.string().optional(),
         d1Status: z.string().optional(),
         deliverables2: z.string().optional(),
         d2Status: z.string().optional(),
         lastUpdate: z.string().optional(),
         updateDate: z.string().optional(),
+        resolutionDate: z.string().optional(),
       }))
       .mutation(async ({ input }) => {
-        // Generate auto ID
-        const issueId = await db.getNextId('issue', 'I', input.projectId);
-        await db.createIssue({ ...input, issueId });
-        return { success: true, issueId };
+        try {
+          // Clean up empty strings and convert to undefined
+          const cleanedInput: any = {};
+          Object.keys(input).forEach(key => {
+            const value = (input as any)[key];
+            if (value !== '' && value !== 'none' && value !== undefined) {
+              cleanedInput[key] = value;
+            }
+          });
+
+          // Generate auto ID
+          const issueId = await db.getNextId('issue', 'I', input.projectId);
+          await db.createIssue({ ...cleanedInput, issueId });
+          return { success: true, issueId };
+        } catch (error: any) {
+          console.error('[issues.create] Error creating issue:', error);
+          console.error('[issues.create] Error details:', {
+            message: error.message,
+            cause: error.cause,
+            sqlMessage: error.cause?.sqlMessage,
+            errno: error.cause?.errno,
+          });
+          
+          // User-friendly error for duplicate IDs
+          if (error.cause?.errno === 1062 && error.cause?.sqlMessage?.includes('issueId_unique')) {
+            throw new TRPCError({
+              code: 'CONFLICT',
+              message: 'An issue with this ID already exists. Please increment the counter in Settings or delete the existing issue.',
+            });
+          }
+          
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: error instanceof Error ? error.message : 'Failed to create issue',
+          });
+        }
       }),
 
     update: protectedProcedure
@@ -651,6 +806,21 @@ export const appRouter = router({
           d2Status: z.string().optional(),
           lastUpdate: z.string().optional(),
           updateDate: z.string().optional(),
+          resolutionDate: z.string().optional(),
+          description: z.string().optional(),
+          owner: z.string().optional(),
+          ownerId: z.number().optional(),
+          issueGroup: z.string().optional(),
+          taskGroup: z.string().optional(),
+          requirementId: z.string().optional(),
+          type: z.string().optional(),
+          class: z.string().optional(),
+          sourceType: z.string().optional(),
+          refSource: z.string().optional(),
+          openDate: z.string().optional(),
+          deliverableId: z.number().optional(),
+          taskId: z.string().optional(),
+          knowledgeBaseCode: z.string().optional(),
         }),
       }))
       .mutation(async ({ input, ctx }) => {
@@ -660,7 +830,7 @@ export const appRouter = router({
         }
 
         const changedFields: Record<string, { oldValue: any; newValue: any }> = {};
-        const trackFields = ['status', 'priority', 'deliverables1', 'd1Status', 'deliverables2', 'd2Status', 'lastUpdate', 'updateDate'];
+        const trackFields = ['status', 'priority', 'deliverables1', 'd1Status', 'deliverables2', 'd2Status', 'lastUpdate', 'updateDate', 'resolutionDate', 'description', 'owner', 'openDate'];
         
         for (const field of trackFields) {
           if (input.data[field as keyof typeof input.data] !== undefined && 
@@ -693,12 +863,45 @@ export const appRouter = router({
         await db.deleteIssue(input.id);
         return { success: true };
       }),
+
+    getByEntity: protectedProcedure
+      .input(z.object({
+        entityType: z.enum(['requirement', 'task', 'dependency']),
+        entityId: z.string(),
+      }))
+      .query(async ({ input }) => {
+        return await db.getIssuesByEntity(input.entityType, input.entityId);
+      }),
+
+    addLink: protectedProcedure
+      .input(z.object({
+        issueId: z.number(),
+        entityType: z.enum(['requirement', 'task', 'dependency']),
+        entityId: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        await db.createIssueLink({
+          issueId: input.issueId,
+          linkedEntityType: input.entityType,
+          linkedEntityId: input.entityId,
+        });
+        return { success: true };
+      }),
+
+    removeLink: protectedProcedure
+      .input(z.object({ linkId: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.deleteIssueLink(input.linkId);
+        return { success: true };
+      }),
   }),
 
   // Dependencies
   dependencies: router({
-    list: protectedProcedure.query(async () => {
-      return await db.getAllDependenciesSorted();
+    list: protectedProcedure
+      .input(z.object({ projectId: z.number() }).optional())
+      .query(async ({ input }) => {
+        return await db.getAllDependenciesSorted(input?.projectId);
     }),
 
     create: protectedProcedure
@@ -736,8 +939,10 @@ export const appRouter = router({
 
   // Assumptions
   assumptions: router({
-    list: protectedProcedure.query(async () => {
-      return await db.getAllAssumptionsSorted();
+    list: protectedProcedure
+      .input(z.object({ projectId: z.number() }).optional())
+      .query(async ({ input }) => {
+        return await db.getAllAssumptionsSorted(input?.projectId);
     }),
 
     create: protectedProcedure
@@ -782,9 +987,11 @@ export const appRouter = router({
 
   // Relationships
   relationships: router({
-    getAll: protectedProcedure.query(async () => {
-      return await db.getAllRelationships();
-    }),
+    getAll: protectedProcedure
+      .input(z.object({ projectId: z.number().optional() }))
+      .query(async ({ input }) => {
+        return await db.getAllRelationships(input.projectId);
+      }),
 
     getByRequirement: protectedProcedure
       .input(z.object({ requirementId: z.string() }))
@@ -801,9 +1008,11 @@ export const appRouter = router({
 
   // Stakeholders
   stakeholders: router({
-    list: protectedProcedure.query(async () => {
-      return await db.getAllStakeholders();
-    }),
+    list: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ input }) => {
+        return await db.getAllStakeholders(input.projectId);
+      }),
 
     get: protectedProcedure
       .input(z.object({ id: z.number() }))
@@ -853,9 +1062,11 @@ export const appRouter = router({
 
   // Deliverables
   deliverables: router({
-    list: protectedProcedure.query(async () => {
-      return await db.getAllDeliverables();
-    }),
+    list: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ input }) => {
+        return await db.getAllDeliverables(input.projectId);
+      }),
 
     get: protectedProcedure
       .input(z.object({ id: z.number() }))
@@ -875,28 +1086,57 @@ export const appRouter = router({
         })).optional(),
       }))
       .mutation(async ({ input }) => {
-        // Generate auto ID
-        const deliverableId = await db.getNextId('deliverable', 'DEL', input.projectId);
-        const created = await db.createDeliverable({
-          projectId: input.projectId,
-          deliverableId,
-          description: input.description,
-          status: input.status,
-          dueDate: input.dueDate,
-        });
+        try {
+          // Generate auto ID
+          const deliverableId = await db.getNextId('deliverable', 'DEL', input.projectId);
+          
+          console.log('[deliverables.create] Creating deliverable with data:', {
+            projectId: input.projectId,
+            deliverableId,
+            description: input.description,
+            status: input.status,
+            dueDate: input.dueDate,
+          });
+          
+          const created = await db.createDeliverable({
+            projectId: input.projectId,
+            deliverableId,
+            description: input.description,
+            status: input.status,
+            dueDate: input.dueDate,
+          });
 
-        // Create links if provided
-        if (created && input.linkedEntities) {
-          for (const link of input.linkedEntities) {
-            await db.createDeliverableLink({
-              deliverableId: created.id,
-              linkedEntityType: link.entityType,
-              linkedEntityId: link.entityId,
+          // Create links if provided
+          if (created && input.linkedEntities) {
+            for (const link of input.linkedEntities) {
+              await db.createDeliverableLink({
+                deliverableId: created.id,
+                linkedEntityType: link.entityType,
+                linkedEntityId: link.entityId,
+              });
+            }
+          }
+
+          return created;
+        } catch (error: any) {
+          console.error('[deliverables.create] Error:', error);
+          console.error('[deliverables.create] Error details:', {
+            message: error.message,
+            cause: error.cause,
+            sqlMessage: error.cause?.sqlMessage,
+            errno: error.cause?.errno,
+          });
+          
+          // User-friendly error for duplicate IDs
+          if (error.cause?.errno === 1062 && error.cause?.sqlMessage?.includes('deliverableId_unique')) {
+            throw new TRPCError({
+              code: 'CONFLICT',
+              message: 'A deliverable with this ID already exists. Please increment the counter in Settings or delete the existing deliverable.',
             });
           }
+          
+          throw error;
         }
-
-        return created;
       }),
 
     update: protectedProcedure
@@ -952,17 +1192,53 @@ export const appRouter = router({
       .input(z.object({
         entityType: z.enum(['requirement', 'task', 'dependency']),
         entityId: z.string(),
+        projectId: z.number().optional(),
       }))
       .query(async ({ input }) => {
-        return await db.getDeliverablesByEntity(input.entityType, input.entityId);
+        return await db.getDeliverablesByEntity(input.entityType, input.entityId, input.projectId);
       }),
   }),
 
   // ID Configuration
   idConfig: router({
     list: protectedProcedure
-      .query(async () => {
-        return await db.getAllIdSequences();
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ input }) => {
+        return await db.getIdSequencesByProject(input.projectId);
+      }),
+
+    initDefaults: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .mutation(async ({ input }) => {
+        const existing = await db.getIdSequencesByProject(input.projectId);
+        const existingTypes = new Set(existing.map(e => e.entityType));
+        const defaults = [
+          { entityType: 'requirement', prefix: 'REQ', padLength: 4 },
+          { entityType: 'task', prefix: 'TSK', padLength: 4 },
+          { entityType: 'issue', prefix: 'ISS', padLength: 4 },
+          { entityType: 'deliverable', prefix: 'DEL', padLength: 4 },
+          { entityType: 'dependency', prefix: 'DEP', padLength: 4 },
+          { entityType: 'assumption', prefix: 'ASM', padLength: 4 },
+          { entityType: 'knowledgeBase', prefix: 'KB', padLength: 4 },
+          { entityType: 'risk', prefix: 'RISK', padLength: 4 },
+          { entityType: 'Task Group', prefix: 'TG', padLength: 3, maxNumber: 999 },
+          { entityType: 'Issue Group', prefix: 'IG', padLength: 3, maxNumber: 999 },
+        ];
+        let created = 0;
+        for (const def of defaults) {
+          if (!existingTypes.has(def.entityType)) {
+            await db.createIdSequence({
+              projectId: input.projectId,
+              entityType: def.entityType,
+              prefix: def.prefix,
+              padLength: def.padLength,
+              minNumber: 1,
+              maxNumber: def.maxNumber || 9999,
+            });
+            created++;
+          }
+        }
+        return { created };
       }),
 
     update: protectedProcedure
@@ -973,6 +1249,7 @@ export const appRouter = router({
         minNumber: z.number().optional(),
         maxNumber: z.number().optional(),
         padLength: z.number().optional(),
+        projectId: z.number(),
       }))
       .mutation(async ({ input }) => {
         return await db.updateIdSequence(input.entityType, {
@@ -981,7 +1258,7 @@ export const appRouter = router({
           minNumber: input.minNumber,
           maxNumber: input.maxNumber,
           padLength: input.padLength,
-        });
+        }, input.projectId);
       }),
   }),
 
@@ -1148,6 +1425,154 @@ export const appRouter = router({
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
         await db.deleteCategoryOption(input.id);
+        return { success: true };
+      }),
+  }),
+
+  issueTypes: router({
+    list: publicProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ input }) => {
+        return await db.getAllIssueTypes(input.projectId);
+      }),
+    create: protectedProcedure
+      .input(z.object({
+        projectId: z.number(),
+        value: z.string(),
+        label: z.string(),
+        description: z.string().optional(),
+        isDefault: z.boolean().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        return await db.createIssueType(input);
+      }),
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        data: z.object({
+          label: z.string().optional(),
+          description: z.string().optional(),
+          isDefault: z.boolean().optional(),
+        }),
+      }))
+      .mutation(async ({ input }) => {
+        return await db.updateIssueType(input.id, input.data);
+      }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.deleteIssueType(input.id);
+        return { success: true };
+      }),
+  }),
+
+  taskTypes: router({
+    list: publicProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ input }) => {
+        return await db.getAllTaskTypes(input.projectId);
+      }),
+    create: protectedProcedure
+      .input(z.object({
+        projectId: z.number(),
+        value: z.string(),
+        label: z.string(),
+        description: z.string().optional(),
+        isDefault: z.boolean().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        return await db.createTaskType(input);
+      }),
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        data: z.object({
+          label: z.string().optional(),
+          description: z.string().optional(),
+          isDefault: z.boolean().optional(),
+        }),
+      }))
+      .mutation(async ({ input }) => {
+        return await db.updateTaskType(input.id, input.data);
+      }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.deleteTaskType(input.id);
+        return { success: true };
+      }),
+  }),
+
+  deliverableTypes: router({
+    list: publicProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ input }) => {
+        return await db.getAllDeliverableTypes(input.projectId);
+      }),
+    create: protectedProcedure
+      .input(z.object({
+        projectId: z.number(),
+        value: z.string(),
+        label: z.string(),
+        description: z.string().optional(),
+        isDefault: z.boolean().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        return await db.createDeliverableType(input);
+      }),
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        data: z.object({
+          label: z.string().optional(),
+          description: z.string().optional(),
+          isDefault: z.boolean().optional(),
+        }),
+      }))
+      .mutation(async ({ input }) => {
+        return await db.updateDeliverableType(input.id, input.data);
+      }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.deleteDeliverableType(input.id);
+        return { success: true };
+      }),
+  }),
+
+  classOptions: router({
+    list: publicProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ input }) => {
+        return await db.getAllClassOptions(input.projectId);
+      }),
+    create: protectedProcedure
+      .input(z.object({
+        projectId: z.number(),
+        value: z.string(),
+        label: z.string(),
+        description: z.string().optional(),
+        isDefault: z.boolean().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        return await db.createClassOption(input);
+      }),
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        data: z.object({
+          label: z.string().optional(),
+          description: z.string().optional(),
+          isDefault: z.boolean().optional(),
+        }),
+      }))
+      .mutation(async ({ input }) => {
+        return await db.updateClassOption(input.id, input.data);
+      }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.deleteClassOption(input.id);
         return { success: true };
       }),
   }),

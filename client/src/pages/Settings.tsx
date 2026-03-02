@@ -13,6 +13,8 @@ import { useState } from "react";
 import { Settings as SettingsIcon, Save, Plus, Edit, Trash2, Hash, AlertCircle, Sun, Moon, Monitor } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useProject } from "@/contexts/ProjectContext";
+import { ThemeSelector } from "@/components/ThemeSelector";
+import CollaborationTab from "@/components/CollaborationTab";
 
 interface IdConfigEdit {
   prefix: string;
@@ -73,10 +75,25 @@ export default function Settings() {
   const [optionFormData, setOptionFormData] = useState({ name: "" });
 
   // ID Config queries and state
-  const { data: idConfigs, isLoading: idConfigsLoading } = trpc.idConfig.list.useQuery();
+  const { data: idConfigs, isLoading: idConfigsLoading } = trpc.idConfig.list.useQuery(
+    { projectId: currentProjectId! },
+    { enabled: !!currentProjectId }
+  );
   const updateConfig = trpc.idConfig.update.useMutation();
+  const initDefaults = trpc.idConfig.initDefaults.useMutation();
   const utils = trpc.useUtils();
   const [editingConfigs, setEditingConfigs] = useState<Record<string, IdConfigEdit>>({});
+
+  const handleInitDefaults = async () => {
+    if (!currentProjectId) return;
+    try {
+      const result = await initDefaults.mutateAsync({ projectId: currentProjectId });
+      await utils.idConfig.list.invalidate();
+      toast.success(`Created ${result.created} default ID configurations`);
+    } catch (err) {
+      toast.error("Failed to initialize default configurations");
+    }
+  };
 
   // Dropdown options queries
   const { data: statusOptions, refetch: refetchStatus } = trpc.dropdownOptions.status.getAll.useQuery();
@@ -93,6 +110,128 @@ export default function Settings() {
     { projectId: currentProjectId || 0 },
     { enabled: !!currentProjectId }
   );
+
+  // Issue Types, Deliverable Types, KB Types, KB Components queries
+  const { data: issueTypesData, refetch: refetchIssueTypes } = trpc.issueTypes.list.useQuery(
+    { projectId: currentProjectId || 0 },
+    { enabled: !!currentProjectId }
+  );
+  const { data: deliverableTypesData, refetch: refetchDeliverableTypes } = trpc.deliverableTypes.list.useQuery(
+    { projectId: currentProjectId || 0 },
+    { enabled: !!currentProjectId }
+  );
+  const { data: kbTypesData, refetch: refetchKBTypes } = trpc.knowledgeBase.types.list.useQuery(
+    { projectId: currentProjectId || 0 },
+    { enabled: !!currentProjectId }
+  );
+  const { data: kbComponentsData, refetch: refetchKBComponents } = trpc.knowledgeBase.components.list.useQuery(
+    { projectId: currentProjectId || 0 },
+    { enabled: !!currentProjectId }
+  );
+
+  // Risk dropdown queries
+  const { data: riskTypesData, refetch: refetchRiskTypes } = trpc.risks.types.list.useQuery(
+    { projectId: currentProjectId || 0 },
+    { enabled: !!currentProjectId }
+  );
+  const { data: riskStatusData, refetch: refetchRiskStatus } = trpc.risks.status.list.useQuery(
+    { projectId: currentProjectId || 0 },
+    { enabled: !!currentProjectId }
+  );
+  const { data: responseStrategyData, refetch: refetchResponseStrategy } = trpc.risks.strategy.list.useQuery(
+    { projectId: currentProjectId || 0 },
+    { enabled: !!currentProjectId }
+  );
+
+  // Risk Types mutations
+  const createRiskTypeMutation = trpc.risks.types.create.useMutation({
+    onSuccess: () => {
+      toast.success("Risk Type created successfully");
+      refetchRiskTypes();
+      setEditDialogOpen(false);
+      resetOptionForm();
+    },
+    onError: (error) => toast.error(`Failed to create: ${error.message}`),
+  });
+
+  const updateRiskTypeMutation = trpc.risks.types.update.useMutation({
+    onSuccess: () => {
+      toast.success("Risk Type updated successfully");
+      refetchRiskTypes();
+      setEditDialogOpen(false);
+      resetOptionForm();
+    },
+    onError: (error) => toast.error(`Failed to update: ${error.message}`),
+  });
+
+  const deleteRiskTypeMutation = trpc.risks.types.delete.useMutation({
+    onSuccess: () => {
+      toast.success("Risk Type deleted successfully");
+      refetchRiskTypes();
+      setDeleteDialogOpen(false);
+    },
+    onError: (error) => toast.error(`Failed to delete: ${error.message}`),
+  });
+
+  // Risk Status mutations
+  const createRiskStatusMutation = trpc.risks.status.create.useMutation({
+    onSuccess: () => {
+      toast.success("Risk Status created successfully");
+      refetchRiskStatus();
+      setEditDialogOpen(false);
+      resetOptionForm();
+    },
+    onError: (error) => toast.error(`Failed to create: ${error.message}`),
+  });
+
+  const updateRiskStatusMutation = trpc.risks.status.update.useMutation({
+    onSuccess: () => {
+      toast.success("Risk Status updated successfully");
+      refetchRiskStatus();
+      setEditDialogOpen(false);
+      resetOptionForm();
+    },
+    onError: (error) => toast.error(`Failed to update: ${error.message}`),
+  });
+
+  const deleteRiskStatusMutation = trpc.risks.status.delete.useMutation({
+    onSuccess: () => {
+      toast.success("Risk Status deleted successfully");
+      refetchRiskStatus();
+      setDeleteDialogOpen(false);
+    },
+    onError: (error) => toast.error(`Failed to delete: ${error.message}`),
+  });
+
+  // Response Strategy mutations
+  const createResponseStrategyMutation = trpc.risks.strategy.create.useMutation({
+    onSuccess: () => {
+      toast.success("Response Strategy created successfully");
+      refetchResponseStrategy();
+      setEditDialogOpen(false);
+      resetOptionForm();
+    },
+    onError: (error) => toast.error(`Failed to create: ${error.message}`),
+  });
+
+  const updateResponseStrategyMutation = trpc.risks.strategy.update.useMutation({
+    onSuccess: () => {
+      toast.success("Response Strategy updated successfully");
+      refetchResponseStrategy();
+      setEditDialogOpen(false);
+      resetOptionForm();
+    },
+    onError: (error) => toast.error(`Failed to update: ${error.message}`),
+  });
+
+  const deleteResponseStrategyMutation = trpc.risks.strategy.delete.useMutation({
+    onSuccess: () => {
+      toast.success("Response Strategy deleted successfully");
+      refetchResponseStrategy();
+      setDeleteDialogOpen(false);
+    },
+    onError: (error) => toast.error(`Failed to delete: ${error.message}`),
+  });
 
   // Task Groups mutations
   const createTaskGroupMutation = trpc.dropdownOptions.taskGroups.create.useMutation({
@@ -290,6 +429,7 @@ export default function Settings() {
         minNumber: config.minNumber,
         maxNumber: config.maxNumber,
         padLength: config.padLength,
+        projectId: currentProjectId || 1,
       });
       
       await utils.idConfig.list.invalidate();
@@ -367,6 +507,15 @@ export default function Settings() {
       case "category":
         createCategoryMutation.mutate({ value: optionFormData.name });
         break;
+      case "riskTypes":
+        if (currentProjectId) createRiskTypeMutation.mutate({ projectId: currentProjectId, name: optionFormData.name });
+        break;
+      case "riskStatus":
+        if (currentProjectId) createRiskStatusMutation.mutate({ projectId: currentProjectId, name: optionFormData.name });
+        break;
+      case "responseStrategy":
+        if (currentProjectId) createResponseStrategyMutation.mutate({ projectId: currentProjectId, name: optionFormData.name });
+        break;
     }
   };
 
@@ -389,6 +538,15 @@ export default function Settings() {
       case "category":
         updateCategoryMutation.mutate({ id: editingItem.id, value: optionFormData.name });
         break;
+      case "riskTypes":
+        updateRiskTypeMutation.mutate({ id: editingItem.id, name: optionFormData.name });
+        break;
+      case "riskStatus":
+        updateRiskStatusMutation.mutate({ id: editingItem.id, name: optionFormData.name });
+        break;
+      case "responseStrategy":
+        updateResponseStrategyMutation.mutate({ id: editingItem.id, name: optionFormData.name });
+        break;
     }
   };
 
@@ -407,6 +565,15 @@ export default function Settings() {
         break;
       case "category":
         deleteCategoryMutation.mutate({ id: deletingItem.id });
+        break;
+      case "riskTypes":
+        deleteRiskTypeMutation.mutate({ id: deletingItem.id });
+        break;
+      case "riskStatus":
+        deleteRiskStatusMutation.mutate({ id: deletingItem.id });
+        break;
+      case "responseStrategy":
+        deleteResponseStrategyMutation.mutate({ id: deletingItem.id });
         break;
     }
   };
@@ -496,19 +663,23 @@ export default function Settings() {
 
   return (
     <div className="p-8">
-      <div className="flex items-center gap-3 mb-6">
-        <SettingsIcon className="w-8 h-8 text-primary" />
-        <h1 className="text-3xl font-bold">Settings</h1>
+      {/* Page Header */}
+      <div className="bg-white border border-gray-200 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4 mb-8">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <SettingsIcon className="w-6 h-6 text-gray-500" />
+            Settings
+          </h1>
+          <p className="text-gray-600 text-sm mt-1">Configure ID formats, number ranges, and manage dropdown options for the entire system</p>
+        </div>
       </div>
-      <p className="text-muted-foreground mb-8">
-        Configure ID formats, number ranges, and manage dropdown options for the entire system
-      </p>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList>
           <TabsTrigger value="id-config">ID Configuration</TabsTrigger>
           <TabsTrigger value="dropdown-options">Dropdown Options</TabsTrigger>
           <TabsTrigger value="groups">Groups</TabsTrigger>
+          <TabsTrigger value="collaboration">Collaboration</TabsTrigger>
           <TabsTrigger value="theme">Theme</TabsTrigger>
         </TabsList>
 
@@ -526,6 +697,22 @@ export default function Settings() {
               </div>
             </div>
           </div>
+
+          {(!idConfigs || idConfigs.length === 0) && !idConfigsLoading && (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <Hash className="w-12 h-12 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No ID Configurations Found</h3>
+                <p className="text-muted-foreground text-center mb-6">
+                  This project doesn't have any ID configurations yet. Initialize defaults to set up standard prefixes for all entity types.
+                </p>
+                <Button onClick={handleInitDefaults} disabled={initDefaults.isPending}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  {initDefaults.isPending ? "Initializing..." : "Initialize Default Configurations"}
+                </Button>
+              </CardContent>
+            </Card>
+          )}
 
           {idConfigs?.map((config) => {
             const editing = getEditingConfig(config.entityType, config);
@@ -655,6 +842,13 @@ export default function Settings() {
               <TabsTrigger value="priority">Priority</TabsTrigger>
               <TabsTrigger value="type">Type</TabsTrigger>
               <TabsTrigger value="category">Category</TabsTrigger>
+              <TabsTrigger value="issueTypes">Issue Types</TabsTrigger>
+              <TabsTrigger value="deliverableTypes">Deliverable Types</TabsTrigger>
+              <TabsTrigger value="kbTypes">KB Types</TabsTrigger>
+              <TabsTrigger value="kbComponents">KB Components</TabsTrigger>
+              <TabsTrigger value="riskTypes">Risk Types</TabsTrigger>
+              <TabsTrigger value="riskStatus">Risk Status</TabsTrigger>
+              <TabsTrigger value="responseStrategy">Response Strategy</TabsTrigger>
             </TabsList>
 
             <TabsContent value="status">
@@ -733,6 +927,388 @@ export default function Settings() {
                 </CardHeader>
                 <CardContent>
                   {renderOptionsTable(categoryOptions, "category")}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="issueTypes">
+              <Card>
+                <CardHeader>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <CardTitle>Issue Types</CardTitle>
+                      <CardDescription>Manage issue type options (Bug, Feature, Enhancement, etc.)</CardDescription>
+                    </div>
+                    <Button onClick={() => toast.info("Issue Types management coming soon")}>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add New
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Label</TableHead>
+                        <TableHead>Value</TableHead>
+                        <TableHead>Default</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {issueTypesData && issueTypesData.length > 0 ? (
+                        issueTypesData.map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell>{item.label}</TableCell>
+                            <TableCell className="font-mono text-sm">{item.value}</TableCell>
+                            <TableCell>{item.isDefault ? <Badge>Default</Badge> : "-"}</TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <Button variant="ghost" size="sm" onClick={() => toast.info("Edit coming soon")}>
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button variant="ghost" size="sm" onClick={() => toast.info("Delete coming soon")}>
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={4} className="text-center text-muted-foreground">
+                            No issue types found. Add your first one!
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="deliverableTypes">
+              <Card>
+                <CardHeader>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <CardTitle>Deliverable Types</CardTitle>
+                      <CardDescription>Manage deliverable type classifications</CardDescription>
+                    </div>
+                    <Button onClick={() => toast.info("Deliverable Types management coming soon")}>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add New
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Label</TableHead>
+                        <TableHead>Value</TableHead>
+                        <TableHead>Default</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {deliverableTypesData && deliverableTypesData.length > 0 ? (
+                        deliverableTypesData.map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell>{item.label}</TableCell>
+                            <TableCell className="font-mono text-sm">{item.value}</TableCell>
+                            <TableCell>{item.isDefault ? <Badge>Default</Badge> : "-"}</TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <Button variant="ghost" size="sm" onClick={() => toast.info("Edit coming soon")}>
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button variant="ghost" size="sm" onClick={() => toast.info("Delete coming soon")}>
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={4} className="text-center text-muted-foreground">
+                            No deliverable types found. Add your first one!
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="kbTypes">
+              <Card>
+                <CardHeader>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <CardTitle>Knowledge Base Types</CardTitle>
+                      <CardDescription>Manage KB types with hierarchical dependencies</CardDescription>
+                    </div>
+                    <Button onClick={() => toast.info("KB Types management coming soon")}>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add New
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Parent Type</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {kbTypesData && kbTypesData.length > 0 ? (
+                        kbTypesData.map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell>{item.name}</TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {item.parentTypeId ? kbTypesData.find(t => t.id === item.parentTypeId)?.name || "-" : "-"}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <Button variant="ghost" size="sm" onClick={() => toast.info("Edit coming soon")}>
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button variant="ghost" size="sm" onClick={() => toast.info("Delete coming soon")}>
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={3} className="text-center text-muted-foreground">
+                            No KB types found. Add your first one!
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="kbComponents">
+              <Card>
+                <CardHeader>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <CardTitle>Knowledge Base Components</CardTitle>
+                      <CardDescription>Manage KB component classifications</CardDescription>
+                    </div>
+                    <Button onClick={() => toast.info("KB Components management coming soon")}>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add New
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {kbComponentsData && kbComponentsData.length > 0 ? (
+                        kbComponentsData.map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell>{item.name}</TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <Button variant="ghost" size="sm" onClick={() => toast.info("Edit coming soon")}>
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button variant="ghost" size="sm" onClick={() => toast.info("Delete coming soon")}>
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={2} className="text-center text-muted-foreground">
+                            No KB components found. Add your first one!
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="riskTypes">
+              <Card>
+                <CardHeader>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <CardTitle>Risk Types</CardTitle>
+                      <CardDescription>Manage risk type classifications (Technical, Financial, Operational, etc.)</CardDescription>
+                    </div>
+                    <Button onClick={openCreateDialog}>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add New
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Default</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {riskTypesData && riskTypesData.length > 0 ? (
+                        riskTypesData.map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell className="font-medium">{item.name}</TableCell>
+                            <TableCell>{item.isDefault ? <Badge>Default</Badge> : "-"}</TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <Button variant="ghost" size="sm" onClick={() => openEditDialog({ ...item, value: item.name })}>
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button variant="ghost" size="sm" onClick={() => openDeleteDialog({ ...item, value: item.name })}>
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={3} className="text-center text-muted-foreground">
+                            No risk types found. Add your first one!
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="riskStatus">
+              <Card>
+                <CardHeader>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <CardTitle>Risk Status</CardTitle>
+                      <CardDescription>Manage risk status options (Open, Mitigated, Closed, etc.)</CardDescription>
+                    </div>
+                    <Button onClick={openCreateDialog}>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add New
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Default</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {riskStatusData && riskStatusData.length > 0 ? (
+                        riskStatusData.map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell className="font-medium">{item.name}</TableCell>
+                            <TableCell>{item.isDefault ? <Badge>Default</Badge> : "-"}</TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <Button variant="ghost" size="sm" onClick={() => openEditDialog({ ...item, value: item.name })}>
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button variant="ghost" size="sm" onClick={() => openDeleteDialog({ ...item, value: item.name })}>
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={3} className="text-center text-muted-foreground">
+                            No risk statuses found. Add your first one!
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="responseStrategy">
+              <Card>
+                <CardHeader>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <CardTitle>Response Strategy</CardTitle>
+                      <CardDescription>Manage risk response strategies (Avoid, Mitigate, Transfer, Accept, etc.)</CardDescription>
+                    </div>
+                    <Button onClick={openCreateDialog}>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add New
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Default</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {responseStrategyData && responseStrategyData.length > 0 ? (
+                        responseStrategyData.map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell className="font-medium">{item.name}</TableCell>
+                            <TableCell>{item.isDefault ? <Badge>Default</Badge> : "-"}</TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <Button variant="ghost" size="sm" onClick={() => openEditDialog({ ...item, value: item.name })}>
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button variant="ghost" size="sm" onClick={() => openDeleteDialog({ ...item, value: item.name })}>
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={3} className="text-center text-muted-foreground">
+                            No response strategies found. Add your first one!
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
                 </CardContent>
               </Card>
             </TabsContent>
@@ -879,6 +1455,11 @@ export default function Settings() {
           </Card>
         </TabsContent>
 
+        {/* Collaboration Tab */}
+        <TabsContent value="collaboration" className="space-y-6">
+          <CollaborationTab projectId={currentProjectId!} />
+        </TabsContent>
+
         {/* Theme Tab */}
         <TabsContent value="theme" className="space-y-6">
           <Card>
@@ -893,6 +1474,10 @@ export default function Settings() {
             </CardHeader>
             <CardContent className="space-y-6">
               <ThemeSelectorInline />
+              <div className="border-t pt-6">
+                <h3 className="text-sm font-medium mb-4">Color Palette</h3>
+                <ThemeSelector />
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

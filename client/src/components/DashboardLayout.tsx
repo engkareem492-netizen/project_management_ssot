@@ -7,14 +7,27 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarInset,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarProvider,
   SidebarTrigger,
   useSidebar,
@@ -38,7 +51,18 @@ import {
   Calendar,
   Upload,
   Download,
-  Database
+  FileSpreadsheet,
+  ChevronRight,
+  Database,
+  Palette,
+  BookOpen,
+  AlertTriangle,
+  GitPullRequest,
+  MessageSquare,
+  FlaskConical,
+  BarChart2,
+  Layers,
+  FileBarChart
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -58,8 +82,15 @@ const menuItems = [
   { icon: FileCheck, label: "Assumptions", path: "/assumptions" },
   { icon: Users, label: "Stakeholders", path: "/stakeholders" },
   { icon: Package, label: "Deliverables", path: "/deliverables" },
-  { icon: History, label: "Action Log", path: "/action-log" },
+  { icon: BookOpen, label: "Knowledge Base", path: "/knowledge-base" },
+  { icon: AlertTriangle, label: "Risk Register", path: "/risk-register" },
   { icon: GitBranch, label: "Relationships", path: "/relationships" },
+  { icon: GitPullRequest, label: "Change Requests", path: "/change-requests" },
+  { icon: MessageSquare, label: "Meetings & Decisions", path: "/meetings" },
+  { icon: FlaskConical, label: "Test Cases", path: "/test-cases" },
+  { icon: BarChart2, label: "Gantt Chart", path: "/gantt" },
+  { icon: Layers, label: "Traceability Matrix", path: "/traceability" },
+  { icon: FileBarChart, label: "Weekly Report", path: "/weekly-report" },
   { icon: SettingsIcon, label: "Settings", path: "/settings" },
 ];
 
@@ -142,11 +173,15 @@ function DashboardLayoutContent({
   const { state, toggleSidebar } = useSidebar();
   const isCollapsed = state === "collapsed";
   const [isResizing, setIsResizing] = useState(false);
+  const [themeDialogOpen, setThemeDialogOpen] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const activeMenuItem = menuItems.find(item => item.path === location);
   const isMobile = useIsMobile();
   const [uploading, setUploading] = useState(false);
+  const [excelMenuOpen, setExcelMenuOpen] = useState(false);
   const { currentProjectId, setCurrentProjectId } = useProject();
+  const { data: projects } = trpc.projects.list.useQuery();
+  const currentProject = projects?.find(p => p.id === currentProjectId);
 
   const importMutation = trpc.excel.import.useMutation({
     onSuccess: (data) => {
@@ -255,10 +290,18 @@ function DashboardLayoutContent({
                 <PanelLeft className="h-4 w-4 text-muted-foreground" />
               </button>
               {!isCollapsed ? (
-                <div className="flex items-center gap-2 min-w-0">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
                   <span className="font-semibold tracking-tight truncate">
-                    Navigation
+                    {currentProject?.name || "Navigation"}
                   </span>
+                  <button
+                    onClick={handleSwitchProject}
+                    className="ml-auto h-7 px-2 text-xs hover:bg-accent rounded transition-colors flex items-center gap-1 shrink-0"
+                    title="Switch Project"
+                  >
+                    <Database className="h-3 w-3" />
+                    Switch
+                  </button>
                 </div>
               ) : null}
             </div>
@@ -274,7 +317,7 @@ function DashboardLayoutContent({
                       isActive={isActive}
                       onClick={() => setLocation(item.path)}
                       tooltip={item.label}
-                      className={`h-10 transition-all font-normal`}
+                      className={`h-8 transition-all font-normal text-sm`}
                     >
                       <item.icon
                         className={`h-4 w-4 ${isActive ? "text-primary" : ""}`}
@@ -285,16 +328,13 @@ function DashboardLayoutContent({
                 );
               })}
             </SidebarMenu>
+          </SidebarContent>
 
-            {/* Excel Import/Export Section */}
-            <div className="px-2 py-4 border-t mt-4">
-              <div className="px-2 mb-2">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider group-data-[collapsible=icon]:hidden">
-                  Excel Operations
-                </p>
-              </div>
-              <SidebarMenu>
-                <SidebarMenuItem>
+          <SidebarFooter className="p-3 gap-2">
+            {/* Excel Import/Export - in footer to avoid overlap with nav items */}
+            <div className="border-t pt-2 group-data-[collapsible=icon]:hidden">
+              <div className="flex gap-1 px-1">
+                <div className="flex-1">
                   <input
                     type="file"
                     accept=".xlsx,.xls"
@@ -303,33 +343,49 @@ function DashboardLayoutContent({
                     id="sidebar-file-upload"
                     disabled={uploading}
                   />
-                  <label htmlFor="sidebar-file-upload" className="cursor-pointer">
-                    <SidebarMenuButton
-                      tooltip="Import Excel"
-                      className="h-10 transition-all font-normal"
-                      disabled={uploading}
+                  <label htmlFor="sidebar-file-upload" className="cursor-pointer w-full">
+                    <button
+                      type="button"
+                      className="w-full flex items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-accent transition-colors text-muted-foreground hover:text-foreground pointer-events-none"
+                      tabIndex={-1}
                     >
-                      <Upload className="h-4 w-4" />
+                      <Upload className="h-3.5 w-3.5 shrink-0" />
                       <span>{uploading ? "Importing..." : "Import Excel"}</span>
-                    </SidebarMenuButton>
+                    </button>
                   </label>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    onClick={handleExport}
-                    tooltip="Export Excel"
-                    className="h-10 transition-all font-normal"
-                    disabled={exportQuery.isLoading}
-                  >
-                    <Download className="h-4 w-4" />
-                    <span>{exportQuery.isLoading ? "Exporting..." : "Export Excel"}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
+                </div>
+                <button
+                  onClick={handleExport}
+                  disabled={exportQuery.isLoading}
+                  className="flex-1 flex items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-accent transition-colors text-muted-foreground hover:text-foreground disabled:opacity-50"
+                >
+                  <Download className="h-3.5 w-3.5 shrink-0" />
+                  <span>{exportQuery.isLoading ? "Exporting..." : "Export Excel"}</span>
+                </button>
+              </div>
             </div>
-          </SidebarContent>
-
-          <SidebarFooter className="p-3">
+            {/* Collapsed icon-only Excel buttons */}
+            <div className="hidden group-data-[collapsible=icon]:flex flex-col gap-1 border-t pt-2">
+              <label htmlFor="sidebar-file-upload-icon" title="Import Excel" className="cursor-pointer flex items-center justify-center h-8 w-8 mx-auto rounded-md hover:bg-accent transition-colors text-muted-foreground hover:text-foreground">
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  id="sidebar-file-upload-icon"
+                  disabled={uploading}
+                />
+                <Upload className="h-4 w-4" />
+              </label>
+              <button
+                onClick={handleExport}
+                disabled={exportQuery.isLoading}
+                title="Export Excel"
+                className="flex items-center justify-center h-8 w-8 mx-auto rounded-md hover:bg-accent transition-colors text-muted-foreground hover:text-foreground disabled:opacity-50"
+              >
+                <Download className="h-4 w-4" />
+              </button>
+            </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-3 rounded-lg px-1 py-1 hover:bg-accent/50 transition-colors w-full text-left group-data-[collapsible=icon]:justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
@@ -355,6 +411,13 @@ function DashboardLayoutContent({
                 >
                   <Database className="mr-2 h-4 w-4" />
                   <span>Switch Project</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setThemeDialogOpen(true)}
+                  className="cursor-pointer"
+                >
+                  <Palette className="mr-2 h-4 w-4" />
+                  <span>Theme</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={logout}
@@ -397,6 +460,21 @@ function DashboardLayoutContent({
         )}
         <main className="flex-1 p-4">{children}</main>
       </SidebarInset>
+
+      {/* Theme Settings Dialog */}
+      <Dialog open={themeDialogOpen} onOpenChange={setThemeDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Theme Settings</DialogTitle>
+            <DialogDescription>
+              Choose your preferred color theme for the application
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <ThemeSelector />
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

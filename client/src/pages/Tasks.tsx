@@ -1,15 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
+import { TasksByResponsibleChart } from "@/components/TasksByResponsibleChart";
 import { useProject } from "@/contexts/ProjectContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Search, Edit, History, Loader2, Plus, Trash2, Settings, Eye, Save, X, CheckSquare } from "lucide-react";
+import { Search, Edit, History, Loader2, Plus, Trash2, Settings, Eye, Save, X, CheckSquare, Info, AlertCircle, Link2 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -19,6 +21,7 @@ import { DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 
 export default function Tasks() {
+  const { currentProjectId } = useProject();
   const [searchTerm, setSearchTerm] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editData, setEditData] = useState<any>({});
@@ -37,36 +40,122 @@ export default function Tasks() {
   const [newStakeholder, setNewStakeholder] = useState({ fullName: '', position: '', role: '' });
   const [addTaskGroupDialogOpen, setAddTaskGroupDialogOpen] = useState(false);
   const [newTaskGroupName, setNewTaskGroupName] = useState('');
+  const [addRequirementDialogOpen, setAddRequirementDialogOpen] = useState(false);
+  const [addDeliverableDialogOpen, setAddDeliverableDialogOpen] = useState(false);
+  const [newDeliverable, setNewDeliverable] = useState({ description: '', status: 'Pending', dueDate: '' });
+  const [newRequirement, setNewRequirement] = useState<{
+    description: string;
+    taskGroup: string;
+    issueGroup: string;
+    ownerId: number | undefined;
+    status: string;
+    priority: string;
+    type: string;
+    category: string;
+    sourceType: string;
+    refSource: string;
+    createdAt: string;
+  }>({
+    description: '',
+    taskGroup: '',
+    issueGroup: '',
+    ownerId: undefined,
+    status: 'Open',
+    priority: 'Medium',
+    type: '',
+    category: '',
+    sourceType: '',
+    refSource: '',
+    createdAt: new Date().toISOString().split('T')[0],
+  });
   const [statusUpdateDialogOpen, setStatusUpdateDialogOpen] = useState(false);
   const [selectedTaskForStatus, setSelectedTaskForStatus] = useState<any>(null);
   const [statusUpdateText, setStatusUpdateText] = useState('');
+  const [requirementDetailDialogOpen, setRequirementDetailDialogOpen] = useState(false);
+  const [selectedRequirement, setSelectedRequirement] = useState<any>(null);
+  const [deliverableDetailDialogOpen, setDeliverableDetailDialogOpen] = useState(false);
+  const [taskGroupDialogOpen, setTaskGroupDialogOpen] = useState(false);
+  const [issueGroupDialogOpen, setIssueGroupDialogOpen] = useState(false);
+  const [newTaskGroup, setNewTaskGroup] = useState({ name: '', description: '' });
+  const [newIssueGroup, setNewIssueGroup] = useState({ name: '', description: '' });
+  const [selectedDeliverable, setSelectedDeliverable] = useState<any>(null);
+  const [linkRequirement, setLinkRequirement] = useState(false);
+  const [addIssueDialogOpen, setAddIssueDialogOpen] = useState(false);
+  const [selectedIssueToLink, setSelectedIssueToLink] = useState<string>('');
+  const [editingIssueId, setEditingIssueId] = useState<number | null>(null);
+  const [editIssueData, setEditIssueData] = useState<any>({});
+  const [deletingIssueId, setDeletingIssueId] = useState<number | null>(null);
+  const [deleteIssueDialogOpen, setDeleteIssueDialogOpen] = useState(false);
+  const [newIssue, setNewIssue] = useState({
+    description: '',
+    owner: '',
+    status: 'Open',
+    priority: 'Medium',
+    issueGroup: '',
+    type: '',
+    class: '',
+  });
   const [newTask, setNewTask] = useState<any>({
     taskGroup: '',
     description: '',
-    responsible: '',
-    accountable: '',
-    consulted: '',
-    informed: '',
-    owner: '',
+    responsibleId: undefined,
+    accountableId: undefined,
+    consultedId: undefined,
+    informedId: undefined,
+    ownerId: undefined,
     status: 'Not Started',
     priority: 'Medium',
     requirementId: '',
+    issueId: '',
     dueDate: '',
     assignDate: new Date().toISOString().split('T')[0],
   });
 
-  const { data: tasks, isLoading, refetch } = trpc.tasks.list.useQuery();
-  const { data: stakeholders } = trpc.stakeholders.list.useQuery();
-  const { data: requirements } = trpc.requirements.list.useQuery();
+  const { data: tasks, isLoading, refetch } = trpc.tasks.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
+
+  // Handle taskId query parameter from URL
+  useEffect(() => {
+    if (tasks && tasks.length > 0) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const taskId = urlParams.get('taskId');
+      if (taskId) {
+        const task = tasks.find(t => t.taskId === taskId);
+        if (task) {
+          handleViewDetails(task);
+          // Clear the query parameter
+          window.history.replaceState({}, '', '/tasks');
+        }
+      }
+    }
+  }, [tasks]);
+  const { data: stakeholders } = trpc.stakeholders.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
+  const { data: requirements } = trpc.requirements.list.useQuery(
+    { projectId: currentProjectId || 0 },
+    { enabled: !!currentProjectId }
+  );
+  const { data: deliverables } = trpc.deliverables.list.useQuery(
+    { projectId: currentProjectId || 0 },
+    { enabled: !!currentProjectId }
+  );
+  const { data: allIssues } = trpc.issues.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
+  const { data: linkedIssues } = trpc.issues.getByEntity.useQuery(
+    { entityType: "task", entityId: selectedTask?.taskId || "" },
+    { enabled: viewDialogOpen && !!selectedTask?.taskId }
+  );
   const { data: actionLogs } = trpc.actionLogs.getByEntity.useQuery(
     { entityType: "task", entityId: selectedEntityId },
     { enabled: historyDialogOpen && !!selectedEntityId }
   );
-  const { currentProjectId } = useProject();
   const { data: taskGroups } = trpc.dropdownOptions.taskGroups.getAll.useQuery(
     { projectId: currentProjectId || 0 },
     { enabled: !!currentProjectId }
   );
+  const { data: issueGroups } = trpc.dropdownOptions.issueGroups.getAll.useQuery(
+    { projectId: currentProjectId || 0 },
+    { enabled: !!currentProjectId }
+  );
+  const { data: statusOptions } = trpc.dropdownOptions.status.getAll.useQuery();
+  const { data: priorityOptions } = trpc.dropdownOptions.priority.getAll.useQuery();
 
   const utils = trpc.useUtils();
 
@@ -83,9 +172,145 @@ export default function Tasks() {
     },
   });
 
+  const createTaskGroupForRequirementMutation = trpc.dropdownOptions.taskGroups.create.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Task Group "${data.name}" created successfully`);
+      setNewRequirement({ ...newRequirement, taskGroup: data.name });
+      utils.dropdownOptions.taskGroups.getAll.invalidate();
+      setTaskGroupDialogOpen(false);
+      setNewTaskGroup({ name: '', description: '' });
+    },
+    onError: (error) => {
+      toast.error(`Failed to create task group: ${error.message}`);
+    },
+  });
+
+  const createIssueGroupForRequirementMutation = trpc.dropdownOptions.issueGroups.create.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Issue Group "${data.name}" created successfully`);
+      setNewRequirement({ ...newRequirement, issueGroup: data.name });
+      utils.dropdownOptions.issueGroups.getAll.invalidate();
+      setIssueGroupDialogOpen(false);
+      setNewIssueGroup({ name: '', description: '' });
+    },
+    onError: (error) => {
+      toast.error(`Failed to create issue group: ${error.message}`);
+    },
+  });
+
+  const createRequirementMutation = trpc.requirements.create.useMutation({
+      onSuccess: (data) => {
+      toast.success(`Requirement "${data.idCode}" created successfully`);
+      setNewTask({ ...newTask, requirementId: data.idCode });
+      utils.requirements.list.invalidate();
+      setAddRequirementDialogOpen(false);
+      setNewRequirement({
+        description: '',
+        taskGroup: '',
+        issueGroup: '',
+        ownerId: undefined,
+        status: 'Open',
+        priority: 'Medium',
+        type: '',
+        category: '',
+        sourceType: '',
+        refSource: '',
+        createdAt: new Date().toISOString().split('T')[0],
+      });
+    },
+    onError: (error) => {
+      toast.error(`Failed to create requirement: ${error.message}`);
+    },
+  });
+
+  const createDeliverableMutation = trpc.deliverables.create.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Deliverable "${data.deliverableId}" created successfully`);
+      setNewTask({ ...newTask, deliverableId: data.id });
+      utils.deliverables.list.invalidate();
+      setAddDeliverableDialogOpen(false);
+      setNewDeliverable({ description: '', status: 'Pending', dueDate: '' });
+    },
+    onError: (error) => {
+      toast.error(`Failed to create deliverable: ${error.message}`);
+    },
+  });
+
+  const createIssueMutation = trpc.issues.create.useMutation({
+    onSuccess: async (data) => {
+      toast.success(`Issue "${data.issueId}" created successfully`);
+      
+      // Link the newly created issue to the task
+      if (selectedTask?.taskId && data.issueId) {
+        // Find the issue by issueId to get its numeric ID
+        await utils.issues.list.invalidate();
+        const allIssuesData = await utils.issues.list.fetch({ projectId: currentProjectId! });
+        const createdIssue = allIssuesData?.find(iss => iss.issueId === data.issueId);
+        
+        if (createdIssue) {
+          await linkIssueMutation.mutateAsync({
+            issueId: createdIssue.id,
+            entityType: 'task',
+            entityId: selectedTask.taskId,
+          });
+        }
+      }
+      
+      setAddIssueDialogOpen(false);
+      setNewIssue({
+        description: '',
+        owner: '',
+        status: 'Open',
+        priority: 'Medium',
+        issueGroup: '',
+        type: '',
+        class: '',
+      });
+      utils.issues.getByEntity.invalidate();
+    },
+    onError: (error) => {
+      toast.error(`Failed to create issue: ${error.message}`);
+    },
+  });
+
+  const linkIssueMutation = trpc.issues.addLink.useMutation({
+    onSuccess: () => {
+      toast.success('Issue linked successfully');
+      setSelectedIssueToLink('');
+      utils.issues.getByEntity.invalidate();
+    },
+    onError: (error) => {
+      toast.error(`Link failed: ${error.message}`);
+    },
+  });
+
+  const updateIssueMutation = trpc.issues.update.useMutation({
+    onSuccess: () => {
+      toast.success('Issue updated successfully');
+      setEditingIssueId(null);
+      setEditIssueData({});
+      utils.issues.getByEntity.invalidate();
+    },
+    onError: (error) => {
+      toast.error(`Update failed: ${error.message}`);
+    },
+  });
+
+  const deleteIssueMutation = trpc.issues.delete.useMutation({
+    onSuccess: () => {
+      toast.success('Issue deleted successfully');
+      setDeleteIssueDialogOpen(false);
+      setDeletingIssueId(null);
+      utils.issues.getByEntity.invalidate();
+    },
+    onError: (error) => {
+      toast.error(`Delete failed: ${error.message}`);
+    },
+  });
+
   const updateMutation = trpc.tasks.update.useMutation({
     onSuccess: (data) => {
-      toast.success(`Updated successfully. Changed fields: ${data.changedFields.join(', ') || 'none'}`);
+      toast.success('Task updated successfully');
       setEditingId(null);
       refetch();
     },
@@ -98,6 +323,7 @@ export default function Tasks() {
     onSuccess: (data) => {
       toast.success(`Task ${data.taskId} created successfully`);
       setCreateDialogOpen(false);
+      setLinkRequirement(false);
       setNewTask({
         taskGroup: '',
         description: '',
@@ -206,24 +432,31 @@ export default function Tasks() {
   };
 
   const handleCreate = () => {
-    if (!newTask.taskGroup || !newTask.taskGroup.trim()) {
-      toast.error('Task Group is required');
+    if (!currentProjectId) {
+      toast.error('No project selected. Please select a project first.');
       return;
     }
     if (!newTask.description || !newTask.description.trim()) {
       toast.error('Description is required');
       return;
     }
-    // Convert "none" to undefined for optional requirementId
-    const taskData = {
+    // Only include requirementId if linkRequirement checkbox is checked
+    const taskData: any = {
       ...newTask,
       projectId: currentProjectId!,
-      requirementId: newTask.requirementId === "none" ? undefined : newTask.requirementId,
+      requirementId: linkRequirement && newTask.requirementId && newTask.requirementId !== "none" ? newTask.requirementId : undefined,
       dueDate: newTask.dueDate || undefined,
-      assignDate: newTask.assignDate || undefined,
-      consulted: newTask.consulted || undefined,
-      informed: newTask.informed || undefined,
+      // Preserve assignDate default value (today's date) if not changed
+      assignDate: newTask.assignDate,
     };
+    
+    // Clean up empty strings and convert to undefined to prevent SQL errors
+    Object.keys(taskData).forEach(key => {
+      if (taskData[key] === '' || taskData[key] === 'none') {
+        taskData[key] = undefined;
+      }
+    });
+    
     createMutation.mutate(taskData);
   };
 
@@ -232,25 +465,41 @@ export default function Tasks() {
     setDeleteDialogOpen(true);
   };
 
+  const handleViewRequirementDetails = (requirementId: string | number) => {
+    const requirement = requirements?.find(r => r.idCode === requirementId || r.id === requirementId);
+    if (requirement) {
+      setSelectedRequirement(requirement);
+      setRequirementDetailDialogOpen(true);
+    }
+  };
+
+  const handleViewDeliverableDetails = (deliverableId: number) => {
+    const deliverable = deliverables?.find(d => d.id === deliverableId);
+    if (deliverable) {
+      setSelectedDeliverable(deliverable);
+      setDeliverableDetailDialogOpen(true);
+    }
+  };
+
   const handleViewDetails = (task: any) => {
     setSelectedTask(task);
     setIsEditMode(false);
     setEditFormData({
       taskGroup: task.taskGroup || '',
       description: task.description || '',
-      responsible: task.responsible || '',
-      accountable: task.accountable || '',
-      consulted: task.consulted || '',
-      informed: task.informed || '',
-      owner: task.owner || '',
+      responsibleId: task.responsibleId,
+      accountableId: task.accountableId,
+      consultedId: task.consultedId,
+      informedId: task.informedId,
+      ownerId: task.ownerId,
       status: task.status || '',
       priority: task.priority || '',
       requirementId: task.requirementId || '',
+      deliverableId: task.deliverableId ? task.deliverableId.toString() : '',
+      issueId: task.issueId || '',
       dueDate: task.dueDate || '',
       assignDate: task.assignDate || '',
-      currentStatus: task.currentStatus || '',
-      lastUpdate: task.lastUpdate || '',
-      statusUpdate: task.statusUpdate || '',
+      newStatusUpdate: '',
     });
     setViewDialogOpen(true);
   };
@@ -261,29 +510,41 @@ export default function Tasks() {
     setEditFormData({
       taskGroup: task.taskGroup || '',
       description: task.description || '',
-      responsible: task.responsible || '',
-      accountable: task.accountable || '',
-      consulted: task.consulted || '',
-      informed: task.informed || '',
-      owner: task.owner || '',
+      responsibleId: task.responsibleId,
+      accountableId: task.accountableId,
+      consultedId: task.consultedId,
+      informedId: task.informedId,
+      ownerId: task.ownerId,
       status: task.status || '',
       priority: task.priority || '',
       requirementId: task.requirementId || '',
+      deliverableId: task.deliverableId ? task.deliverableId.toString() : '',
+      issueId: task.issueId || '',
       dueDate: task.dueDate || '',
       assignDate: task.assignDate || '',
-      currentStatus: task.currentStatus || '',
-      lastUpdate: task.lastUpdate || '',
-      statusUpdate: task.statusUpdate || '',
+      newStatusUpdate: '',
     });
     setViewDialogOpen(true);
   };
 
   const handleSaveEdit = () => {
     if (!selectedTask) return;
+    // Convert deliverableId from string to number (Select stores values as strings)
+    const dataToSave = {
+      ...editFormData,
+      deliverableId: editFormData.deliverableId ? parseInt(editFormData.deliverableId) : undefined,
+      // Handle new status update if provided
+      ...(editFormData.newStatusUpdate?.trim() ? {
+        currentStatus: editFormData.newStatusUpdate.trim(),
+        statusUpdate: `[${new Date().toISOString().split('T')[0]}] ${editFormData.newStatusUpdate.trim()}`,
+      } : {}),
+    };
+    // Remove the UI-only field before sending to server
+    delete dataToSave.newStatusUpdate;
     updateMutation.mutate({
       id: selectedTask.id,
       taskId: selectedTask.taskId,
-      data: editFormData,
+      data: dataToSave,
     }, {
       onSuccess: () => {
         setIsEditMode(false);
@@ -295,6 +556,44 @@ export default function Tasks() {
   const confirmDelete = () => {
     if (deletingId) {
       deleteMutation.mutate({ id: deletingId });
+    }
+  };
+
+  const handleEditIssue = (issue: any) => {
+    setEditingIssueId(issue.id);
+    setEditIssueData({
+      status: issue.status || '',
+      priority: issue.priority || '',
+      deliverables1: issue.deliverables1 || '',
+      d1Status: issue.d1Status || '',
+      deliverables2: issue.deliverables2 || '',
+      d2Status: issue.d2Status || '',
+      lastUpdate: issue.lastUpdate || '',
+      updateDate: issue.updateDate || '',
+    });
+  };
+
+  const handleSaveIssue = (issue: any) => {
+    updateIssueMutation.mutate({
+      id: issue.id,
+      issueId: issue.issueId,
+      data: editIssueData,
+    });
+  };
+
+  const handleCancelEditIssue = () => {
+    setEditingIssueId(null);
+    setEditIssueData({});
+  };
+
+  const handleDeleteIssue = (id: number) => {
+    setDeletingIssueId(id);
+    setDeleteIssueDialogOpen(true);
+  };
+
+  const confirmDeleteIssue = () => {
+    if (deletingIssueId) {
+      deleteIssueMutation.mutate({ id: deletingIssueId });
     }
   };
 
@@ -335,46 +634,29 @@ export default function Tasks() {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Tasks Management</CardTitle>
-              <CardDescription>
-                View, edit, and track changes to project tasks
-              </CardDescription>
-            </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-sm">
-                {tasks?.length || 0} Tasks
-              </Badge>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setSettingsType("status");
-                  setSettingsOpen(true);
-                }}
-                title="Manage Status Options"
-              >
-                <Settings className="w-4 h-4 mr-1" />
-                Status
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setSettingsType("priority");
-                  setSettingsOpen(true);
-                }}
-                title="Manage Priority Options"
-              >
-                <Settings className="w-4 h-4 mr-1" />
-                Priority
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
+      {/* Dashboard Chart */}
+      <TasksByResponsibleChart tasks={tasks || []} />
+
+      {/* Page Header */}
+      <div className="bg-white border border-gray-200 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <CheckSquare className="w-6 h-6 text-gray-500" />
+            Tasks Management
+          </h1>
+          <p className="text-gray-500 text-sm mt-1">View, edit, and track changes to project tasks</p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Badge variant="outline" className="text-blue-700 border-blue-300">{tasks?.length || 0} Tasks</Badge>
+          <Button size="sm" variant="outline" onClick={() => { setSettingsType("status"); setSettingsOpen(true); }} className="border-blue-300 hover:bg-blue-50 text-blue-700">
+            <Settings className="w-4 h-4 mr-1" />Status
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => { setSettingsType("priority"); setSettingsOpen(true); }} className="border-blue-300 hover:bg-blue-50 text-blue-700">
+            <Settings className="w-4 h-4 mr-1" />Priority
+          </Button>
+        </div>
+      </div>
+      <Card className="border-blue-100">
         <CardContent>
           <div className="flex items-center gap-4 mb-6">
             <div className="relative flex-1">
@@ -399,8 +681,8 @@ export default function Tasks() {
                   <TableHead className="w-[100px]">Task ID</TableHead>
                   <TableHead className="w-[120px]">Task Group</TableHead>
                   <TableHead>Description</TableHead>
-                  <TableHead>Requirement ID</TableHead>
-                  <TableHead>Req Status</TableHead>
+                  <TableHead>Requirement</TableHead>
+                  <TableHead>Deliverable</TableHead>
                   <TableHead>Responsible</TableHead>
                   <TableHead>Due Date</TableHead>
                   <TableHead>Current Status</TableHead>
@@ -409,31 +691,20 @@ export default function Tasks() {
               </TableHeader>
               <TableBody>
                 {filteredTasks?.map((task) => (
-                  <TableRow key={task.id}>
-                    <TableCell className="font-medium">{task.taskId}</TableCell>
-                    <TableCell>{task.taskGroup || 'N/A'}</TableCell>
-                    <TableCell className="max-w-xs truncate">{task.description}</TableCell>
-                    <TableCell>{task.requirementId || 'N/A'}</TableCell>
-                    <TableCell>
-                      {getRequirementStatus(task.requirementId) ? (
-                        <Badge variant="outline">{getRequirementStatus(task.requirementId)}</Badge>
-                      ) : (
-                        <span className="text-muted-foreground">N/A</span>
-                      )}
-                    </TableCell>
-                    <TableCell>{task.responsible}</TableCell>
-                    <TableCell>{task.dueDate || 'N/A'}</TableCell>
-                    <TableCell>
-                      <div className="max-w-xs">
-                        <div className="text-sm font-medium">{task.currentStatus || 'N/A'}</div>
-                        {task.statusUpdate && (
-                          <div className="text-xs text-muted-foreground mt-1">{task.statusUpdate}</div>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        {editingId === task.id ? (
+                  <TableRow key={task.id} className="hover:bg-muted/50">
+                    <TableCell colSpan={9} className="p-0">
+                      <div className="p-4 space-y-2">
+                        {/* Line 1: Task ID, Description, Actions */}
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-3">
+                              <span className="font-bold text-base">{task.taskId}</span>
+                              <span className="text-xs px-2 py-0.5 rounded bg-muted">{task.taskGroup || '-'}</span>
+                            </div>
+                            <p className="mt-1 text-sm">{task.description}</p>
+                          </div>
+                          <div className="flex gap-2 flex-shrink-0">
+                            {editingId === task.id ? (
                           <>
                             <Button size="sm" onClick={() => handleSave(task)} disabled={updateMutation.isPending}>
                               Save
@@ -467,9 +738,65 @@ export default function Tasks() {
                             </Button>
                             <Button size="sm" variant="destructive" onClick={() => handleDelete(task.id)} title="Delete">
                               <Trash2 className="w-3 h-3" />
-                            </Button>
-                          </>
-                        )}
+                            </Button>                          </>
+
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Line 2: Requirement, Deliverable, Responsible, Due Date, Status */}
+                        <div className="grid grid-cols-1 gap-1 text-sm text-muted-foreground pl-4 border-l-2 border-muted">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium min-w-[100px]">Requirement:</span>
+                            {task.requirementId ? (
+                              <div className="flex items-center gap-1">
+                                <Badge variant="secondary" className="text-xs">{task.requirementId}</Badge>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-5 w-5 p-0"
+                                  onClick={() => task.requirementId && handleViewRequirementDetails(task.requirementId)}
+                                  title="View requirement details"
+                                >
+                                  <Info className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <span>-</span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium min-w-[100px]">Deliverable:</span>
+                            {task.deliverableId ? (
+                              <div className="flex items-center gap-1">
+                                <Badge variant="secondary" className="text-xs">DL-{String(task.deliverableId).padStart(4, '0')}</Badge>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-5 w-5 p-0"
+                                  onClick={() => task.deliverableId && handleViewDeliverableDetails(task.deliverableId)}
+                                  title="View deliverable details"
+                                >
+                                  <Info className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <span>-</span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium min-w-[100px]">Responsible:</span>
+                            <span>{task.responsible || '-'}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium min-w-[100px]">Due Date:</span>
+                            <span>{task.dueDate || '-'}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium min-w-[100px]">Status:</span>
+                            <Badge>{task.currentStatus || 'No updates'}</Badge>
+                          </div>
+                        </div>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -542,14 +869,14 @@ export default function Tasks() {
               <h4 className="text-sm font-semibold border-b pb-2">Basic Information</h4>
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="taskGroup">Task Group *</Label>
+                  <Label htmlFor="taskGroup">Task Group</Label>
                   <div className="flex gap-2">
                     <Select
                       value={newTask.taskGroup}
                       onValueChange={(value) => setNewTask({ ...newTask, taskGroup: value })}
                     >
                       <SelectTrigger className="flex-1">
-                        <SelectValue placeholder="Select task group..." />
+                        <SelectValue placeholder="Select task group (optional)..." />
                       </SelectTrigger>
                       <SelectContent>
                         {taskGroups?.map((group) => (
@@ -581,19 +908,101 @@ export default function Tasks() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="requirementId">Requirement ID</Label>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Checkbox
+                      id="linkRequirement"
+                      checked={linkRequirement}
+                      onCheckedChange={(checked) => {
+                        setLinkRequirement(checked as boolean);
+                        if (!checked) {
+                          setNewTask({ ...newTask, requirementId: '' });
+                        }
+                      }}
+                    />
+                    <Label htmlFor="linkRequirement" className="cursor-pointer">Link to Requirement</Label>
+                  </div>
+                  <div className="flex gap-2">
+                    <Select
+                      value={newTask.requirementId}
+                      onValueChange={(value) => setNewTask({ ...newTask, requirementId: value })}
+                      disabled={!linkRequirement}
+                    >
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Select requirement..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {requirements?.map((req) => (
+                          <SelectItem key={req.id} value={req.idCode}>
+                            {req.idCode} - {req.description?.substring(0, 50) || 'No description'}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      onClick={() => setAddRequirementDialogOpen(true)}
+                      title="Add new requirement"
+                      disabled={!linkRequirement || createRequirementMutation.isPending}
+                    >
+                      {createRequirementMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="deliverableId">Deliverable</Label>
+                  <div className="flex gap-2">
+                    <Select
+                      value={newTask.deliverableId?.toString() || ''}
+                      onValueChange={(value) => {
+                        if (value === '' || value === 'none') {
+                          setNewTask({ ...newTask, deliverableId: undefined });
+                        } else {
+                          const numValue = parseInt(value);
+                          setNewTask({ ...newTask, deliverableId: isNaN(numValue) ? undefined : numValue });
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Select deliverable..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {deliverables?.map((del) => (
+                          <SelectItem key={del.id} value={del.id.toString()}>
+                            {del.deliverableId} - {del.description?.substring(0, 50) || 'No description'}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      onClick={() => setAddDeliverableDialogOpen(true)}
+                      title="Add new deliverable"
+                      disabled={createDeliverableMutation.isPending}
+                    >
+                      {createDeliverableMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="issueId">Issue</Label>
                   <Select
-                    value={newTask.requirementId}
-                    onValueChange={(value) => setNewTask({ ...newTask, requirementId: value })}
+                    value={newTask.issueId}
+                    onValueChange={(value) => setNewTask({ ...newTask, issueId: value })}
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select requirement..." />
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Select issue..." />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">None</SelectItem>
-                      {requirements?.map((req) => (
-                        <SelectItem key={req.id} value={req.idCode}>
-                          {req.idCode} - {req.description?.substring(0, 50) || 'No description'}
+                      {allIssues?.map((issue) => (
+                        <SelectItem key={issue.id} value={issue.issueId}>
+                          {issue.issueId} - {issue.description?.substring(0, 50) || 'No description'}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -610,8 +1019,8 @@ export default function Tasks() {
                   <Label htmlFor="responsible">Responsible (R)</Label>
                   <SelectWithCreate
                     type="stakeholder"
-                    value={newTask.responsible}
-                    onValueChange={(value) => setNewTask({ ...newTask, responsible: value })}
+                    value={newTask.responsibleId?.toString() || ''}
+                    onValueChange={(value) => setNewTask({ ...newTask, responsibleId: value ? parseInt(value) : undefined })}
                     placeholder="Select responsible person..."
                     projectId={currentProjectId || undefined}
                   />
@@ -620,8 +1029,8 @@ export default function Tasks() {
                   <Label htmlFor="accountable">Accountable (A)</Label>
                   <SelectWithCreate
                     type="stakeholder"
-                    value={newTask.accountable}
-                    onValueChange={(value) => setNewTask({ ...newTask, accountable: value })}
+                    value={newTask.accountableId?.toString() || ''}
+                    onValueChange={(value) => setNewTask({ ...newTask, accountableId: value ? parseInt(value) : undefined })}
                     placeholder="Select accountable person..."
                     projectId={currentProjectId || undefined}
                   />
@@ -630,8 +1039,8 @@ export default function Tasks() {
                   <Label htmlFor="consulted">Consulted (C)</Label>
                   <SelectWithCreate
                     type="stakeholder"
-                    value={newTask.consulted}
-                    onValueChange={(value) => setNewTask({ ...newTask, consulted: value })}
+                    value={newTask.consultedId?.toString() || ''}
+                    onValueChange={(value) => setNewTask({ ...newTask, consultedId: value ? parseInt(value) : undefined })}
                     placeholder="Select consulted person..."
                     projectId={currentProjectId || undefined}
                   />
@@ -640,8 +1049,8 @@ export default function Tasks() {
                   <Label htmlFor="informed">Informed (I)</Label>
                   <SelectWithCreate
                     type="stakeholder"
-                    value={newTask.informed}
-                    onValueChange={(value) => setNewTask({ ...newTask, informed: value })}
+                    value={newTask.informedId?.toString() || ''}
+                    onValueChange={(value) => setNewTask({ ...newTask, informedId: value ? parseInt(value) : undefined })}
                     placeholder="Select informed person..."
                     projectId={currentProjectId || undefined}
                   />
@@ -792,7 +1201,7 @@ export default function Tasks() {
                     </Button>
                   </>
                 ) : (
-                  <Button onClick={() => setIsEditMode(true)} variant="outline">
+                  <Button onClick={() => { setIsEditMode(true); setEditFormData((prev: any) => ({ ...prev, newStatusUpdate: '' })); }} variant="outline">
                     <Edit className="w-4 h-4 mr-2" />
                     Edit
                   </Button>
@@ -810,29 +1219,168 @@ export default function Tasks() {
               <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                 <Label className="text-xs text-muted-foreground uppercase tracking-wide">Task Group</Label>
                 {isEditMode ? (
-                  <Input value={editFormData.taskGroup} onChange={(e) => setEditFormData({...editFormData, taskGroup: e.target.value})} className="h-8" />
+                  <Select value={editFormData.taskGroup} onValueChange={(v) => setEditFormData({...editFormData, taskGroup: v})}>
+                    <SelectTrigger className="h-8">
+                      <SelectValue placeholder="Select task group" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {taskGroups?.map((g) => (
+                        <SelectItem key={g.id} value={g.name}>{g.idCode ? `${g.idCode} - ${g.name}` : g.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 ) : (
                   <p className="font-medium">{selectedTask?.taskGroup || '-'}</p>
                 )}
               </div>
               <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                 <Label className="text-xs text-muted-foreground uppercase tracking-wide">Requirement ID</Label>
-                <p className="font-medium">{selectedTask?.requirementId || '-'}</p>
+                {isEditMode ? (
+                  <div className="flex gap-2">
+                    <Select
+                      value={editFormData.requirementId || ''}
+                      onValueChange={(value) => {
+                        if (value === '' || value === 'none') {
+                          setEditFormData({ ...editFormData, requirementId: undefined });
+                        } else {
+                          setEditFormData({ ...editFormData, requirementId: value });
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="h-8">
+                        <SelectValue placeholder="Select requirement..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {requirements?.map((req) => (
+                          <SelectItem key={req.id} value={req.idCode}>
+                            {req.idCode} - {req.description?.substring(0, 50) || 'No description'}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      onClick={() => setAddRequirementDialogOpen(true)}
+                      title="Add new requirement"
+                      disabled={createRequirementMutation.isPending}
+                      className="h-8 w-8"
+                    >
+                      {createRequirementMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+                    </Button>
+                  </div>
+                ) : (
+                  <p className="font-medium">{selectedTask?.requirementId || '-'}</p>
+                )}
+              </div>
+              <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Deliverable</Label>
+                {isEditMode ? (
+                  <div className="flex gap-2">
+                    <Select
+                      value={editFormData.deliverableId || ''}
+                      onValueChange={(value) => {
+                        if (value === '' || value === 'none') {
+                          setEditFormData({ ...editFormData, deliverableId: undefined });
+                        } else {
+                          setEditFormData({ ...editFormData, deliverableId: value });
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="h-8">
+                        <SelectValue placeholder="Select deliverable..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {deliverables?.map((del) => (
+                          <SelectItem key={del.id} value={del.id.toString()}>
+                            {del.deliverableId} - {del.description?.substring(0, 50) || 'No description'}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      onClick={() => setAddDeliverableDialogOpen(true)}
+                      title="Add new deliverable"
+                      className="h-8 w-8"
+                    >
+                      <Plus className="w-3 h-3" />
+                    </Button>
+                  </div>
+                ) : (
+                  <p className="font-medium">
+                    {selectedTask?.deliverableId
+                      ? (deliverables?.find(d => d.id === selectedTask.deliverableId)?.deliverableId || '-') + ' - ' + (deliverables?.find(d => d.id === selectedTask.deliverableId)?.description?.substring(0, 50) || '')
+                      : '-'}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Issue</Label>
+                {isEditMode ? (
+                  <Select
+                    value={editFormData.issueId || ''}
+                    onValueChange={(value) => {
+                      if (value === '' || value === 'none') {
+                        setEditFormData({ ...editFormData, issueId: undefined });
+                      } else {
+                        setEditFormData({ ...editFormData, issueId: value });
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="h-8">
+                      <SelectValue placeholder="Select issue..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {allIssues?.map((issue) => (
+                        <SelectItem key={issue.id} value={issue.issueId}>
+                          {issue.issueId} - {issue.description?.substring(0, 50) || 'No description'}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="font-medium">{selectedTask?.issueId || '-'}</p>
+                )}
               </div>
               <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                 <Label className="text-xs text-muted-foreground uppercase tracking-wide">Status</Label>
                 {isEditMode ? (
-                  <Input value={editFormData.status} onChange={(e) => setEditFormData({...editFormData, status: e.target.value})} className="h-8" />
+                  <Select value={editFormData.status} onValueChange={(v) => setEditFormData({...editFormData, status: v})}>
+                    <SelectTrigger className="h-8">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {statusOptions?.map((opt) => (
+                        <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 ) : (
-                  <Badge variant={getStatusColor(selectedTask?.status)}>{selectedTask?.status || 'N/A'}</Badge>
+                  <Badge variant={getStatusColor(selectedTask?.status)}>{selectedTask?.status || '-'}</Badge>
                 )}
               </div>
               <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                 <Label className="text-xs text-muted-foreground uppercase tracking-wide">Priority</Label>
                 {isEditMode ? (
-                  <Input value={editFormData.priority} onChange={(e) => setEditFormData({...editFormData, priority: e.target.value})} className="h-8" />
+                  <Select value={editFormData.priority} onValueChange={(v) => setEditFormData({...editFormData, priority: v})}>
+                    <SelectTrigger className="h-8">
+                      <SelectValue placeholder="Select priority" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {priorityOptions?.map((opt) => (
+                        <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 ) : (
-                  <Badge variant={getPriorityColor(selectedTask?.priority)}>{selectedTask?.priority || 'N/A'}</Badge>
+                  <Badge variant={getPriorityColor(selectedTask?.priority)}>{selectedTask?.priority || '-'}</Badge>
                 )}
               </div>
               <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
@@ -856,35 +1404,59 @@ export default function Tasks() {
             {/* RACI Assignment */}
             <div className="border-t pt-4">
               <h4 className="font-medium mb-3">RACI Assignment</h4>
-              <div className="grid grid-cols-4 gap-4">
-                <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">Responsible (R)</Label>
                   {isEditMode ? (
-                    <Input value={editFormData.responsible} onChange={(e) => setEditFormData({...editFormData, responsible: e.target.value})} className="h-8" />
+                    <SelectWithCreate
+                      type="stakeholder"
+                      value={editFormData.responsibleId?.toString() || ''}
+                      onValueChange={(value) => setEditFormData({...editFormData, responsibleId: value ? parseInt(value) : undefined})}
+                      placeholder="Select responsible person..."
+                      projectId={currentProjectId || undefined}
+                    />
                   ) : (
                     <p className="font-medium">{selectedTask?.responsible || '-'}</p>
                   )}
                 </div>
-                <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                <div className="space-y-2">
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">Accountable (A)</Label>
                   {isEditMode ? (
-                    <Input value={editFormData.accountable} onChange={(e) => setEditFormData({...editFormData, accountable: e.target.value})} className="h-8" />
+                    <SelectWithCreate
+                      type="stakeholder"
+                      value={editFormData.accountableId?.toString() || ''}
+                      onValueChange={(value) => setEditFormData({...editFormData, accountableId: value ? parseInt(value) : undefined})}
+                      placeholder="Select accountable person..."
+                      projectId={currentProjectId || undefined}
+                    />
                   ) : (
                     <p className="font-medium">{selectedTask?.accountable || '-'}</p>
                   )}
                 </div>
-                <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                <div className="space-y-2">
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">Consulted (C)</Label>
                   {isEditMode ? (
-                    <Input value={editFormData.consulted} onChange={(e) => setEditFormData({...editFormData, consulted: e.target.value})} className="h-8" />
+                    <SelectWithCreate
+                      type="stakeholder"
+                      value={editFormData.consultedId?.toString() || ''}
+                      onValueChange={(value) => setEditFormData({...editFormData, consultedId: value ? parseInt(value) : undefined})}
+                      placeholder="Select consulted person..."
+                      projectId={currentProjectId || undefined}
+                    />
                   ) : (
                     <p className="font-medium">{selectedTask?.consulted || '-'}</p>
                   )}
                 </div>
-                <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                <div className="space-y-2">
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">Informed (I)</Label>
                   {isEditMode ? (
-                    <Input value={editFormData.informed} onChange={(e) => setEditFormData({...editFormData, informed: e.target.value})} className="h-8" />
+                    <SelectWithCreate
+                      type="stakeholder"
+                      value={editFormData.informedId?.toString() || ''}
+                      onValueChange={(value) => setEditFormData({...editFormData, informedId: value ? parseInt(value) : undefined})}
+                      placeholder="Select informed person..."
+                      projectId={currentProjectId || undefined}
+                    />
                   ) : (
                     <p className="font-medium">{selectedTask?.informed || '-'}</p>
                   )}
@@ -904,34 +1476,149 @@ export default function Tasks() {
               </div>
             </div>
 
+            {/* Linked Issues Section */}
+            <div className="border-t pt-4 mt-4">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-medium flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-primary" />
+                  Linked Issues
+                </h4>
+                <Button size="sm" onClick={() => setAddIssueDialogOpen(true)} className="bg-primary hover:bg-primary/90">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Issue
+                </Button>
+              </div>
+              {/* Link Existing Issue */}
+              <div className="flex gap-2 mb-3">
+                <Select
+                  value={selectedIssueToLink}
+                  onValueChange={setSelectedIssueToLink}
+                >
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Select issue to link..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allIssues?.filter(iss => 
+                      !linkedIssues?.some(linked => linked.id === iss.id)
+                    ).map((iss) => (
+                      <SelectItem key={iss.id} value={iss.id.toString()}>
+                        {iss.issueId} - {iss.description?.substring(0, 50) || 'No description'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    if (selectedIssueToLink && selectedTask?.taskId) {
+                      linkIssueMutation.mutate({
+                        issueId: parseInt(selectedIssueToLink),
+                        entityType: 'task',
+                        entityId: selectedTask.taskId,
+                      });
+                    }
+                  }}
+                  disabled={!selectedIssueToLink || linkIssueMutation.isPending}
+                  className="bg-primary hover:bg-primary/90"
+                >
+                  {linkIssueMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Link2 className="w-4 h-4 mr-2" />
+                      Link
+                    </>
+                  )}
+                </Button>
+              </div>
+              {linkedIssues && linkedIssues.length > 0 ? (
+                <div className="space-y-2">
+                  {linkedIssues.map((issue) => (
+                    <Card key={issue.id} className="p-3 border-primary/20">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <span className="font-mono text-sm font-medium text-primary">{issue.issueId}</span>
+                          {editingIssueId === issue.id ? (
+                            <div className="mt-2 space-y-2">
+                              <Textarea
+                                value={editIssueData.description}
+                                onChange={(e) => setEditIssueData({ ...editIssueData, description: e.target.value })}
+                                className="text-sm"
+                                rows={2}
+                              />
+                              <div className="grid grid-cols-2 gap-2">
+                                <Input
+                                  value={editIssueData.status}
+                                  onChange={(e) => setEditIssueData({ ...editIssueData, status: e.target.value })}
+                                  placeholder="Status"
+                                  className="text-sm"
+                                />
+                                <Input
+                                  value={editIssueData.priority}
+                                  onChange={(e) => setEditIssueData({ ...editIssueData, priority: e.target.value })}
+                                  placeholder="Priority"
+                                  className="text-sm"
+                                />
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="text-sm text-muted-foreground mt-1">{issue.description || 'No description'}</p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 ml-4">
+                          {editingIssueId === issue.id ? (
+                            <>
+                              <Button size="sm" onClick={() => handleSaveIssue(issue)} disabled={updateIssueMutation.isPending}>
+                                <Save className="w-3 h-3" />
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={handleCancelEditIssue}>
+                                <X className="w-3 h-3" />
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <Badge variant="outline">{issue.status || 'N/A'}</Badge>
+                              <Badge variant="outline">{issue.priority || 'N/A'}</Badge>
+                              <Button size="sm" variant="ghost" onClick={() => handleEditIssue(issue)}>
+                                <Edit className="w-3 h-3" />
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={() => handleDeleteIssue(issue.id)}>
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-4 text-muted-foreground border border-dashed border-primary/20 rounded-lg">
+                  No issues linked yet.
+                </div>
+              )}
+            </div>
+
             {/* Status Updates */}
             <div className="border-t pt-4">
               <h4 className="font-medium mb-3">Status Updates</h4>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-3">
                 <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
-                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Current Status</Label>
-                  {isEditMode ? (
-                    <Textarea value={editFormData.currentStatus} onChange={(e) => setEditFormData({...editFormData, currentStatus: e.target.value})} className="min-h-[60px]" />
-                  ) : (
-                    <p className="font-medium whitespace-pre-wrap">{selectedTask?.currentStatus || '-'}</p>
-                  )}
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Current Status (Read-only)</Label>
+                  <p className="font-medium whitespace-pre-wrap">{selectedTask?.currentStatus || 'No status updates yet'}</p>
                 </div>
-                <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
-                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Last Update</Label>
-                  {isEditMode ? (
-                    <Textarea value={editFormData.lastUpdate} onChange={(e) => setEditFormData({...editFormData, lastUpdate: e.target.value})} className="min-h-[60px]" />
-                  ) : (
-                    <p className="font-medium whitespace-pre-wrap">{selectedTask?.lastUpdate || '-'}</p>
-                  )}
-                </div>
-                <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
-                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Status Update</Label>
-                  {isEditMode ? (
-                    <Textarea value={editFormData.statusUpdate} onChange={(e) => setEditFormData({...editFormData, statusUpdate: e.target.value})} className="min-h-[60px]" />
-                  ) : (
-                    <p className="font-medium whitespace-pre-wrap">{selectedTask?.statusUpdate || '-'}</p>
-                  )}
-                </div>
+                {isEditMode && (
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground uppercase tracking-wide">New Update</Label>
+                    <Textarea
+                      value={editFormData.newStatusUpdate || ''}
+                      onChange={(e) => setEditFormData({...editFormData, newStatusUpdate: e.target.value})}
+                      placeholder="Enter a new status update (will replace current status and be recorded in history)..."
+                      className="min-h-[80px]"
+                    />
+                    <p className="text-xs text-muted-foreground">Leave blank to keep current status unchanged</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -1000,6 +1687,483 @@ export default function Tasks() {
         </DialogContent>
       </Dialog>
 
+      {/* Add Requirement Dialog */}
+      <Dialog open={addRequirementDialogOpen} onOpenChange={setAddRequirementDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Add New Requirement</DialogTitle>
+            <DialogDescription>
+              Create a new requirement to link with this task. ID will be auto-generated.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4 py-4">
+            <div className="space-y-2">
+              <Label>Task Group</Label>
+              <div className="flex gap-2">
+                <Select
+                  value={newRequirement.taskGroup}
+                  onValueChange={(value) => setNewRequirement({ ...newRequirement, taskGroup: value })}
+                >
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Select task group" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {taskGroups?.map((group) => (
+                      <SelectItem key={group.id} value={group.name}>
+                        {group.idCode ? `${group.idCode} - ${group.name}` : group.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="outline"
+                  onClick={() => setTaskGroupDialogOpen(true)}
+                  title="Create new task group"
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Issue Group</Label>
+              <div className="flex gap-2">
+                <Select
+                  value={newRequirement.issueGroup}
+                  onValueChange={(value) => setNewRequirement({ ...newRequirement, issueGroup: value })}
+                >
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Select issue group" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {issueGroups?.map((group) => (
+                      <SelectItem key={group.id} value={group.name}>
+                        {group.idCode ? `${group.idCode} - ${group.name}` : group.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="outline"
+                  onClick={() => setIssueGroupDialogOpen(true)}
+                  title="Create new issue group"
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Creation Date</Label>
+              <Input
+                type="date"
+                value={newRequirement.createdAt}
+                onChange={(e) => setNewRequirement({ ...newRequirement, createdAt: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Priority</Label>
+              <SelectWithCreate
+                type="priority"
+                value={newRequirement.priority}
+                onValueChange={(value) => setNewRequirement({ ...newRequirement, priority: value })}
+                placeholder="Select priority"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Type</Label>
+              <SelectWithCreate
+                type="type"
+                value={newRequirement.type}
+                onValueChange={(value) => setNewRequirement({ ...newRequirement, type: value })}
+                placeholder="Select type"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Category</Label>
+              <SelectWithCreate
+                type="category"
+                value={newRequirement.category}
+                onValueChange={(value) => setNewRequirement({ ...newRequirement, category: value })}
+                placeholder="Select category"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Owner (Stakeholder)</Label>
+              <SelectWithCreate
+                type="stakeholder"
+                value={newRequirement.ownerId?.toString() || ''}
+                onValueChange={(value) => setNewRequirement({ ...newRequirement, ownerId: value ? parseInt(value) : undefined })}
+                placeholder="Select owner"
+                projectId={currentProjectId || undefined}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Source Type</Label>
+              <Input
+                value={newRequirement.sourceType}
+                onChange={(e) => setNewRequirement({ ...newRequirement, sourceType: e.target.value })}
+                placeholder="e.g., Internal, External, Customer"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>External Source</Label>
+              <Input
+                value={newRequirement.refSource}
+                onChange={(e) => setNewRequirement({ ...newRequirement, refSource: e.target.value })}
+                placeholder="Reference source URL or name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <SelectWithCreate
+                type="status"
+                value={newRequirement.status}
+                onValueChange={(value) => setNewRequirement({ ...newRequirement, status: value })}
+                placeholder="Select status"
+              />
+            </div>
+            <div className="col-span-2 space-y-2">
+              <Label>Description *</Label>
+              <Textarea
+                value={newRequirement.description}
+                onChange={(e) => setNewRequirement({ ...newRequirement, description: e.target.value })}
+                placeholder="Enter requirement description..."
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setAddRequirementDialogOpen(false);
+              setNewRequirement({
+                description: '',
+                taskGroup: '',
+                issueGroup: '',
+                ownerId: undefined,
+                status: 'Open',
+                priority: 'Medium',
+                type: '',
+                category: '',
+                sourceType: '',
+                refSource: '',
+                createdAt: new Date().toISOString().split('T')[0],
+              });
+            }}>Cancel</Button>
+            <Button
+              onClick={() => {
+                if (newRequirement.description.trim() && currentProjectId) {
+                  createRequirementMutation.mutate({ 
+                    projectId: currentProjectId, 
+                    description: newRequirement.description.trim(),
+                    taskGroup: newRequirement.taskGroup || undefined,
+                    issueGroup: newRequirement.issueGroup || undefined,
+                    ownerId: newRequirement.ownerId || undefined,
+                    status: newRequirement.status || undefined,
+                    priority: newRequirement.priority || undefined,
+                    type: newRequirement.type || undefined,
+                    category: newRequirement.category || undefined,
+                    sourceType: newRequirement.sourceType || undefined,
+                    refSource: newRequirement.refSource || undefined,
+                  });
+                }
+              }}
+              disabled={!newRequirement.description.trim() || !currentProjectId || createRequirementMutation.isPending}
+            >
+              {createRequirementMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Creating...</> : 'Create'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Deliverable Dialog */}
+      <Dialog open={addDeliverableDialogOpen} onOpenChange={setAddDeliverableDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New Deliverable</DialogTitle>
+            <DialogDescription>
+              Create a new deliverable to link with this task.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Description *</Label>
+              <Textarea
+                value={newDeliverable.description}
+                onChange={(e) => setNewDeliverable({ ...newDeliverable, description: e.target.value })}
+                placeholder="Enter deliverable description"
+                rows={3}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Input
+                  value={newDeliverable.status}
+                  onChange={(e) => setNewDeliverable({ ...newDeliverable, status: e.target.value })}
+                  placeholder="e.g., Pending, In Progress, Completed"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Due Date</Label>
+                <Input
+                  type="date"
+                  value={newDeliverable.dueDate}
+                  onChange={(e) => setNewDeliverable({ ...newDeliverable, dueDate: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setAddDeliverableDialogOpen(false);
+              setNewDeliverable({ description: '', status: 'Pending', dueDate: '' });
+            }}>Cancel</Button>
+            <Button
+              onClick={() => {
+                if (newDeliverable.description.trim() && currentProjectId) {
+                  createDeliverableMutation.mutate({
+                    projectId: currentProjectId,
+                    description: newDeliverable.description.trim(),
+                    status: newDeliverable.status || 'Pending',
+                    dueDate: newDeliverable.dueDate || undefined,
+                  });
+                }
+              }}
+              disabled={!newDeliverable.description.trim() || !currentProjectId || createDeliverableMutation.isPending}
+            >
+              {createDeliverableMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Creating...</> : 'Create'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Issue Dialog */}
+      <Dialog open={addIssueDialogOpen} onOpenChange={setAddIssueDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New Issue</DialogTitle>
+            <DialogDescription>
+              Create a new issue to link with this task.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Description *</Label>
+              <Textarea
+                value={newIssue.description}
+                onChange={(e) => setNewIssue({ ...newIssue, description: e.target.value })}
+                placeholder="Enter issue description"
+                rows={3}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Input
+                  value={newIssue.status}
+                  onChange={(e) => setNewIssue({ ...newIssue, status: e.target.value })}
+                  placeholder="e.g., Open, In Progress, Resolved"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Priority</Label>
+                <Input
+                  value={newIssue.priority}
+                  onChange={(e) => setNewIssue({ ...newIssue, priority: e.target.value })}
+                  placeholder="e.g., Low, Medium, High"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Issue Group</Label>
+              <Input
+                value={newIssue.issueGroup}
+                onChange={(e) => setNewIssue({ ...newIssue, issueGroup: e.target.value })}
+                placeholder="Enter issue group"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Type</Label>
+                <SelectWithCreate
+                  type="issueType"
+                  value={newIssue.type}
+                  onValueChange={(value) => setNewIssue({ ...newIssue, type: value })}
+                  placeholder="Select type..."
+                  projectId={currentProjectId!}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Class</Label>
+                <SelectWithCreate
+                  type="class"
+                  value={newIssue.class}
+                  onValueChange={(value) => setNewIssue({ ...newIssue, class: value })}
+                  placeholder="Select class..."
+                  projectId={currentProjectId!}
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setAddIssueDialogOpen(false);
+              setNewIssue({
+                description: '',
+                owner: '',
+                status: 'Open',
+                priority: 'Medium',
+                issueGroup: '',
+                type: '',
+                class: '',
+              });
+            }}>Cancel</Button>
+            <Button
+              onClick={() => {
+                if (newIssue.description.trim() && currentProjectId) {
+                  createIssueMutation.mutate({
+                    projectId: currentProjectId,
+                    description: newIssue.description.trim(),
+                    status: newIssue.status || 'Open',
+                    priority: newIssue.priority || 'Medium',
+                    issueGroup: newIssue.issueGroup || undefined,
+                    type: newIssue.type || undefined,
+                    class: newIssue.class || undefined,
+                    taskId: selectedTask?.taskId,
+                  });
+                }
+              }}
+              disabled={!newIssue.description.trim() || !currentProjectId || createIssueMutation.isPending}
+            >
+              {createIssueMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Creating...</> : 'Create'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Issue Confirmation Dialog */}
+      <AlertDialog open={deleteIssueDialogOpen} onOpenChange={setDeleteIssueDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the issue.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteIssue} disabled={deleteIssueMutation.isPending}>
+              {deleteIssueMutation.isPending ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Task Group Creation Dialog (for Requirement) */}
+      <Dialog open={taskGroupDialogOpen} onOpenChange={setTaskGroupDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Task Group</DialogTitle>
+            <DialogDescription>
+              Add a new task group to categorize requirements and tasks.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Name *</Label>
+              <Input
+                value={newTaskGroup.name}
+                onChange={(e) => setNewTaskGroup({ ...newTaskGroup, name: e.target.value })}
+                placeholder="Enter task group name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Textarea
+                value={newTaskGroup.description}
+                onChange={(e) => setNewTaskGroup({ ...newTaskGroup, description: e.target.value })}
+                placeholder="Enter task group description (optional)"
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setTaskGroupDialogOpen(false);
+              setNewTaskGroup({ name: '', description: '' });
+            }}>Cancel</Button>
+            <Button
+              onClick={() => {
+                if (newTaskGroup.name.trim() && currentProjectId) {
+                  createTaskGroupForRequirementMutation.mutate({
+                    projectId: currentProjectId,
+                    name: newTaskGroup.name.trim(),
+                    description: newTaskGroup.description.trim() || undefined,
+                  });
+                }
+              }}
+              disabled={!newTaskGroup.name.trim() || !currentProjectId || createTaskGroupForRequirementMutation.isPending}
+            >
+              {createTaskGroupForRequirementMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Creating...</> : 'Create'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Issue Group Creation Dialog (for Requirement) */}
+      <Dialog open={issueGroupDialogOpen} onOpenChange={setIssueGroupDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Issue Group</DialogTitle>
+            <DialogDescription>
+              Add a new issue group to categorize requirements and issues.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Name *</Label>
+              <Input
+                value={newIssueGroup.name}
+                onChange={(e) => setNewIssueGroup({ ...newIssueGroup, name: e.target.value })}
+                placeholder="Enter issue group name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Textarea
+                value={newIssueGroup.description}
+                onChange={(e) => setNewIssueGroup({ ...newIssueGroup, description: e.target.value })}
+                placeholder="Enter issue group description (optional)"
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setIssueGroupDialogOpen(false);
+              setNewIssueGroup({ name: '', description: '' });
+            }}>Cancel</Button>
+            <Button
+              onClick={() => {
+                if (newIssueGroup.name.trim() && currentProjectId) {
+                  createIssueGroupForRequirementMutation.mutate({
+                    projectId: currentProjectId,
+                    name: newIssueGroup.name.trim(),
+                    description: newIssueGroup.description.trim() || undefined,
+                  });
+                }
+              }}
+              disabled={!newIssueGroup.name.trim() || !currentProjectId || createIssueGroupForRequirementMutation.isPending}
+            >
+              {createIssueGroupForRequirementMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Creating...</> : 'Create'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Update Status Dialog */}
       <Dialog open={statusUpdateDialogOpen} onOpenChange={setStatusUpdateDialogOpen}>
         <DialogContent>
@@ -1028,7 +2192,7 @@ export default function Tasks() {
               <p className="text-xs text-muted-foreground">Press Ctrl+Enter to submit</p>
             </div>
             <div className="text-sm text-muted-foreground">
-              <div><strong>Current Status:</strong> {selectedTaskForStatus?.currentStatus || 'N/A'}</div>
+              <div><strong>Current Status:</strong> {selectedTaskForStatus?.currentStatus || '-'}</div>
               {selectedTaskForStatus?.statusUpdate && (
                 <div className="mt-2"><strong>Previous Update:</strong> {selectedTaskForStatus.statusUpdate}</div>
               )}
@@ -1047,6 +2211,94 @@ export default function Tasks() {
               {updateMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Updating...</> : 'Update Status'}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Requirement Detail Dialog */}
+      <Dialog open={requirementDetailDialogOpen} onOpenChange={setRequirementDetailDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Requirement Details</DialogTitle>
+            <DialogDescription>
+              Full details for requirement {selectedRequirement?.idCode}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedRequirement && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs text-muted-foreground">ID Code</Label>
+                  <p className="font-medium">{selectedRequirement.idCode}</p>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Status</Label>
+                  <Badge>{selectedRequirement.status || '-'}</Badge>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Priority</Label>
+                  <Badge variant="outline">{selectedRequirement.priority || '-'}</Badge>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Type</Label>
+                  <p>{selectedRequirement.type || '-'}</p>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Category</Label>
+                  <p>{selectedRequirement.category || '-'}</p>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Owner</Label>
+                  <p>{selectedRequirement.owner || '-'}</p>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Source Type</Label>
+                  <p>{selectedRequirement.sourceType || '-'}</p>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Ref Source</Label>
+                  <p>{selectedRequirement.refSource || '-'}</p>
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Description</Label>
+                <p className="mt-1">{selectedRequirement.description || 'No description'}</p>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Deliverable Detail Dialog */}
+      <Dialog open={deliverableDetailDialogOpen} onOpenChange={setDeliverableDetailDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Deliverable Details</DialogTitle>
+            <DialogDescription>
+              Full details for deliverable DL-{String(selectedDeliverable?.id).padStart(4, '0')}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedDeliverable && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs text-muted-foreground">ID</Label>
+                  <p className="font-medium">DL-{String(selectedDeliverable.id).padStart(4, '0')}</p>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Status</Label>
+                  <Badge>{selectedDeliverable.status || '-'}</Badge>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Due Date</Label>
+                  <p>{selectedDeliverable.dueDate || '-'}</p>
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Description</Label>
+                <p className="mt-1">{selectedDeliverable.description || 'No description'}</p>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

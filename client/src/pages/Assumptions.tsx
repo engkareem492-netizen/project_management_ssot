@@ -1,18 +1,20 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
+import { useProject } from "@/contexts/ProjectContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Search, Loader2, Plus, Trash2 } from "lucide-react";
+import { Search, Loader2, Plus, Trash2, Lightbulb } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
 export default function Assumptions() {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const { currentProjectId } = useProject();
+  const [searchTerm, setSearchTerm] = useState("");  const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [newAssumption, setNewAssumption] = useState<any>({
@@ -23,7 +25,7 @@ export default function Assumptions() {
     status: 'Active',
   });
 
-  const { data: assumptions, isLoading, refetch } = trpc.assumptions.list.useQuery();
+  const { data: assumptions, isLoading, refetch } = trpc.assumptions.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
 
   const createMutation = trpc.assumptions.create.useMutation({
     onSuccess: () => {
@@ -89,15 +91,25 @@ export default function Assumptions() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
+      {/* Page Header */}
+      <div className="bg-white border border-gray-200 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <Lightbulb className="w-6 h-6 text-gray-500" />
+            Assumptions Management
+          </h1>
+          <p className="text-gray-500 text-sm mt-1">View, create, and track project assumptions</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-yellow-700 border-yellow-300">{filteredAssumptions?.length || 0} Assumptions</Badge>
+          <Button onClick={() => setCreateDialogOpen(true)} className="bg-gray-900 hover:bg-gray-800 text-white gap-2">
+            <Plus className="w-4 h-4" />Create New
+          </Button>
+        </div>
+      </div>
       <Card>
-        <CardHeader>
-          <CardTitle>Assumptions Management</CardTitle>
-          <CardDescription>
-            View, create, and track project assumptions
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <div className="flex items-center gap-4 mb-6">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
@@ -108,10 +120,6 @@ export default function Assumptions() {
                 className="pl-10"
               />
             </div>
-            <Button onClick={() => setCreateDialogOpen(true)}>
-              <Plus className="w-4 h-4 mr-2" />
-              Create New
-            </Button>
           </div>
 
           <div className="rounded-md border overflow-x-auto">

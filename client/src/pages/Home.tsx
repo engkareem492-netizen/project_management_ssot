@@ -1,5 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
-import { getLoginUrl } from "@/const";
+
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useProject } from "@/contexts/ProjectContext";
@@ -48,7 +48,7 @@ export default function Home() {
           </CardHeader>
           <CardContent className="space-y-3">
             <Button 
-              onClick={() => window.location.href = getLoginUrl()} 
+              onClick={() => setLocation("/login")} 
               className="w-full"
               size="lg"
             >

@@ -1,15 +1,16 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, json, boolean } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, json, boolean, date } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
  */
 export const users = mysqlTable("users", {
   id: int("id").autoincrement().primaryKey(),
-  openId: varchar("openId", { length: 64 }).notNull().unique(),
+  openId: varchar("openId", { length: 64 }).unique(),
   name: text("name"),
-  email: varchar("email", { length: 320 }),
-  loginMethod: varchar("loginMethod", { length: 64 }),
-  role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  email: varchar("email", { length: 320 }).notNull().unique(),
+  password: varchar("password", { length: 255 }),
+  loginMethod: varchar("loginMethod", { length: 64 }).default("local"),
+  role: mysqlEnum("role", ["user", "admin", "master"]).default("user").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
@@ -17,6 +18,20 @@ export const users = mysqlTable("users", {
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
+
+/**
+ * Password resets table - stores password reset tokens
+ */
+export const passwordResets = mysqlTable("password_resets", {
+  id: int("id").autoincrement().primaryKey(),
+  email: varchar("email", { length: 255 }).notNull(),
+  token: varchar("token", { length: 255 }).notNull().unique(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type PasswordReset = typeof passwordResets.$inferSelect;
+export type InsertPasswordReset = typeof passwordResets.$inferInsert;
 
 /**
  * Projects table - stores multiple projects with password protection
@@ -33,6 +48,37 @@ export const projects = mysqlTable("projects", {
 
 export type Project = typeof projects.$inferSelect;
 export type InsertProject = typeof projects.$inferInsert;
+
+/**
+ * Project Members table - tracks users who have access to projects
+ */
+export const projectMembers = mysqlTable("project_members", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  userId: int("userId").notNull(),
+  role: mysqlEnum("role", ["owner", "editor", "viewer"]).default("editor").notNull(),
+  joinedAt: timestamp("joinedAt").defaultNow().notNull(),
+});
+
+export type ProjectMember = typeof projectMembers.$inferSelect;
+export type InsertProjectMember = typeof projectMembers.$inferInsert;
+
+/**
+ * Project Invitations table - stores pending email invitations
+ */
+export const projectInvitations = mysqlTable("project_invitations", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  email: varchar("email", { length: 255 }).notNull(),
+  token: varchar("token", { length: 255 }).notNull().unique(),
+  role: mysqlEnum("role", ["editor", "viewer"]).default("editor").notNull(),
+  invitedBy: int("invitedBy").notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ProjectInvitation = typeof projectInvitations.$inferSelect;
+export type InsertProjectInvitation = typeof projectInvitations.$inferInsert;
 
 /**
  * ID Sequences table - tracks auto-generated IDs for each entity type
@@ -118,11 +164,9 @@ export const requirements = mysqlTable("requirements", {
   category: varchar("category", { length: 100 }),
   agreement: varchar("agreement", { length: 100 }),
   owner: varchar("owner", { length: 200 }),
-  ownerId: int("ownerId"),
   description: text("description"),
-  source: varchar("source", { length: 20 }),
   sourceType: varchar("sourceType", { length: 100 }),
-  refSource: varchar("refSource", { length: 200 }),
+  refSource: varchar("refSource", { length: 500 }),
   status: varchar("status", { length: 100 }),
   priority: varchar("priority", { length: 100 }),
   deliverables1: text("deliverables1"),
@@ -133,6 +177,9 @@ export const requirements = mysqlTable("requirements", {
   updateDate: varchar("updateDate", { length: 50 }),
   importedAt: timestamp("importedAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  ownerId: int("ownerId"),
+  source: varchar("source", { length: 20 }),
+  knowledgeBaseCode: varchar("knowledgeBaseCode", { length: 50 }),
 });
 
 export type Requirement = typeof requirements.$inferSelect;
@@ -148,6 +195,8 @@ export const tasks = mysqlTable("tasks", {
   taskGroup: varchar("taskGroup", { length: 100 }),
   dependencyId: varchar("dependencyId", { length: 50 }),
   requirementId: varchar("requirementId", { length: 50 }),
+  deliverableId: int("deliverableId"),
+  issueId: varchar("issueId", { length: 50 }),
   description: text("description"),
   responsible: varchar("responsible", { length: 200 }),
   responsibleId: int("responsibleId"),
@@ -192,15 +241,20 @@ export const issues = mysqlTable("issues", {
   description: text("description"),
   source: varchar("source", { length: 20 }),
   sourceType: varchar("sourceType", { length: 100 }),
-  refSource: varchar("refSource", { length: 200 }),
+  refSource: varchar("refSource", { length: 500 }),
   createdAt: varchar("createdAt", { length: 50 }),
+  openDate: varchar("openDate", { length: 50 }),
   priority: varchar("priority", { length: 100 }),
+  deliverableId: int("deliverableId"),
+  taskId: varchar("taskId", { length: 50 }),
   deliverables1: text("deliverables1"),
   d1Status: varchar("d1Status", { length: 100 }),
   deliverables2: text("deliverables2"),
   d2Status: varchar("d2Status", { length: 100 }),
   lastUpdate: text("lastUpdate"),
   updateDate: varchar("updateDate", { length: 50 }),
+  resolutionDate: varchar("resolutionDate", { length: 50 }),
+  knowledgeBaseCode: varchar("knowledgeBaseCode", { length: 50 }),
   importedAt: timestamp("importedAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -286,6 +340,20 @@ export const deliverableLinks = mysqlTable("deliverableLinks", {
 
 export type DeliverableLink = typeof deliverableLinks.$inferSelect;
 export type InsertDeliverableLink = typeof deliverableLinks.$inferInsert;
+
+/**
+ * Issue Links table - many-to-many relationships between issues and other entities
+ */
+export const issueLinks = mysqlTable("issueLinks", {
+  id: int("id").autoincrement().primaryKey(),
+  issueId: int("issueId").notNull(),
+  linkedEntityType: mysqlEnum("linkedEntityType", ["requirement", "task", "dependency"]).notNull(),
+  linkedEntityId: varchar("linkedEntityId", { length: 50 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type IssueLink = typeof issueLinks.$inferSelect;
+export type InsertIssueLink = typeof issueLinks.$inferInsert;
 
 /**
  * Action Log table - stores all changes with delta tracking
@@ -374,3 +442,391 @@ export const categoryOptions = mysqlTable("categoryOptions", {
 
 export type CategoryOption = typeof categoryOptions.$inferSelect;
 export type InsertCategoryOption = typeof categoryOptions.$inferInsert;
+
+/**
+ * Issue Types table - stores customizable type values for issues (project-specific)
+ */
+export const issueTypes = mysqlTable("issueTypes", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  value: varchar("value", { length: 100 }).notNull(),
+  label: varchar("label", { length: 100 }).notNull(),
+  description: text("description"),
+  isDefault: boolean("isDefault").default(false).notNull(),
+  usageCount: int("usageCount").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type IssueType = typeof issueTypes.$inferSelect;
+export type InsertIssueType = typeof issueTypes.$inferInsert;
+
+/**
+ * Task Types table - stores customizable type values for tasks (project-specific)
+ */
+export const taskTypes = mysqlTable("taskTypes", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  value: varchar("value", { length: 100 }).notNull(),
+  label: varchar("label", { length: 100 }).notNull(),
+  description: text("description"),
+  isDefault: boolean("isDefault").default(false).notNull(),
+  usageCount: int("usageCount").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type TaskType = typeof taskTypes.$inferSelect;
+export type InsertTaskType = typeof taskTypes.$inferInsert;
+
+/**
+ * Deliverable Types table - stores customizable type values for deliverables (project-specific)
+ */
+export const deliverableTypes = mysqlTable("deliverableTypes", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  value: varchar("value", { length: 100 }).notNull(),
+  label: varchar("label", { length: 100 }).notNull(),
+  description: text("description"),
+  isDefault: boolean("isDefault").default(false).notNull(),
+  usageCount: int("usageCount").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type DeliverableType = typeof deliverableTypes.$inferSelect;
+export type InsertDeliverableType = typeof deliverableTypes.$inferInsert;
+
+/**
+ * Class Options table - stores customizable class values for issues (project-specific)
+ */
+export const classOptions = mysqlTable("classOptions", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  value: varchar("value", { length: 100 }).notNull(),
+  label: varchar("label", { length: 100 }).notNull(),
+  description: text("description"),
+  isDefault: boolean("isDefault").default(false).notNull(),
+  usageCount: int("usageCount").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ClassOption = typeof classOptions.$inferSelect;
+export type InsertClassOption = typeof classOptions.$inferInsert;
+
+/**
+ * Knowledge Base Types table - hierarchical types with parent-child relationships
+ */
+export const knowledgeBaseTypes = mysqlTable("knowledgeBaseTypes", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  name: varchar("name", { length: 100 }).notNull(),
+  parentTypeId: int("parentTypeId"), // null for root types, references another type for children
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type KnowledgeBaseType = typeof knowledgeBaseTypes.$inferSelect;
+export type InsertKnowledgeBaseType = typeof knowledgeBaseTypes.$inferInsert;
+
+/**
+ * Knowledge Base Components table - configurable component options
+ */
+export const knowledgeBaseComponents = mysqlTable("knowledgeBaseComponents", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  name: varchar("name", { length: 100 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type KnowledgeBaseComponent = typeof knowledgeBaseComponents.$inferSelect;
+export type InsertKnowledgeBaseComponent = typeof knowledgeBaseComponents.$inferInsert;
+
+/**
+ * Knowledge Base Code Configuration table - stores code prefix per project
+ */
+export const knowledgeBaseCodeConfig = mysqlTable("knowledgeBaseCodeConfig", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull().unique(),
+  prefix: varchar("prefix", { length: 10 }).notNull().default("KB"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type KnowledgeBaseCodeConfig = typeof knowledgeBaseCodeConfig.$inferSelect;
+export type InsertKnowledgeBaseCodeConfig = typeof knowledgeBaseCodeConfig.$inferInsert;
+
+/**
+ * Knowledge Base table - main entries with code, type, component, title, description
+ */
+export const knowledgeBase = mysqlTable("knowledgeBase", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  code: varchar("code", { length: 50 }).notNull(), // prefix + number, e.g., KB-001
+  typeId: int("typeId"), // references knowledgeBaseTypes
+  componentId: int("componentId"), // references knowledgeBaseComponents
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  attachmentUrl: varchar("attachmentUrl", { length: 500 }),
+  attachmentName: varchar("attachmentName", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type KnowledgeBase = typeof knowledgeBase.$inferSelect;
+export type InsertKnowledgeBase = typeof knowledgeBase.$inferInsert;
+
+
+/**
+ * Risk Types table - configurable dropdown for risk types
+ */
+export const riskTypes = mysqlTable("riskTypes", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  name: varchar("name", { length: 100 }).notNull(),
+  isDefault: boolean("isDefault").default(false),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type RiskType = typeof riskTypes.$inferSelect;
+export type InsertRiskType = typeof riskTypes.$inferInsert;
+
+/**
+ * Risk Status table - configurable dropdown for risk status
+ */
+export const riskStatus = mysqlTable("riskStatus", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  name: varchar("name", { length: 100 }).notNull(),
+  isDefault: boolean("isDefault").default(false),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type RiskStatus = typeof riskStatus.$inferSelect;
+export type InsertRiskStatus = typeof riskStatus.$inferInsert;
+
+/**
+ * Response Strategy table - configurable dropdown for response strategies
+ */
+export const responseStrategy = mysqlTable("responseStrategy", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  name: varchar("name", { length: 100 }).notNull(),
+  isDefault: boolean("isDefault").default(false),
+  createdAt: timestamp("createdAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ResponseStrategy = typeof responseStrategy.$inferSelect;
+export type InsertResponseStrategy = typeof responseStrategy.$inferInsert;
+
+/**
+ * Risks table - main risk register
+ */
+export const risks = mysqlTable("risks", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  riskId: varchar("riskId", { length: 50 }).notNull(), // e.g., RISK-0001
+  riskTypeId: int("riskTypeId"),
+  title: text("title").notNull(),
+  riskOwnerId: int("riskOwnerId"), // stakeholder ID
+  riskStatusId: int("riskStatusId"),
+  identifiedOn: date("identifiedOn").notNull(),
+  impact: int("impact").notNull(), // 1-5
+  probability: int("probability").notNull(), // 1-5
+  score: int("score").notNull(), // impact * probability
+  residualImpact: int("residualImpact"), // 1-5
+  residualProbability: int("residualProbability"), // 1-5
+  residualScore: int("residualScore"), // residualImpact * residualProbability
+  contingencyPlanId: int("contingencyPlanId"), // task group ID
+  responseStrategyId: int("responseStrategyId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Risk = typeof risks.$inferSelect;
+export type InsertRisk = typeof risks.$inferInsert;
+
+/**
+ * Risk Updates table - historical tracking of risk updates
+ */
+export const riskUpdates = mysqlTable("riskUpdates", {
+  id: int("id").autoincrement().primaryKey(),
+  riskId: int("riskId").notNull(), // foreign key to risks.id
+  update: text("update").notNull(),
+  updateDate: date("updateDate").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type RiskUpdate = typeof riskUpdates.$inferSelect;
+export type InsertRiskUpdate = typeof riskUpdates.$inferInsert;
+
+/**
+ * Risk Analysis table - cause-consequence-mitigation tracking
+ */
+export const riskAnalysis = mysqlTable("riskAnalysis", {
+  id: int("id").autoincrement().primaryKey(),
+  riskId: int("riskId").notNull(), // foreign key to risks.id
+  causeLevel: int("causeLevel").notNull(),
+  cause: text("cause").notNull(),
+  consequences: text("consequences").notNull(),
+  trigger: text("trigger").notNull(),
+  mitigationPlanId: int("mitigationPlanId"), // task group ID
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type RiskAnalysis = typeof riskAnalysis.$inferSelect;
+export type InsertRiskAnalysis = typeof riskAnalysis.$inferInsert;
+
+/**
+ * System Configuration table - stores dropdown option categories and settings
+ */
+export const dropdownCategories = mysqlTable("dropdownCategories", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  categoryKey: varchar("categoryKey", { length: 50 }).notNull(), // e.g., "riskTypes", "issueTypes"
+  categoryLabel: varchar("categoryLabel", { length: 100 }).notNull(), // e.g., "Risk Types", "Issue Types"
+  description: text("description"),
+  sortOrder: int("sortOrder").notNull().default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type DropdownCategory = typeof dropdownCategories.$inferSelect;
+export type InsertDropdownCategory = typeof dropdownCategories.$inferInsert;
+
+/**
+ * Change Requests table - formal change request management with approval workflow
+ */
+export const changeRequests = mysqlTable("changeRequests", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  crId: varchar("crId", { length: 50 }).notNull(), // e.g., CR-0001
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  requestedBy: varchar("requestedBy", { length: 200 }),
+  requestedById: int("requestedById"),
+  assignedTo: varchar("assignedTo", { length: 200 }),
+  assignedToId: int("assignedToId"),
+  priority: varchar("priority", { length: 50 }).default("Medium"),
+  status: mysqlEnum("crStatus", ["Draft", "Submitted", "Under Review", "Approved", "Rejected", "Implemented", "Closed"]).default("Draft").notNull(),
+  impactAssessment: text("impactAssessment"),
+  requirementId: varchar("requirementId", { length: 50 }),
+  taskId: varchar("taskId", { length: 50 }),
+  issueId: varchar("issueId", { length: 50 }),
+  submittedAt: timestamp("submittedAt"),
+  reviewedAt: timestamp("reviewedAt"),
+  approvedAt: timestamp("approvedAt"),
+  implementedAt: timestamp("implementedAt"),
+  reviewedBy: varchar("reviewedBy", { length: 200 }),
+  approvedBy: varchar("approvedBy", { length: 200 }),
+  rejectionReason: text("rejectionReason"),
+  estimatedEffort: varchar("estimatedEffort", { length: 100 }),
+  actualEffort: varchar("actualEffort", { length: 100 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ChangeRequest = typeof changeRequests.$inferSelect;
+export type InsertChangeRequest = typeof changeRequests.$inferInsert;
+
+/**
+ * Meetings table - meeting log with agenda, attendees, and outcomes
+ */
+export const meetings = mysqlTable("meetings", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  meetingId: varchar("meetingId", { length: 50 }).notNull(), // e.g., MTG-0001
+  title: varchar("title", { length: 255 }).notNull(),
+  meetingDate: date("meetingDate").notNull(),
+  startTime: varchar("startTime", { length: 10 }),
+  endTime: varchar("endTime", { length: 10 }),
+  location: varchar("location", { length: 255 }),
+  organizer: varchar("organizer", { length: 200 }),
+  organizerId: int("organizerId"),
+  attendees: json("attendees"), // array of stakeholder names/ids
+  agenda: text("agenda"),
+  minutes: text("minutes"),
+  status: mysqlEnum("meetingStatus", ["Scheduled", "In Progress", "Completed", "Cancelled"]).default("Scheduled").notNull(),
+  nextMeetingDate: date("nextMeetingDate"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Meeting = typeof meetings.$inferSelect;
+export type InsertMeeting = typeof meetings.$inferInsert;
+
+/**
+ * Decisions table - decisions made during meetings or project lifecycle
+ */
+export const decisions = mysqlTable("decisions", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  decisionId: varchar("decisionId", { length: 50 }).notNull(), // e.g., DEC-0001
+  meetingId: int("meetingId"), // optional link to a meeting
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  decisionDate: date("decisionDate").notNull(),
+  decidedBy: varchar("decidedBy", { length: 200 }),
+  decidedById: int("decidedById"),
+  status: mysqlEnum("decisionStatus", ["Open", "Implemented", "Deferred", "Cancelled"]).default("Open").notNull(),
+  impact: varchar("impact", { length: 100 }),
+  requirementId: varchar("requirementId", { length: 50 }),
+  taskId: varchar("taskId", { length: 50 }),
+  issueId: varchar("issueId", { length: 50 }),
+  actionItems: json("actionItems"), // array of {description, owner, dueDate, done}
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Decision = typeof decisions.$inferSelect;
+export type InsertDecision = typeof decisions.$inferInsert;
+
+/**
+ * Test Cases table - test cases linked to requirements
+ */
+export const testCases = mysqlTable("testCases", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  testId: varchar("testId", { length: 50 }).notNull(), // e.g., TC-0001
+  requirementId: varchar("requirementId", { length: 50 }),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  preconditions: text("preconditions"),
+  testSteps: json("testSteps"), // array of {step, expectedResult}
+  expectedResult: text("expectedResult"),
+  actualResult: text("actualResult"),
+  tester: varchar("tester", { length: 200 }),
+  testerId: int("testerId"),
+  priority: varchar("priority", { length: 50 }).default("Medium"),
+  status: mysqlEnum("testStatus", ["Not Executed", "In Progress", "Passed", "Failed", "Blocked", "Skipped"]).default("Not Executed").notNull(),
+  testType: varchar("testType", { length: 100 }), // Unit, Integration, UAT, Regression
+  executionDate: date("executionDate"),
+  defectId: varchar("defectId", { length: 50 }), // link to issue if failed
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type TestCase = typeof testCases.$inferSelect;
+export type InsertTestCase = typeof testCases.$inferInsert;
+
+/**
+ * Task Dependencies table - predecessor/successor relationships between tasks
+ */
+export const taskDependencies = mysqlTable("taskDependencies", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  predecessorTaskId: varchar("predecessorTaskId", { length: 50 }).notNull(), // taskId of predecessor
+  successorTaskId: varchar("successorTaskId", { length: 50 }).notNull(),   // taskId of successor
+  dependencyType: mysqlEnum("dependencyType", ["Finish-to-Start", "Start-to-Start", "Finish-to-Finish", "Start-to-Finish"]).default("Finish-to-Start").notNull(),
+  lagDays: int("lagDays").default(0), // positive = lag, negative = lead
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type TaskDependency = typeof taskDependencies.$inferSelect;
+export type InsertTaskDependency = typeof taskDependencies.$inferInsert;

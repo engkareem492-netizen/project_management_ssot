@@ -185,3 +185,10 @@
 ## Bug Fixes (Jan 31, 2026 - Batch 18)
 
 - [x] Fix Issues page mutation error - projectId is undefined when creating issues
+
+## Bug Fixes (Mar 3, 2026 - Batch 19)
+
+- [x] Fix Task Group not persisting when editing a task - deliverableId was being sent as string instead of number, causing Zod validation error that silently failed the entire update
+- [x] Simplify Status Updates section in Task edit dialog - removed separate Last Update and Status Update fields, now shows Current Status (read-only from history) and New Update (editable textarea) in the same edit form
+- [x] Expand changedFields tracking in tasks.update router to include all important fields (taskGroup, status, priority, description, requirementId, deliverableId, issueId, RACI fields, dates)
+- [x] Install missing bcrypt package that was causing server startup errors

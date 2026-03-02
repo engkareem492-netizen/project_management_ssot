@@ -1,10 +1,11 @@
 import { useState } from "react";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Database, Plus, Lock } from "lucide-react";
+import { Database, Plus, Lock, LogOut } from "lucide-react";
 import { getPasswordResetUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
@@ -14,6 +15,13 @@ interface ProjectSelectorProps {
 }
 
 export default function ProjectSelector({ onProjectSelected }: ProjectSelectorProps) {
+  const { user, logout } = useAuth();
+  
+  const handleLogout = async () => {
+    await logout();
+    // Redirect to custom login page
+    window.location.href = "/login";
+  };
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const [password, setPassword] = useState("");
@@ -25,14 +33,80 @@ export default function ProjectSelector({ onProjectSelected }: ProjectSelectorPr
     description: "",
     password: "",
   });
+  
+  const [importOptions, setImportOptions] = useState({
+    enabled: false,
+    sourceProjectId: null as number | null,
+    sourcePassword: "",
+    entities: {
+      stakeholders: false,
+      requirements: false,
+      tasks: false,
+      issues: false,
+      deliverables: false,
+      dependencies: false,
+      assumptions: false,
+      taskGroups: false,
+      issueGroups: false,
+      issueTypes: false,
+      taskTypes: false,
+      deliverableTypes: false,
+      classOptions: false,
+    },
+  });
 
   const projectsQuery = trpc.projects.list.useQuery();
+  const exportDataMutation = trpc.projects.exportData.useMutation();
+  const importDataMutation = trpc.projects.importData.useMutation();
+  
   const createMutation = trpc.projects.create.useMutation({
-    onSuccess: (data) => {
-      toast.success("Project created successfully!");
+    onSuccess: async (data) => {
+      // If import is enabled, export data from source project and import to new project
+      if (importOptions.enabled && importOptions.sourceProjectId && importOptions.sourcePassword) {
+        try {
+          toast.info("Importing data from source project...");
+          const exportedData = await exportDataMutation.mutateAsync({
+            projectId: importOptions.sourceProjectId,
+            password: importOptions.sourcePassword,
+          });
+          
+          // Import the exported data into the new project
+          await importDataMutation.mutateAsync({
+            targetProjectId: data.id,
+            sourceData: exportedData,
+            selectedEntities: importOptions.entities,
+          });
+          toast.success("Project created and data imported successfully!");
+        } catch (error: any) {
+          toast.error(`Project created but import failed: ${error.message}`);
+        }
+      } else {
+        toast.success("Project created successfully!");
+      }
+      
       projectsQuery.refetch();
       setShowCreateForm(false);
       setNewProject({ name: "", description: "", password: "" });
+      setImportOptions({
+        enabled: false,
+        sourceProjectId: null,
+        sourcePassword: "",
+        entities: {
+          stakeholders: false,
+          requirements: false,
+          tasks: false,
+          issues: false,
+          deliverables: false,
+          dependencies: false,
+          assumptions: false,
+          taskGroups: false,
+          issueGroups: false,
+          issueTypes: false,
+          taskTypes: false,
+          deliverableTypes: false,
+          classOptions: false,
+        },
+      });
       onProjectSelected(data.id);
     },
     onError: (error) => {
@@ -155,6 +229,80 @@ export default function ProjectSelector({ onProjectSelected }: ProjectSelectorPr
                 placeholder="Enter project password"
               />
             </div>
+            
+            {/* Import from existing project */}
+            <div className="border-t pt-4 mt-4">
+              <div className="flex items-center space-x-2 mb-4">
+                <input
+                  type="checkbox"
+                  id="import-enabled"
+                  checked={importOptions.enabled}
+                  onChange={(e) => setImportOptions({ ...importOptions, enabled: e.target.checked })}
+                  className="rounded border-gray-300"
+                />
+                <Label htmlFor="import-enabled" className="cursor-pointer">
+                  Import data from existing project
+                </Label>
+              </div>
+              
+              {importOptions.enabled && (
+                <div className="space-y-4 pl-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="source-project">Source Project</Label>
+                    <select
+                      id="source-project"
+                      value={importOptions.sourceProjectId || ""}
+                      onChange={(e) => setImportOptions({ ...importOptions, sourceProjectId: Number(e.target.value) })}
+                      className="w-full rounded-md border border-input bg-background px-3 py-2"
+                    >
+                      <option value="">Select a project</option>
+                      {projectsQuery.data?.map((project) => (
+                        <option key={project.id} value={project.id}>
+                          {project.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="source-password">Source Project Password</Label>
+                    <Input
+                      id="source-password"
+                      type="password"
+                      value={importOptions.sourcePassword}
+                      onChange={(e) => setImportOptions({ ...importOptions, sourcePassword: e.target.value })}
+                      placeholder="Enter source project password"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Select data to import:</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {Object.keys(importOptions.entities).map((entity) => (
+                        <div key={entity} className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            id={`import-${entity}`}
+                            checked={importOptions.entities[entity as keyof typeof importOptions.entities]}
+                            onChange={(e) => setImportOptions({
+                              ...importOptions,
+                              entities: {
+                                ...importOptions.entities,
+                                [entity]: e.target.checked,
+                              },
+                            })}
+                            className="rounded border-gray-300"
+                          />
+                          <Label htmlFor={`import-${entity}`} className="cursor-pointer text-sm capitalize">
+                            {entity.replace(/([A-Z])/g, ' $1').trim()}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
             <div className="flex gap-2 pt-4">
               <Button
                 variant="outline"
@@ -230,23 +378,25 @@ export default function ProjectSelector({ onProjectSelected }: ProjectSelectorPr
                 {verifyMutation.isPending ? "Verifying..." : "Access Project"}
               </Button>
             </div>
-            <div className="border-t pt-4 mt-4 space-y-2">
-              <Button
-                variant="outline"
-                onClick={() => setShowResetPassword(true)}
-                className="w-full"
-              >
-                Reset Project Password
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={handleDeleteProject}
-                disabled={deleteMutation.isPending}
-                className="w-full"
-              >
-                {deleteMutation.isPending ? "Deleting..." : "Delete Project"}
-              </Button>
-            </div>
+            {user && project?.createdBy === user.id && (
+              <div className="border-t pt-4 mt-4 space-y-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowResetPassword(true)}
+                  className="w-full"
+                >
+                  Reset Project Password
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleDeleteProject}
+                  disabled={deleteMutation.isPending}
+                  className="w-full"
+                >
+                  {deleteMutation.isPending ? "Deleting..." : "Delete Project"}
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -257,7 +407,19 @@ export default function ProjectSelector({ onProjectSelected }: ProjectSelectorPr
     <>
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
         <Card className="w-full max-w-2xl">
-          <CardHeader className="text-center">
+          <CardHeader className="text-center relative">
+            {user && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleLogout}
+                className="absolute top-4 right-4"
+                title="Switch Account"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Switch Account
+              </Button>
+            )}
             <Database className="w-12 h-12 mx-auto mb-4 text-primary" />
             <CardTitle className="text-2xl">Select a Project</CardTitle>
             <CardDescription>

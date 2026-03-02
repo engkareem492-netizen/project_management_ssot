@@ -17,11 +17,31 @@ import Stakeholders from "./pages/Stakeholders";
 import Deliverables from "./pages/Deliverables";
 import Today from "./pages/Today";
 import Settings from "./pages/Settings";
+import KnowledgeBase from "./pages/KnowledgeBase";
+import RiskRegister from "./pages/RiskRegister";
+import ChangeRequests from "./pages/ChangeRequests";
+import Meetings from "./pages/Meetings";
+import TestCases from "./pages/TestCases";
+import GanttChart from "./pages/GanttChart";
+import TraceabilityMatrix from "./pages/TraceabilityMatrix";
+import WeeklyReport from "./pages/WeeklyReport";
 import DashboardLayout from "./components/DashboardLayout";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+import AcceptInvitation from "./pages/AcceptInvitation";
+import JoinProject from "./pages/JoinProject";
 
 function Router() {
   return (
     <Switch>
+      <Route path={"/login"} component={Login} />
+      <Route path={"/register"} component={Register} />
+      <Route path={"/forgot-password"} component={ForgotPassword} />
+      <Route path={"/reset-password"} component={ResetPassword} />
+      <Route path={"/accept-invitation"} component={AcceptInvitation} />
+      <Route path={"/join-project/:projectId"} component={JoinProject} />
       <Route path={"/"} component={Home} />
       <Route path={"/requirements"}>
         <DashboardLayout>
@@ -68,6 +88,16 @@ function Router() {
           <Settings />
         </DashboardLayout>
       </Route>
+      <Route path={"/knowledge-base"}>
+        <DashboardLayout>
+          <KnowledgeBase />
+        </DashboardLayout>
+      </Route>
+      <Route path={"/risk-register"}>
+        <DashboardLayout>
+          <RiskRegister />
+        </DashboardLayout>
+      </Route>
       <Route path={"/action-log"}>
         <DashboardLayout>
           <ActionLog />
@@ -76,6 +106,36 @@ function Router() {
        <Route path={"/relationships"}>
         <DashboardLayout>
           <Relationships />
+        </DashboardLayout>
+      </Route>
+      <Route path={"/change-requests"}>
+        <DashboardLayout>
+          <ChangeRequests />
+        </DashboardLayout>
+      </Route>
+      <Route path={"/meetings"}>
+        <DashboardLayout>
+          <Meetings />
+        </DashboardLayout>
+      </Route>
+      <Route path={"/test-cases"}>
+        <DashboardLayout>
+          <TestCases />
+        </DashboardLayout>
+      </Route>
+      <Route path={"/gantt"}>
+        <DashboardLayout>
+          <GanttChart />
+        </DashboardLayout>
+      </Route>
+      <Route path={"/traceability"}>
+        <DashboardLayout>
+          <TraceabilityMatrix />
+        </DashboardLayout>
+      </Route>
+      <Route path={"/weekly-report"}>
+        <DashboardLayout>
+          <WeeklyReport />
         </DashboardLayout>
       </Route>
       <Route path={"/404"} component={NotFound} />

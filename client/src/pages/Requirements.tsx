@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useProject } from "@/contexts/ProjectContext";
 import { Button } from "@/components/ui/button";
@@ -7,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Search, Edit, History, Loader2, Plus, Trash2, Eye, CheckSquare, Save, X, Link2, Settings, Calendar, User, FileText, Tag, Clock } from "lucide-react";
+import { Search, Edit, History, Loader2, Plus, Trash2, Eye, CheckSquare, Save, X, Link2, Settings, Calendar, User, FileText, Tag, Clock, List, LayoutGrid } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -18,6 +19,7 @@ import { SelectWithCreate } from "@/components/SelectWithCreate";
 import { toast } from "sonner";
 
 export default function Requirements() {
+  const { currentProjectId } = useProject();
   const [searchTerm, setSearchTerm] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editData, setEditData] = useState<any>({});
@@ -41,6 +43,10 @@ export default function Requirements() {
   const [editDeliverableData, setEditDeliverableData] = useState<any>({});
   const [deletingDeliverableId, setDeletingDeliverableId] = useState<number | null>(null);
   const [deleteDeliverableDialogOpen, setDeleteDeliverableDialogOpen] = useState(false);
+  const [taskGroupDialogOpen, setTaskGroupDialogOpen] = useState(false);
+  const [issueGroupDialogOpen, setIssueGroupDialogOpen] = useState(false);
+  const [newTaskGroup, setNewTaskGroup] = useState({ name: '', description: '' });
+  const [newIssueGroup, setNewIssueGroup] = useState({ name: '', description: '' });
   const [newTask, setNewTask] = useState({
     taskGroup: '',
     description: '',
@@ -51,6 +57,8 @@ export default function Requirements() {
     accountable: '',
     informed: '',
     consulted: '',
+    dueDate: '',
+    requirementId: '',
   });
   const [newIssue, setNewIssue] = useState({
     description: '',
@@ -64,11 +72,12 @@ export default function Requirements() {
     status: 'Pending',
     dueDate: '',
   });
+  const [selectedDeliverableToLink, setSelectedDeliverableToLink] = useState<string>('');
   const [newRequirement, setNewRequirement] = useState<any>({
     description: '',
     taskGroup: '',
     issueGroup: '',
-    owner: '',
+    ownerId: undefined,
     status: 'Open',
     priority: 'Medium',
     type: '',
@@ -76,19 +85,19 @@ export default function Requirements() {
     sourceType: '',
     refSource: '',
     createdAt: new Date().toISOString().split('T')[0],
+    knowledgeBaseCode: '',
   });
+  const [viewMode, setViewMode] = useState<'compact' | 'full'>('full');
 
   const utils = trpc.useUtils();
-  const { data: requirements, isLoading, refetch } = trpc.requirements.list.useQuery();
-  const { data: stakeholders } = trpc.stakeholders.list.useQuery();
-  const { data: tasks } = trpc.tasks.list.useQuery();
-  const { data: issues } = trpc.issues.list.useQuery();
+  const { data: requirements, isLoading, refetch } = trpc.requirements.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
+  const { data: stakeholders } = trpc.stakeholders.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
+  const { data: tasks } = trpc.tasks.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
+  const { data: issues } = trpc.issues.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
   const { data: statusOptions } = trpc.dropdownOptions.status.getAll.useQuery();
   const { data: priorityOptions } = trpc.dropdownOptions.priority.getAll.useQuery();
   const { data: typeOptions } = trpc.dropdownOptions.type.getAll.useQuery();
-  const { data: categoryOptions } = trpc.dropdownOptions.category.getAll.useQuery();
-  const { currentProjectId } = useProject();
-  const { data: taskGroups, refetch: refetchTaskGroups } = trpc.dropdownOptions.taskGroups.getAll.useQuery(
+  const { data: categoryOptions } = trpc.dropdownOptions.category.getAll.useQuery();  const { data: taskGroups, refetch: refetchTaskGroups } = trpc.dropdownOptions.taskGroups.getAll.useQuery(
     { projectId: currentProjectId! },
     { enabled: !!currentProjectId }
   );
@@ -102,10 +111,22 @@ export default function Requirements() {
       toast.success(`Task Group "${data.name}" created`);
       utils.dropdownOptions.taskGroups.getAll.invalidate();
       setNewRequirement({ ...newRequirement, taskGroup: data.name });
+      setTaskGroupDialogOpen(false);
+      setNewTaskGroup({ name: '', description: '' });
     },
     onError: (error) => toast.error(`Failed to create Task Group: ${error.message}`),
   });
   const createIssueGroupMutation = trpc.dropdownOptions.issueGroups.create.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Issue Group "${data.name}" created`);
+      utils.dropdownOptions.issueGroups.getAll.invalidate();
+      setNewRequirement({ ...newRequirement, issueGroup: data.name });
+      setIssueGroupDialogOpen(false);
+      setNewIssueGroup({ name: '', description: '' });
+    },
+    onError: (error) => toast.error(`Failed to create Issue Group: ${error.message}`),
+  });
+  const createIssueGroupMutationOld = trpc.dropdownOptions.issueGroups.create.useMutation({
     onSuccess: (data) => {
       toast.success(`Issue Group "${data.name}" created`);
       utils.dropdownOptions.issueGroups.getAll.invalidate();
@@ -118,8 +139,20 @@ export default function Requirements() {
     { enabled: historyDialogOpen && !!selectedEntityId }
   );
   const { data: linkedDeliverables } = trpc.deliverables.getByEntity.useQuery(
-    { entityType: "requirement", entityId: selectedRequirement?.idCode || "" },
-    { enabled: viewDialogOpen && !!selectedRequirement?.idCode }
+    { 
+      entityType: "requirement", 
+      entityId: selectedRequirement?.idCode || "",
+      projectId: currentProjectId || undefined
+    },
+    { enabled: viewDialogOpen && !!selectedRequirement?.idCode && !!currentProjectId }
+  );
+  const { data: allDeliverables } = trpc.deliverables.list.useQuery(
+    { projectId: currentProjectId || 0 },
+    { enabled: !!currentProjectId && viewDialogOpen }
+  );
+  const { data: knowledgeBaseEntries } = trpc.knowledgeBase.list.useQuery(
+    { projectId: currentProjectId || 0 },
+    { enabled: !!currentProjectId && viewDialogOpen && isEditMode }
   );
 
   const updateMutation = trpc.requirements.update.useMutation({
@@ -141,7 +174,7 @@ export default function Requirements() {
         description: '',
         taskGroup: '',
         issueGroup: '',
-        owner: '',
+        ownerId: undefined,
         status: 'Open',
         priority: 'Medium',
         type: '',
@@ -149,6 +182,7 @@ export default function Requirements() {
         sourceType: '',
         refSource: '',
         createdAt: new Date().toISOString().split('T')[0],
+        knowledgeBaseCode: '',
       });
       refetch();
     },
@@ -183,6 +217,8 @@ export default function Requirements() {
         accountable: '',
         informed: '',
         consulted: '',
+        dueDate: '',
+        requirementId: '',
       });
       utils.tasks.list.invalidate();
     },
@@ -261,6 +297,17 @@ export default function Requirements() {
     },
   });
 
+  const linkDeliverableMutation = trpc.deliverables.addLink.useMutation({
+    onSuccess: () => {
+      toast.success('Deliverable linked successfully');
+      setSelectedDeliverableToLink('');
+      utils.deliverables.getByEntity.invalidate();
+    },
+    onError: (error) => {
+      toast.error(`Link failed: ${error.message}`);
+    },
+  });
+
   const filteredRequirements = requirements?.filter(req =>
     req.idCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
     req.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -330,6 +377,7 @@ export default function Requirements() {
       status: req.status || 'Open',
       description: req.description || '',
       lastUpdate: req.lastUpdate || '',
+      knowledgeBaseCode: req.knowledgeBaseCode || '',
     });
     setIsEditMode(false);
     setViewDialogOpen(true);
@@ -349,6 +397,7 @@ export default function Requirements() {
       status: req.status || 'Open',
       description: req.description || '',
       lastUpdate: req.lastUpdate || '',
+      knowledgeBaseCode: req.knowledgeBaseCode || '',
     });
     setIsEditMode(true);
     setViewDialogOpen(true);
@@ -501,51 +550,34 @@ export default function Requirements() {
 
   return (
     <div className="space-y-6 p-6">
-      <Card className="border-primary/20">
-        <CardHeader className="bg-gradient-to-r from-primary/10 to-primary/5 border-b border-primary/20">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-xl flex items-center gap-2">
-                <FileText className="w-5 h-5 text-primary" />
-                Requirements Management
-              </CardTitle>
-              <CardDescription className="mt-1">
-                View, edit, and track changes to project requirements. IDs are auto-generated.
-              </CardDescription>
-            </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-sm border-primary/30 bg-primary/5">
-                {requirements?.length || 0} Requirements
-              </Badge>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setSettingsType("status");
-                  setSettingsOpen(true);
-                }}
-                title="Manage Status Options"
-                className="border-primary/30 hover:bg-primary/10"
-              >
-                <Settings className="w-4 h-4 mr-1" />
-                Status
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setSettingsType("priority");
-                  setSettingsOpen(true);
-                }}
-                title="Manage Priority Options"
-                className="border-primary/30 hover:bg-primary/10"
-              >
-                <Settings className="w-4 h-4 mr-1" />
-                Priority
-              </Button>
-            </div>
+      {/* Page Header */}
+      <div className="bg-white border border-gray-200 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <FileText className="w-6 h-6 text-gray-500" />
+            Requirements Management
+          </h1>
+          <p className="text-gray-500 text-sm mt-1">View, edit, and track changes to project requirements. IDs are auto-generated.</p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Badge variant="outline" className="text-emerald-700 border-emerald-300">{requirements?.length || 0} Requirements</Badge>
+          <div className="flex items-center border border-emerald-300 rounded-md flex-shrink-0">
+            <Button size="sm" variant={viewMode === 'compact' ? 'default' : 'ghost'} onClick={() => setViewMode('compact')} title="Compact View" className="h-8 w-8 p-0 rounded-r-none border-r border-emerald-300">
+              <List className="w-4 h-4" />
+            </Button>
+            <Button size="sm" variant={viewMode === 'full' ? 'default' : 'ghost'} onClick={() => setViewMode('full')} title="Full View" className="h-8 w-8 p-0 rounded-l-none">
+              <LayoutGrid className="w-4 h-4" />
+            </Button>
           </div>
-        </CardHeader>
+          <Button size="sm" variant="outline" onClick={() => { setSettingsType("status"); setSettingsOpen(true); }} className="border-emerald-300 hover:bg-emerald-50 text-emerald-700">
+            <Settings className="w-4 h-4 mr-1" />Status
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => { setSettingsType("priority"); setSettingsOpen(true); }} className="border-emerald-300 hover:bg-emerald-50 text-emerald-700">
+            <Settings className="w-4 h-4 mr-1" />Priority
+          </Button>
+        </div>
+      </div>
+      <Card className="border-emerald-100">
         <CardContent className="pt-6">
           <div className="flex items-center gap-4 mb-6">
             <div className="relative flex-1">
@@ -563,128 +595,171 @@ export default function Requirements() {
             </Button>
           </div>
 
-          {/* Requirements Table with New Field Order */}
-          <div className="rounded-md border border-primary/20 overflow-x-auto">
-            <Table>
+          {/* Requirements Table with Vertical Layout */}
+          <div className="rounded-md border border-primary/20 overflow-hidden">
+            <Table className="table-fixed w-full">
               <TableHeader>
                 <TableRow className="bg-primary/5 hover:bg-primary/10">
-                  <TableHead className="w-[90px] font-semibold text-primary">ID</TableHead>
-                  <TableHead className="w-[100px] font-semibold">Task Group</TableHead>
-                  <TableHead className="w-[100px] font-semibold">Issue Group</TableHead>
-                  <TableHead className="w-[80px] font-semibold">Priority</TableHead>
-                  <TableHead className="w-[100px] font-semibold">Created</TableHead>
-                  <TableHead className="w-[80px] font-semibold">Type</TableHead>
-                  <TableHead className="w-[90px] font-semibold">Category</TableHead>
-                  <TableHead className="w-[100px] font-semibold">Owner</TableHead>
-                  <TableHead className="min-w-[150px] font-semibold">Description</TableHead>
-                  <TableHead className="w-[90px] font-semibold">Source Type</TableHead>
-                  <TableHead className="w-[100px] font-semibold">Ext. Source</TableHead>
-                  <TableHead className="w-[80px] font-semibold">Status</TableHead>
-                  <TableHead className="min-w-[120px] font-semibold">Last Update</TableHead>
-                  <TableHead className="w-[140px] font-semibold">Actions</TableHead>
+                  <TableHead className="font-semibold text-primary w-auto">Requirement Details</TableHead>
+                  <TableHead className="w-[220px] font-semibold text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredRequirements?.map((req) => (
                   <TableRow key={req.id} className="hover:bg-primary/5">
-                    <TableCell className="font-mono font-medium text-primary">{req.idCode}</TableCell>
-                    <TableCell className="text-sm">{req.taskGroup || '-'}</TableCell>
-                    <TableCell className="text-sm">{req.issueGroup || '-'}</TableCell>
-                    <TableCell>
-                      {editingId === req.id ? (
-                        <Select
-                          value={editData.priority}
-                          onValueChange={(value) => setEditData({ ...editData, priority: value })}
-                        >
-                          <SelectTrigger className="w-24 h-8">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {priorityOptions?.map((opt) => (
-                              <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <Badge variant={getPriorityColor(req.priority)} className="text-xs">{req.priority || 'N/A'}</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{formatDate(req.createdAt)}</TableCell>
-                    <TableCell className="text-sm">{req.type || '-'}</TableCell>
-                    <TableCell className="text-sm">{req.category || '-'}</TableCell>
-                    <TableCell className="text-sm">{req.owner || '-'}</TableCell>
-                    <TableCell className="max-w-[200px] truncate text-sm" title={req.description || ''}>
-                      {req.description || '-'}
-                    </TableCell>
-                    <TableCell className="text-sm">{req.sourceType || '-'}</TableCell>
-                    <TableCell className="text-sm max-w-[100px] truncate" title={req.refSource || ''}>
-                      {req.refSource || '-'}
-                    </TableCell>
-                    <TableCell>
-                      {editingId === req.id ? (
-                        <Select
-                          value={editData.status}
-                          onValueChange={(value) => setEditData({ ...editData, status: value })}
-                        >
-                          <SelectTrigger className="w-24 h-8">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {statusOptions?.map((opt) => (
-                              <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <Badge variant={getStatusColor(req.status)} className="text-xs">{req.status || 'N/A'}</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {editingId === req.id ? (
-                        <Input
-                          value={editData.lastUpdate}
-                          onChange={(e) => setEditData({ ...editData, lastUpdate: e.target.value })}
-                          className="w-full h-8 text-sm"
-                          placeholder="Enter update..."
-                        />
-                      ) : (
-                        <div className="text-sm">
-                          {req.lastUpdate ? (
-                            <div className="flex items-center gap-1">
-                              <Clock className="w-3 h-3 text-muted-foreground" />
-                              <span className="truncate max-w-[100px]" title={req.lastUpdate}>{req.lastUpdate}</span>
+                    <TableCell className="py-4 overflow-hidden">
+                      {viewMode === 'compact' ? (
+                        /* Compact View */
+                        <div className="space-y-2">
+                          <div className="flex items-start gap-3 flex-wrap">
+                            <span className="font-mono font-bold text-primary text-base whitespace-nowrap">{req.idCode}</span>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              {req.taskGroup && (
+                                <span className="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 whitespace-nowrap">
+                                  {req.taskGroup}
+                                </span>
+                              )}
+                              {req.issueGroup && (
+                                <span className="text-xs px-2 py-0.5 rounded bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300 whitespace-nowrap">
+                                  {req.issueGroup}
+                                </span>
+                              )}
                             </div>
-                          ) : '-'}
+                            <p className="flex-1 text-sm break-words min-w-0">{req.description || '-'}</p>
+                          </div>
+                          <div className="flex items-center gap-2 pl-4">
+                            <Badge variant={getPriorityColor(req.priority)} className="text-xs whitespace-nowrap">{req.priority || '-'}</Badge>
+                            <Badge variant={getStatusColor(req.status)} className="text-xs whitespace-nowrap">{req.status || '-'}</Badge>
+                          </div>
+                        </div>
+                      ) : (
+                        /* Full View */
+                        <div className="space-y-3">
+                          {/* Line 1: ID, Task Group, Issue Group, Description */}
+                          <div className="flex items-start gap-3 flex-wrap">
+                            <span className="font-mono font-bold text-primary text-base whitespace-nowrap">{req.idCode}</span>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              {req.taskGroup && (
+                                <span className="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 whitespace-nowrap">
+                                  {req.taskGroup}
+                                </span>
+                              )}
+                              {req.issueGroup && (
+                                <span className="text-xs px-2 py-0.5 rounded bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300 whitespace-nowrap">
+                                  {req.issueGroup}
+                                </span>
+                              )}
+                            </div>
+                            <p className="flex-1 text-sm break-words min-w-0">{req.description || '-'}</p>
+                          </div>
+
+                          {/* Line 2: Details Grid */}
+                          <div className="grid grid-cols-1 gap-1 text-sm text-muted-foreground pl-4 border-l-2 border-muted">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium min-w-[120px]">Priority:</span>
+                              <Badge variant={getPriorityColor(req.priority)} className="text-xs">{req.priority || '-'}</Badge>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium min-w-[120px]">Created:</span>
+                              <span>{formatDate(req.createdAt)}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium min-w-[120px]">Type:</span>
+                              <span>{req.type || '-'}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium min-w-[120px]">Category:</span>
+                              <span>{req.category || '-'}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium min-w-[120px]">Owner:</span>
+                              <span>{req.owner || '-'}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium min-w-[120px]">Source Type:</span>
+                              <span>{req.sourceType || '-'}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium min-w-[120px]">External Source:</span>
+                              <span className="break-words" title={req.refSource || ''}>{req.refSource || '-'}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium min-w-[120px]">Status:</span>
+                              <Badge variant={getStatusColor(req.status)} className="text-xs">{req.status || '-'}</Badge>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium min-w-[120px]">Last Update:</span>
+                              {req.lastUpdate ? (
+                                <div className="flex items-center gap-1">
+                                  <Clock className="w-3 h-3" />
+                                  <span>{req.lastUpdate}</span>
+                                </div>
+                              ) : (
+                                <span>-</span>
+                              )}
+                            </div>
+                            {/* Linked Tasks summary */}
+                            {(() => {
+                              const linkedTasks = tasks?.filter(t => t.requirementId === req.idCode) || [];
+                              const linkedIssues = issues?.filter(i => i.requirementId === req.idCode) || [];
+                              if (linkedTasks.length === 0 && linkedIssues.length === 0) return null;
+                              return (
+                                <div className="flex items-start gap-2 mt-1">
+                                  <span className="font-medium min-w-[120px]">Linked:</span>
+                                  <div className="flex flex-wrap gap-1">
+                                    {linkedTasks.map(t => (
+                                      <Badge key={t.id} variant="secondary" className="text-xs font-mono" title={t.description || ''}>
+                                        {t.taskId} <span className="ml-1 opacity-60">[{t.status || '?'}]</span>
+                                      </Badge>
+                                    ))}
+                                    {linkedIssues.map(i => (
+                                      <Badge key={i.id} variant="outline" className="text-xs font-mono text-orange-700 border-orange-300" title={i.description || ''}>
+                                        {i.issueId} <span className="ml-1 opacity-60">[{i.status || '?'}]</span>
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                          </div>
                         </div>
                       )}
                     </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        {editingId === req.id ? (
-                          <>
-                            <Button size="sm" variant="default" onClick={() => handleSave(req)} disabled={updateMutation.isPending} className="h-7 w-7 p-0">
-                              <Save className="w-3 h-3" />
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={handleCancel} className="h-7 w-7 p-0">
-                              <X className="w-3 h-3" />
-                            </Button>
-                          </>
-                        ) : (
-                          <>
-                            <Button size="sm" variant="ghost" onClick={() => handleViewDetails(req)} title="View Details" className="h-7 w-7 p-0 hover:bg-primary/10">
-                              <Eye className="w-3 h-3" />
-                            </Button>
-                            <Button size="sm" variant="ghost" onClick={() => handleEditDetails(req)} title="Edit" className="h-7 w-7 p-0 hover:bg-primary/10">
-                              <Edit className="w-3 h-3" />
-                            </Button>
-                            <Button size="sm" variant="ghost" onClick={() => showHistory(req.idCode)} title="History" className="h-7 w-7 p-0 hover:bg-primary/10">
-                              <History className="w-3 h-3" />
-                            </Button>
-                            <Button size="sm" variant="destructive" onClick={() => handleDelete(req.id)} title="Delete" className="h-7 w-7 p-0">
-                              <Trash2 className="w-3 h-3" />
-                            </Button>
-                          </>
-                        )}
+                    <TableCell className="align-top py-4">
+                      <div className="flex flex-col items-end gap-1">
+                        <div className="flex items-center gap-1">
+                          <Button size="sm" variant="ghost" onClick={() => handleViewDetails(req)} title="View Details" className="h-8 w-8 p-0 hover:bg-primary/10">
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => handleEditDetails(req)} title="Edit" className="h-8 w-8 p-0 hover:bg-primary/10">
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => showHistory(req.idCode)} title="History" className="h-8 w-8 p-0 hover:bg-primary/10">
+                            <History className="w-4 h-4" />
+                          </Button>
+                          <Button size="sm" variant="destructive" onClick={() => handleDelete(req.id)} title="Delete" className="h-8 w-8 p-0">
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="default"
+                          onClick={() => {
+                            setSelectedRequirement(req);
+                            setNewTask({
+                              ...newTask,
+                              requirementId: req.idCode,
+                              description: `Task for ${req.idCode}`,
+                              taskGroup: req.taskGroup || '',
+                            });
+                            setCreateTaskDialogOpen(true);
+                          }}
+                          title="Create Task"
+                          className="h-7 text-xs w-full"
+                        >
+                          <Plus className="w-3 h-3 mr-1" />
+                          Task
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -757,7 +832,7 @@ export default function Requirements() {
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">Task Group</Label>
                   {isEditMode ? (
                     <div className="flex gap-2">
-                      <Select value={editFormData.taskGroup} onValueChange={(v) => setEditFormData({...editFormData, taskGroup: v})}>
+                      <Select value={editFormData.taskGroup || ''} onValueChange={(v) => setEditFormData({...editFormData, taskGroup: v})}>
                         <SelectTrigger className="h-8">
                           <SelectValue placeholder="Select task group" />
                         </SelectTrigger>
@@ -776,7 +851,7 @@ export default function Requirements() {
                 <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">Issue Group</Label>
                   {isEditMode ? (
-                    <Select value={editFormData.issueGroup} onValueChange={(v) => setEditFormData({...editFormData, issueGroup: v})}>
+                    <Select value={editFormData.issueGroup || ''} onValueChange={(v) => setEditFormData({...editFormData, issueGroup: v})}>
                       <SelectTrigger className="h-8">
                         <SelectValue placeholder="Select issue group" />
                       </SelectTrigger>
@@ -794,7 +869,7 @@ export default function Requirements() {
                 <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">Priority</Label>
                   {isEditMode ? (
-                    <Select value={editFormData.priority} onValueChange={(v) => setEditFormData({...editFormData, priority: v})}>
+                    <Select value={editFormData.priority || ''} onValueChange={(v) => setEditFormData({...editFormData, priority: v})}>
                       <SelectTrigger className="h-8">
                         <SelectValue placeholder="Select priority" />
                       </SelectTrigger>
@@ -819,7 +894,7 @@ export default function Requirements() {
                 <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">Type</Label>
                   {isEditMode ? (
-                    <Select value={editFormData.type} onValueChange={(v) => setEditFormData({...editFormData, type: v})}>
+                    <Select value={editFormData.type || ''} onValueChange={(v) => setEditFormData({...editFormData, type: v})}>
                       <SelectTrigger className="h-8">
                         <SelectValue placeholder="Select type" />
                       </SelectTrigger>
@@ -837,7 +912,7 @@ export default function Requirements() {
                 <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">Category</Label>
                   {isEditMode ? (
-                    <Select value={editFormData.category} onValueChange={(v) => setEditFormData({...editFormData, category: v})}>
+                    <Select value={editFormData.category || ''} onValueChange={(v) => setEditFormData({...editFormData, category: v})}>
                       <SelectTrigger className="h-8">
                         <SelectValue placeholder="Select category" />
                       </SelectTrigger>
@@ -855,7 +930,7 @@ export default function Requirements() {
                 <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">Owner</Label>
                   {isEditMode ? (
-                    <Select value={editFormData.owner} onValueChange={(v) => setEditFormData({...editFormData, owner: v})}>
+                    <Select value={editFormData.owner || ''} onValueChange={(v) => setEditFormData({...editFormData, owner: v})}>
                       <SelectTrigger className="h-8">
                         <SelectValue placeholder="Select owner" />
                       </SelectTrigger>
@@ -874,7 +949,7 @@ export default function Requirements() {
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">Source Type</Label>
                   {isEditMode ? (
                     <Input
-                      value={editFormData.sourceType}
+                      value={editFormData.sourceType || ''}
                       onChange={(e) => setEditFormData({...editFormData, sourceType: e.target.value})}
                       className="h-8"
                       placeholder="Enter source type"
@@ -888,7 +963,7 @@ export default function Requirements() {
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">External Source</Label>
                   {isEditMode ? (
                     <Input
-                      value={editFormData.refSource}
+                      value={editFormData.refSource || ''}
                       onChange={(e) => setEditFormData({...editFormData, refSource: e.target.value})}
                       className="h-8"
                       placeholder="Enter external source"
@@ -897,11 +972,32 @@ export default function Requirements() {
                     <p className="font-medium">{selectedRequirement?.refSource || '-'}</p>
                   )}
                 </div>
+                {/* Knowledge Base Code */}
+                {isEditMode && (
+                  <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                    <Label className="text-xs text-muted-foreground uppercase tracking-wide">Knowledge Base Link</Label>
+                    <Select 
+                      value={editFormData.knowledgeBaseCode || ''} 
+                      onValueChange={(v) => setEditFormData({...editFormData, knowledgeBaseCode: v})}
+                    >
+                      <SelectTrigger className="h-8">
+                        <SelectValue placeholder="Select KB entry" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {knowledgeBaseEntries?.map((kb: any) => (
+                          <SelectItem key={kb.id} value={kb.kbCode}>
+                            {kb.kbCode} - {kb.title}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 {/* Status */}
                 <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">Status</Label>
                   {isEditMode ? (
-                    <Select value={editFormData.status} onValueChange={(v) => setEditFormData({...editFormData, status: v})}>
+                    <Select value={editFormData.status || ''} onValueChange={(v) => setEditFormData({...editFormData, status: v})}>
                       <SelectTrigger className="h-8">
                         <SelectValue placeholder="Select status" />
                       </SelectTrigger>
@@ -922,7 +1018,7 @@ export default function Requirements() {
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">Last Update</Label>
                   {isEditMode ? (
                     <Textarea
-                      value={editFormData.lastUpdate}
+                      value={editFormData.lastUpdate || ''}
                       onChange={(e) => setEditFormData({...editFormData, lastUpdate: e.target.value})}
                       className="min-h-[60px]"
                       placeholder="Enter update notes"
@@ -938,7 +1034,7 @@ export default function Requirements() {
                 <Label className="text-xs text-muted-foreground uppercase tracking-wide">Description</Label>
                 {isEditMode ? (
                   <Textarea
-                    value={editFormData.description}
+                    value={editFormData.description || ''}
                     onChange={(e) => setEditFormData({...editFormData, description: e.target.value})}
                     className="min-h-[100px]"
                     placeholder="Enter description"
@@ -960,6 +1056,49 @@ export default function Requirements() {
                     Create Deliverable
                   </Button>
                 </div>
+                {/* Link Existing Deliverable */}
+                <div className="flex gap-2 mb-3">
+                  <Select
+                    value={selectedDeliverableToLink}
+                    onValueChange={setSelectedDeliverableToLink}
+                  >
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Select deliverable to link..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {allDeliverables?.filter(del => 
+                        !linkedDeliverables?.some(linked => linked.id === del.id)
+                      ).map((del) => (
+                        <SelectItem key={del.id} value={del.id.toString()}>
+                          {del.deliverableId} - {del.description?.substring(0, 50) || 'No description'}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      if (selectedDeliverableToLink && selectedRequirement?.idCode) {
+                        linkDeliverableMutation.mutate({
+                          deliverableId: parseInt(selectedDeliverableToLink),
+                          entityType: 'requirement',
+                          entityId: selectedRequirement.idCode,
+                        });
+                      }
+                    }}
+                    disabled={!selectedDeliverableToLink || linkDeliverableMutation.isPending}
+                    className="bg-primary hover:bg-primary/90"
+                  >
+                    {linkDeliverableMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <>
+                        <Link2 className="w-4 h-4 mr-2" />
+                        Link
+                      </>
+                    )}
+                  </Button>
+                </div>
                 {linkedDeliverables && linkedDeliverables.length > 0 ? (
                   <div className="space-y-2">
                     {linkedDeliverables.map((deliverable) => (
@@ -976,12 +1115,14 @@ export default function Requirements() {
                                   rows={2}
                                 />
                                 <div className="grid grid-cols-2 gap-2">
-                                  <Input
+                                <div className="text-sm">
+                                  <SelectWithCreate
+                                    type="status"
                                     value={editDeliverableData.status}
-                                    onChange={(e) => setEditDeliverableData({ ...editDeliverableData, status: e.target.value })}
-                                    placeholder="Status"
-                                    className="text-sm"
+                                    onValueChange={(value) => setEditDeliverableData({ ...editDeliverableData, status: value })}
+                                    placeholder="Select status..."
                                   />
+                                </div>
                                   <Input
                                     type="date"
                                     value={editDeliverableData.dueDate}
@@ -1049,7 +1190,14 @@ export default function Requirements() {
               ) : (
                 <div className="space-y-2">
                   {linkedTasks.map((task) => (
-                    <Card key={task.id} className="p-3 border-primary/20">
+                    <Card 
+                      key={task.id} 
+                      className="p-3 border-primary/20 cursor-pointer hover:bg-accent/50 transition-colors"
+                      onClick={() => {
+                        // Navigate to Tasks page - the Tasks page will need to handle opening the task details
+                        window.location.href = `/tasks?taskId=${task.taskId}`;
+                      }}
+                    >
                       <div className="flex items-center justify-between">
                         <div>
                           <span className="font-mono text-sm font-medium text-primary">{task.taskId}</span>
@@ -1170,76 +1318,6 @@ export default function Requirements() {
           </DialogHeader>
           <div className="grid grid-cols-2 gap-4 py-4">
             <div className="space-y-2">
-              <Label>Task Group</Label>
-              <div className="flex gap-2">
-                <Select
-                  value={newRequirement.taskGroup}
-                  onValueChange={(value) => setNewRequirement({ ...newRequirement, taskGroup: value })}
-                >
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Select task group..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {taskGroups?.map((group) => (
-                      <SelectItem key={group.id} value={group.name}>
-                        {group.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="outline"
-                  onClick={() => {
-                    const newGroup = prompt('Enter new Task Group name:');
-                    if (newGroup && newGroup.trim() && currentProjectId) {
-                      createTaskGroupMutation.mutate({ projectId: currentProjectId, name: newGroup.trim() });
-                    }
-                  }}
-                  title="Add new task group"
-                  disabled={createTaskGroupMutation.isPending}
-                >
-                  {createTaskGroupMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                </Button>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Issue Group</Label>
-              <div className="flex gap-2">
-                <Select
-                  value={newRequirement.issueGroup}
-                  onValueChange={(value) => setNewRequirement({ ...newRequirement, issueGroup: value })}
-                >
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Select issue group..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {issueGroups?.map((group) => (
-                      <SelectItem key={group.id} value={group.name}>
-                        {group.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="outline"
-                  onClick={() => {
-                    const newGroup = prompt('Enter new Issue Group name:');
-                    if (newGroup && newGroup.trim() && currentProjectId) {
-                      createIssueGroupMutation.mutate({ projectId: currentProjectId, name: newGroup.trim() });
-                    }
-                  }}
-                  title="Add new issue group"
-                  disabled={createIssueGroupMutation.isPending}
-                >
-                  {createIssueGroupMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                </Button>
-              </div>
-            </div>
-            <div className="space-y-2">
               <Label>Creation Date</Label>
               <Input
                 type="date"
@@ -1278,8 +1356,8 @@ export default function Requirements() {
               <Label>Owner (Stakeholder)</Label>
               <SelectWithCreate
                 type="stakeholder"
-                value={newRequirement.owner}
-                onValueChange={(value) => setNewRequirement({ ...newRequirement, owner: value })}
+                value={newRequirement.ownerId?.toString() || ''}
+                onValueChange={(value) => setNewRequirement({ ...newRequirement, ownerId: value ? parseInt(value) : undefined })}
                 placeholder="Select owner"
                 projectId={currentProjectId || undefined}
               />
@@ -1300,6 +1378,7 @@ export default function Requirements() {
                 placeholder="Reference source URL or name"
               />
             </div>
+
             <div className="space-y-2">
               <Label>Status</Label>
               <SelectWithCreate
@@ -1458,10 +1537,10 @@ export default function Requirements() {
               </div>
             </div>
 
-            {/* Status & Priority */}
+            {/* Status, Priority & Due Date */}
             <div className="space-y-4">
-              <h4 className="font-semibold text-sm border-b pb-2">Status & Priority</h4>
-              <div className="grid grid-cols-2 gap-4">
+              <h4 className="font-semibold text-sm border-b pb-2">Status, Priority & Due Date</h4>
+              <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>Status</Label>
                   <Select
@@ -1493,6 +1572,14 @@ export default function Requirements() {
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Due Date</Label>
+                  <Input
+                    type="date"
+                    value={newTask.dueDate}
+                    onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })}
+                  />
                 </div>
               </div>
             </div>
@@ -1655,10 +1742,11 @@ export default function Requirements() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Status</Label>
-                <Input
+                <SelectWithCreate
+                  type="status"
                   value={newDeliverable.status}
-                  onChange={(e) => setNewDeliverable({ ...newDeliverable, status: e.target.value })}
-                  placeholder="e.g., Pending, In Progress, Completed"
+                  onValueChange={(value) => setNewDeliverable({ ...newDeliverable, status: value })}
+                  placeholder="Select status..."
                 />
               </div>
               <div className="space-y-2">
@@ -1778,6 +1866,108 @@ export default function Requirements() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Task Group Creation Dialog */}
+      <Dialog open={taskGroupDialogOpen} onOpenChange={setTaskGroupDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Task Group</DialogTitle>
+            <DialogDescription>
+              Add a new task group to categorize requirements and tasks.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Name *</Label>
+              <Input
+                value={newTaskGroup.name}
+                onChange={(e) => setNewTaskGroup({ ...newTaskGroup, name: e.target.value })}
+                placeholder="Enter task group name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Textarea
+                value={newTaskGroup.description}
+                onChange={(e) => setNewTaskGroup({ ...newTaskGroup, description: e.target.value })}
+                placeholder="Enter task group description (optional)"
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setTaskGroupDialogOpen(false);
+              setNewTaskGroup({ name: '', description: '' });
+            }}>Cancel</Button>
+            <Button
+              onClick={() => {
+                if (newTaskGroup.name.trim() && currentProjectId) {
+                  createTaskGroupMutation.mutate({
+                    projectId: currentProjectId,
+                    name: newTaskGroup.name.trim(),
+                    description: newTaskGroup.description.trim() || undefined,
+                  });
+                }
+              }}
+              disabled={!newTaskGroup.name.trim() || !currentProjectId || createTaskGroupMutation.isPending}
+            >
+              {createTaskGroupMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Creating...</> : 'Create'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Issue Group Creation Dialog */}
+      <Dialog open={issueGroupDialogOpen} onOpenChange={setIssueGroupDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Issue Group</DialogTitle>
+            <DialogDescription>
+              Add a new issue group to categorize requirements and issues.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Name *</Label>
+              <Input
+                value={newIssueGroup.name}
+                onChange={(e) => setNewIssueGroup({ ...newIssueGroup, name: e.target.value })}
+                placeholder="Enter issue group name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Textarea
+                value={newIssueGroup.description}
+                onChange={(e) => setNewIssueGroup({ ...newIssueGroup, description: e.target.value })}
+                placeholder="Enter issue group description (optional)"
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setIssueGroupDialogOpen(false);
+              setNewIssueGroup({ name: '', description: '' });
+            }}>Cancel</Button>
+            <Button
+              onClick={() => {
+                if (newIssueGroup.name.trim() && currentProjectId) {
+                  createIssueGroupMutation.mutate({
+                    projectId: currentProjectId,
+                    name: newIssueGroup.name.trim(),
+                    description: newIssueGroup.description.trim() || undefined,
+                  });
+                }
+              }}
+              disabled={!newIssueGroup.name.trim() || !currentProjectId || createIssueGroupMutation.isPending}
+            >
+              {createIssueGroupMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Creating...</> : 'Create'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Dropdown Options Manager Dialog */}
       <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>

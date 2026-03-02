@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DropdownOptionsManager } from "@/components/DropdownOptionsManager";
 import {
   Select,
@@ -44,6 +45,7 @@ import { toast } from "sonner";
 import { Plus, Trash2, Pencil, Search, Package, Link2, X } from "lucide-react";
 
 export default function Deliverables() {
+  const { currentProjectId } = useProject();
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -62,14 +64,15 @@ export default function Deliverables() {
   const [linkData, setLinkData] = useState({
     entityType: "requirement" as "requirement" | "task" | "dependency",
     entityId: "",
-  });
-
-  const utils = trpc.useUtils();
-  const { data: deliverables, isLoading } = trpc.deliverables.list.useQuery();
-  const { data: requirements } = trpc.requirements.list.useQuery();
-  const { data: tasks } = trpc.tasks.list.useQuery();
-  const { data: dependencies } = trpc.dependencies.list.useQuery();
-  const { currentProjectId } = useProject();
+  });  const utils = trpc.useUtils();
+  const { data: deliverables, isLoading } = trpc.deliverables.list.useQuery(
+    { projectId: currentProjectId || 0 },
+    { enabled: !!currentProjectId }
+  );
+  const { data: statusOptions } = trpc.dropdownOptions.status.getAll.useQuery();
+  const { data: requirements } = trpc.requirements.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
+  const { data: tasks } = trpc.tasks.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
+  const { data: dependencies } = trpc.dependencies.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
   const { data: deliverableLinks } = trpc.deliverables.getLinks.useQuery(
     { deliverableId: selectedDeliverable?.id || 0 },
     { enabled: isLinkOpen && !!selectedDeliverable?.id }
@@ -258,23 +261,25 @@ export default function Deliverables() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 p-6">
+      {/* Page Header */}
+      <div className="bg-white border border-gray-200 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <Package className="h-6 w-6" />
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <Package className="w-6 h-6 text-gray-500" />
             Deliverables Management
           </h1>
-          <p className="text-muted-foreground mt-1">
-            Create and manage deliverables linked to Requirements, Tasks, and Dependencies
-          </p>
+          <p className="text-gray-500 text-sm mt-1">Create and manage deliverables linked to Requirements, Tasks, and Dependencies</p>
         </div>
-        <Button onClick={() => setIsCreateOpen(true)} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Add Deliverable
-        </Button>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-orange-700 border-orange-300">{deliverables?.length || 0} Deliverables</Badge>
+          <Button onClick={() => setIsCreateOpen(true)} className="bg-gray-900 hover:bg-gray-800 text-white gap-2">
+            <Plus className="h-4 w-4" />Add Deliverable
+          </Button>
+        </div>
       </div>
+      <Card className="border-orange-100">
+        <CardContent className="pt-6">
 
       {/* Search */}
       <div className="relative max-w-md">
@@ -442,10 +447,11 @@ export default function Deliverables() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Pending">Pending</SelectItem>
-                      <SelectItem value="In Progress">In Progress</SelectItem>
-                      <SelectItem value="Completed">Completed</SelectItem>
-                      <SelectItem value="Blocked">Blocked</SelectItem>
+                      {statusOptions?.map((option) => (
+                        <SelectItem key={option.id} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <DropdownOptionsManager type="status" />
@@ -503,10 +509,11 @@ export default function Deliverables() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Pending">Pending</SelectItem>
-                    <SelectItem value="In Progress">In Progress</SelectItem>
-                    <SelectItem value="Completed">Completed</SelectItem>
-                    <SelectItem value="Blocked">Blocked</SelectItem>
+                    {statusOptions?.map((option) => (
+                      <SelectItem key={option.id} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -670,6 +677,8 @@ export default function Deliverables() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+        </CardContent>
+      </Card>
     </div>
   );
 }
