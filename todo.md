@@ -217,3 +217,11 @@
 
 - [x] Fix Tasks Today status dropdown showing only "Open" instead of full status list (seeded 10 standard statuses into statusOptions DB table)
 - [x] Fix Tasks Today: treat "Closed" status as completed (not overdue) — expanded DONE_STATUSES to include Closed, Solved, Done, Cancelled, Approved, Passed in both frontend and server-side weekly report logic
+
+## Feature: Status "Is Complete" Flag (Mar 4, 2026 - Batch 24)
+
+- [x] Add isComplete boolean field to statusOptions DB schema
+- [x] Seed Completed, Closed, Solved, Done, Approved, Passed as isComplete=true
+- [x] Update Status Options settings UI to show isComplete toggle per status
+- [x] Update Add/Edit status dialogs to include isComplete toggle
+- [x] Update overdue logic (Today.tsx + traceability.router.ts) to use isComplete from DB

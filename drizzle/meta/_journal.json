@@ -190,6 +190,13 @@
       "when": 1772610942359,
       "tag": "0026_same_karnak",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "5",
+      "when": 1772618390663,
+      "tag": "0027_acoustic_fallen_one",
+      "breakpoints": true
     }
   ]
 }

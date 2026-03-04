@@ -12,7 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 
 // Statuses that mean the task is done and should not appear as overdue
-const DONE_STATUSES = new Set(["Completed", "Closed", "Solved", "Done", "Cancelled", "Approved", "Passed"]);
+// DONE_STATUSES is now derived from statusOptions DB (see below), kept as fallback
+const FALLBACK_DONE_STATUSES = new Set(["Completed", "Closed", "Solved", "Done", "Cancelled", "Approved", "Passed"]);
 
 export default function Today() {
   const { currentProjectId } = useProject();
@@ -118,13 +119,22 @@ export default function Today() {
     return applyFilters(filtered);
   }, [tasks, today, filterResponsible, filterStatus, filterPriority, filterTaskCode]);
 
+  // Build a set of statuses that count as "complete" from the DB, with fallback
+  const doneStatusSet = useMemo(() => {
+    if (statusOptions && statusOptions.length > 0) {
+      const dbDone = new Set(statusOptions.filter((s: any) => s.isComplete).map((s: any) => s.value));
+      return dbDone.size > 0 ? dbDone : FALLBACK_DONE_STATUSES;
+    }
+    return FALLBACK_DONE_STATUSES;
+  }, [statusOptions]);
+
   const tasksOverdue = useMemo(() => {
     const filtered = tasks?.filter(t => {
       const dueDate = parseDate(t.dueDate);
-      return dueDate && dueDate.getTime() < today.getTime() && !DONE_STATUSES.has(t.currentStatus || "");
+      return dueDate && dueDate.getTime() < today.getTime() && !doneStatusSet.has(t.currentStatus || "");
     }) || [];
     return applyFilters(filtered);
-  }, [tasks, today, filterResponsible, filterStatus, filterPriority, filterTaskCode]);
+  }, [tasks, today, doneStatusSet, filterResponsible, filterStatus, filterPriority, filterTaskCode]);
 
   const tasksUpcoming = useMemo(() => {
     const filtered = tasks?.filter(t => {

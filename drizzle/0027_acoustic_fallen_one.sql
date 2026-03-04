@@ -1,0 +1,1 @@
+ALTER TABLE `statusOptions` ADD `isComplete` boolean DEFAULT false NOT NULL;

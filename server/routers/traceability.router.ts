@@ -1,7 +1,7 @@
 import { protectedProcedure, router } from "../_core/trpc";
 import { z } from "zod";
 import { getDb } from "../db";
-import { requirements, tasks, issues, testCases, changeRequests, decisions, risks, riskStatus, stakeholders } from "../../drizzle/schema";
+import { requirements, tasks, issues, testCases, changeRequests, decisions, risks, riskStatus, stakeholders, statusOptions } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 
 export const traceabilityRouter = router({
@@ -125,7 +125,12 @@ export const traceabilityRouter = router({
 
       // Overdue tasks (dueDate in past, status not a done/closed state)
       const today = new Date().toISOString().split("T")[0];
-      const DONE_STATUSES = new Set(["completed", "closed", "solved", "done", "cancelled", "approved", "passed"]);
+      // Fetch isComplete statuses from DB, fallback to hardcoded list
+      const dbStatusOptions = await db.select().from(statusOptions);
+      const dbDoneValues = dbStatusOptions.filter(s => s.isComplete).map(s => s.value.toLowerCase());
+      const DONE_STATUSES = new Set(dbDoneValues.length > 0
+        ? dbDoneValues
+        : ["completed", "closed", "solved", "done", "cancelled", "approved", "passed"]);
       const overdueTasks = allTasks.filter((t) => {
         if (!t.dueDate) return false;
         const isDone = DONE_STATUSES.has((t.currentStatus || t.status || "").toLowerCase());

@@ -113,7 +113,7 @@ export default function Settings() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [deletingItem, setDeletingItem] = useState<any>(null);
-  const [optionFormData, setOptionFormData] = useState({ name: "" });
+  const [optionFormData, setOptionFormData] = useState({ name: "", isComplete: false });
 
   // ID Config queries and state
   const { data: idConfigs, isLoading: idConfigsLoading } = trpc.idConfig.list.useQuery(
@@ -345,6 +345,11 @@ export default function Settings() {
     onError: (error) => toast.error(`Failed to update: ${error.message}`),
   });
 
+  const toggleStatusCompleteMutation = trpc.dropdownOptions.status.update.useMutation({
+    onSuccess: () => { refetchStatus(); },
+    onError: (error) => toast.error(`Failed to update: ${error.message}`),
+  });
+
   const deleteStatusMutation = trpc.dropdownOptions.status.delete.useMutation({
     onSuccess: () => {
       toast.success("Status option deleted successfully");
@@ -525,7 +530,7 @@ export default function Settings() {
 
   // Dropdown options functions
   const resetOptionForm = () => {
-    setOptionFormData({ name: "" });
+    setOptionFormData({ name: "", isComplete: false });
     setEditingItem(null);
   };
 
@@ -537,7 +542,7 @@ export default function Settings() {
 
     switch (optionsTab) {
       case "status":
-        createStatusMutation.mutate({ value: optionFormData.name });
+        createStatusMutation.mutate({ value: optionFormData.name, isComplete: optionFormData.isComplete });
         break;
       case "priority":
         createPriorityMutation.mutate({ value: optionFormData.name });
@@ -568,7 +573,7 @@ export default function Settings() {
 
     switch (optionsTab) {
       case "status":
-        updateStatusMutation.mutate({ id: editingItem.id, value: optionFormData.name });
+        updateStatusMutation.mutate({ id: editingItem.id, value: optionFormData.name, isComplete: optionFormData.isComplete });
         break;
       case "priority":
         updatePriorityMutation.mutate({ id: editingItem.id, value: optionFormData.name });
@@ -623,6 +628,7 @@ export default function Settings() {
     setEditingItem(item);
     setOptionFormData({
       name: item.value || item.name,
+      isComplete: item.isComplete ?? false,
     });
     setEditDialogOpen(true);
   };
@@ -639,12 +645,15 @@ export default function Settings() {
 
   const renderOptionsTable = (options: any[] | undefined, type: string) => {
     if (!options) return <div className="text-center py-8">Loading...</div>;
+    const isStatus = type === "status";
+    const colSpan = isStatus ? 4 : 3;
 
     return (
       <Table>
         <TableHeader>
           <TableRow>
             <TableHead>Name</TableHead>
+            {isStatus && <TableHead className="w-36">Counts as Complete</TableHead>}
             <TableHead>Usage Count</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
@@ -652,7 +661,7 @@ export default function Settings() {
         <TableBody>
           {options.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
+              <TableCell colSpan={colSpan} className="text-center py-8 text-muted-foreground">
                 No {type} options configured. Click "Add New" to create one.
               </TableCell>
             </TableRow>
@@ -660,6 +669,23 @@ export default function Settings() {
             options.map((option) => (
               <TableRow key={option.id}>
                 <TableCell className="font-medium">{option.value}</TableCell>
+                {isStatus && (
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        checked={!!option.isComplete}
+                        onCheckedChange={(checked) =>
+                          toggleStatusCompleteMutation.mutate({ id: option.id, isComplete: checked })
+                        }
+                      />
+                      {option.isComplete ? (
+                        <span className="text-xs text-green-600 font-medium">Complete</span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">In Progress</span>
+                      )}
+                    </div>
+                  </TableCell>
+                )}
                 <TableCell>
                   <Badge variant="secondary">{option.usageCount || 0}</Badge>
                 </TableCell>
@@ -1661,6 +1687,20 @@ export default function Settings() {
                 placeholder="Enter option name"
               />
             </div>
+            {optionsTab === "status" && (
+              <div className="flex items-center justify-between rounded-lg border p-3">
+                <div>
+                  <Label className="text-sm font-medium">Counts as Complete</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Tasks/issues with this status will be treated as done (not overdue)
+                  </p>
+                </div>
+                <Switch
+                  checked={optionFormData.isComplete}
+                  onCheckedChange={(checked) => setOptionFormData({ ...optionFormData, isComplete: checked })}
+                />
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditDialogOpen(false)}>

@@ -382,6 +382,7 @@ export const statusOptions = mysqlTable("statusOptions", {
   category: varchar("category", { length: 50 }).notNull(),
   color: varchar("color", { length: 50 }),
   isDefault: boolean("isDefault").default(false).notNull(),
+  isComplete: boolean("isComplete").default(false).notNull(),
   usageCount: int("usageCount").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

@@ -991,14 +991,14 @@ export async function getAllStatusOptions(category?: string) {
   return await db.select().from(statusOptions);
 }
 
-export async function createStatusOption(data: { value: string; label: string; category: string; color?: string; isDefault?: boolean }) {
+export async function createStatusOption(data: { value: string; label: string; category: string; color?: string; isDefault?: boolean; isComplete?: boolean }) {
   const db = await getDb();
   if (!db) throw new Error('Database not available');
   const [created] = await db.insert(statusOptions).values(data);
   return created;
 }
 
-export async function updateStatusOption(id: number, data: Partial<{ label: string; category: string; color: string; isDefault: boolean }>) {
+export async function updateStatusOption(id: number, data: Partial<{ label: string; value: string; category: string; color: string; isDefault: boolean; isComplete: boolean }>) {
   const db = await getDb();
   if (!db) throw new Error('Database not available');
   await db.update(statusOptions).set(data).where(eq(statusOptions.id, id));

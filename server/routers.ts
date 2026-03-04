@@ -1589,21 +1589,27 @@ export const appRouter = router({
         .input(z.object({
           value: z.string(),
           category: z.string().optional(),
+          isComplete: z.boolean().optional(),
         }))
         .mutation(async ({ input }) => {
           return await db.createStatusOption({
             value: input.value,
             label: input.value,
             category: input.category || 'general',
+            isComplete: input.isComplete ?? false,
           });
         }),
       update: protectedProcedure
         .input(z.object({
           id: z.number(),
-          value: z.string(),
+          value: z.string().optional(),
+          isComplete: z.boolean().optional(),
         }))
         .mutation(async ({ input }) => {
-          return await db.updateStatusOption(input.id, { label: input.value });
+          const updateData: any = {};
+          if (input.value !== undefined) { updateData.label = input.value; updateData.value = input.value; }
+          if (input.isComplete !== undefined) updateData.isComplete = input.isComplete;
+          return await db.updateStatusOption(input.id, updateData);
         }),
       delete: protectedProcedure
         .input(z.object({ id: z.number() }))
