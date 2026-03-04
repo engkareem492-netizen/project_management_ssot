@@ -100,6 +100,9 @@ export default function Issues() {
     createdAt: new Date().toISOString().split('T')[0],
   });
   const [viewMode, setViewMode] = useState<'compact' | 'full'>('full');
+  const [selectedIssueIds, setSelectedIssueIds] = useState<number[]>([]);
+  const [bulkStatusDialogOpen, setBulkStatusDialogOpen] = useState(false);
+  const [bulkStatus, setBulkStatus] = useState("");
   const [newIssue, setNewIssue] = useState<any>({
     issueGroup: '',
     description: '',
@@ -290,6 +293,39 @@ export default function Issues() {
       toast.error(`Create failed: ${error.message}`);
     },
   });
+
+  const bulkDeleteMutation = trpc.issues.bulkDelete.useMutation({
+    onSuccess: (data) => {
+      toast.success(`${data.deleted} issue(s) deleted`);
+      setSelectedIssueIds([]);
+      refetch();
+    },
+    onError: (error) => toast.error(`Bulk delete failed: ${error.message}`),
+  });
+
+  const bulkUpdateStatusMutation = trpc.issues.bulkUpdateStatus.useMutation({
+    onSuccess: (data) => {
+      toast.success(`${data.updated} issue(s) updated`);
+      setSelectedIssueIds([]);
+      setBulkStatusDialogOpen(false);
+      setBulkStatus("");
+      refetch();
+    },
+    onError: (error) => toast.error(`Bulk update failed: ${error.message}`),
+  });
+
+  const handleToggleSelectIssue = (id: number) => {
+    setSelectedIssueIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
+  const handleSelectAllIssues = () => {
+    if (!filteredIssues) return;
+    if (selectedIssueIds.length === filteredIssues.length) {
+      setSelectedIssueIds([]);
+    } else {
+      setSelectedIssueIds(filteredIssues.map(i => i.id));
+    }
+  };
 
   const deleteMutation = trpc.issues.delete.useMutation({
     onSuccess: () => {
@@ -610,7 +646,7 @@ export default function Issues() {
       </div>
       <Card className="border-red-100">
         <CardContent>
-          <div className="flex items-center gap-4 mb-6">
+          <div className="flex items-center gap-4 mb-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
               <Input
@@ -626,17 +662,59 @@ export default function Issues() {
             </Button>
           </div>
 
+          {/* Bulk Action Toolbar */}
+          {selectedIssueIds.length > 0 && (
+            <div className="flex items-center gap-3 mb-4 px-4 py-2 bg-red-50 border border-red-200 rounded-lg">
+              <span className="text-sm font-medium text-red-700">{selectedIssueIds.length} selected</span>
+              <div className="flex gap-2 ml-auto">
+                <Button size="sm" variant="outline" className="border-red-300 text-red-700 hover:bg-red-50" onClick={() => setBulkStatusDialogOpen(true)}>
+                  Update Status
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => {
+                    if (confirm(`Delete ${selectedIssueIds.length} selected issue(s)? This cannot be undone.`)) {
+                      bulkDeleteMutation.mutate({ ids: selectedIssueIds });
+                    }
+                  }}
+                  disabled={bulkDeleteMutation.isPending}
+                >
+                  <Trash2 className="w-4 h-4 mr-1" />
+                  Delete Selected
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setSelectedIssueIds([])}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+
           <div className="rounded-md border overflow-hidden">
             <Table className="table-fixed w-full">
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10">
+                    <Checkbox
+                      checked={filteredIssues && filteredIssues.length > 0 && selectedIssueIds.length === filteredIssues.length}
+                      onCheckedChange={handleSelectAllIssues}
+                      aria-label="Select all"
+                    />
+                  </TableHead>
                   <TableHead className="w-auto">Issue Details</TableHead>
                   <TableHead className="w-[220px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredIssues?.map((issue) => (
-                  <TableRow key={issue.id}>
+                  <TableRow key={issue.id} className={selectedIssueIds.includes(issue.id) ? 'bg-red-50' : ''}>
+                    <TableCell className="w-10 align-top pt-5" onClick={(e) => e.stopPropagation()}>
+                      <Checkbox
+                        checked={selectedIssueIds.includes(issue.id)}
+                        onCheckedChange={() => handleToggleSelectIssue(issue.id)}
+                        aria-label={`Select issue ${issue.issueId}`}
+                      />
+                    </TableCell>
                     <TableCell colSpan={1} className="overflow-hidden">
                       {viewMode === 'compact' ? (
                         /* Compact View */
@@ -1453,6 +1531,41 @@ export default function Issues() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Bulk Status Update Dialog */}
+      <Dialog open={bulkStatusDialogOpen} onOpenChange={setBulkStatusDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Update Status for {selectedIssueIds.length} Issue(s)</DialogTitle>
+            <DialogDescription>Select a new status to apply to all selected issues.</DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label>New Status</Label>
+            <Select value={bulkStatus} onValueChange={setBulkStatus}>
+              <SelectTrigger className="mt-2">
+                <SelectValue placeholder="Select status..." />
+              </SelectTrigger>
+              <SelectContent>
+                {statusOptions?.map((s: any) => (
+                  <SelectItem key={s.id} value={s.value}>{s.value}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkStatusDialogOpen(false)}>Cancel</Button>
+            <Button
+              onClick={() => {
+                if (!bulkStatus) { toast.error('Please select a status'); return; }
+                bulkUpdateStatusMutation.mutate({ ids: selectedIssueIds, status: bulkStatus });
+              }}
+              disabled={bulkUpdateStatusMutation.isPending}
+            >
+              {bulkUpdateStatusMutation.isPending ? 'Updating...' : 'Apply Status'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Add Issue Group Dialog */}
       <Dialog open={addIssueGroupDialogOpen} onOpenChange={setAddIssueGroupDialogOpen}>

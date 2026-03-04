@@ -554,6 +554,24 @@ export const appRouter = router({
         await db.deleteRequirement(input.id);
         return { success: true };
       }),
+
+    bulkDelete: protectedProcedure
+      .input(z.object({ ids: z.array(z.number()) }))
+      .mutation(async ({ input }) => {
+        for (const id of input.ids) {
+          await db.deleteRequirement(id);
+        }
+        return { success: true, deleted: input.ids.length };
+      }),
+
+    bulkUpdateStatus: protectedProcedure
+      .input(z.object({ ids: z.array(z.number()), status: z.string() }))
+      .mutation(async ({ input }) => {
+        for (const id of input.ids) {
+          await db.updateRequirement(id, { status: input.status });
+        }
+        return { success: true, updated: input.ids.length };
+      }),
   }),
 
   // Tasks
@@ -712,6 +730,24 @@ export const appRouter = router({
         await db.deleteTask(input.id);
         return { success: true };
       }),
+
+    bulkDelete: protectedProcedure
+      .input(z.object({ ids: z.array(z.number()) }))
+      .mutation(async ({ input }) => {
+        for (const id of input.ids) {
+          await db.deleteTask(id);
+        }
+        return { success: true, deleted: input.ids.length };
+      }),
+
+    bulkUpdateStatus: protectedProcedure
+      .input(z.object({ ids: z.array(z.number()), status: z.string() }))
+      .mutation(async ({ input }) => {
+        for (const id of input.ids) {
+          await db.updateTask(id, { currentStatus: input.status });
+        }
+        return { success: true, updated: input.ids.length };
+      }),
   }),
 
   // Issues
@@ -862,6 +898,24 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         await db.deleteIssue(input.id);
         return { success: true };
+      }),
+
+    bulkDelete: protectedProcedure
+      .input(z.object({ ids: z.array(z.number()) }))
+      .mutation(async ({ input }) => {
+        for (const id of input.ids) {
+          await db.deleteIssue(id);
+        }
+        return { success: true, deleted: input.ids.length };
+      }),
+
+    bulkUpdateStatus: protectedProcedure
+      .input(z.object({ ids: z.array(z.number()), status: z.string() }))
+      .mutation(async ({ input }) => {
+        for (const id of input.ids) {
+          await db.updateIssue(id, { status: input.status });
+        }
+        return { success: true, updated: input.ids.length };
       }),
 
     getByEntity: protectedProcedure

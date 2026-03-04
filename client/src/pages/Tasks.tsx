@@ -86,6 +86,10 @@ export default function Tasks() {
   const [editIssueData, setEditIssueData] = useState<any>({});
   const [deletingIssueId, setDeletingIssueId] = useState<number | null>(null);
   const [deleteIssueDialogOpen, setDeleteIssueDialogOpen] = useState(false);
+  const [selectedTaskIds, setSelectedTaskIds] = useState<number[]>([]);
+  const [bulkStatusDialogOpen, setBulkStatusDialogOpen] = useState(false);
+  const [bulkStatus, setBulkStatus] = useState("");
+
   const [newIssue, setNewIssue] = useState({
     description: '',
     owner: '',
@@ -356,6 +360,39 @@ export default function Tasks() {
       toast.error(`Delete failed: ${error.message}`);
     },
   });
+
+  const bulkDeleteMutation = trpc.tasks.bulkDelete.useMutation({
+    onSuccess: (data) => {
+      toast.success(`${data.deleted} task(s) deleted`);
+      setSelectedTaskIds([]);
+      refetch();
+    },
+    onError: (error) => toast.error(`Bulk delete failed: ${error.message}`),
+  });
+
+  const bulkUpdateStatusMutation = trpc.tasks.bulkUpdateStatus.useMutation({
+    onSuccess: (data) => {
+      toast.success(`${data.updated} task(s) updated`);
+      setSelectedTaskIds([]);
+      setBulkStatusDialogOpen(false);
+      setBulkStatus("");
+      refetch();
+    },
+    onError: (error) => toast.error(`Bulk update failed: ${error.message}`),
+  });
+
+  const handleToggleSelectTask = (id: number) => {
+    setSelectedTaskIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
+  const handleSelectAllTasks = () => {
+    if (!filteredTasks) return;
+    if (selectedTaskIds.length === filteredTasks.length) {
+      setSelectedTaskIds([]);
+    } else {
+      setSelectedTaskIds(filteredTasks.map(t => t.id));
+    }
+  };
 
   const createStakeholderMutation = trpc.stakeholders.create.useMutation({
     onSuccess: (data) => {
@@ -658,7 +695,7 @@ export default function Tasks() {
       </div>
       <Card className="border-blue-100">
         <CardContent>
-          <div className="flex items-center gap-4 mb-6">
+          <div className="flex items-center gap-4 mb-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
               <Input
@@ -674,10 +711,50 @@ export default function Tasks() {
             </Button>
           </div>
 
+          {/* Bulk Action Toolbar */}
+          {selectedTaskIds.length > 0 && (
+            <div className="flex items-center gap-3 mb-4 px-4 py-2 bg-primary/10 border border-primary/20 rounded-lg">
+              <span className="text-sm font-medium text-primary">{selectedTaskIds.length} selected</span>
+              <div className="flex gap-2 ml-auto">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setBulkStatusDialogOpen(true)}
+                >
+                  <CheckSquare className="w-4 h-4 mr-1" />
+                  Update Status
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => {
+                    if (confirm(`Delete ${selectedTaskIds.length} selected task(s)? This cannot be undone.`)) {
+                      bulkDeleteMutation.mutate({ ids: selectedTaskIds });
+                    }
+                  }}
+                  disabled={bulkDeleteMutation.isPending}
+                >
+                  <Trash2 className="w-4 h-4 mr-1" />
+                  Delete Selected
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setSelectedTaskIds([])}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+
           <div className="rounded-md border overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10">
+                    <Checkbox
+                      checked={filteredTasks && filteredTasks.length > 0 && selectedTaskIds.length === filteredTasks.length}
+                      onCheckedChange={handleSelectAllTasks}
+                      aria-label="Select all"
+                    />
+                  </TableHead>
                   <TableHead className="w-[100px]">Task ID</TableHead>
                   <TableHead className="w-[120px]">Task Group</TableHead>
                   <TableHead>Description</TableHead>
@@ -691,7 +768,14 @@ export default function Tasks() {
               </TableHeader>
               <TableBody>
                 {filteredTasks?.map((task) => (
-                  <TableRow key={task.id} className="hover:bg-muted/50">
+                  <TableRow key={task.id} className={`hover:bg-muted/50 ${selectedTaskIds.includes(task.id) ? 'bg-primary/5' : ''}`}>
+                    <TableCell className="w-10 align-top pt-5" onClick={(e) => e.stopPropagation()}>
+                      <Checkbox
+                        checked={selectedTaskIds.includes(task.id)}
+                        onCheckedChange={() => handleToggleSelectTask(task.id)}
+                        aria-label={`Select task ${task.taskId}`}
+                      />
+                    </TableCell>
                     <TableCell colSpan={9} className="p-0">
                       <div className="p-4 space-y-2">
                         {/* Line 1: Task ID, Description, Actions */}
@@ -1641,6 +1725,41 @@ export default function Tasks() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Bulk Status Update Dialog */}
+      <Dialog open={bulkStatusDialogOpen} onOpenChange={setBulkStatusDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Update Status for {selectedTaskIds.length} Task(s)</DialogTitle>
+            <DialogDescription>Select a new status to apply to all selected tasks.</DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label>New Status</Label>
+            <Select value={bulkStatus} onValueChange={setBulkStatus}>
+              <SelectTrigger className="mt-2">
+                <SelectValue placeholder="Select status..." />
+              </SelectTrigger>
+              <SelectContent>
+                {statusOptions?.map((s: any) => (
+                  <SelectItem key={s.id} value={s.value}>{s.value}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkStatusDialogOpen(false)}>Cancel</Button>
+            <Button
+              onClick={() => {
+                if (!bulkStatus) { toast.error('Please select a status'); return; }
+                bulkUpdateStatusMutation.mutate({ ids: selectedTaskIds, status: bulkStatus });
+              }}
+              disabled={bulkUpdateStatusMutation.isPending}
+            >
+              {bulkUpdateStatusMutation.isPending ? 'Updating...' : 'Apply Status'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Add Task Group Dialog */}
       <Dialog open={addTaskGroupDialogOpen} onOpenChange={setAddTaskGroupDialogOpen}>

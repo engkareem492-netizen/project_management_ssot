@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DropdownOptionsManager } from "@/components/DropdownOptionsManager";
 import { SelectWithCreate } from "@/components/SelectWithCreate";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 
 export default function Requirements() {
@@ -73,6 +74,9 @@ export default function Requirements() {
     dueDate: '',
   });
   const [selectedDeliverableToLink, setSelectedDeliverableToLink] = useState<string>('');
+  const [selectedReqIds, setSelectedReqIds] = useState<number[]>([]);
+  const [bulkStatusDialogOpen, setBulkStatusDialogOpen] = useState(false);
+  const [bulkStatus, setBulkStatus] = useState("");
   const [newRequirement, setNewRequirement] = useState<any>({
     description: '',
     taskGroup: '',
@@ -202,6 +206,39 @@ export default function Requirements() {
       toast.error(`Delete failed: ${error.message}`);
     },
   });
+
+  const bulkDeleteMutation = trpc.requirements.bulkDelete.useMutation({
+    onSuccess: (data) => {
+      toast.success(`${data.deleted} requirement(s) deleted`);
+      setSelectedReqIds([]);
+      refetch();
+    },
+    onError: (error) => toast.error(`Bulk delete failed: ${error.message}`),
+  });
+
+  const bulkUpdateStatusMutation = trpc.requirements.bulkUpdateStatus.useMutation({
+    onSuccess: (data) => {
+      toast.success(`${data.updated} requirement(s) updated`);
+      setSelectedReqIds([]);
+      setBulkStatusDialogOpen(false);
+      setBulkStatus("");
+      refetch();
+    },
+    onError: (error) => toast.error(`Bulk update failed: ${error.message}`),
+  });
+
+  const handleToggleSelectReq = (id: number) => {
+    setSelectedReqIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
+  const handleSelectAllReqs = () => {
+    if (!filteredRequirements) return;
+    if (selectedReqIds.length === filteredRequirements.length) {
+      setSelectedReqIds([]);
+    } else {
+      setSelectedReqIds(filteredRequirements.map(r => r.id));
+    }
+  };
 
   const createTaskMutation = trpc.tasks.create.useMutation({
     onSuccess: (data) => {
@@ -579,7 +616,7 @@ export default function Requirements() {
       </div>
       <Card className="border-emerald-100">
         <CardContent className="pt-6">
-          <div className="flex items-center gap-4 mb-6">
+          <div className="flex items-center gap-4 mb-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
               <Input
@@ -595,18 +632,61 @@ export default function Requirements() {
             </Button>
           </div>
 
+          {/* Bulk Action Toolbar */}
+          {selectedReqIds.length > 0 && (
+            <div className="flex items-center gap-3 mb-4 px-4 py-2 bg-primary/10 border border-primary/20 rounded-lg">
+              <span className="text-sm font-medium text-primary">{selectedReqIds.length} selected</span>
+              <div className="flex gap-2 ml-auto">
+                <Button size="sm" variant="outline" onClick={() => setBulkStatusDialogOpen(true)}>
+                  <CheckSquare className="w-4 h-4 mr-1" />
+                  Update Status
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => {
+                    if (confirm(`Delete ${selectedReqIds.length} selected requirement(s)? This cannot be undone.`)) {
+                      bulkDeleteMutation.mutate({ ids: selectedReqIds });
+                    }
+                  }}
+                  disabled={bulkDeleteMutation.isPending}
+                >
+                  <Trash2 className="w-4 h-4 mr-1" />
+                  Delete Selected
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setSelectedReqIds([])}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* Requirements Table with Vertical Layout */}
           <div className="rounded-md border border-primary/20 overflow-hidden">
             <Table className="table-fixed w-full">
               <TableHeader>
                 <TableRow className="bg-primary/5 hover:bg-primary/10">
+                  <TableHead className="w-10">
+                    <Checkbox
+                      checked={filteredRequirements && filteredRequirements.length > 0 && selectedReqIds.length === filteredRequirements.length}
+                      onCheckedChange={handleSelectAllReqs}
+                      aria-label="Select all"
+                    />
+                  </TableHead>
                   <TableHead className="font-semibold text-primary w-auto">Requirement Details</TableHead>
                   <TableHead className="w-[220px] font-semibold text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredRequirements?.map((req) => (
-                  <TableRow key={req.id} className="hover:bg-primary/5">
+                  <TableRow key={req.id} className={`hover:bg-primary/5 ${selectedReqIds.includes(req.id) ? 'bg-primary/10' : ''}`}>
+                    <TableCell className="w-10 align-top pt-5" onClick={(e) => e.stopPropagation()}>
+                      <Checkbox
+                        checked={selectedReqIds.includes(req.id)}
+                        onCheckedChange={() => handleToggleSelectReq(req.id)}
+                        aria-label={`Select ${req.idCode}`}
+                      />
+                    </TableCell>
                     <TableCell className="py-4 overflow-hidden">
                       {viewMode === 'compact' ? (
                         /* Compact View */
@@ -1866,6 +1946,41 @@ export default function Requirements() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Bulk Status Update Dialog */}
+      <Dialog open={bulkStatusDialogOpen} onOpenChange={setBulkStatusDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Update Status for {selectedReqIds.length} Requirement(s)</DialogTitle>
+            <DialogDescription>Select a new status to apply to all selected requirements.</DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label>New Status</Label>
+            <Select value={bulkStatus} onValueChange={setBulkStatus}>
+              <SelectTrigger className="mt-2">
+                <SelectValue placeholder="Select status..." />
+              </SelectTrigger>
+              <SelectContent>
+                {statusOptions?.map((s: any) => (
+                  <SelectItem key={s.id} value={s.value}>{s.value}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkStatusDialogOpen(false)}>Cancel</Button>
+            <Button
+              onClick={() => {
+                if (!bulkStatus) { toast.error('Please select a status'); return; }
+                bulkUpdateStatusMutation.mutate({ ids: selectedReqIds, status: bulkStatus });
+              }}
+              disabled={bulkUpdateStatusMutation.isPending}
+            >
+              {bulkUpdateStatusMutation.isPending ? 'Updating...' : 'Apply Status'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Task Group Creation Dialog */}
       <Dialog open={taskGroupDialogOpen} onOpenChange={setTaskGroupDialogOpen}>

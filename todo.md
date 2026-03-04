@@ -225,3 +225,11 @@
 - [x] Update Status Options settings UI to show isComplete toggle per status
 - [x] Update Add/Edit status dialogs to include isComplete toggle
 - [x] Update overdue logic (Today.tsx + traceability.router.ts) to use isComplete from DB
+
+## Feature: Multi-Select & Bulk Actions (Mar 4, 2026 - Batch 25)
+
+- [x] Add bulkDelete procedure to tasks, requirements, issues routers
+- [x] Add bulkUpdateStatus procedure to tasks, requirements, issues routers
+- [x] Add multi-select checkboxes + bulk toolbar to Tasks page
+- [x] Add multi-select checkboxes + bulk toolbar to Requirements page
+- [x] Add multi-select checkboxes + bulk toolbar to Issues page
