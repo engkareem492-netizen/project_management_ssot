@@ -123,12 +123,13 @@ export const traceabilityRouter = router({
         crsByStatus[s] = (crsByStatus[s] ?? 0) + 1;
       }
 
-      // Overdue tasks (dueDate in past, status not done)
+      // Overdue tasks (dueDate in past, status not a done/closed state)
       const today = new Date().toISOString().split("T")[0];
+      const DONE_STATUSES = new Set(["completed", "closed", "solved", "done", "cancelled", "approved", "passed"]);
       const overdueTasks = allTasks.filter((t) => {
         if (!t.dueDate) return false;
-        const done = t.status?.toLowerCase() === "done" || t.status?.toLowerCase() === "completed";
-        return !done && t.dueDate < today;
+        const isDone = DONE_STATUSES.has((t.currentStatus || t.status || "").toLowerCase());
+        return !isDone && t.dueDate < today;
       });
 
       // Open high priority issues

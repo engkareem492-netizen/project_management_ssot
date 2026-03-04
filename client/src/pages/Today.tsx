@@ -11,6 +11,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 
+// Statuses that mean the task is done and should not appear as overdue
+const DONE_STATUSES = new Set(["Completed", "Closed", "Solved", "Done", "Cancelled", "Approved", "Passed"]);
+
 export default function Today() {
   const { currentProjectId } = useProject();
   const [editingTaskId, setEditingTaskId] = useState<number | null>(null);  const [editingTaskStatus, setEditingTaskStatus] = useState("");
@@ -118,7 +121,7 @@ export default function Today() {
   const tasksOverdue = useMemo(() => {
     const filtered = tasks?.filter(t => {
       const dueDate = parseDate(t.dueDate);
-      return dueDate && dueDate.getTime() < today.getTime() && t.currentStatus !== "Completed";
+      return dueDate && dueDate.getTime() < today.getTime() && !DONE_STATUSES.has(t.currentStatus || "");
     }) || [];
     return applyFilters(filtered);
   }, [tasks, today, filterResponsible, filterStatus, filterPriority, filterTaskCode]);

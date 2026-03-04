@@ -1,0 +1,70 @@
+{
+  "query": "SELECT id, value, label, category FROM statusOptions ORDER BY id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 34DzJoQKEqyc4cp.root --database MtjPfUT7z9e3zhUb3tuetB --execute SELECT id, value, label, category FROM statusOptions ORDER BY id;",
+  "rows": [
+    {
+      "id": "30001",
+      "value": "Open",
+      "label": "Open",
+      "category": "general"
+    },
+    {
+      "id": "60002",
+      "value": "In Progress",
+      "label": "In Progress",
+      "category": "task"
+    },
+    {
+      "id": "60003",
+      "value": "Completed",
+      "label": "Completed",
+      "category": "task"
+    },
+    {
+      "id": "60004",
+      "value": "Closed",
+      "label": "Closed",
+      "category": "task"
+    },
+    {
+      "id": "60005",
+      "value": "On Hold",
+      "label": "On Hold",
+      "category": "task"
+    },
+    {
+      "id": "60006",
+      "value": "Cancelled",
+      "label": "Cancelled",
+      "category": "task"
+    },
+    {
+      "id": "60007",
+      "value": "Pending",
+      "label": "Pending",
+      "category": "task"
+    },
+    {
+      "id": "60008",
+      "value": "In Review",
+      "label": "In Review",
+      "category": "task"
+    },
+    {
+      "id": "60009",
+      "value": "Blocked",
+      "label": "Blocked",
+      "category": "task"
+    },
+    {
+      "id": "60010",
+      "value": "Done",
+      "label": "Done",
+      "category": "task"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tvalue\tlabel\tcategory\n30001\tOpen\tOpen\tgeneral\n60002\tIn Progress\tIn Progress\ttask\n60003\tCompleted\tCompleted\ttask\n60004\tClosed\tClosed\ttask\n60005\tOn Hold\tOn Hold\ttask\n60006\tCancelled\tCancelled\ttask\n60007\tPending\tPending\ttask\n60008\tIn Review\tIn Review\ttask\n60009\tBlocked\tBlocked\ttask\n60010\tDone\tDone\ttask\n",
+  "stderr": "",
+  "execution_time_ms": 1514
+}

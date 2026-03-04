@@ -212,3 +212,8 @@
 ## Bug Fixes (Mar 4, 2026 - Batch 22)
 
 - [x] Fix duplicate React key error on /weekly-report page (empty/non-unique keys in list rendering)
+
+## Bug Fixes (Mar 4, 2026 - Batch 23)
+
+- [x] Fix Tasks Today status dropdown showing only "Open" instead of full status list (seeded 10 standard statuses into statusOptions DB table)
+- [x] Fix Tasks Today: treat "Closed" status as completed (not overdue) — expanded DONE_STATUSES to include Closed, Solved, Done, Cancelled, Approved, Passed in both frontend and server-side weekly report logic
