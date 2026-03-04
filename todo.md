@@ -208,3 +208,7 @@
 ## Bug Fixes (Mar 4, 2026 - Batch 21)
 
 - [x] Fix Excel import not working (label had pointer-events-none on inner button; fixed to use label directly; also fixed deleteAll functions to scope by projectId)
+
+## Bug Fixes (Mar 4, 2026 - Batch 22)
+
+- [x] Fix duplicate React key error on /weekly-report page (empty/non-unique keys in list rendering)
