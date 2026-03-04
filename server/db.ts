@@ -1262,8 +1262,9 @@ export async function getAllProjects() {
       description: projects.description,
       createdAt: projects.createdAt,
       createdBy: projects.createdBy,
+      password: projects.password,
     }).from(projects);
-    return result;
+    return result.map(p => ({ ...p, hasPassword: !!p.password, password: undefined }));
   } catch (error) {
     console.error("[Database] Failed to get projects:", error);
     return [];
@@ -1281,8 +1282,9 @@ export async function getProjectsByUser(userId: number) {
       description: projects.description,
       createdAt: projects.createdAt,
       createdBy: projects.createdBy,
+      password: projects.password,
     }).from(projects).where(eq(projects.createdBy, userId));
-    return result;
+    return result.map(p => ({ ...p, hasPassword: !!p.password, password: undefined }));
   } catch (error) {
     console.error("[Database] Failed to get projects by user:", error);
     return [];
@@ -1326,7 +1328,7 @@ export async function createProject(data: InsertProject) {
   }
 }
 
-export async function updateProjectPassword(projectId: number, hashedPassword: string) {
+export async function updateProjectPassword(projectId: number, hashedPassword: string | null) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   

@@ -5,7 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Database, Plus, Lock, LogOut } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import { Database, Plus, Lock, Unlock, LogOut, ShieldCheck, ShieldOff, KeyRound } from "lucide-react";
 import { getPasswordResetUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
@@ -16,24 +18,29 @@ interface ProjectSelectorProps {
 
 export default function ProjectSelector({ onProjectSelected }: ProjectSelectorProps) {
   const { user, logout } = useAuth();
-  
+
   const handleLogout = async () => {
     await logout();
-    // Redirect to custom login page
     window.location.href = "/login";
   };
+
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const [password, setPassword] = useState("");
-  const [showResetPassword, setShowResetPassword] = useState(false);
+
+  // Password management modal state
+  const [showManagePassword, setShowManagePassword] = useState(false);
+  const [manageMode, setManageMode] = useState<"set" | "change" | "remove">("set");
   const [newPassword, setNewPassword] = useState("");
-  
+  const [confirmPassword, setConfirmPassword] = useState("");
+
   const [newProject, setNewProject] = useState({
     name: "",
     description: "",
     password: "",
+    usePassword: false,
   });
-  
+
   const [importOptions, setImportOptions] = useState({
     enabled: false,
     sourceProjectId: null as number | null,
@@ -58,19 +65,16 @@ export default function ProjectSelector({ onProjectSelected }: ProjectSelectorPr
   const projectsQuery = trpc.projects.list.useQuery();
   const exportDataMutation = trpc.projects.exportData.useMutation();
   const importDataMutation = trpc.projects.importData.useMutation();
-  
+
   const createMutation = trpc.projects.create.useMutation({
     onSuccess: async (data) => {
-      // If import is enabled, export data from source project and import to new project
-      if (importOptions.enabled && importOptions.sourceProjectId && importOptions.sourcePassword) {
+      if (importOptions.enabled && importOptions.sourceProjectId) {
         try {
           toast.info("Importing data from source project...");
           const exportedData = await exportDataMutation.mutateAsync({
             projectId: importOptions.sourceProjectId,
-            password: importOptions.sourcePassword,
+            password: importOptions.sourcePassword || undefined,
           });
-          
-          // Import the exported data into the new project
           await importDataMutation.mutateAsync({
             targetProjectId: data.id,
             sourceData: exportedData,
@@ -83,10 +87,10 @@ export default function ProjectSelector({ onProjectSelected }: ProjectSelectorPr
       } else {
         toast.success("Project created successfully!");
       }
-      
+
       projectsQuery.refetch();
       setShowCreateForm(false);
-      setNewProject({ name: "", description: "", password: "" });
+      setNewProject({ name: "", description: "", password: "", usePassword: false });
       setImportOptions({
         enabled: false,
         sourceProjectId: null,
@@ -128,15 +132,20 @@ export default function ProjectSelector({ onProjectSelected }: ProjectSelectorPr
     },
   });
 
-  const resetPasswordMutation = trpc.projects.resetPassword.useMutation({
-    onSuccess: () => {
-      toast.success("Password reset successfully!");
-      setShowResetPassword(false);
+  const setPasswordMutation = trpc.projects.setPassword.useMutation({
+    onSuccess: (data) => {
+      if (data.hasPassword) {
+        toast.success("Password set successfully!");
+      } else {
+        toast.success("Password removed. Project is now open access.");
+      }
+      projectsQuery.refetch();
+      setShowManagePassword(false);
       setNewPassword("");
-      setPassword("");
+      setConfirmPassword("");
     },
     onError: (error) => {
-      toast.error(`Failed to reset password: ${error.message}`);
+      toast.error(`Failed to update password: ${error.message}`);
     },
   });
 
@@ -153,15 +162,29 @@ export default function ProjectSelector({ onProjectSelected }: ProjectSelectorPr
   });
 
   const handleCreateProject = () => {
-    if (!newProject.name || !newProject.password) {
-      toast.error("Project name and password are required");
+    if (!newProject.name) {
+      toast.error("Project name is required");
       return;
     }
-    createMutation.mutate(newProject);
+    if (newProject.usePassword && !newProject.password) {
+      toast.error("Please enter a password or disable password protection");
+      return;
+    }
+    createMutation.mutate({
+      name: newProject.name,
+      description: newProject.description || undefined,
+      password: newProject.usePassword ? newProject.password : undefined,
+    });
   };
 
-  const handleSelectProject = (projectId: number) => {
-    setSelectedProjectId(projectId);
+  const handleSelectProject = (project: any) => {
+    if (!project.hasPassword) {
+      // No password — open directly
+      onProjectSelected(project.id);
+    } else {
+      // Has password — show password entry
+      setSelectedProjectId(project.id);
+    }
   };
 
   const handleVerifyPassword = () => {
@@ -172,12 +195,25 @@ export default function ProjectSelector({ onProjectSelected }: ProjectSelectorPr
     verifyMutation.mutate({ projectId: selectedProjectId, password });
   };
 
-  const handleResetPassword = () => {
-    if (!selectedProjectId || !newPassword) {
-      toast.error("Please enter a new password");
+  const handleManagePassword = () => {
+    if (!newPassword) {
+      toast.error("Please enter a password");
       return;
     }
-    resetPasswordMutation.mutate({ projectId: selectedProjectId, newPassword });
+    if (newPassword !== confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+    if (newPassword.length < 4) {
+      toast.error("Password must be at least 4 characters");
+      return;
+    }
+    setPasswordMutation.mutate({ projectId: selectedProjectId!, newPassword });
+  };
+
+  const handleRemovePassword = () => {
+    if (!confirm("Are you sure you want to remove the password? Anyone will be able to access this project.")) return;
+    setPasswordMutation.mutate({ projectId: selectedProjectId!, newPassword: null });
   };
 
   const handleDeleteProject = () => {
@@ -188,6 +224,7 @@ export default function ProjectSelector({ onProjectSelected }: ProjectSelectorPr
     deleteMutation.mutate({ projectId: selectedProjectId });
   };
 
+  // ─── Create Project Form ───────────────────────────────────────────────────
   if (showCreateForm) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
@@ -196,7 +233,7 @@ export default function ProjectSelector({ onProjectSelected }: ProjectSelectorPr
             <Database className="w-12 h-12 mx-auto mb-4 text-primary" />
             <CardTitle className="text-2xl">Create New Project</CardTitle>
             <CardDescription>
-              Set up a new project with password protection
+              Set up a new project workspace
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -219,17 +256,47 @@ export default function ProjectSelector({ onProjectSelected }: ProjectSelectorPr
                 rows={3}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password *</Label>
-              <Input
-                id="password"
-                type="password"
-                value={newProject.password}
-                onChange={(e) => setNewProject({ ...newProject, password: e.target.value })}
-                placeholder="Enter project password"
-              />
+
+            {/* Password toggle */}
+            <div className="border rounded-lg p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {newProject.usePassword ? (
+                    <Lock className="w-4 h-4 text-primary" />
+                  ) : (
+                    <Unlock className="w-4 h-4 text-muted-foreground" />
+                  )}
+                  <Label htmlFor="use-password" className="cursor-pointer font-medium">
+                    Password Protection
+                  </Label>
+                </div>
+                <Switch
+                  id="use-password"
+                  checked={newProject.usePassword}
+                  onCheckedChange={(checked) =>
+                    setNewProject({ ...newProject, usePassword: checked, password: "" })
+                  }
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {newProject.usePassword
+                  ? "Users must enter a password to access this project."
+                  : "Anyone with access to this app can open this project directly."}
+              </p>
+              {newProject.usePassword && (
+                <div className="space-y-2 pt-1">
+                  <Label htmlFor="password">Password *</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={newProject.password}
+                    onChange={(e) => setNewProject({ ...newProject, password: e.target.value })}
+                    placeholder="Enter project password"
+                  />
+                </div>
+              )}
             </div>
-            
+
             {/* Import from existing project */}
             <div className="border-t pt-4 mt-4">
               <div className="flex items-center space-x-2 mb-4">
@@ -244,7 +311,7 @@ export default function ProjectSelector({ onProjectSelected }: ProjectSelectorPr
                   Import data from existing project
                 </Label>
               </div>
-              
+
               {importOptions.enabled && (
                 <div className="space-y-4 pl-6">
                   <div className="space-y-2">
@@ -263,18 +330,18 @@ export default function ProjectSelector({ onProjectSelected }: ProjectSelectorPr
                       ))}
                     </select>
                   </div>
-                  
+
                   <div className="space-y-2">
-                    <Label htmlFor="source-password">Source Project Password</Label>
+                    <Label htmlFor="source-password">Source Project Password (if any)</Label>
                     <Input
                       id="source-password"
                       type="password"
                       value={importOptions.sourcePassword}
                       onChange={(e) => setImportOptions({ ...importOptions, sourcePassword: e.target.value })}
-                      placeholder="Enter source project password"
+                      placeholder="Leave blank if no password"
                     />
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label>Select data to import:</Label>
                     <div className="grid grid-cols-2 gap-2">
@@ -303,6 +370,7 @@ export default function ProjectSelector({ onProjectSelected }: ProjectSelectorPr
                 </div>
               )}
             </div>
+
             <div className="flex gap-2 pt-4">
               <Button
                 variant="outline"
@@ -325,84 +393,163 @@ export default function ProjectSelector({ onProjectSelected }: ProjectSelectorPr
     );
   }
 
+  // ─── Password Entry Screen (for password-protected projects) ──────────────
   if (selectedProjectId) {
     const project = projectsQuery.data?.find(p => p.id === selectedProjectId);
+    const isCreator = user && project?.createdBy === user.id;
+
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <Lock className="w-12 h-12 mx-auto mb-4 text-primary" />
-            <CardTitle className="text-2xl">{project?.name}</CardTitle>
-            <CardDescription>
-              {project?.description || "Enter password to access this project"}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter project password"
-                onKeyDown={(e) => e.key === "Enter" && handleVerifyPassword()}
-              />
-              <div className="text-right">
-                <a
-                  href={getPasswordResetUrl()}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-primary hover:underline"
-                >
-                  Forgot Password?
-                </a>
+      <>
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+          <Card className="w-full max-w-md">
+            <CardHeader className="text-center">
+              <Lock className="w-12 h-12 mx-auto mb-4 text-primary" />
+              <CardTitle className="text-2xl">{project?.name}</CardTitle>
+              <CardDescription>
+                {project?.description || "Enter password to access this project"}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter project password"
+                  onKeyDown={(e) => e.key === "Enter" && handleVerifyPassword()}
+                  autoFocus
+                />
+                <div className="text-right">
+                  <a
+                    href={getPasswordResetUrl()}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-primary hover:underline"
+                  >
+                    Forgot Password?
+                  </a>
+                </div>
               </div>
-            </div>
-            <div className="flex gap-2 pt-4">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setSelectedProjectId(null);
-                  setPassword("");
-                }}
-                className="flex-1"
-              >
-                Back
-              </Button>
-              <Button
-                onClick={handleVerifyPassword}
-                disabled={verifyMutation.isPending}
-                className="flex-1"
-              >
-                {verifyMutation.isPending ? "Verifying..." : "Access Project"}
-              </Button>
-            </div>
-            {user && project?.createdBy === user.id && (
-              <div className="border-t pt-4 mt-4 space-y-2">
+              <div className="flex gap-2 pt-4">
                 <Button
                   variant="outline"
-                  onClick={() => setShowResetPassword(true)}
-                  className="w-full"
+                  onClick={() => {
+                    setSelectedProjectId(null);
+                    setPassword("");
+                  }}
+                  className="flex-1"
                 >
-                  Reset Project Password
+                  Back
                 </Button>
                 <Button
-                  variant="destructive"
-                  onClick={handleDeleteProject}
-                  disabled={deleteMutation.isPending}
-                  className="w-full"
+                  onClick={handleVerifyPassword}
+                  disabled={verifyMutation.isPending}
+                  className="flex-1"
                 >
-                  {deleteMutation.isPending ? "Deleting..." : "Delete Project"}
+                  {verifyMutation.isPending ? "Verifying..." : "Access Project"}
                 </Button>
               </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+
+              {/* Creator-only actions */}
+              {isCreator && (
+                <div className="border-t pt-4 mt-4 space-y-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setManageMode("change");
+                      setShowManagePassword(true);
+                    }}
+                    className="w-full"
+                  >
+                    <KeyRound className="w-4 h-4 mr-2" />
+                    Change Password
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={handleRemovePassword}
+                    disabled={setPasswordMutation.isPending}
+                    className="w-full text-orange-600 hover:text-orange-700"
+                  >
+                    <ShieldOff className="w-4 h-4 mr-2" />
+                    Remove Password (Open Access)
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={handleDeleteProject}
+                    disabled={deleteMutation.isPending}
+                    className="w-full"
+                  >
+                    {deleteMutation.isPending ? "Deleting..." : "Delete Project"}
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Change Password Dialog */}
+        {showManagePassword && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <Card className="w-full max-w-md">
+              <CardHeader>
+                <CardTitle>Change Project Password</CardTitle>
+                <CardDescription>
+                  Enter a new password for <strong>{project?.name}</strong>.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="new-password">New Password</Label>
+                  <Input
+                    id="new-password"
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Enter new password"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirm-password">Confirm Password</Label>
+                  <Input
+                    id="confirm-password"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Confirm new password"
+                    onKeyDown={(e) => e.key === "Enter" && handleManagePassword()}
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowManagePassword(false);
+                      setNewPassword("");
+                      setConfirmPassword("");
+                    }}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleManagePassword}
+                    disabled={setPasswordMutation.isPending}
+                    className="flex-1"
+                  >
+                    {setPasswordMutation.isPending ? "Saving..." : "Save Password"}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+      </>
     );
   }
 
+  // ─── Project List ──────────────────────────────────────────────────────────
   return (
     <>
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
@@ -439,12 +586,22 @@ export default function ProjectSelector({ onProjectSelected }: ProjectSelectorPr
                     <Card
                       key={project.id}
                       className="cursor-pointer hover:shadow-md transition-shadow"
-                      onClick={() => handleSelectProject(project.id)}
+                      onClick={() => handleSelectProject(project)}
                     >
                       <CardHeader className="p-4">
                         <CardTitle className="text-lg flex items-center gap-2">
-                          <Lock className="w-4 h-4" />
+                          {project.hasPassword ? (
+                            <Lock className="w-4 h-4 text-muted-foreground shrink-0" />
+                          ) : (
+                            <Unlock className="w-4 h-4 text-green-600 shrink-0" />
+                          )}
                           {project.name}
+                          <Badge
+                            variant={project.hasPassword ? "secondary" : "outline"}
+                            className={`ml-auto text-xs ${!project.hasPassword ? "text-green-700 border-green-300" : ""}`}
+                          >
+                            {project.hasPassword ? "Password Protected" : "Open Access"}
+                          </Badge>
                         </CardTitle>
                         {project.description && (
                           <CardDescription className="text-sm">
@@ -473,52 +630,6 @@ export default function ProjectSelector({ onProjectSelected }: ProjectSelectorPr
           </CardContent>
         </Card>
       </div>
-
-      {/* Reset Password Dialog */}
-      {showResetPassword && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle>Reset Project Password</CardTitle>
-              <CardDescription>
-                Enter a new password for this project. Only the project creator can reset the password.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="new-password">New Password</Label>
-                <Input
-                  id="new-password"
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Enter new password"
-                  onKeyDown={(e) => e.key === "Enter" && handleResetPassword()}
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setShowResetPassword(false);
-                    setNewPassword("");
-                  }}
-                  className="flex-1"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleResetPassword}
-                  disabled={resetPasswordMutation.isPending}
-                  className="flex-1"
-                >
-                  {resetPasswordMutation.isPending ? "Resetting..." : "Reset Password"}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
     </>
   );
 }

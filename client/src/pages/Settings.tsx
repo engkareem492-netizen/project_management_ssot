@@ -10,7 +10,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useState } from "react";
-import { Settings as SettingsIcon, Save, Plus, Edit, Trash2, Hash, AlertCircle, Sun, Moon, Monitor } from "lucide-react";
+import { Settings as SettingsIcon, Save, Plus, Edit, Trash2, Hash, AlertCircle, Sun, Moon, Monitor, Lock, Unlock, KeyRound, ShieldOff, ShieldCheck } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useProject } from "@/contexts/ProjectContext";
 import { ThemeSelector } from "@/components/ThemeSelector";
@@ -66,7 +68,46 @@ function ThemeSelectorInline() {
 
 export default function Settings() {
   const { currentProjectId } = useProject();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("id-config");
+
+  // Password management state
+  const [pwNewPassword, setPwNewPassword] = useState("");
+  const [pwConfirmPassword, setPwConfirmPassword] = useState("");
+  const [pwShowForm, setPwShowForm] = useState(false);
+
+  const projectQuery = trpc.projects.list.useQuery();
+  const currentProject = projectQuery.data?.find(p => p.id === currentProjectId);
+  const isCreator = user && currentProject?.createdBy === user.id;
+
+  const setPasswordMutation = trpc.projects.setPassword.useMutation({
+    onSuccess: (data) => {
+      if (data.hasPassword) {
+        toast.success("Password set successfully!");
+      } else {
+        toast.success("Password removed. Project is now open access.");
+      }
+      projectQuery.refetch();
+      setPwNewPassword("");
+      setPwConfirmPassword("");
+      setPwShowForm(false);
+    },
+    onError: (error) => toast.error(`Failed to update password: ${error.message}`),
+  });
+
+  const handleSetPassword = () => {
+    if (!currentProjectId) return;
+    if (!pwNewPassword) { toast.error("Please enter a password"); return; }
+    if (pwNewPassword !== pwConfirmPassword) { toast.error("Passwords do not match"); return; }
+    if (pwNewPassword.length < 4) { toast.error("Password must be at least 4 characters"); return; }
+    setPasswordMutation.mutate({ projectId: currentProjectId, newPassword: pwNewPassword });
+  };
+
+  const handleRemovePassword = () => {
+    if (!currentProjectId) return;
+    if (!confirm("Remove password protection? Anyone will be able to open this project directly.")) return;
+    setPasswordMutation.mutate({ projectId: currentProjectId, newPassword: null });
+  };
   const [optionsTab, setOptionsTab] = useState("status");
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -681,6 +722,7 @@ export default function Settings() {
           <TabsTrigger value="groups">Groups</TabsTrigger>
           <TabsTrigger value="collaboration">Collaboration</TabsTrigger>
           <TabsTrigger value="theme">Theme</TabsTrigger>
+          <TabsTrigger value="project">Project</TabsTrigger>
         </TabsList>
 
         {/* ID Configuration Tab */}
@@ -1478,6 +1520,123 @@ export default function Settings() {
                 <h3 className="text-sm font-medium mb-4">Color Palette</h3>
                 <ThemeSelector />
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Project Tab */}
+        <TabsContent value="project" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Lock className="w-5 h-5" />
+                Password Protection
+              </CardTitle>
+              <CardDescription>
+                Control who can access this project by setting or removing a password.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Current status */}
+              <div className="flex items-center gap-3 p-4 rounded-lg border">
+                {currentProject?.hasPassword ? (
+                  <>
+                    <Lock className="w-5 h-5 text-primary shrink-0" />
+                    <div className="flex-1">
+                      <p className="font-medium">Password Protected</p>
+                      <p className="text-sm text-muted-foreground">Users must enter a password to open this project.</p>
+                    </div>
+                    <span className="text-xs bg-secondary text-secondary-foreground px-2 py-1 rounded-full">Active</span>
+                  </>
+                ) : (
+                  <>
+                    <Unlock className="w-5 h-5 text-green-600 shrink-0" />
+                    <div className="flex-1">
+                      <p className="font-medium">Open Access</p>
+                      <p className="text-sm text-muted-foreground">Anyone can open this project without a password.</p>
+                    </div>
+                    <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">No Password</span>
+                  </>
+                )}
+              </div>
+
+              {!isCreator && (
+                <p className="text-sm text-muted-foreground italic">Only the project creator can manage password settings.</p>
+              )}
+
+              {isCreator && (
+                <div className="space-y-4">
+                  {/* Toggle form */}
+                  {!pwShowForm ? (
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => setPwShowForm(true)}
+                      >
+                        <KeyRound className="w-4 h-4 mr-2" />
+                        {currentProject?.hasPassword ? "Change Password" : "Set Password"}
+                      </Button>
+                      {currentProject?.hasPassword && (
+                        <Button
+                          variant="outline"
+                          onClick={handleRemovePassword}
+                          disabled={setPasswordMutation.isPending}
+                          className="text-orange-600 hover:text-orange-700 border-orange-200 hover:border-orange-300"
+                        >
+                          <ShieldOff className="w-4 h-4 mr-2" />
+                          Remove Password
+                        </Button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-4 border rounded-lg p-4">
+                      <h4 className="font-medium">
+                        {currentProject?.hasPassword ? "Change Password" : "Set a Password"}
+                      </h4>
+                      <div className="space-y-2">
+                        <Label htmlFor="pw-new">New Password</Label>
+                        <Input
+                          id="pw-new"
+                          type="password"
+                          value={pwNewPassword}
+                          onChange={(e) => setPwNewPassword(e.target.value)}
+                          placeholder="Enter new password (min 4 characters)"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="pw-confirm">Confirm Password</Label>
+                        <Input
+                          id="pw-confirm"
+                          type="password"
+                          value={pwConfirmPassword}
+                          onChange={(e) => setPwConfirmPassword(e.target.value)}
+                          placeholder="Confirm new password"
+                          onKeyDown={(e) => e.key === "Enter" && handleSetPassword()}
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setPwShowForm(false);
+                            setPwNewPassword("");
+                            setPwConfirmPassword("");
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={handleSetPassword}
+                          disabled={setPasswordMutation.isPending}
+                        >
+                          <ShieldCheck className="w-4 h-4 mr-2" />
+                          {setPasswordMutation.isPending ? "Saving..." : "Save Password"}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

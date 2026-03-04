@@ -192,3 +192,15 @@
 - [x] Simplify Status Updates section in Task edit dialog - removed separate Last Update and Status Update fields, now shows Current Status (read-only from history) and New Update (editable textarea) in the same edit form
 - [x] Expand changedFields tracking in tasks.update router to include all important fields (taskGroup, status, priority, description, requirementId, deliverableId, issueId, RACI fields, dates)
 - [x] Install missing bcrypt package that was causing server startup errors
+
+## Feature Requests (Mar 3, 2026 - Batch 20)
+
+- [x] Make project password optional — allow creating projects without a password
+- [x] Show lock/unlock icon in project list based on whether project has a password
+- [x] Open password-less projects directly without password entry screen
+- [x] Allow project creator to add/remove/change password from project settings (in-app)
+- [x] Update backend: make password field nullable in DB schema and router
+- [x] Update backend: add setPassword procedure to enable/disable password protection
+- [x] Update frontend: add "Enable Password" toggle in Create Project form
+- [x] Update frontend: skip password screen for projects without a password
+- [x] Update frontend: add "Manage Password" option in project settings for creator

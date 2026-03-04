@@ -183,6 +183,13 @@
       "when": 1772492939075,
       "tag": "0025_stiff_mole_man",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "5",
+      "when": 1772610942359,
+      "tag": "0026_same_karnak",
+      "breakpoints": true
     }
   ]
 }

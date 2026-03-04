@@ -28,7 +28,7 @@ export const projectsRouter = router({
     .input(z.object({
       name: z.string(),
       description: z.string().optional(),
-      password: z.string(),
+      password: z.string().optional(), // password is now optional
     }))
     .mutation(async ({ input, ctx }) => {
       if (!ctx.user) {
@@ -38,7 +38,7 @@ export const projectsRouter = router({
         });
       }
 
-      const hashedPassword = hashPassword(input.password);
+      const hashedPassword = input.password ? hashPassword(input.password) : null;
       
       return await db.createProject({
         name: input.name,
@@ -63,10 +63,55 @@ export const projectsRouter = router({
         });
       }
 
+      // If project has no password, any password attempt is invalid
+      if (!project.password) {
+        return { valid: false };
+      }
+
       const hashedPassword = hashPassword(input.password);
       const valid = project.password === hashedPassword;
 
       return { valid };
+    }),
+
+  // Check if project requires a password
+  hasPassword: protectedProcedure
+    .input(z.object({ projectId: z.number() }))
+    .query(async ({ input }) => {
+      const project = await db.getProjectById(input.projectId);
+      if (!project) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Project not found' });
+      }
+      return { hasPassword: !!project.password };
+    }),
+
+  // Set, change, or remove password (creator only)
+  setPassword: protectedProcedure
+    .input(z.object({
+      projectId: z.number(),
+      newPassword: z.string().nullable(), // null = remove password
+    }))
+    .mutation(async ({ input, ctx }) => {
+      if (!ctx.user) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'You must be logged in' });
+      }
+
+      const project = await db.getProjectById(input.projectId);
+      if (!project) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Project not found' });
+      }
+
+      if (project.createdBy !== ctx.user.id) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Only the project creator can manage the password',
+        });
+      }
+
+      const hashedPassword = input.newPassword ? hashPassword(input.newPassword) : null;
+      await db.updateProjectPassword(input.projectId, hashedPassword);
+
+      return { success: true, hasPassword: !!hashedPassword };
     }),
 
   resetPassword: protectedProcedure
@@ -142,7 +187,7 @@ export const projectsRouter = router({
   exportData: protectedProcedure
     .input(z.object({
       projectId: z.number(),
-      password: z.string(),
+      password: z.string().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       if (!ctx.user) {
@@ -161,13 +206,21 @@ export const projectsRouter = router({
         });
       }
 
-      // Verify password
-      const hashedPassword = hashPassword(input.password);
-      if (project.password !== hashedPassword) {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'Invalid password',
-        });
+      // Only verify password if the project has one
+      if (project.password) {
+        if (!input.password) {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'Password required for this project',
+          });
+        }
+        const hashedPassword = hashPassword(input.password);
+        if (project.password !== hashedPassword) {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'Invalid password',
+          });
+        }
       }
 
       const data = await db.exportProjectData(input.projectId);

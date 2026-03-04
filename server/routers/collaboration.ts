@@ -338,6 +338,9 @@ export const collaborationRouter = router({
       }
 
       // Verify password
+      if (!project[0].password) {
+        throw new Error("This project does not require a password");
+      }
       const bcrypt = await import("bcrypt");
       const passwordMatch = await bcrypt.compare(
         input.password,

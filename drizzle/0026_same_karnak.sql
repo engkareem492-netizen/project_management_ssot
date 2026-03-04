@@ -1,0 +1,1 @@
+ALTER TABLE `projects` MODIFY COLUMN `password` varchar(255);
