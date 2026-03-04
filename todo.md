@@ -233,3 +233,16 @@
 - [x] Add multi-select checkboxes + bulk toolbar to Tasks page
 - [x] Add multi-select checkboxes + bulk toolbar to Requirements page
 - [x] Add multi-select checkboxes + bulk toolbar to Issues page
+
+## Feature: Traceability Matrix Add/Assign Actions (Mar 4, 2026 - Batch 26)
+
+- [x] Add Test Cases table to DB schema (testCases: id, testCaseId, projectId, requirementId, description, status, priority, assignedTo, createdAt)
+- [x] Add test cases router with list, create, update, delete, linkToRequirement procedures
+- [x] Add linkToRequirement procedures to tasks and issues routers
+- [x] Update Traceability Matrix: add action buttons per requirement row to add/assign Task, Issue, Test Case
+- [x] Add "Create New Task" quick-form dialog in Traceability Matrix
+- [x] Add "Assign Existing Task" dialog (select from project tasks) in Traceability Matrix
+- [x] Add "Create New Issue" quick-form dialog in Traceability Matrix
+- [x] Add "Assign Existing Issue" dialog (select from project issues) in Traceability Matrix
+- [x] Add "Create New Test Case" quick-form dialog in Traceability Matrix
+- [x] Add "Assign Existing Test Case" dialog in Traceability Matrix

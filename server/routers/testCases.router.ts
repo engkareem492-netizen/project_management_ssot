@@ -120,6 +120,26 @@ export const testCasesRouter = router({
       return { success: true };
     }),
 
+  // Link an existing test case to a requirement
+  linkToRequirement: protectedProcedure
+    .input(z.object({ id: z.number(), requirementId: z.string() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await db.update(testCases).set({ requirementId: input.requirementId }).where(eq(testCases.id, input.id));
+      return { success: true };
+    }),
+
+  // Unlink a test case from a requirement
+  unlinkFromRequirement: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await db.update(testCases).set({ requirementId: null }).where(eq(testCases.id, input.id));
+      return { success: true };
+    }),
+
   // Summary stats for traceability
   statsByRequirement: protectedProcedure
     .input(z.object({ projectId: z.number() }))

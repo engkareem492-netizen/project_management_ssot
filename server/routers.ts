@@ -748,6 +748,13 @@ export const appRouter = router({
         }
         return { success: true, updated: input.ids.length };
       }),
+
+    linkToRequirement: protectedProcedure
+      .input(z.object({ id: z.number(), requirementId: z.string().nullable() }))
+      .mutation(async ({ input }) => {
+        await db.updateTask(input.id, { requirementId: input.requirementId });
+        return { success: true };
+      }),
   }),
 
   // Issues
@@ -916,6 +923,13 @@ export const appRouter = router({
           await db.updateIssue(id, { status: input.status });
         }
         return { success: true, updated: input.ids.length };
+      }),
+
+    linkToRequirement: protectedProcedure
+      .input(z.object({ id: z.number(), requirementId: z.string().nullable() }))
+      .mutation(async ({ input }) => {
+        await db.updateIssue(input.id, { requirementId: input.requirementId });
+        return { success: true };
       }),
 
     getByEntity: protectedProcedure
