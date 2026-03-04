@@ -217,10 +217,14 @@ export async function deleteRequirement(id: number) {
   await db.delete(requirements).where(eq(requirements.id, id));
 }
 
-export async function deleteAllRequirements() {
+export async function deleteAllRequirements(projectId?: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await db.delete(requirements);
+  if (projectId) {
+    await db.delete(requirements).where(eq(requirements.projectId, projectId));
+  } else {
+    await db.delete(requirements);
+  }
 }
 
 // Tasks CRUD
@@ -298,10 +302,14 @@ export async function deleteTask(id: number) {
   await db.delete(tasks).where(eq(tasks.id, id));
 }
 
-export async function deleteAllTasks() {
+export async function deleteAllTasks(projectId?: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await db.delete(tasks);
+  if (projectId) {
+    await db.delete(tasks).where(eq(tasks.projectId, projectId));
+  } else {
+    await db.delete(tasks);
+  }
 }
 
 // Issues CRUD
@@ -362,10 +370,14 @@ export async function deleteIssue(id: number) {
   await db.delete(issues).where(eq(issues.id, id));
 }
 
-export async function deleteAllIssues() {
+export async function deleteAllIssues(projectId?: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await db.delete(issues);
+  if (projectId) {
+    await db.delete(issues).where(eq(issues.projectId, projectId));
+  } else {
+    await db.delete(issues);
+  }
 }
 
 // Dependencies CRUD
@@ -391,10 +403,14 @@ export async function deleteDependency(id: number) {
   await db.delete(dependencies).where(eq(dependencies.id, id));
 }
 
-export async function deleteAllDependencies() {
+export async function deleteAllDependencies(projectId?: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await db.delete(dependencies);
+  if (projectId) {
+    await db.delete(dependencies).where(eq(dependencies.projectId, projectId));
+  } else {
+    await db.delete(dependencies);
+  }
 }
 
 // Assumptions CRUD
@@ -420,10 +436,14 @@ export async function deleteAssumption(id: number) {
   await db.delete(assumptions).where(eq(assumptions.id, id));
 }
 
-export async function deleteAllAssumptions() {
+export async function deleteAllAssumptions(projectId?: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await db.delete(assumptions);
+  if (projectId) {
+    await db.delete(assumptions).where(eq(assumptions.projectId, projectId));
+  } else {
+    await db.delete(assumptions);
+  }
 }
 
 // Action Log functions

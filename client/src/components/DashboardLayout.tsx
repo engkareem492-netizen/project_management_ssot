@@ -185,6 +185,7 @@ function DashboardLayoutContent({
 
   const importMutation = trpc.excel.import.useMutation({
     onSuccess: (data) => {
+      setUploading(false);
       toast.success(`Import successful! Imported ${data.imported.requirements} requirements, ${data.imported.tasks} tasks, ${data.imported.issues} issues`);
       setLocation("/requirements");
     },
@@ -339,19 +340,17 @@ function DashboardLayoutContent({
                     type="file"
                     accept=".xlsx,.xls"
                     onChange={handleFileUpload}
+                    onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
                     className="hidden"
                     id="sidebar-file-upload"
                     disabled={uploading}
                   />
-                  <label htmlFor="sidebar-file-upload" className="cursor-pointer w-full">
-                    <button
-                      type="button"
-                      className="w-full flex items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-accent transition-colors text-muted-foreground hover:text-foreground pointer-events-none"
-                      tabIndex={-1}
-                    >
-                      <Upload className="h-3.5 w-3.5 shrink-0" />
-                      <span>{uploading ? "Importing..." : "Import Excel"}</span>
-                    </button>
+                  <label
+                    htmlFor="sidebar-file-upload"
+                    className="cursor-pointer w-full flex items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+                  >
+                    <Upload className="h-3.5 w-3.5 shrink-0" />
+                    <span>{uploading ? "Importing..." : "Import Excel"}</span>
                   </label>
                 </div>
                 <button

@@ -204,3 +204,7 @@
 - [x] Update frontend: add "Enable Password" toggle in Create Project form
 - [x] Update frontend: skip password screen for projects without a password
 - [x] Update frontend: add "Manage Password" option in project settings for creator
+
+## Bug Fixes (Mar 4, 2026 - Batch 21)
+
+- [x] Fix Excel import not working (label had pointer-events-none on inner button; fixed to use label directly; also fixed deleteAll functions to scope by projectId)

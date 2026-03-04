@@ -55,12 +55,12 @@ export const appRouter = router({
             assumptions: 0,
           };
 
-          // Clear existing data
-          await db.deleteAllRequirements();
-          await db.deleteAllTasks();
-          await db.deleteAllIssues();
-          await db.deleteAllDependencies();
-          await db.deleteAllAssumptions();
+          // Clear existing data for this project only
+          await db.deleteAllRequirements(input.projectId);
+          await db.deleteAllTasks(input.projectId);
+          await db.deleteAllIssues(input.projectId);
+          await db.deleteAllDependencies(input.projectId);
+          await db.deleteAllAssumptions(input.projectId);
 
           // Import Requirements
           if (workbook.SheetNames.includes('Requirements')) {
