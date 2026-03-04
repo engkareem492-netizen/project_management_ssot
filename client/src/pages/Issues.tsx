@@ -740,11 +740,11 @@ export default function Issues() {
                                 <span className="font-medium min-w-[100px]">Status:</span>
                                 <Badge variant={getStatusColor(issue.status)}>{issue.status || '-'}</Badge>
                               </div>
-                              {issue.resolutionDate && (
+                              {issue.requiredResolutionDate && (
                                 <div className="flex items-center gap-2">
                                   <span className="font-medium min-w-[100px] text-amber-700">Resolve By:</span>
-                                  <span className={`text-sm font-medium ${new Date(issue.resolutionDate) < new Date() && issue.status?.toLowerCase() !== 'closed' ? 'text-red-600' : 'text-amber-700'}`}>
-                                    {issue.resolutionDate}
+                                  <span className={`text-sm font-medium ${new Date(issue.requiredResolutionDate) < new Date() && issue.status?.toLowerCase() !== 'closed' ? 'text-red-600' : 'text-amber-700'}`}>
+                                    {issue.requiredResolutionDate}
                                   </span>
                                 </div>
                               )}
