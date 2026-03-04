@@ -246,3 +246,7 @@
 - [x] Add "Assign Existing Issue" dialog (select from project issues) in Traceability Matrix
 - [x] Add "Create New Test Case" quick-form dialog in Traceability Matrix
 - [x] Add "Assign Existing Test Case" dialog in Traceability Matrix
+
+## Bug Fixes (Mar 4, 2026 - Batch 27)
+
+- [x] Fix duplicate React key error on /traceability page (empty/non-unique keys in list rendering)

@@ -227,13 +227,14 @@ export default function TraceabilityMatrix() {
         </div>
       ) : (
         <div className="space-y-3">
-          {filtered.map((row) => {
-            const reqId = row.requirement.idCode ?? String(row.requirement.id);
+          {filtered.map((row, rowIdx) => {
+            const reqId = row.requirement.idCode || String(row.requirement.id) || String(rowIdx);
+            const uniqueKey = `req-${reqId}-${rowIdx}`;
             const isOpen = expanded.has(reqId);
             const { summary } = row;
 
             return (
-              <Collapsible key={reqId} open={isOpen} onOpenChange={() => toggleExpand(reqId)}>
+              <Collapsible key={uniqueKey} open={isOpen} onOpenChange={() => toggleExpand(reqId)}>
                 <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
                   {/* Requirement header */}
                   <CollapsibleTrigger asChild>
@@ -482,8 +483,8 @@ export default function TraceabilityMatrix() {
                   <SelectContent>
                     {unlinkedTasks.length === 0
                       ? <SelectItem value="__none__" disabled>No unlinked tasks available</SelectItem>
-                      : unlinkedTasks.map(t => (
-                          <SelectItem key={t.id} value={String(t.id)}>
+                      : unlinkedTasks.map((t, idx) => (
+                          <SelectItem key={`task-opt-${t.id ?? idx}`} value={String(t.id)}>
                             <span className="font-mono text-xs mr-2 text-purple-600">{t.taskId}</span>
                             {t.description?.slice(0, 50)}
                           </SelectItem>
@@ -538,8 +539,8 @@ export default function TraceabilityMatrix() {
                   <SelectContent>
                     {unlinkedIssues.length === 0
                       ? <SelectItem value="__none__" disabled>No unlinked issues available</SelectItem>
-                      : unlinkedIssues.map(i => (
-                          <SelectItem key={i.id} value={String(i.id)}>
+                      : unlinkedIssues.map((i, idx) => (
+                          <SelectItem key={`issue-opt-${i.id ?? idx}`} value={String(i.id)}>
                             <span className="font-mono text-xs mr-2 text-amber-600">{i.issueId}</span>
                             {i.description?.slice(0, 50)}
                           </SelectItem>
@@ -594,8 +595,8 @@ export default function TraceabilityMatrix() {
                   <SelectContent>
                     {unlinkedTestCases.length === 0
                       ? <SelectItem value="__none__" disabled>No unlinked test cases available</SelectItem>
-                      : unlinkedTestCases.map(tc => (
-                          <SelectItem key={tc.id} value={String(tc.id)}>
+                      : unlinkedTestCases.map((tc, idx) => (
+                          <SelectItem key={`tc-opt-${tc.id ?? idx}`} value={String(tc.id)}>
                             <span className="font-mono text-xs mr-2 text-blue-600">{tc.testId}</span>
                             {tc.title?.slice(0, 50)}
                           </SelectItem>
