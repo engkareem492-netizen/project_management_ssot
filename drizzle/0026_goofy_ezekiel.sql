@@ -1,0 +1,1 @@
+ALTER TABLE `issues` ADD `resolutionDate` varchar(50);

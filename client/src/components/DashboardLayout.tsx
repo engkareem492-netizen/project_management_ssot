@@ -341,17 +341,14 @@ function DashboardLayoutContent({
                     onChange={handleFileUpload}
                     className="hidden"
                     id="sidebar-file-upload"
-                    disabled={uploading}
                   />
-                  <label htmlFor="sidebar-file-upload" className="cursor-pointer w-full">
-                    <button
-                      type="button"
-                      className="w-full flex items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-accent transition-colors text-muted-foreground hover:text-foreground pointer-events-none"
-                      tabIndex={-1}
+                  <label htmlFor="sidebar-file-upload" className="cursor-pointer w-full block">
+                    <div
+                      className="w-full flex items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
                     >
                       <Upload className="h-3.5 w-3.5 shrink-0" />
                       <span>{uploading ? "Importing..." : "Import Excel"}</span>
-                    </button>
+                    </div>
                   </label>
                 </div>
                 <button
@@ -373,7 +370,6 @@ function DashboardLayoutContent({
                   onChange={handleFileUpload}
                   className="hidden"
                   id="sidebar-file-upload-icon"
-                  disabled={uploading}
                 />
                 <Upload className="h-4 w-4" />
               </label>

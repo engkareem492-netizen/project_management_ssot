@@ -115,6 +115,7 @@ export default function Issues() {
     openDate: new Date().toISOString().split('T')[0],
     knowledgeBaseCode: '',
     resolutionDate: '',
+    requiredResolutionDate: '',
   });  const { data: issues, isLoading, refetch } = trpc.issues.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
   const { data: stakeholders } = trpc.stakeholders.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
   const { data: requirements } = trpc.requirements.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
@@ -560,6 +561,7 @@ export default function Issues() {
     createTaskMutation.mutate({
       ...newTask,
       projectId: currentProjectId,
+      issueId: selectedIssue?.issueId || undefined,
     });
   };
 
@@ -1081,17 +1083,16 @@ export default function Issues() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="resolutionDate">Required Resolution Date</Label>
+                  <Label htmlFor="requiredResolutionDate">Required Resolution Date</Label>
                   <Input
-                    id="resolutionDate"
+                    id="requiredResolutionDate"
                     type="date"
-                    value={newIssue.resolutionDate || ''}
-                    onChange={(e) => setNewIssue({ ...newIssue, resolutionDate: e.target.value })}
+                    value={newIssue.requiredResolutionDate || ''}
+                    onChange={(e) => setNewIssue({ ...newIssue, requiredResolutionDate: e.target.value })}
                   />
                 </div>
               </div>
             </div>
-
             {/* Knowledge Base Link */}
             <div className="space-y-4">
               <h4 className="text-sm font-semibold border-b pb-2">Knowledge Base</h4>

@@ -176,6 +176,20 @@
       "when": 1772232402853,
       "tag": "0024_huge_vermin",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "5",
+      "when": 1772439060727,
+      "tag": "0025_serious_magus",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "5",
+      "when": 1772611177955,
+      "tag": "0026_goofy_ezekiel",
+      "breakpoints": true
     }
   ]
 }

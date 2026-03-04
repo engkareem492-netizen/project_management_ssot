@@ -576,6 +576,7 @@ export const appRouter = router({
         taskGroup: z.string().optional(),
         dependencyId: z.string().optional(),
         requirementId: z.string().optional(),
+        issueId: z.string().optional(),
         deliverableId: z.number().optional(),
         description: z.string().optional(),
         responsible: z.string().optional(),
@@ -736,6 +737,7 @@ export const appRouter = router({
         lastUpdate: z.string().optional(),
         updateDate: z.string().optional(),
         resolutionDate: z.string().optional(),
+        requiredResolutionDate: z.string().optional(),
       }))
       .mutation(async ({ input }) => {
         try {
@@ -786,7 +788,7 @@ export const appRouter = router({
           deliverables1: z.string().optional(),
           d1Status: z.string().optional(),
           deliverables2: z.string().optional(),
-          d2Status: z.string().optional(),
+           d2Status: z.string().optional(),
           lastUpdate: z.string().optional(),
           updateDate: z.string().optional(),
           resolutionDate: z.string().optional(),
@@ -804,6 +806,7 @@ export const appRouter = router({
           deliverableId: z.number().optional(),
           taskId: z.string().optional(),
           knowledgeBaseCode: z.string().optional(),
+          requiredResolutionDate: z.string().optional(),
         }),
       }))
       .mutation(async ({ input, ctx }) => {
@@ -811,9 +814,8 @@ export const appRouter = router({
         if (!current) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Issue not found' });
         }
-
         const changedFields: Record<string, { oldValue: any; newValue: any }> = {};
-        const trackFields = ['status', 'priority', 'deliverables1', 'd1Status', 'deliverables2', 'd2Status', 'lastUpdate', 'updateDate', 'resolutionDate', 'description', 'owner', 'openDate'];
+        const trackFields = ['status', 'priority', 'deliverables1', 'd1Status', 'deliverables2', 'd2Status', 'lastUpdate', 'updateDate', 'resolutionDate', 'description', 'owner', 'openDate', 'requiredResolutionDate'];
         
         for (const field of trackFields) {
           if (input.data[field as keyof typeof input.data] !== undefined && 

@@ -255,10 +255,10 @@ export const issues = mysqlTable("issues", {
   updateDate: varchar("updateDate", { length: 50 }),
   resolutionDate: varchar("resolutionDate", { length: 50 }),
   knowledgeBaseCode: varchar("knowledgeBaseCode", { length: 50 }),
+  requiredResolutionDate: varchar("requiredResolutionDate", { length: 50 }),
   importedAt: timestamp("importedAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
-
 export type Issue = typeof issues.$inferSelect;
 export type InsertIssue = typeof issues.$inferInsert;
 

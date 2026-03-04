@@ -1501,3 +1501,12 @@
 ## Bug Fix (Mar 01, 2026 - Part 2)
 
 - [x] Fix "No project selected" error when creating a Task from Requirements detail view — root cause was missing idSequences for task/issue/deliverable entity types; added all missing sequences and hardened getNextId to use raw SQL insert to avoid Drizzle schema mismatch
+
+## Feature Batch (Mar 02, 2026)
+
+- [ ] Fix #1: +Task button in Requirements/Issues list view shows "No project selected" — pass currentProjectId to inline task creation form
+- [ ] Fix #2: Add "Required Resolution Date" date field to Issues (DB schema + form + display)
+- [ ] Fix #3: Today tab — sort upcoming 7-day tasks by due date ASC; add filter by Responsible person
+- [ ] Fix #4: Weekly Report — add report period selector (start/end date), include issues needing resolution in period, tasks due in period with status, task-per-responsible breakdown, issue-per-owner breakdown, requirements gathered in period, overall Risk status summary, task status breakdown per responsible
+- [ ] Fix #5 (Future): Add follow-on task option (auto-starts at main task due date) and sub-task option (linked child task visible from parent and vice versa)
+- [ ] Fix #6: Fix Requirement-Task link alignment — clearly show which requirement is linked to which task in both list and detail views
