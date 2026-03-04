@@ -250,3 +250,7 @@
 ## Bug Fixes (Mar 4, 2026 - Batch 27)
 
 - [x] Fix duplicate React key error on /traceability page (empty/non-unique keys in list rendering)
+
+## Bug Fixes (Mar 4, 2026 - Batch 28)
+
+- [x] Fix empty SelectItem value error on /test-cases page (Select.Item must not have empty string value)

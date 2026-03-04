@@ -156,7 +156,7 @@ export default function TestCases() {
           <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="none">None</SelectItem>
-            {requirements.map((r) => <SelectItem key={r.id} value={r.idCode}>{r.idCode} — {r.description?.slice(0, 40)}</SelectItem>)}
+            {requirements.filter(r => r.idCode).map((r) => <SelectItem key={r.id} value={r.idCode!}>{r.idCode} — {r.description?.slice(0, 40)}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
@@ -236,7 +236,7 @@ export default function TestCases() {
             <SelectTrigger className="w-44"><SelectValue placeholder="All Requirements" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Requirements</SelectItem>
-              {requirements.map((r) => <SelectItem key={r.id} value={r.idCode}>{r.idCode}</SelectItem>)}
+              {requirements.filter(r => r.idCode).map((r) => <SelectItem key={r.id} value={r.idCode!}>{r.idCode}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
