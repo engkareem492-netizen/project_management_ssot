@@ -254,3 +254,7 @@
 ## Bug Fixes (Mar 4, 2026 - Batch 28)
 
 - [x] Fix empty SelectItem value error on /test-cases page (Select.Item must not have empty string value)
+
+## Bug Fixes (Mar 4, 2026 - Batch 29)
+
+- [x] Fix empty SelectItem value error on /issues, /tasks, and /requirements pages (filter out items with empty name/value/idCode before rendering SelectItem)

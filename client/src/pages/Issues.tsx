@@ -944,8 +944,8 @@ export default function Issues() {
                         <SelectValue placeholder="Select issue group..." />
                       </SelectTrigger>
                       <SelectContent>
-                        {issueGroups?.map((group) => (
-                          <SelectItem key={group.id} value={group.name}>
+                        {issueGroups?.filter(g => g.name).map((group) => (
+                          <SelectItem key={group.id} value={group.name!}>
                             {group.idCode ? `${group.idCode} - ${group.name}` : group.name}
                           </SelectItem>
                         ))}
@@ -1007,8 +1007,8 @@ export default function Issues() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">None</SelectItem>
-                        {requirements?.map((req) => (
-                          <SelectItem key={req.id} value={req.idCode}>
+                        {requirements?.filter(r => r.idCode).map((req) => (
+                          <SelectItem key={req.id} value={req.idCode!}>
                             {req.idCode} - {req.description?.substring(0, 50) || 'No description'}
                           </SelectItem>
                         ))}
@@ -1069,8 +1069,8 @@ export default function Issues() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">None</SelectItem>
-                        {tasks?.map((task) => (
-                          <SelectItem key={task.id} value={task.taskId}>
+                        {tasks?.filter(t => t.taskId).map((task) => (
+                          <SelectItem key={task.id} value={task.taskId!}>
                             {task.taskId} - {task.description?.substring(0, 50) || 'No description'}
                           </SelectItem>
                         ))}
@@ -1184,7 +1184,7 @@ export default function Issues() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">None</SelectItem>
-                    {knowledgeBaseEntries?.map((kb: any) => (
+                    {knowledgeBaseEntries?.filter((kb: any) => kb.kbCode).map((kb: any) => (
                       <SelectItem key={kb.id} value={kb.kbCode}>
                         {kb.kbCode} - {kb.title}
                       </SelectItem>
@@ -1311,8 +1311,8 @@ export default function Issues() {
                       <SelectValue placeholder="Select issue group" />
                     </SelectTrigger>
                     <SelectContent>
-                      {issueGroups?.map((g) => (
-                        <SelectItem key={g.id} value={g.name}>{g.idCode ? `${g.idCode} - ${g.name}` : g.name}</SelectItem>
+                      {issueGroups?.filter(g => g.name).map((g) => (
+                        <SelectItem key={g.id} value={g.name!}>{g.idCode ? `${g.idCode} - ${g.name}` : g.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -1332,8 +1332,8 @@ export default function Issues() {
                       <SelectValue placeholder="Select status" />
                     </SelectTrigger>
                     <SelectContent>
-                      {statusOptions?.map((opt) => (
-                        <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
+                      {statusOptions?.filter(opt => opt.value).map((opt) => (
+                        <SelectItem key={opt.id} value={opt.value!}>{opt.value}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -1349,8 +1349,8 @@ export default function Issues() {
                       <SelectValue placeholder="Select priority" />
                     </SelectTrigger>
                     <SelectContent>
-                      {priorityOptions?.map((p) => (
-                        <SelectItem key={p.id} value={p.value}>{p.label}</SelectItem>
+                      {priorityOptions?.filter(p => p.value).map((p) => (
+                        <SelectItem key={p.id} value={p.value!}>{p.label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -1366,8 +1366,8 @@ export default function Issues() {
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
                     <SelectContent>
-                      {issueTypeOptions?.map((t) => (
-                        <SelectItem key={t.id} value={t.value}>{t.label}</SelectItem>
+                      {issueTypeOptions?.filter(t => t.value).map((t) => (
+                        <SelectItem key={t.id} value={t.value!}>{t.label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -1383,8 +1383,8 @@ export default function Issues() {
                       <SelectValue placeholder="Select class" />
                     </SelectTrigger>
                     <SelectContent>
-                      {classOptions?.map((c) => (
-                        <SelectItem key={c.id} value={c.value}>{c.label}</SelectItem>
+                      {classOptions?.filter(c => c.value).map((c) => (
+                        <SelectItem key={c.id} value={c.value!}>{c.label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -1400,8 +1400,8 @@ export default function Issues() {
                       <SelectValue placeholder="Select owner" />
                     </SelectTrigger>
                     <SelectContent>
-                      {stakeholders?.map((s) => (
-                        <SelectItem key={s.id} value={s.fullName}>{s.fullName}</SelectItem>
+                      {stakeholders?.filter(s => s.fullName).map((s) => (
+                        <SelectItem key={s.id} value={s.fullName!}>{s.fullName}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -1546,7 +1546,7 @@ export default function Issues() {
                 <SelectValue placeholder="Select status..." />
               </SelectTrigger>
               <SelectContent>
-                {statusOptions?.map((s: any) => (
+                {statusOptions?.filter((s: any) => s.value).map((s: any) => (
                   <SelectItem key={s.id} value={s.value}>{s.value}</SelectItem>
                 ))}
               </SelectContent>
@@ -1644,8 +1644,8 @@ export default function Issues() {
                       <SelectValue placeholder="Select task group..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {taskGroups?.map((group) => (
-                        <SelectItem key={group.id} value={group.name}>
+                      {taskGroups?.filter(g => g.name).map((group) => (
+                        <SelectItem key={group.id} value={group.name!}>
                           {group.idCode ? `${group.idCode} - ${group.name}` : group.name}
                         </SelectItem>
                       ))}
@@ -1673,8 +1673,8 @@ export default function Issues() {
                       <SelectValue placeholder="Select issue group..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {issueGroups?.map((group) => (
-                        <SelectItem key={group.id} value={group.name}>
+                      {issueGroups?.filter(g => g.name).map((group) => (
+                        <SelectItem key={group.id} value={group.name!}>
                           {group.idCode ? `${group.idCode} - ${group.name}` : group.name}
                         </SelectItem>
                       ))}
@@ -2050,11 +2050,11 @@ export default function Issues() {
                         <SelectValue placeholder="Select task group..." />
                       </SelectTrigger>
                       <SelectContent>
-                        {taskGroups?.map((group) => (
-                          <SelectItem key={group.id} value={group.name}>
-                            {group.idCode ? `${group.idCode} - ${group.name}` : group.name}
-                          </SelectItem>
-                        ))}
+                          {taskGroups?.filter(g => g.name).map((group) => (
+                            <SelectItem key={group.id} value={group.name!}>
+                              {group.idCode ? `${group.idCode} - ${group.name}` : group.name}
+                            </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                     <Button
@@ -2089,8 +2089,8 @@ export default function Issues() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">None</SelectItem>
-                        {requirements?.map((req) => (
-                          <SelectItem key={req.id} value={req.idCode}>
+                        {requirements?.filter(r => r.idCode).map((req) => (
+                          <SelectItem key={req.id} value={req.idCode!}>
                             {req.idCode} - {req.description?.substring(0, 50) || 'No description'}
                           </SelectItem>
                         ))}
