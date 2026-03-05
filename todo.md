@@ -258,3 +258,9 @@
 ## Bug Fixes (Mar 4, 2026 - Batch 29)
 
 - [x] Fix empty SelectItem value error on /issues, /tasks, and /requirements pages (filter out items with empty name/value/idCode before rendering SelectItem)
+
+## Feature: Full Create Forms in Traceability Matrix (Mar 5, 2026)
+
+- [x] Expand New Task form in Traceability Matrix to match standalone Tasks create form (all fields)
+- [x] Expand New Issue form in Traceability Matrix to match standalone Issues create form (all fields)
+- [x] Expand New Test Case form in Traceability Matrix to match standalone Test Cases create form (all fields)
