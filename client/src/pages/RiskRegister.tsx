@@ -44,9 +44,11 @@ export default function RiskRegister() {
   const [isCreateTypeDialogOpen, setIsCreateTypeDialogOpen] = useState(false);
   const [isCreateStatusDialogOpen, setIsCreateStatusDialogOpen] = useState(false);
   const [isCreateStrategyDialogOpen, setIsCreateStrategyDialogOpen] = useState(false);
+  const [isCreateTaskGroupDialogOpen, setIsCreateTaskGroupDialogOpen] = useState(false);
   const [newTypeName, setNewTypeName] = useState("");
   const [newStatusName, setNewStatusName] = useState("");
   const [newStrategyName, setNewStrategyName] = useState("");
+  const [newTaskGroupName, setNewTaskGroupName] = useState("");
   const [formData, setFormData] = useState({
     title: "",
     riskTypeId: undefined as number | undefined,
@@ -166,6 +168,19 @@ export default function RiskRegister() {
     },
     onError: (error) => {
       toast.error(`Error creating response strategy: ${error.message}`);
+    },
+  });
+
+  const createTaskGroupMutation = trpc.dropdownOptions.taskGroups.create.useMutation({
+    onSuccess: (data: any) => {
+      utils.dropdownOptions.taskGroups.getAll.invalidate();
+      if (data?.id) setFormData((prev: any) => ({ ...prev, contingencyPlanId: data.id }));
+      setIsCreateTaskGroupDialogOpen(false);
+      setNewTaskGroupName("");
+      toast.success("Task group created successfully");
+    },
+    onError: (error) => {
+      toast.error(`Error creating task group: ${error.message}`);
     },
   });
 
@@ -455,24 +470,34 @@ export default function RiskRegister() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="contingencyPlan">Contingency Plan (Task Group)</Label>
-                  <Select
-                    value={formData.contingencyPlanId?.toString() || "none"}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, contingencyPlanId: value === "none" ? undefined : parseInt(value) })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select task group" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
-                      {taskGroups.map((group: any) => (
-                        <SelectItem key={group.id} value={group.id.toString()}>
-                          {group.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex gap-2">
+                    <Select
+                      value={formData.contingencyPlanId?.toString() || "none"}
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, contingencyPlanId: value === "none" ? undefined : parseInt(value) })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select task group" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {taskGroups.map((group: any) => (
+                          <SelectItem key={group.id} value={group.id.toString()}>
+                            {group.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setIsCreateTaskGroupDialogOpen(true)}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
 
                 <div>
@@ -729,6 +754,72 @@ export default function RiskRegister() {
               </p>
             </div>
 
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Contingency Plan (Task Group)</Label>
+                <div className="flex gap-2">
+                  <Select
+                    value={formData.contingencyPlanId?.toString() || "none"}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, contingencyPlanId: value === "none" ? undefined : parseInt(value) })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select task group" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {taskGroups.map((group: any) => (
+                        <SelectItem key={group.id} value={group.id.toString()}>
+                          {group.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setIsCreateTaskGroupDialogOpen(true)}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
+              <div>
+                <Label>Response Strategy</Label>
+                <div className="flex gap-2">
+                  <Select
+                    value={formData.responseStrategyId?.toString() || "none"}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, responseStrategyId: value === "none" ? undefined : parseInt(value) })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select strategy" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {responseStrategies.map((strategy) => (
+                        <SelectItem key={strategy.id} value={strategy.id.toString()}>
+                          {strategy.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setIsCreateStrategyDialogOpen(true)}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
                 Cancel
@@ -856,6 +947,44 @@ export default function RiskRegister() {
                   }
                 }}
                 disabled={!newStrategyName.trim() || createResponseStrategy.isPending}
+              >
+                Create
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Task Group inline dialog */}
+      <Dialog open={isCreateTaskGroupDialogOpen} onOpenChange={setIsCreateTaskGroupDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Task Group</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="newTaskGroupName">Task Group Name</Label>
+              <Input
+                id="newTaskGroupName"
+                value={newTaskGroupName}
+                onChange={(e) => setNewTaskGroupName(e.target.value)}
+                placeholder="Enter task group name..."
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setIsCreateTaskGroupDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  if (currentProjectId && newTaskGroupName.trim()) {
+                    createTaskGroupMutation.mutate({
+                      projectId: currentProjectId,
+                      name: newTaskGroupName.trim(),
+                    });
+                  }
+                }}
+                disabled={!newTaskGroupName.trim() || createTaskGroupMutation.isPending}
               >
                 Create
               </Button>

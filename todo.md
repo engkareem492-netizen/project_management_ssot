@@ -273,3 +273,11 @@
 - [x] Update TraceabilityMatrix.tsx: replace owner free-text input with stakeholder dropdown (ownerId)
 - [x] Display owner name (from stakeholder) in Issues table and detail view
 - [x] Fix updateIssue db helper to resolve ownerId to owner name on update (was missing, now fixed)
+
+## Feature: Inline Task Group creation in Risk create/edit forms (Mar 7, 2026)
+
+- [x] Add "+" button next to Contingency Plan (Task Group) dropdown in Risk create form
+- [x] Add "+" button next to Contingency Plan (Task Group) dropdown in Risk edit form
+- [x] Wire button to open quick-create Task Group dialog (name input + save)
+- [x] On save, refresh task groups list and auto-select the newly created group
+- [x] Also added Contingency Plan + Response Strategy fields to edit dialog (were missing)
