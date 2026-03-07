@@ -595,6 +595,42 @@ import {
 } from "../drizzle/schema";
 
 // ID Sequence functions - Auto-generate IDs
+/**
+ * Scans the actual data table for the given entityType and returns the highest
+ * numeric suffix already stored. Used to self-heal stale idSequences rows.
+ */
+async function getMaxEntityNumber(entityType: string, projectId: number, prefix: string): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  // Map entityType to the table and its ID code column
+  const entityTableMap: Record<string, { table: any; col: string }> = {
+    requirement: { table: requirements, col: "idCode" },
+    task: { table: tasks, col: "taskId" },
+    issue: { table: issues, col: "issueId" },
+    dependency: { table: dependencies, col: "dependencyId" },
+    assumption: { table: assumptions, col: "assumptionId" },
+    deliverable: { table: deliverables, col: "deliverableId" },
+  };
+  const entry = entityTableMap[entityType];
+  if (!entry) return 0;
+  try {
+    const rows = await db.select().from(entry.table).where(eq(entry.table.projectId, projectId));
+    let max = 0;
+    for (const row of rows) {
+      const code: string = row[entry.col] ?? "";
+      // Extract trailing digits after the prefix separator
+      const match = code.match(/(\d+)$/);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (num > max) max = num;
+      }
+    }
+    return max;
+  } catch {
+    return 0;
+  }
+}
+
 export async function getNextId(entityType: string, defaultPrefix: string, projectId: number = 1): Promise<string> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -638,8 +674,22 @@ export async function getNextId(entityType: string, defaultPrefix: string, proje
   } else {
     // Use prefix from database configuration, not the default parameter
     actualPrefix = existing[0].prefix;
+    // Self-heal: if sequence is at 0 or stale, sync with actual max ID in the data table
+    let baseNumber = existing[0].currentNumber;
+    if (baseNumber === 0) {
+      // Look up the actual maximum numeric suffix from the data table for this project
+      const maxFromData = await getMaxEntityNumber(entityType, projectId, actualPrefix);
+      if (maxFromData > baseNumber) {
+        baseNumber = maxFromData;
+        // Persist the corrected base so future single-row creates are also correct
+        await db
+          .update(idSequences)
+          .set({ currentNumber: maxFromData })
+          .where(and(eq(idSequences.entityType, entityType), eq(idSequences.projectId, projectId)));
+      }
+    }
     // Increment existing sequence
-    nextNumber = existing[0].currentNumber + 1;
+    nextNumber = baseNumber + 1;
     await db
       .update(idSequences)
       .set({ currentNumber: nextNumber })

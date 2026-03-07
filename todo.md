@@ -328,3 +328,8 @@
 - [x] Stakeholders template: fix Department column name (was exported as "job", now "department")
 - [x] Tasks page: make Tasks-by-Responsible chart bars clickable to filter the task list to that person
 - [x] Tasks page: added filter badge below search bar showing active responsible filter with clear button
+
+## Bug Fix: Bulk Import Append ID Sequencing
+
+- [x] Fix bulk import append mode: IDs must continue from the last existing ID in the DB, not restart from 001 per row
+- [x] Fix chart bar click: clicking a bar in Tasks-by-Responsible chart must filter the main task list (moved onClick from BarChart to Bar component)

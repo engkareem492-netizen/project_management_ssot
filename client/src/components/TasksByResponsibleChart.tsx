@@ -98,7 +98,7 @@ export function TasksByResponsibleChart({ tasks, selectedResponsible: externalSe
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={chartData} onClick={handleBarClick}>
+            <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis 
                 dataKey="name" 
@@ -113,6 +113,7 @@ export function TasksByResponsibleChart({ tasks, selectedResponsible: externalSe
                 dataKey="count" 
                 fill="hsl(var(--primary))"
                 cursor="pointer"
+                onClick={(data: any) => handleBarClick(data)}
               >
                 {chartData.map((entry, index) => (
                   <Cell 
