@@ -289,3 +289,17 @@
 - [x] Wire button to open quick-create Stakeholder dialog (Full Name, Email, Phone, Position, Role, Job Title)
 - [x] On save, refresh stakeholders list and auto-select the new stakeholder as Risk Owner
 - [x] Also added missing Risk Owner + Identified On fields to the Edit Risk dialog
+
+## Feature: Rebuild Assumptions Module (Mar 7, 2026)
+
+- [x] Auto-generated Assumption ID (e.g. ASM-001)
+- [x] Status dropdown with inline "+" create
+- [x] Category dropdown with inline "+" create
+- [x] Impact Level dropdown with inline "+" create
+- [x] Owner linked to Stakeholders with inline "+" create
+- [x] Link to Requirement (FK)
+- [x] Link to Task (FK)
+- [x] Change history log (who changed what and when)
+- [x] History panel in detail/edit view
+- [x] Edit dialog with all fields pre-populated
+- [x] DB migration: assumptionCategories, assumptionStatuses, assumptionImpactLevels, assumptionHistory tables

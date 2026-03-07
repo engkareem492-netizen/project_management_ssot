@@ -292,6 +292,42 @@ export type Dependency = typeof dependencies.$inferSelect;
 export type InsertDependency = typeof dependencies.$inferInsert;
 
 /**
+ * Assumption Categories dropdown table
+ */
+export const assumptionCategories = mysqlTable("assumptionCategories", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  name: varchar("name", { length: 100 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type AssumptionCategory = typeof assumptionCategories.$inferSelect;
+export type InsertAssumptionCategory = typeof assumptionCategories.$inferInsert;
+
+/**
+ * Assumption Statuses dropdown table
+ */
+export const assumptionStatuses = mysqlTable("assumptionStatuses", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  name: varchar("name", { length: 100 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type AssumptionStatus = typeof assumptionStatuses.$inferSelect;
+export type InsertAssumptionStatus = typeof assumptionStatuses.$inferInsert;
+
+/**
+ * Assumption Impact Levels dropdown table
+ */
+export const assumptionImpactLevels = mysqlTable("assumptionImpactLevels", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  name: varchar("name", { length: 100 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type AssumptionImpactLevel = typeof assumptionImpactLevels.$inferSelect;
+export type InsertAssumptionImpactLevel = typeof assumptionImpactLevels.$inferInsert;
+
+/**
  * Assumptions table - stores project assumptions
  */
 export const assumptions = mysqlTable("assumptions", {
@@ -299,16 +335,40 @@ export const assumptions = mysqlTable("assumptions", {
   projectId: int("projectId").notNull(),
   assumptionId: varchar("assumptionId", { length: 50 }).notNull(),
   description: text("description"),
+  // Legacy text fields kept for backward compat
   category: varchar("category", { length: 100 }),
   owner: varchar("owner", { length: 200 }),
-  ownerId: int("ownerId"),
   status: varchar("status", { length: 100 }),
+  // New FK fields
+  categoryId: int("categoryId"),
+  statusId: int("statusId"),
+  impactLevelId: int("impactLevelId"),
+  ownerId: int("ownerId"),
+  requirementId: int("requirementId"),
+  taskId: int("taskId"),
+  notes: text("notes"),
+  validatedAt: timestamp("validatedAt"),
+  validatedBy: int("validatedBy"),
   importedAt: timestamp("importedAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
 export type Assumption = typeof assumptions.$inferSelect;
 export type InsertAssumption = typeof assumptions.$inferInsert;
+
+/**
+ * Assumption History table - tracks all changes to assumptions
+ */
+export const assumptionHistory = mysqlTable("assumptionHistory", {
+  id: int("id").autoincrement().primaryKey(),
+  assumptionId: int("assumptionId").notNull(),
+  changedFields: json("changedFields").notNull().$type<Record<string, { oldValue: any; newValue: any }>>(),
+  changedBy: int("changedBy"),
+  changedByName: varchar("changedByName", { length: 200 }),
+  changedAt: timestamp("changedAt").defaultNow().notNull(),
+});
+export type AssumptionHistory = typeof assumptionHistory.$inferSelect;
+export type InsertAssumptionHistory = typeof assumptionHistory.$inferInsert;
 
 /**
  * Deliverables table - stores project deliverables

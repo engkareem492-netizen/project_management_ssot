@@ -1008,25 +1008,51 @@ export const appRouter = router({
   // Assumptions
   assumptions: router({
     list: protectedProcedure
-      .input(z.object({ projectId: z.number() }).optional())
+      .input(z.object({ projectId: z.number() }))
       .query(async ({ input }) => {
-        return await db.getAllAssumptionsSorted(input?.projectId);
-    }),
+        return await db.getAssumptionsEnhanced(input.projectId);
+      }),
 
     create: protectedProcedure
       .input(z.object({
         projectId: z.number(),
         description: z.string().optional(),
-        category: z.string().optional(),
-        owner: z.string().optional(),
+        categoryId: z.number().optional(),
+        statusId: z.number().optional(),
+        impactLevelId: z.number().optional(),
         ownerId: z.number().optional(),
-        status: z.string().optional(),
+        requirementId: z.number().optional(),
+        taskId: z.number().optional(),
+        notes: z.string().optional(),
       }))
-      .mutation(async ({ input }) => {
-        // Generate auto ID
-        const assumptionId = await db.getNextId('assumption', 'A', input.projectId);
-        await db.createAssumption({ ...input, assumptionId });
-        return { success: true, assumptionId };
+      .mutation(async ({ input, ctx }) => {
+        const created = await db.createAssumptionEnhanced(input);
+        return created;
+      }),
+
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        description: z.string().optional(),
+        categoryId: z.number().optional(),
+        statusId: z.number().optional(),
+        impactLevelId: z.number().optional(),
+        ownerId: z.number().optional(),
+        requirementId: z.number().optional(),
+        taskId: z.number().optional(),
+        notes: z.string().optional(),
+        validatedAt: z.date().optional(),
+        validatedBy: z.number().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const { id, ...data } = input;
+        const updated = await db.updateAssumptionEnhanced(
+          id,
+          data,
+          ctx.user?.id,
+          ctx.user?.name ?? ctx.user?.email
+        );
+        return updated;
       }),
 
     delete: protectedProcedure
@@ -1035,6 +1061,40 @@ export const appRouter = router({
         await db.deleteAssumption(input.id);
         return { success: true };
       }),
+
+    getHistory: protectedProcedure
+      .input(z.object({ assumptionId: z.number() }))
+      .query(async ({ input }) => {
+        return await db.getAssumptionHistory(input.assumptionId);
+      }),
+
+    // Dropdown management
+    categories: router({
+      list: protectedProcedure
+        .input(z.object({ projectId: z.number() }))
+        .query(async ({ input }) => db.getAssumptionCategories(input.projectId)),
+      create: protectedProcedure
+        .input(z.object({ projectId: z.number(), name: z.string() }))
+        .mutation(async ({ input }) => db.createAssumptionCategory(input)),
+    }),
+
+    statuses: router({
+      list: protectedProcedure
+        .input(z.object({ projectId: z.number() }))
+        .query(async ({ input }) => db.getAssumptionStatuses(input.projectId)),
+      create: protectedProcedure
+        .input(z.object({ projectId: z.number(), name: z.string() }))
+        .mutation(async ({ input }) => db.createAssumptionStatus(input)),
+    }),
+
+    impactLevels: router({
+      list: protectedProcedure
+        .input(z.object({ projectId: z.number() }))
+        .query(async ({ input }) => db.getAssumptionImpactLevels(input.projectId)),
+      create: protectedProcedure
+        .input(z.object({ projectId: z.number(), name: z.string() }))
+        .mutation(async ({ input }) => db.createAssumptionImpactLevel(input)),
+    }),
   }),
 
   // Action Logs

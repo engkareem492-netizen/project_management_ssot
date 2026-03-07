@@ -66,7 +66,15 @@ import {
   dropdownCategories,
   InsertDropdownCategory,
   DropdownCategory,
-  idSequences
+  idSequences,
+  assumptionCategories,
+  assumptionStatuses,
+  assumptionImpactLevels,
+  assumptionHistory,
+  InsertAssumptionCategory,
+  InsertAssumptionStatus,
+  InsertAssumptionImpactLevel,
+  InsertAssumptionHistory
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -2055,4 +2063,208 @@ export async function deleteIdSequence(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.delete(idSequences).where(eq(idSequences.id, id));
+}
+
+// ==================== Assumption Dropdown Helpers ====================
+
+export async function getAssumptionCategories(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(assumptionCategories).where(eq(assumptionCategories.projectId, projectId)).orderBy(assumptionCategories.name);
+}
+
+export async function createAssumptionCategory(data: InsertAssumptionCategory) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(assumptionCategories).values(data);
+  const insertResult = result as any;
+  const insertId = insertResult[0]?.insertId || insertResult.insertId;
+  if (insertId) {
+    const [created] = await db.select().from(assumptionCategories).where(eq(assumptionCategories.id, Number(insertId)));
+    return created;
+  }
+  const [created] = await db.select().from(assumptionCategories)
+    .where(and(eq(assumptionCategories.projectId, data.projectId), eq(assumptionCategories.name, data.name)))
+    .orderBy(desc(assumptionCategories.id)).limit(1);
+  return created;
+}
+
+export async function getAssumptionStatuses(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(assumptionStatuses).where(eq(assumptionStatuses.projectId, projectId)).orderBy(assumptionStatuses.name);
+}
+
+export async function createAssumptionStatus(data: InsertAssumptionStatus) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(assumptionStatuses).values(data);
+  const insertResult = result as any;
+  const insertId = insertResult[0]?.insertId || insertResult.insertId;
+  if (insertId) {
+    const [created] = await db.select().from(assumptionStatuses).where(eq(assumptionStatuses.id, Number(insertId)));
+    return created;
+  }
+  const [created] = await db.select().from(assumptionStatuses)
+    .where(and(eq(assumptionStatuses.projectId, data.projectId), eq(assumptionStatuses.name, data.name)))
+    .orderBy(desc(assumptionStatuses.id)).limit(1);
+  return created;
+}
+
+export async function getAssumptionImpactLevels(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(assumptionImpactLevels).where(eq(assumptionImpactLevels.projectId, projectId)).orderBy(assumptionImpactLevels.name);
+}
+
+export async function createAssumptionImpactLevel(data: InsertAssumptionImpactLevel) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(assumptionImpactLevels).values(data);
+  const insertResult = result as any;
+  const insertId = insertResult[0]?.insertId || insertResult.insertId;
+  if (insertId) {
+    const [created] = await db.select().from(assumptionImpactLevels).where(eq(assumptionImpactLevels.id, Number(insertId)));
+    return created;
+  }
+  const [created] = await db.select().from(assumptionImpactLevels)
+    .where(and(eq(assumptionImpactLevels.projectId, data.projectId), eq(assumptionImpactLevels.name, data.name)))
+    .orderBy(desc(assumptionImpactLevels.id)).limit(1);
+  return created;
+}
+
+// ==================== Assumption CRUD (enhanced) ====================
+
+export async function createAssumptionEnhanced(data: {
+  projectId: number;
+  description?: string;
+  categoryId?: number;
+  statusId?: number;
+  impactLevelId?: number;
+  ownerId?: number;
+  requirementId?: number;
+  taskId?: number;
+  notes?: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const assumptionId = await getNextId('assumption', 'ASM', data.projectId);
+
+  // Resolve display names
+  let category: string | undefined;
+  let status: string | undefined;
+  let owner: string | undefined;
+
+  if (data.categoryId) {
+    const [cat] = await db.select().from(assumptionCategories).where(eq(assumptionCategories.id, data.categoryId));
+    category = cat?.name;
+  }
+  if (data.statusId) {
+    const [st] = await db.select().from(assumptionStatuses).where(eq(assumptionStatuses.id, data.statusId));
+    status = st?.name;
+  }
+  if (data.ownerId) {
+    const [sh] = await db.select().from(stakeholders).where(eq(stakeholders.id, data.ownerId));
+    owner = sh?.fullName;
+  }
+
+  const result = await db.insert(assumptions).values({
+    ...data,
+    assumptionId,
+    category,
+    status,
+    owner,
+  });
+
+  const insertResult = result as any;
+  const insertId = insertResult[0]?.insertId || insertResult.insertId;
+  if (insertId) {
+    const [created] = await db.select().from(assumptions).where(eq(assumptions.id, Number(insertId)));
+    return created;
+  }
+  const [created] = await db.select().from(assumptions)
+    .where(and(eq(assumptions.projectId, data.projectId), eq(assumptions.assumptionId, assumptionId)))
+    .limit(1);
+  return created;
+}
+
+export async function updateAssumptionEnhanced(
+  id: number,
+  data: {
+    description?: string;
+    categoryId?: number;
+    statusId?: number;
+    impactLevelId?: number;
+    ownerId?: number;
+    requirementId?: number;
+    taskId?: number;
+    notes?: string;
+    validatedAt?: Date;
+    validatedBy?: number;
+  },
+  changedBy?: number,
+  changedByName?: string
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  // Get current record for history diff
+  const [current] = await db.select().from(assumptions).where(eq(assumptions.id, id));
+  if (!current) throw new Error("Assumption not found");
+
+  // Resolve display names
+  const updateData: any = { ...data };
+  if (data.categoryId !== undefined) {
+    const [cat] = await db.select().from(assumptionCategories).where(eq(assumptionCategories.id, data.categoryId));
+    updateData.category = cat?.name ?? null;
+  }
+  if (data.statusId !== undefined) {
+    const [st] = await db.select().from(assumptionStatuses).where(eq(assumptionStatuses.id, data.statusId));
+    updateData.status = st?.name ?? null;
+  }
+  if (data.ownerId !== undefined) {
+    const [sh] = await db.select().from(stakeholders).where(eq(stakeholders.id, data.ownerId));
+    updateData.owner = sh?.fullName ?? null;
+  }
+
+  // Build history diff
+  const changedFields: Record<string, { oldValue: any; newValue: any }> = {};
+  const trackFields = ['description', 'categoryId', 'statusId', 'impactLevelId', 'ownerId', 'requirementId', 'taskId', 'notes'] as const;
+  for (const field of trackFields) {
+    if (data[field as keyof typeof data] !== undefined && (current as any)[field] !== data[field as keyof typeof data]) {
+      changedFields[field] = { oldValue: (current as any)[field], newValue: data[field as keyof typeof data] };
+    }
+  }
+
+  await db.update(assumptions).set(updateData).where(eq(assumptions.id, id));
+
+  // Record history if anything changed
+  if (Object.keys(changedFields).length > 0) {
+    await db.insert(assumptionHistory).values({
+      assumptionId: id,
+      changedFields,
+      changedBy: changedBy ?? null,
+      changedByName: changedByName ?? null,
+    } as InsertAssumptionHistory);
+  }
+
+  const [updated] = await db.select().from(assumptions).where(eq(assumptions.id, id));
+  return updated;
+}
+
+export async function getAssumptionHistory(assumptionId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(assumptionHistory)
+    .where(eq(assumptionHistory.assumptionId, assumptionId))
+    .orderBy(desc(assumptionHistory.changedAt));
+}
+
+export async function getAssumptionsEnhanced(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(assumptions)
+    .where(eq(assumptions.projectId, projectId))
+    .orderBy(assumptions.assumptionId);
 }

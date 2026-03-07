@@ -197,6 +197,13 @@
       "when": 1772618390663,
       "tag": "0027_acoustic_fallen_one",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "5",
+      "when": 1772905023740,
+      "tag": "0028_dry_wolf_cub",
+      "breakpoints": true
     }
   ]
 }
