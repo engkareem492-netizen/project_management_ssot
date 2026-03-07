@@ -281,3 +281,11 @@
 - [x] Wire button to open quick-create Task Group dialog (name input + save)
 - [x] On save, refresh task groups list and auto-select the newly created group
 - [x] Also added Contingency Plan + Response Strategy fields to edit dialog (were missing)
+
+## Feature: Inline Stakeholder creation in Risk Owner field (Mar 7, 2026)
+
+- [x] Add "+" button next to Risk Owner dropdown in Risk create form
+- [x] Add "+" button next to Risk Owner dropdown in Risk edit form
+- [x] Wire button to open quick-create Stakeholder dialog (Full Name, Email, Phone, Position, Role, Job Title)
+- [x] On save, refresh stakeholders list and auto-select the new stakeholder as Risk Owner
+- [x] Also added missing Risk Owner + Identified On fields to the Edit Risk dialog

@@ -45,10 +45,12 @@ export default function RiskRegister() {
   const [isCreateStatusDialogOpen, setIsCreateStatusDialogOpen] = useState(false);
   const [isCreateStrategyDialogOpen, setIsCreateStrategyDialogOpen] = useState(false);
   const [isCreateTaskGroupDialogOpen, setIsCreateTaskGroupDialogOpen] = useState(false);
+  const [isCreateStakeholderDialogOpen, setIsCreateStakeholderDialogOpen] = useState(false);
   const [newTypeName, setNewTypeName] = useState("");
   const [newStatusName, setNewStatusName] = useState("");
   const [newStrategyName, setNewStrategyName] = useState("");
   const [newTaskGroupName, setNewTaskGroupName] = useState("");
+  const [newStakeholder, setNewStakeholder] = useState({ fullName: "", email: "", position: "", role: "", job: "", phone: "" });
   const [formData, setFormData] = useState({
     title: "",
     riskTypeId: undefined as number | undefined,
@@ -181,6 +183,20 @@ export default function RiskRegister() {
     },
     onError: (error) => {
       toast.error(`Error creating task group: ${error.message}`);
+    },
+  });
+
+  const createStakeholderMutation = trpc.stakeholders.create.useMutation({
+    onSuccess: (data: any) => {
+      utils.stakeholders.list.invalidate();
+      const newId = data?.id ?? data?.insertId;
+      if (newId) setFormData((prev: any) => ({ ...prev, riskOwnerId: Number(newId) }));
+      setIsCreateStakeholderDialogOpen(false);
+      setNewStakeholder({ fullName: "", email: "", position: "", role: "", job: "", phone: "" });
+      toast.success("Stakeholder created successfully");
+    },
+    onError: (error) => {
+      toast.error(`Error creating stakeholder: ${error.message}`);
     },
   });
 
@@ -360,24 +376,34 @@ export default function RiskRegister() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="riskOwner">Risk Owner</Label>
-                  <Select
-                    value={formData.riskOwnerId?.toString() || "none"}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, riskOwnerId: value === "none" ? undefined : parseInt(value) })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select owner" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
-                      {stakeholders.map((stakeholder) => (
-                        <SelectItem key={stakeholder.id} value={stakeholder.id.toString()}>
-                          {stakeholder.fullName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex gap-2">
+                    <Select
+                      value={formData.riskOwnerId?.toString() || "none"}
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, riskOwnerId: value === "none" ? undefined : parseInt(value) })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select owner" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {stakeholders.map((stakeholder) => (
+                          <SelectItem key={stakeholder.id} value={stakeholder.id.toString()}>
+                            {stakeholder.fullName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setIsCreateStakeholderDialogOpen(true)}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
 
                 <div>
@@ -726,6 +752,49 @@ export default function RiskRegister() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
+                <Label>Risk Owner</Label>
+                <div className="flex gap-2">
+                  <Select
+                    value={formData.riskOwnerId?.toString() || "none"}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, riskOwnerId: value === "none" ? undefined : parseInt(value) })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select owner" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {stakeholders.map((stakeholder) => (
+                        <SelectItem key={stakeholder.id} value={stakeholder.id.toString()}>
+                          {stakeholder.fullName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setIsCreateStakeholderDialogOpen(true)}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
+              <div>
+                <Label>Identified On</Label>
+                <Input
+                  type="date"
+                  value={formData.identifiedOn}
+                  onChange={(e) => setFormData({ ...formData, identifiedOn: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
                 <Label>Impact (1-5) *</Label>
                 <Input
                   type="number"
@@ -987,6 +1056,99 @@ export default function RiskRegister() {
                 disabled={!newTaskGroupName.trim() || createTaskGroupMutation.isPending}
               >
                 Create
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Stakeholder / Risk Owner inline dialog */}
+      <Dialog open={isCreateStakeholderDialogOpen} onOpenChange={setIsCreateStakeholderDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Add Stakeholder / Risk Owner</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="sh-fullName">Full Name *</Label>
+              <Input
+                id="sh-fullName"
+                value={newStakeholder.fullName}
+                onChange={(e) => setNewStakeholder({ ...newStakeholder, fullName: e.target.value })}
+                placeholder="Enter full name..."
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="sh-email">Email</Label>
+                <Input
+                  id="sh-email"
+                  type="email"
+                  value={newStakeholder.email}
+                  onChange={(e) => setNewStakeholder({ ...newStakeholder, email: e.target.value })}
+                  placeholder="email@example.com"
+                />
+              </div>
+              <div>
+                <Label htmlFor="sh-phone">Phone</Label>
+                <Input
+                  id="sh-phone"
+                  value={newStakeholder.phone}
+                  onChange={(e) => setNewStakeholder({ ...newStakeholder, phone: e.target.value })}
+                  placeholder="+1 234 567 8900"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="sh-position">Position</Label>
+                <Input
+                  id="sh-position"
+                  value={newStakeholder.position}
+                  onChange={(e) => setNewStakeholder({ ...newStakeholder, position: e.target.value })}
+                  placeholder="e.g. Project Sponsor"
+                />
+              </div>
+              <div>
+                <Label htmlFor="sh-role">Role</Label>
+                <Input
+                  id="sh-role"
+                  value={newStakeholder.role}
+                  onChange={(e) => setNewStakeholder({ ...newStakeholder, role: e.target.value })}
+                  placeholder="e.g. Decision Maker"
+                />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="sh-job">Job Title</Label>
+              <Input
+                id="sh-job"
+                value={newStakeholder.job}
+                onChange={(e) => setNewStakeholder({ ...newStakeholder, job: e.target.value })}
+                placeholder="e.g. Chief Risk Officer"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setIsCreateStakeholderDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  if (currentProjectId && newStakeholder.fullName.trim()) {
+                    createStakeholderMutation.mutate({
+                      projectId: currentProjectId,
+                      fullName: newStakeholder.fullName.trim(),
+                      email: newStakeholder.email.trim() || undefined,
+                      position: newStakeholder.position.trim() || undefined,
+                      role: newStakeholder.role.trim() || undefined,
+                      job: newStakeholder.job.trim() || undefined,
+                      phone: newStakeholder.phone.trim() || undefined,
+                    });
+                  }
+                }}
+                disabled={!newStakeholder.fullName.trim() || createStakeholderMutation.isPending}
+              >
+                {createStakeholderMutation.isPending ? "Creating..." : "Create Stakeholder"}
               </Button>
             </div>
           </div>
