@@ -31,6 +31,7 @@ import { Plus, Edit, Trash2, FileText, AlertTriangle, ShieldAlert } from "lucide
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useProject } from "@/contexts/ProjectContext";
+import { ImportExportToolbar } from "@/components/ImportExportToolbar";
 
 export default function RiskRegister() {
 
@@ -570,6 +571,13 @@ export default function RiskRegister() {
             </div>
           </DialogContent>
         </Dialog>
+        {currentProjectId && (
+          <ImportExportToolbar
+            module="risks"
+            projectId={currentProjectId}
+            onImportSuccess={() => {}}
+          />
+        )}
         </div>
       </div>
 

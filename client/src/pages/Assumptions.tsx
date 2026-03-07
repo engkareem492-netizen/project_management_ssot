@@ -16,6 +16,7 @@ import { Separator } from "@/components/ui/separator";
 import { Search, Loader2, Plus, Trash2, Lightbulb, Pencil, History, X } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { ImportExportToolbar } from "@/components/ImportExportToolbar";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 const NONE = "none";
@@ -410,6 +411,13 @@ export default function Assumptions() {
           <Button onClick={() => setCreateOpen(true)} className="bg-gray-900 hover:bg-gray-800 text-white gap-2">
             <Plus className="w-4 h-4" /> Create New
           </Button>
+          {currentProjectId && (
+            <ImportExportToolbar
+              module="assumptions"
+              projectId={currentProjectId}
+              onImportSuccess={() => {}}
+            />
+          )}
         </div>
       </div>
 

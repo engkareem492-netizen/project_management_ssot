@@ -303,3 +303,20 @@
 - [x] History panel in detail/edit view
 - [x] Edit dialog with all fields pre-populated
 - [x] DB migration: assumptionCategories, assumptionStatuses, assumptionImpactLevels, assumptionHistory tables
+
+## Feature: Bulk Excel Import/Export for All 9 Modules (Mar 7, 2026)
+
+- [x] Install xlsx (SheetJS) on server for Excel generation/parsing
+- [x] Server: template download endpoint (returns pre-formatted xlsx with correct headers)
+- [x] Server: bulk import endpoint with mode=append|replace for each module
+- [x] Modules covered: Requirements, Tasks, Issues, Dependencies, Assumptions, Stakeholders, Deliverables, Knowledge Base, Risk Register
+- [x] Client: reusable ImportExportToolbar component (Download Template + Upload button + Append/Replace toggle)
+- [x] Wire toolbar into Requirements page
+- [x] Wire toolbar into Tasks page
+- [x] Wire toolbar into Issues page
+- [x] Wire toolbar into Dependencies page
+- [x] Wire toolbar into Assumptions page
+- [x] Wire toolbar into Stakeholders page
+- [x] Wire toolbar into Deliverables page
+- [x] Wire toolbar into Knowledge Base page
+- [x] Wire toolbar into Risk Register page

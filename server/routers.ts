@@ -18,6 +18,7 @@ import { meetingsRouter } from "./routers/meetings.router";
 import { testCasesRouter } from "./routers/testCases.router";
 import { taskDependenciesRouter } from "./routers/taskDependencies.router";
 import { traceabilityRouter } from "./routers/traceability.router";
+import { bulkImportRouter } from "./routers/bulkImport.router";
 
 export const appRouter = router({
   system: systemRouter,
@@ -33,6 +34,7 @@ export const appRouter = router({
   testCases: testCasesRouter,
   taskDependencies: taskDependenciesRouter,
   traceability: traceabilityRouter,
+  bulkImport: bulkImportRouter,
 
   // Excel import/export
   excel: router({

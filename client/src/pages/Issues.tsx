@@ -17,6 +17,7 @@ import { DropdownOptionsManager } from "@/components/DropdownOptionsManager";
 import { SelectWithCreate } from "@/components/SelectWithCreate";
 import { DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { ImportExportToolbar } from "@/components/ImportExportToolbar";
 
 export default function Issues() {
   const { currentProjectId } = useProject();
@@ -645,6 +646,13 @@ export default function Issues() {
           <Button size="sm" variant="outline" onClick={() => { setSettingsType("priority"); setSettingsOpen(true); }} className="border-red-300 hover:bg-red-50 text-red-700">
             <Settings className="w-4 h-4 mr-1" />Priority
           </Button>
+          {currentProjectId && (
+            <ImportExportToolbar
+              module="issues"
+              projectId={currentProjectId}
+              onImportSuccess={() => {}}
+            />
+          )}
         </div>
       </div>
       <Card className="border-red-100">

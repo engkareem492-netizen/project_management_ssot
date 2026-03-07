@@ -18,6 +18,7 @@ import { DropdownOptionsManager } from "@/components/DropdownOptionsManager";
 import { SelectWithCreate } from "@/components/SelectWithCreate";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
+import { ImportExportToolbar } from "@/components/ImportExportToolbar";
 
 export default function Requirements() {
   const { currentProjectId } = useProject();
@@ -612,6 +613,13 @@ export default function Requirements() {
           <Button size="sm" variant="outline" onClick={() => { setSettingsType("priority"); setSettingsOpen(true); }} className="border-emerald-300 hover:bg-emerald-50 text-emerald-700">
             <Settings className="w-4 h-4 mr-1" />Priority
           </Button>
+          {currentProjectId && (
+            <ImportExportToolbar
+              module="requirements"
+              projectId={currentProjectId}
+              onImportSuccess={() => {}}
+            />
+          )}
         </div>
       </div>
       <Card className="border-emerald-100">

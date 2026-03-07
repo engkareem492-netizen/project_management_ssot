@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { Plus, Trash2, Pencil, Search, Users, Mail, Phone, Briefcase } from "lucide-react";
+import { ImportExportToolbar } from "@/components/ImportExportToolbar";
 
 export default function Stakeholders() {
   const { currentProjectId } = useProject();
@@ -184,6 +185,13 @@ export default function Stakeholders() {
           <Button onClick={() => setIsCreateOpen(true)} className="bg-gray-900 hover:bg-gray-800 text-white gap-2">
             <Plus className="h-4 w-4" />Add Stakeholder
           </Button>
+          {currentProjectId && (
+            <ImportExportToolbar
+              module="stakeholders"
+              projectId={currentProjectId}
+              onImportSuccess={() => {}}
+            />
+          )}
         </div>
       </div>
       <Card className="border-violet-100">

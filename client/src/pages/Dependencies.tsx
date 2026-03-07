@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { ImportExportToolbar } from "@/components/ImportExportToolbar";
 
 export default function Dependencies() {
   const { currentProjectId } = useProject();
@@ -104,6 +105,13 @@ export default function Dependencies() {
           <Button onClick={() => setCreateDialogOpen(true)} className="bg-gray-900 hover:bg-gray-800 text-white gap-2">
             <Plus className="w-4 h-4" />Create New
           </Button>
+          {currentProjectId && (
+            <ImportExportToolbar
+              module="dependencies"
+              projectId={currentProjectId}
+              onImportSuccess={() => {}}
+            />
+          )}
         </div>
       </div>
       <Card>

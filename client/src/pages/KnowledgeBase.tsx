@@ -12,6 +12,7 @@ import { Plus, Settings, Trash2, Edit, BookOpen, Paperclip } from "lucide-react"
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ImportExportToolbar } from "@/components/ImportExportToolbar";
 
 export default function KnowledgeBase() {
   const { currentProjectId } = useProject();
@@ -565,6 +566,13 @@ export default function KnowledgeBase() {
               </form>
             </DialogContent>
           </Dialog>
+          {currentProjectId && (
+            <ImportExportToolbar
+              module="knowledgeBase"
+              projectId={currentProjectId}
+              onImportSuccess={() => {}}
+            />
+          )}
         </div>
       </div>
 
