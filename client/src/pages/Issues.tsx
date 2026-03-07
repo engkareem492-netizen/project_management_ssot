@@ -38,6 +38,7 @@ export default function Issues() {
     description: '',
     source: '',
     owner: '',
+    ownerId: undefined as number | undefined,
     status: '',
     priority: '',
     type: '',
@@ -446,6 +447,7 @@ export default function Issues() {
       description: issue.description || '',
       source: issue.source || '',
       owner: issue.owner || '',
+      ownerId: issue.ownerId ?? undefined,
       status: issue.status || '',
       priority: issue.priority || '',
       type: issue.type || '',
@@ -472,6 +474,7 @@ export default function Issues() {
       description: issue.description || '',
       source: issue.source || '',
       owner: issue.owner || '',
+      ownerId: issue.ownerId ?? undefined,
       status: issue.status || '',
       priority: issue.priority || '',
       type: issue.type || '',
@@ -1393,15 +1396,26 @@ export default function Issues() {
                 )}
               </div>
               <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
-                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Owner</Label>
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Owner (Stakeholder)</Label>
                 {isEditMode ? (
-                  <Select value={editFormData.owner || ''} onValueChange={(v) => setEditFormData({...editFormData, owner: v})}>
+                  <Select
+                    value={editFormData.ownerId ? String(editFormData.ownerId) : '__none__'}
+                    onValueChange={(v) => {
+                      if (v === '__none__') {
+                        setEditFormData({ ...editFormData, ownerId: undefined, owner: '' });
+                      } else {
+                        const s = stakeholders?.find(s => s.id === parseInt(v));
+                        setEditFormData({ ...editFormData, ownerId: parseInt(v), owner: s?.fullName || '' });
+                      }
+                    }}
+                  >
                     <SelectTrigger className="h-8">
-                      <SelectValue placeholder="Select owner" />
+                      <SelectValue placeholder="Select stakeholder..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {stakeholders?.filter(s => s.fullName).map((s) => (
-                        <SelectItem key={s.id} value={s.fullName!}>{s.fullName}</SelectItem>
+                      <SelectItem value="__none__">— None —</SelectItem>
+                      {stakeholders?.filter(s => s.fullName?.trim()).map((s) => (
+                        <SelectItem key={s.id} value={String(s.id)}>{s.fullName}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>

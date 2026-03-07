@@ -60,9 +60,11 @@ const emptyTaskForm = {
 };
 
 const emptyIssueForm = {
-  issueGroup: "", description: "", source: "", owner: "", status: "Open", priority: "Medium",
+  issueGroup: "", description: "", source: "",
+  ownerId: undefined as number | undefined,
+  status: "Open", priority: "Medium",
   type: "", class: "", deliverableId: undefined as number | undefined, taskId: "",
-  openDate: new Date().toISOString().split("T")[0], knowledgeBaseCode: "", resolutionDate: "",
+  openDate: new Date().toISOString().split("T")[0], resolutionDate: "",
 };
 
 const emptyTestCaseForm = {
@@ -187,7 +189,7 @@ export default function TraceabilityMatrix() {
         requirementId: targetRequirementId,
         description: newIssueForm.description,
         issueGroup: newIssueForm.issueGroup || undefined,
-        owner: newIssueForm.owner || undefined,
+        ownerId: newIssueForm.ownerId || undefined,
         status: newIssueForm.status,
         priority: newIssueForm.priority,
         type: newIssueForm.type || undefined,
@@ -627,8 +629,14 @@ export default function TraceabilityMatrix() {
                       <Input value={newIssueForm.source} onChange={(e) => setNewIssueForm(f => ({ ...f, source: e.target.value }))} placeholder="Source of issue..." />
                     </div>
                     <div className="space-y-1.5">
-                      <Label>Owner</Label>
-                      <Input value={newIssueForm.owner} onChange={(e) => setNewIssueForm(f => ({ ...f, owner: e.target.value }))} placeholder="Issue owner..." />
+                      <Label>Owner (Stakeholder)</Label>
+                      <Select value={newIssueForm.ownerId ? String(newIssueForm.ownerId) : "__none__"} onValueChange={(v) => setNewIssueForm(f => ({ ...f, ownerId: v === "__none__" ? undefined : parseInt(v) }))}>
+                        <SelectTrigger><SelectValue placeholder="Select stakeholder..." /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">— None —</SelectItem>
+                          {validStakeholders.map((s) => <SelectItem key={`io-${s.id}`} value={String(s.id)}>{s.fullName}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
 
@@ -702,10 +710,7 @@ export default function TraceabilityMatrix() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-1.5 col-span-2">
-                      <Label>Knowledge Base Code</Label>
-                      <Input value={newIssueForm.knowledgeBaseCode} onChange={(e) => setNewIssueForm(f => ({ ...f, knowledgeBaseCode: e.target.value }))} placeholder="KB reference code..." />
-                    </div>
+
                   </div>
                 </>
               )}

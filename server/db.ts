@@ -361,7 +361,13 @@ export async function createIssue(data: InsertIssue) {
 export async function updateIssue(id: number, data: Partial<Issue>) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await db.update(issues).set(data).where(eq(issues.id, id));
+  // Populate owner name from ownerId when updating
+  const enrichedData: any = { ...data };
+  if (data.ownerId) {
+    const stakeholder = await getStakeholderById(data.ownerId);
+    if (stakeholder) enrichedData.owner = stakeholder.fullName;
+  }
+  await db.update(issues).set(enrichedData).where(eq(issues.id, id));
 }
 
 export async function deleteIssue(id: number) {

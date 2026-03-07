@@ -264,3 +264,12 @@
 - [x] Expand New Task form in Traceability Matrix to match standalone Tasks create form (all fields)
 - [x] Expand New Issue form in Traceability Matrix to match standalone Issues create form (all fields)
 - [x] Expand New Test Case form in Traceability Matrix to match standalone Test Cases create form (all fields)
+
+## Feature: Link Issue/Risk Owner to Stakeholders (Mar 7, 2026)
+
+- [x] Add ownerId (FK to stakeholders) column to issues table in DB schema (already existed)
+- [x] Update issues router: create and update procedures to accept ownerId, list to return ownerName via JOIN
+- [x] Update Issues.tsx: replace owner free-text input with stakeholder dropdown (ownerId) in edit form
+- [x] Update TraceabilityMatrix.tsx: replace owner free-text input with stakeholder dropdown (ownerId)
+- [x] Display owner name (from stakeholder) in Issues table and detail view
+- [x] Fix updateIssue db helper to resolve ownerId to owner name on update (was missing, now fixed)
