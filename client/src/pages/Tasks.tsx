@@ -90,6 +90,7 @@ export default function Tasks() {
   const [selectedTaskIds, setSelectedTaskIds] = useState<number[]>([]);
   const [bulkStatusDialogOpen, setBulkStatusDialogOpen] = useState(false);
   const [bulkStatus, setBulkStatus] = useState("");
+  const [responsibleFilter, setResponsibleFilter] = useState<string | null>(null);
 
   const [newIssue, setNewIssue] = useState({
     description: '',
@@ -408,11 +409,16 @@ export default function Tasks() {
     },
   });
 
-  const filteredTasks = tasks?.filter(task =>
-    task.taskId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    task.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    task.responsible?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredTasks = tasks?.filter(task => {
+    const matchesSearch =
+      task.taskId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      task.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      task.responsible?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesResponsible = responsibleFilter
+      ? (task.responsible || 'Unassigned') === responsibleFilter
+      : true;
+    return matchesSearch && matchesResponsible;
+  });
 
   const getRequirementStatus = (requirementId: string | null) => {
     if (!requirementId || !requirements) return null;
@@ -673,7 +679,13 @@ export default function Tasks() {
   return (
     <div className="space-y-6">
       {/* Dashboard Chart */}
-      <TasksByResponsibleChart tasks={tasks || []} />
+      <TasksByResponsibleChart
+        tasks={tasks || []}
+        selectedResponsible={responsibleFilter}
+        onResponsibleSelect={(name) => {
+          setResponsibleFilter(prev => prev === name ? null : name);
+        }}
+      />
 
       {/* Page Header */}
       <div className="bg-white border border-gray-200 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
@@ -718,6 +730,18 @@ export default function Tasks() {
               Create New
             </Button>
           </div>
+
+          {/* Responsible Filter Badge */}
+          {responsibleFilter && (
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-sm text-muted-foreground">Filtered by responsible:</span>
+              <Badge variant="secondary" className="gap-1 cursor-pointer" onClick={() => setResponsibleFilter(null)}>
+                {responsibleFilter}
+                <X className="w-3 h-3" />
+              </Badge>
+              <span className="text-xs text-muted-foreground">({filteredTasks?.length ?? 0} tasks) — click badge or chart bar to clear</span>
+            </div>
+          )}
 
           {/* Bulk Action Toolbar */}
           {selectedTaskIds.length > 0 && (

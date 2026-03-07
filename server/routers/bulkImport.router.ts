@@ -10,7 +10,7 @@ import { router, protectedProcedure } from "../_core/trpc";
 import * as db from "../db";
 import {
   requirements, tasks, issues, dependencies, assumptions,
-  stakeholders, deliverables, knowledgeBase, risks,
+  stakeholders, deliverables, knowledgeBase, risks, taskGroups,
 } from "../../drizzle/schema";
 
 // ─── Column definitions per module ────────────────────────────────────────────
@@ -29,7 +29,7 @@ const TEMPLATES: Record<string, { headers: string[]; example: Record<string, str
     },
   },
   tasks: {
-    headers: ["description", "status", "priority", "assignDate", "dueDate", "responsible", "accountable", "consulted", "informed", "notes"],
+    headers: ["description", "status", "priority", "assignDate", "dueDate", "responsible", "accountable", "consulted", "informed", "requirementCode", "taskGroupCode", "notes"],
     example: {
       description: "Create wireframes for the login page",
       status: "In Progress",
@@ -40,6 +40,8 @@ const TEMPLATES: Record<string, { headers: string[]; example: Record<string, str
       accountable: "Jane Smith",
       consulted: "",
       informed: "",
+      requirementCode: "REQ-0001",
+      taskGroupCode: "TG-0001",
       notes: "",
     },
   },
@@ -83,14 +85,14 @@ const TEMPLATES: Record<string, { headers: string[]; example: Record<string, str
     },
   },
   stakeholders: {
-    headers: ["fullName", "email", "phone", "position", "role", "job"],
+    headers: ["fullName", "email", "phone", "position", "role", "department"],
     example: {
       fullName: "John Doe",
       email: "john.doe@example.com",
       phone: "+1 234 567 8900",
       position: "Project Sponsor",
       role: "Decision Maker",
-      job: "Chief Executive Officer",
+      department: "Chief Executive Officer",
     },
   },
   deliverables: {
@@ -121,13 +123,25 @@ const TEMPLATES: Record<string, { headers: string[]; example: Record<string, str
   },
 };
 
-// ─── Helper: build xlsx buffer ─────────────────────────────────────────────────
+// ─── Helper: build xlsx buffer (single sheet) ─────────────────────────────────
 function buildXlsx(sheetName: string, headers: string[], rows: Record<string, any>[]): Buffer {
   const wb = XLSX.utils.book_new();
   const wsData = [headers, ...rows.map((r) => headers.map((h) => r[h] ?? ""))];
   const ws = XLSX.utils.aoa_to_sheet(wsData);
   ws["!cols"] = headers.map(() => ({ wch: 26 }));
   XLSX.utils.book_append_sheet(wb, ws, sheetName.slice(0, 31));
+  return Buffer.from(XLSX.write(wb, { type: "buffer", bookType: "xlsx" }));
+}
+
+// ─── Helper: build xlsx buffer (multi-sheet) ──────────────────────────────────
+function buildXlsxMultiSheet(sheets: { name: string; headers: string[]; rows: Record<string, any>[] }[]): Buffer {
+  const wb = XLSX.utils.book_new();
+  for (const sheet of sheets) {
+    const wsData = [sheet.headers, ...sheet.rows.map((r) => sheet.headers.map((h) => r[h] ?? ""))];
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    ws["!cols"] = sheet.headers.map(() => ({ wch: 26 }));
+    XLSX.utils.book_append_sheet(wb, ws, sheet.name.slice(0, 31));
+  }
   return Buffer.from(XLSX.write(wb, { type: "buffer", bookType: "xlsx" }));
 }
 
@@ -147,6 +161,14 @@ export const bulkImportRouter = router({
     }))
     .query(async ({ input }) => {
       const tpl = TEMPLATES[input.module];
+      // Tasks template includes a second sheet for Task Groups
+      if (input.module === "tasks") {
+        const buf = buildXlsxMultiSheet([
+          { name: "Tasks", headers: tpl.headers, rows: [tpl.example] },
+          { name: "Task Groups", headers: ["name", "description"], rows: [{ name: "TG-0001 - Frontend Tasks", description: "All frontend related tasks" }] },
+        ]);
+        return { base64: buf.toString("base64"), filename: "tasks_template.xlsx" };
+      }
       const buf = buildXlsx(input.module, tpl.headers, [tpl.example]);
       return { base64: buf.toString("base64"), filename: `${input.module}_template.xlsx` };
     }),
@@ -195,6 +217,16 @@ export const bulkImportRouter = router({
       const { module, projectId } = input;
       const tpl = TEMPLATES[module];
       const rows = await fetchModuleData(module, projectId);
+      // Tasks export includes a second sheet for Task Groups
+      if (module === "tasks") {
+        const dbConn = await db.getDb();
+        const tgRows = dbConn ? await dbConn.select().from(taskGroups).where(eq(taskGroups.projectId, projectId)) : [];
+        const buf = buildXlsxMultiSheet([
+          { name: "Tasks", headers: tpl.headers, rows },
+          { name: "Task Groups", headers: ["name", "description"], rows: tgRows.map((tg) => ({ name: tg.name ?? "", description: tg.description ?? "" })) },
+        ]);
+        return { base64: buf.toString("base64"), filename: "tasks_export.xlsx" };
+      }
       const buf = buildXlsx(module, tpl.headers, rows);
       return { base64: buf.toString("base64"), filename: `${module}_export.xlsx` };
     }),
@@ -236,6 +268,20 @@ async function importRow(module: string, projectId: number, row: Record<string, 
     }
     case "tasks": {
       const id = await db.getNextId("task", "TASK", projectId);
+      // requirementId is stored as the code string (e.g. "REQ-0001")
+      const requirementIdStr = row.requirementCode?.trim() || null;
+      // taskGroup is stored as the group name string
+      // If user provides a code like "TG-0001" try to resolve to the group name
+      let taskGroupName: string | null = row.taskGroupCode?.trim() || null;
+      if (taskGroupName) {
+        const tgRows = await dbConn.select().from(taskGroups)
+          .where(eq(taskGroups.projectId, projectId));
+        const match = tgRows.find((tg) =>
+          tg.name?.toLowerCase() === taskGroupName!.toLowerCase() ||
+          tg.idCode?.toLowerCase() === taskGroupName!.toLowerCase()
+        );
+        if (match) taskGroupName = match.name ?? taskGroupName;
+      }
       await dbConn.insert(tasks).values({
         projectId,
         taskId: id,
@@ -248,6 +294,8 @@ async function importRow(module: string, projectId: number, row: Record<string, 
         accountable: row.accountable || null,
         consulted: row.consulted || null,
         informed: row.informed || null,
+        requirementId: requirementIdStr,
+        taskGroup: taskGroupName,
       });
       break;
     }
@@ -308,7 +356,8 @@ async function importRow(module: string, projectId: number, row: Record<string, 
         phone: row.phone || null,
         position: row.position || null,
         role: row.role || null,
-        job: row.job || null,
+        // Accept both "department" (new) and "job" (legacy) column names
+        job: row.department || row.job || null,
       });
       break;
     }
@@ -379,6 +428,11 @@ async function fetchModuleData(module: string, projectId: number): Promise<Recor
     }
     case "tasks": {
       const rows = await dbConn.select().from(tasks).where(eq(tasks.projectId, projectId));
+      // Fetch requirements and task groups for code resolution
+      const allReqs = await dbConn.select().from(requirements).where(eq(requirements.projectId, projectId));
+      const allTgs = await dbConn.select().from(taskGroups).where(eq(taskGroups.projectId, projectId));
+      const reqMap = new Map(allReqs.map((r) => [r.id, r.idCode ?? ""]));
+      const tgMap = new Map(allTgs.map((tg) => [tg.id, tg.name ?? ""]));
       return rows.map((r) => ({
         description: r.description ?? "",
         status: r.status ?? "",
@@ -389,6 +443,8 @@ async function fetchModuleData(module: string, projectId: number): Promise<Recor
         accountable: r.accountable ?? "",
         consulted: r.consulted ?? "",
         informed: r.informed ?? "",
+        requirementCode: r.requirementId ?? "",
+        taskGroupCode: r.taskGroup ?? "",
         notes: "",
       }));
     }
@@ -439,7 +495,7 @@ async function fetchModuleData(module: string, projectId: number): Promise<Recor
         phone: r.phone ?? "",
         position: r.position ?? "",
         role: r.role ?? "",
-        job: r.job ?? "",
+        department: r.job ?? "",
       }));
     }
     case "deliverables": {

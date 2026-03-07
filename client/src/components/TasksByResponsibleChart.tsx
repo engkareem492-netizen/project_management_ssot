@@ -22,10 +22,14 @@ interface Task {
 
 interface TasksByResponsibleChartProps {
   tasks: Task[];
+  selectedResponsible?: string | null;
+  onResponsibleSelect?: (name: string) => void;
 }
 
-export function TasksByResponsibleChart({ tasks }: TasksByResponsibleChartProps) {
-  const [selectedResponsible, setSelectedResponsible] = useState<string | null>(null);
+export function TasksByResponsibleChart({ tasks, selectedResponsible: externalSelected, onResponsibleSelect }: TasksByResponsibleChartProps) {
+  const [internalSelected, setInternalSelected] = useState<string | null>(null);
+  // Use external state if provided (controlled mode), otherwise use internal state
+  const selectedResponsible = externalSelected !== undefined ? externalSelected : internalSelected;
 
   // Group tasks by responsible person
   const chartData = useMemo(() => {
@@ -50,7 +54,14 @@ export function TasksByResponsibleChart({ tasks }: TasksByResponsibleChartProps)
   }, [tasks, selectedResponsible]);
 
   const handleBarClick = (data: any) => {
-    setSelectedResponsible(data.name);
+    const name: string = data.name;
+    if (onResponsibleSelect) {
+      // Controlled mode: toggle via parent
+      onResponsibleSelect(name);
+    } else {
+      // Uncontrolled mode: toggle internally
+      setInternalSelected(prev => prev === name ? null : name);
+    }
   };
 
   const getStatusColor = (status: string | null | undefined) => {
@@ -128,7 +139,10 @@ export function TasksByResponsibleChart({ tasks }: TasksByResponsibleChartProps)
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => setSelectedResponsible(null)}
+                onClick={() => {
+                  if (onResponsibleSelect && selectedResponsible) onResponsibleSelect(selectedResponsible);
+                  else setInternalSelected(null);
+                }}
               >
                 <X className="w-4 h-4" />
               </Button>

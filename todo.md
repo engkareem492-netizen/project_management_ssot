@@ -320,3 +320,11 @@
 - [x] Wire toolbar into Deliverables page
 - [x] Wire toolbar into Knowledge Base page
 - [x] Wire toolbar into Risk Register page
+
+## Bug Fixes (Mar 8, 2026 - Batch 30)
+
+- [x] Tasks template/export: add Requirement Code and Task Group columns to tasks sheet
+- [x] Tasks template/export: include a second "Task Groups" sheet in the same workbook for upload/export
+- [x] Stakeholders template: fix Department column name (was exported as "job", now "department")
+- [x] Tasks page: make Tasks-by-Responsible chart bars clickable to filter the task list to that person
+- [x] Tasks page: added filter badge below search bar showing active responsible filter with clear button
