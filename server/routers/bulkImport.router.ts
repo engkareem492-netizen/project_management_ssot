@@ -5,7 +5,7 @@
  */
 import { z } from "zod";
 import * as XLSX from "xlsx";
-import { eq } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { router, protectedProcedure } from "../_core/trpc";
 import * as db from "../db";
 import {
@@ -13,7 +13,6 @@ import {
   stakeholders, deliverables, knowledgeBase, risks, taskGroups,
   idSequences,
 } from "../../drizzle/schema";
-import { and } from "drizzle-orm";
 
 // ─── Column definitions per module ────────────────────────────────────────────
 const TEMPLATES: Record<string, { headers: string[]; example: Record<string, string> }> = {
@@ -258,18 +257,13 @@ async function purgeModule(module: string, projectId: number) {
   if (!table) throw new Error(`Unknown module: ${module}`);
   // Delete all rows for this project
   await dbConn.delete(table).where(eq(table.projectId, projectId));
-  // Reset the ID sequence counter to 0 so the next import starts from 001
+  // Reset ALL ID sequence rows for this module (handles duplicate rows with different casing)
+  // Use raw SQL LIKE so 'RISK' and 'risk' are both reset in one statement
   const entityType = MODULE_ENTITY_TYPE[module];
   if (entityType) {
-    await dbConn
-      .update(idSequences)
-      .set({ currentNumber: 0 })
-      .where(
-        and(
-          eq(idSequences.entityType, entityType),
-          eq(idSequences.projectId, projectId)
-        )
-      );
+    await dbConn.execute(
+      sql`UPDATE idSequences SET currentNumber = 0 WHERE projectId = ${projectId} AND LOWER(entityType) = LOWER(${entityType})`
+    );
   }
 }
 

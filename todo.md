@@ -337,3 +337,7 @@
 ## Bug Fix: Replace Mode ID Reset
 
 - [x] Fix bulk import replace mode: after purging data, reset the ID sequence counter to 0 so first imported row gets ID 001
+
+## Bug Fix: Risk Replace Mode ID Reset (duplicate sequence rows)
+
+- [x] Fix: risks have two idSequences rows ('RISK' and 'risk') — purgeModule now uses LOWER(entityType) = LOWER(target) to reset all case variants in one SQL statement
