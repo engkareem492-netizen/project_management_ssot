@@ -11,7 +11,9 @@ import * as db from "../db";
 import {
   requirements, tasks, issues, dependencies, assumptions,
   stakeholders, deliverables, knowledgeBase, risks, taskGroups,
+  idSequences,
 } from "../../drizzle/schema";
+import { and } from "drizzle-orm";
 
 // ─── Column definitions per module ────────────────────────────────────────────
 const TEMPLATES: Record<string, { headers: string[]; example: Record<string, string> }> = {
@@ -233,6 +235,18 @@ export const bulkImportRouter = router({
 });
 
 // ─── Purge ─────────────────────────────────────────────────────────────────────
+// Map from module name to the entityType key used in idSequences
+const MODULE_ENTITY_TYPE: Record<string, string> = {
+  requirements: "requirement",
+  tasks: "task",
+  issues: "issue",
+  dependencies: "dependency",
+  assumptions: "assumption",
+  deliverables: "deliverable",
+  risks: "RISK",
+  // stakeholders and knowledgeBase have no auto-ID sequence
+};
+
 async function purgeModule(module: string, projectId: number) {
   const dbConn = await db.getDb();
   if (!dbConn) throw new Error("Database not available");
@@ -242,7 +256,21 @@ async function purgeModule(module: string, projectId: number) {
   };
   const table = tableMap[module];
   if (!table) throw new Error(`Unknown module: ${module}`);
+  // Delete all rows for this project
   await dbConn.delete(table).where(eq(table.projectId, projectId));
+  // Reset the ID sequence counter to 0 so the next import starts from 001
+  const entityType = MODULE_ENTITY_TYPE[module];
+  if (entityType) {
+    await dbConn
+      .update(idSequences)
+      .set({ currentNumber: 0 })
+      .where(
+        and(
+          eq(idSequences.entityType, entityType),
+          eq(idSequences.projectId, projectId)
+        )
+      );
+  }
 }
 
 // ─── Import row ────────────────────────────────────────────────────────────────

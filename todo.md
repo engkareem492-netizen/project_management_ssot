@@ -333,3 +333,7 @@
 
 - [x] Fix bulk import append mode: IDs must continue from the last existing ID in the DB, not restart from 001 per row
 - [x] Fix chart bar click: clicking a bar in Tasks-by-Responsible chart must filter the main task list (moved onClick from BarChart to Bar component)
+
+## Bug Fix: Replace Mode ID Reset
+
+- [x] Fix bulk import replace mode: after purging data, reset the ID sequence counter to 0 so first imported row gets ID 001
