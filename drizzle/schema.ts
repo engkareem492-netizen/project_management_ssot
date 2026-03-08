@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, json, boolean, date } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, json, boolean, date, decimal } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -972,3 +972,74 @@ export const stakeholderKpiScores = mysqlTable("stakeholderKpiScores", {
 
 export type StakeholderKpiScore = typeof stakeholderKpiScores.$inferSelect;
 export type InsertStakeholderKpiScore = typeof stakeholderKpiScores.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────
+// Notifications table
+// ─────────────────────────────────────────────────────────────
+export const notifications = mysqlTable("notifications", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  userId: int("userId").notNull(),
+  type: mysqlEnum("notificationType", [
+    "task_overdue", "issue_escalated", "cr_submitted", "risk_high",
+    "task_assigned", "decision_added", "due_soon"
+  ]).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  message: text("message").notNull(),
+  entityType: varchar("entityType", { length: 50 }),
+  entityId: varchar("entityId", { length: 50 }),
+  read: boolean("read").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type Notification = typeof notifications.$inferSelect;
+export type InsertNotification = typeof notifications.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────
+// Project Budget table
+// ─────────────────────────────────────────────────────────────
+export const projectBudget = mysqlTable("projectBudget", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull().unique(),
+  totalBudget: decimal("totalBudget", { precision: 15, scale: 2 }).default("0"),
+  currency: varchar("currency", { length: 10 }).default("USD"),
+  notes: text("notes"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ProjectBudget = typeof projectBudget.$inferSelect;
+export type InsertProjectBudget = typeof projectBudget.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────
+// Budget entries (cost items)
+// ─────────────────────────────────────────────────────────────
+export const budgetEntries = mysqlTable("budgetEntries", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  category: varchar("category", { length: 100 }).notNull(),
+  description: varchar("description", { length: 255 }).notNull(),
+  estimatedCost: decimal("estimatedCost", { precision: 15, scale: 2 }).default("0"),
+  actualCost: decimal("actualCost", { precision: 15, scale: 2 }).default("0"),
+  entityType: varchar("entityType", { length: 50 }), // task / deliverable / risk / other
+  entityId: varchar("entityId", { length: 50 }),
+  status: mysqlEnum("budgetStatus", ["Planned", "Committed", "Spent", "Cancelled"]).default("Planned").notNull(),
+  entryDate: date("entryDate"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type BudgetEntry = typeof budgetEntries.$inferSelect;
+export type InsertBudgetEntry = typeof budgetEntries.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────
+// Resource Capacity table
+// ─────────────────────────────────────────────────────────────
+export const resourceCapacity = mysqlTable("resourceCapacity", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  stakeholderId: int("stakeholderId").notNull(),
+  weekStart: date("weekStart").notNull(), // ISO week start (Monday)
+  availableHours: decimal("availableHours", { precision: 5, scale: 1 }).default("40"),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ResourceCapacity = typeof resourceCapacity.$inferSelect;
+export type InsertResourceCapacity = typeof resourceCapacity.$inferInsert;

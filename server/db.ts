@@ -2365,3 +2365,195 @@ export async function getBadgeCounts(projectId: number) {
 
   return { overdueTasks, openIssues, highRisks };
 }
+
+// ─────── Decisions ───────────────────────────────────────────
+
+export async function getAllDecisions(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(schema.decisions)
+    .where(eq(schema.decisions.projectId, projectId))
+    .orderBy(desc(schema.decisions.createdAt));
+}
+
+export async function getDecisionById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const [result] = await db.select().from(schema.decisions).where(eq(schema.decisions.id, id)).limit(1);
+  return result ?? null;
+}
+
+export async function createDecision(data: schema.InsertDecision) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(schema.decisions).values(data);
+  const [created] = await db.select().from(schema.decisions)
+    .where(eq(schema.decisions.decisionId, data.decisionId))
+    .limit(1);
+  return created;
+}
+
+export async function updateDecision(id: number, data: Partial<schema.InsertDecision>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(schema.decisions).set(data).where(eq(schema.decisions.id, id));
+  return getDecisionById(id);
+}
+
+export async function deleteDecision(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(schema.decisions).where(eq(schema.decisions.id, id));
+}
+
+// ─────── Notifications ───────────────────────────────────────
+
+export async function createNotification(data: schema.InsertNotification) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(schema.notifications).values(data);
+}
+
+export async function getNotifications(userId: number, projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(schema.notifications)
+    .where(and(eq(schema.notifications.userId, userId), eq(schema.notifications.projectId, projectId)))
+    .orderBy(desc(schema.notifications.createdAt))
+    .limit(50);
+}
+
+export async function markNotificationRead(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(schema.notifications).set({ read: true }).where(eq(schema.notifications.id, id));
+}
+
+export async function markAllNotificationsRead(userId: number, projectId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(schema.notifications)
+    .set({ read: true })
+    .where(and(eq(schema.notifications.userId, userId), eq(schema.notifications.projectId, projectId)));
+}
+
+export async function getUnreadNotificationCount(userId: number, projectId: number) {
+  const db = await getDb();
+  if (!db) return 0;
+  const result = await db.select({ count: sql<number>`count(*)` })
+    .from(schema.notifications)
+    .where(and(
+      eq(schema.notifications.userId, userId),
+      eq(schema.notifications.projectId, projectId),
+      eq(schema.notifications.read, false)
+    ));
+  return result[0]?.count ?? 0;
+}
+
+// ─────── Budget ──────────────────────────────────────────────
+
+export async function getProjectBudget(projectId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const [result] = await db.select().from(schema.projectBudget).where(eq(schema.projectBudget.projectId, projectId)).limit(1);
+  return result ?? null;
+}
+
+export async function upsertProjectBudget(projectId: number, data: { totalBudget: string; currency: string; notes?: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const existing = await getProjectBudget(projectId);
+  if (existing) {
+    await db.update(schema.projectBudget).set(data).where(eq(schema.projectBudget.projectId, projectId));
+  } else {
+    await db.insert(schema.projectBudget).values({ projectId, ...data });
+  }
+  return getProjectBudget(projectId);
+}
+
+export async function getBudgetEntries(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(schema.budgetEntries)
+    .where(eq(schema.budgetEntries.projectId, projectId))
+    .orderBy(desc(schema.budgetEntries.createdAt));
+}
+
+export async function createBudgetEntry(data: schema.InsertBudgetEntry) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(schema.budgetEntries).values(data);
+  const [created] = await db.select().from(schema.budgetEntries).where(eq(schema.budgetEntries.id, (result as any).insertId)).limit(1);
+  return created;
+}
+
+export async function updateBudgetEntry(id: number, data: Partial<schema.InsertBudgetEntry>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(schema.budgetEntries).set(data).where(eq(schema.budgetEntries.id, id));
+  const [updated] = await db.select().from(schema.budgetEntries).where(eq(schema.budgetEntries.id, id)).limit(1);
+  return updated;
+}
+
+export async function deleteBudgetEntry(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(schema.budgetEntries).where(eq(schema.budgetEntries.id, id));
+}
+
+// ─────── Resource Capacity ───────────────────────────────────
+
+export async function getResourceCapacities(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(schema.resourceCapacity)
+    .where(eq(schema.resourceCapacity.projectId, projectId));
+}
+
+export async function upsertResourceCapacity(projectId: number, stakeholderId: number, weekStart: string, availableHours: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const weekStartDate = new Date(weekStart);
+  const [existing] = await db.select().from(schema.resourceCapacity)
+    .where(and(
+      eq(schema.resourceCapacity.projectId, projectId),
+      eq(schema.resourceCapacity.stakeholderId, stakeholderId),
+      eq(schema.resourceCapacity.weekStart, weekStartDate)
+    )).limit(1);
+  if (existing) {
+    await db.update(schema.resourceCapacity).set({ availableHours }).where(eq(schema.resourceCapacity.id, existing.id));
+  } else {
+    await db.insert(schema.resourceCapacity).values({ projectId, stakeholderId, weekStart: weekStartDate, availableHours });
+  }
+}
+
+// ─────── Global Search ───────────────────────────────────────
+
+export async function globalSearch(projectId: number, term: string) {
+  const db = await getDb();
+  if (!db) return { requirements: [], tasks: [], issues: [], risks: [], decisions: [] };
+  const like_term = `%${term}%`;
+  const [reqs, tsks, iss, rsks, decs] = await Promise.all([
+    db.select({ id: requirements.id, idCode: requirements.idCode, description: requirements.description, status: requirements.status })
+      .from(requirements)
+      .where(and(eq(requirements.projectId, projectId), or(like(requirements.idCode, like_term), like(requirements.description, like_term), like(requirements.owner, like_term))))
+      .limit(10),
+    db.select({ id: tasks.id, taskId: tasks.taskId, description: tasks.description, currentStatus: tasks.currentStatus })
+      .from(tasks)
+      .where(and(eq(tasks.projectId, projectId), or(like(tasks.taskId, like_term), like(tasks.description, like_term), like(tasks.responsible, like_term))))
+      .limit(10),
+    db.select({ id: issues.id, issueId: issues.issueId, description: issues.description, status: issues.status })
+      .from(issues)
+      .where(and(eq(issues.projectId, projectId), or(like(issues.issueId, like_term), like(issues.description, like_term), like(issues.owner, like_term))))
+      .limit(10),
+    db.select({ id: risks.id, riskId: risks.riskId, title: risks.title, riskStatusId: risks.riskStatusId })
+      .from(risks)
+      .where(and(eq(risks.projectId, projectId), or(like(risks.riskId, like_term), like(risks.title, like_term))))
+      .limit(10),
+    db.select({ id: schema.decisions.id, decisionId: schema.decisions.decisionId, title: schema.decisions.title, status: schema.decisions.status })
+      .from(schema.decisions)
+      .where(and(eq(schema.decisions.projectId, projectId), or(like(schema.decisions.title, like_term), like(schema.decisions.description, like_term))))
+      .limit(10),
+  ]);
+  return { requirements: reqs, tasks: tsks, issues: iss, risks: rsks, decisions: decs };
+}

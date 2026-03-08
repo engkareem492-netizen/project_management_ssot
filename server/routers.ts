@@ -22,6 +22,10 @@ import { bulkImportRouter } from "./routers/bulkImport.router";
 import { searchRouter } from "./routers/search.router";
 import { sidebarBadgesRouter } from "./routers/sidebarBadges.router";
 import { stakeholderEnhancementsRouter } from "./routers/stakeholderEnhancements.router";
+import { decisionsRouter } from "./routers/decisions.router";
+import { notificationsRouter } from "./routers/notifications.router";
+import { budgetRouter } from "./routers/budget.router";
+import { resourcesRouter } from "./routers/resources.router";
 
 export const appRouter = router({
   system: systemRouter,
@@ -41,6 +45,10 @@ export const appRouter = router({
   search: searchRouter,
   sidebarBadges: sidebarBadgesRouter,
   stakeholderEnhancements: stakeholderEnhancementsRouter,
+  decisions: decisionsRouter,
+  notifications: notificationsRouter,
+  budget: budgetRouter,
+  resources: resourcesRouter,
 
   // Excel import/export
   excel: router({
@@ -1469,6 +1477,7 @@ export const appRouter = router({
           { entityType: 'risk', prefix: 'RISK', padLength: 4 },
           { entityType: 'Task Group', prefix: 'TG', padLength: 3, maxNumber: 999 },
           { entityType: 'Issue Group', prefix: 'IG', padLength: 3, maxNumber: 999 },
+          { entityType: 'decision', prefix: 'DEC', padLength: 4 },
         ];
         let created = 0;
         for (const def of defaults) {

@@ -26,6 +26,11 @@ import GanttChart from "./pages/GanttChart";
 import TraceabilityMatrix from "./pages/TraceabilityMatrix";
 import WeeklyReport from "./pages/WeeklyReport";
 import DashboardLayout from "./components/DashboardLayout";
+import Dashboard from "./pages/Dashboard";
+import Decisions from "./pages/Decisions";
+import CalendarPage from "./pages/Calendar";
+import Budget from "./pages/Budget";
+import Resources from "./pages/Resources";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -136,6 +141,31 @@ function Router() {
       <Route path={"/weekly-report"}>
         <DashboardLayout>
           <WeeklyReport />
+        </DashboardLayout>
+      </Route>
+      <Route path={"/dashboard"}>
+        <DashboardLayout>
+          <Dashboard />
+        </DashboardLayout>
+      </Route>
+      <Route path={"/decisions"}>
+        <DashboardLayout>
+          <Decisions />
+        </DashboardLayout>
+      </Route>
+      <Route path={"/calendar"}>
+        <DashboardLayout>
+          <CalendarPage />
+        </DashboardLayout>
+      </Route>
+      <Route path={"/budget"}>
+        <DashboardLayout>
+          <Budget />
+        </DashboardLayout>
+      </Route>
+      <Route path={"/resources"}>
+        <DashboardLayout>
+          <Resources />
         </DashboardLayout>
       </Route>
       <Route path={"/404"} component={NotFound} />

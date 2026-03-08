@@ -62,7 +62,10 @@ import {
   FlaskConical,
   BarChart2,
   Layers,
-  FileBarChart
+  FileBarChart,
+  DollarSign,
+  Scale,
+  CalendarRange,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import {
@@ -93,6 +96,7 @@ import { GlobalSearch } from "./GlobalSearch";
 import { Search } from "lucide-react";
 
 const menuItems = [
+  { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
   { icon: Calendar, label: "Today", path: "/today" },
   { icon: FileText, label: "Requirements", path: "/requirements" },
   { icon: CheckSquare, label: "Tasks", path: "/tasks" },
@@ -106,6 +110,10 @@ const menuItems = [
   { icon: Map, label: "Engagement Map", path: "/relationships" },
   { icon: GitPullRequest, label: "Change Requests", path: "/change-requests" },
   { icon: MessageSquare, label: "Meetings & Decisions", path: "/meetings" },
+  { icon: Scale, label: "Decisions", path: "/decisions" },
+  { icon: CalendarRange, label: "Calendar", path: "/calendar" },
+  { icon: DollarSign, label: "Budget", path: "/budget" },
+  { icon: Users, label: "Resources", path: "/resources" },
   { icon: FlaskConical, label: "Test Cases", path: "/test-cases" },
   { icon: BarChart2, label: "Gantt Chart", path: "/gantt" },
   { icon: Layers, label: "Traceability Matrix", path: "/traceability" },
