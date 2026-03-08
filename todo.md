@@ -399,3 +399,11 @@
 - [x] Color-coded quadrants: Manage Closely (red), Keep Satisfied (orange), Keep Informed (blue), Monitor (gray)
 - [x] Communication Plan table below the grid
 - [x] Update sidebar label from "Relationships" to "Engagement Map"
+
+## Feature: Tasks Compact View + No Horizontal Scroll (Mar 8, 2026)
+
+- [x] Add compact/normal view toggle button in Tasks page toolbar (persisted in localStorage)
+- [x] Normal view: current layout but columns fit within viewport width (no horizontal scroll)
+- [x] Compact view: smaller row height, fewer visible columns (ID, Task Group, Description, Responsible, Status, Due Date, Actions), dense typography
+- [x] Fix main Tasks table to never require horizontal scroll — use flexible column widths that fill available space
+- [x] Collapse less-critical columns (RACI details, Requirement, Deliverable) into a popover/tooltip in compact mode

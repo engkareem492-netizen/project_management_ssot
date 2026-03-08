@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Search, Edit, History, Loader2, Plus, Trash2, Settings, Eye, Save, X, CheckSquare, Info, AlertCircle, Link2, GitBranch, RefreshCw, ArrowRight, ChevronDown, ChevronRight, ListTree } from "lucide-react";
+import { Search, Edit, History, Loader2, Plus, Trash2, Settings, Eye, Save, X, CheckSquare, Info, AlertCircle, Link2, GitBranch, RefreshCw, ArrowRight, ChevronDown, ChevronRight, ListTree, LayoutList, AlignJustify } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -104,6 +104,18 @@ export default function Tasks() {
   const [followUpDialogOpen, setFollowUpDialogOpen] = useState(false);
   const [sourceTaskForFollowUp, setSourceTaskForFollowUp] = useState<any>(null);
   const [newFollowUp, setNewFollowUp] = useState({ description: '', status: 'Not Started', priority: 'Medium', dueDate: '', notes: '' });
+
+  // View mode: 'normal' | 'compact'
+  const [viewMode, setViewMode] = useState<'normal' | 'compact'>(() => {
+    return (localStorage.getItem('tasks-view-mode') as 'normal' | 'compact') || 'normal';
+  });
+  const toggleViewMode = () => {
+    setViewMode((prev) => {
+      const next = prev === 'normal' ? 'compact' : 'normal';
+      localStorage.setItem('tasks-view-mode', next);
+      return next;
+    });
+  };
 
   // Recurring task state
   const [recurringDialogOpen, setRecurringDialogOpen] = useState(false);
@@ -790,6 +802,18 @@ export default function Tasks() {
               <Plus className="w-4 h-4 mr-2" />
               Create New
             </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={toggleViewMode}
+              title={viewMode === 'normal' ? 'Switch to Compact View' : 'Switch to Normal View'}
+            >
+              {viewMode === 'normal' ? (
+                <><AlignJustify className="w-4 h-4 mr-1" />Compact</>
+              ) : (
+                <><LayoutList className="w-4 h-4 mr-1" />Normal</>
+              )}
+            </Button>
           </div>
 
           {/* Responsible Filter Badge */}
@@ -837,8 +861,73 @@ export default function Tasks() {
             </div>
           )}
 
-          <div className="rounded-md border overflow-x-auto">
-            <Table>
+          <div className="rounded-md border w-full">
+            {viewMode === 'compact' ? (
+              /* ── COMPACT VIEW ── */
+              <Table>
+                <TableHeader>
+                  <TableRow className="text-xs">
+                    <TableHead className="w-8 px-2">
+                      <Checkbox
+                        checked={filteredTasks && filteredTasks.length > 0 && selectedTaskIds.length === filteredTasks.length}
+                        onCheckedChange={handleSelectAllTasks}
+                        aria-label="Select all"
+                      />
+                    </TableHead>
+                    <TableHead className="w-[90px] px-2">ID</TableHead>
+                    <TableHead className="w-[110px] px-2">Group</TableHead>
+                    <TableHead className="px-2">Description</TableHead>
+                    <TableHead className="w-[110px] px-2">Responsible</TableHead>
+                    <TableHead className="w-[90px] px-2">Due Date</TableHead>
+                    <TableHead className="w-[110px] px-2">Status</TableHead>
+                    <TableHead className="w-[130px] px-2 text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredTasks?.map((task) => (
+                    <TableRow key={task.id} className={`hover:bg-muted/50 text-xs ${selectedTaskIds.includes(task.id) ? 'bg-primary/5' : ''}`}>
+                      <TableCell className="w-8 px-2 py-1" onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={selectedTaskIds.includes(task.id)}
+                          onCheckedChange={() => handleToggleSelectTask(task.id)}
+                          aria-label={`Select task ${task.taskId}`}
+                        />
+                      </TableCell>
+                      <TableCell className="px-2 py-1 font-mono font-bold">{task.taskId}</TableCell>
+                      <TableCell className="px-2 py-1">
+                        <span className="px-1.5 py-0.5 rounded bg-muted text-xs">{task.taskGroup || '—'}</span>
+                      </TableCell>
+                      <TableCell className="px-2 py-1 max-w-0">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          {task.parentTaskId && <GitBranch className="w-3 h-3 text-green-600 flex-shrink-0" />}
+                          {task.followUpOfId && <ArrowRight className="w-3 h-3 text-purple-600 flex-shrink-0" />}
+                          {task.recurringType && <RefreshCw className="w-3 h-3 text-orange-500 flex-shrink-0" />}
+                          <span className="truncate" title={task.description ?? undefined}>{task.description}</span>
+                          {task.requirementId && (
+                            <Badge variant="secondary" className="text-[10px] px-1 py-0 flex-shrink-0">{task.requirementId}</Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="px-2 py-1 truncate max-w-[110px]" title={task.responsible || ''}>{task.responsible || '—'}</TableCell>
+                      <TableCell className="px-2 py-1 whitespace-nowrap">{formatDate(task.dueDate)}</TableCell>
+                      <TableCell className="px-2 py-1">
+                        <Badge className="text-[10px] px-1.5 py-0">{task.currentStatus || 'No updates'}</Badge>
+                      </TableCell>
+                      <TableCell className="px-2 py-1 text-right">
+                        <div className="flex gap-1 justify-end">
+                          <Button size="sm" variant="outline" className="h-6 w-6 p-0" onClick={() => { setSelectedTaskForStatus(task); setStatusUpdateText(''); setStatusUpdateDialogOpen(true); }} title="Update Status"><CheckSquare className="w-3 h-3" /></Button>
+                          <Button size="sm" variant="outline" className="h-6 w-6 p-0" onClick={() => handleViewDetails(task)} title="View"><Eye className="w-3 h-3" /></Button>
+                          <Button size="sm" variant="outline" className="h-6 w-6 p-0" onClick={() => handleEditDetails(task)} title="Edit"><Edit className="w-3 h-3" /></Button>
+                          <Button size="sm" variant="destructive" className="h-6 w-6 p-0" onClick={() => handleDelete(task.id)} title="Delete"><Trash2 className="w-3 h-3" /></Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              /* ── NORMAL VIEW ── */
+              <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-10">
@@ -1035,7 +1124,8 @@ export default function Tasks() {
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
+              </Table>
+            )}
           </div>
 
           {filteredTasks?.length === 0 && (
