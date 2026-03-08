@@ -211,6 +211,13 @@
       "when": 1772977422562,
       "tag": "0029_steep_spirit",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "5",
+      "when": 1773000309594,
+      "tag": "0030_cool_saracen",
+      "breakpoints": true
     }
   ]
 }

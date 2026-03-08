@@ -366,3 +366,36 @@
 - [x] Global search: search bar in sidebar header that searches across all modules (Ctrl+K shortcut)
 - [x] Sidebar badges: overdue task count, open issue count, high-severity risk count on sidebar items
 - [x] Sidebar drag-to-reorder: users can drag sidebar items to customize order (persisted in localStorage)
+
+## Feature: Stakeholder Management Overhaul (Mar 8, 2026)
+
+### DB Schema
+- [x] Add isInternalTeam (boolean), powerLevel (int 1-5), interestLevel (int 1-5), engagementStrategy (varchar), communicationFrequency (varchar), communicationChannel (varchar), communicationMessage (text), communicationResponsible (varchar) to stakeholders table
+- [x] Create stakeholderTaskGroups table (stakeholderId, taskGroupId) for Internal Team dev plan links
+- [x] Create stakeholderKpis table (id, stakeholderId, projectId, name, target, unit, weight, description)
+- [x] Create stakeholderAssessments table (id, stakeholderId, projectId, assessmentDate, notes, overallScore)
+- [x] Create stakeholderKpiScores table (id, assessmentId, kpiId, score, notes)
+
+### Backend
+- [x] Update stakeholders create/update router to accept new fields
+- [x] Add stakeholderKpis router (list, create, update, delete)
+- [x] Add stakeholderAssessments router (list, create with scores, getDetail)
+- [x] Add stakeholderTaskGroups router (link/unlink task groups)
+
+### Frontend - Stakeholders Page
+- [x] Add "Internal Team" toggle in create/edit stakeholder form
+- [x] Add Power/Interest sliders in create/edit form
+- [x] Add Engagement Strategy dropdown in create/edit form
+- [x] Add Communication Plan fields in create/edit form
+- [x] Add "Internal Team" tab in Stakeholders page showing team members with their linked Task Groups
+- [x] Add "Development Plan" sub-view: for each Internal Team member, show their Task Groups and associated tasks
+- [x] Add KPI management tab per stakeholder (add/edit/delete KPIs)
+- [x] Add Assessment dialog: score each KPI, add notes, calculate weighted score
+- [x] Add Assessment history view per stakeholder
+
+### Frontend - Relationships Page (repurposed)
+- [x] Replace Relationships page with Stakeholder Engagement Map
+- [x] Power/Interest 2x2 grid showing all stakeholders positioned by their scores
+- [x] Color-coded quadrants: Manage Closely (red), Keep Satisfied (orange), Keep Informed (blue), Monitor (gray)
+- [x] Communication Plan table below the grid
+- [x] Update sidebar label from "Relationships" to "Engagement Map"

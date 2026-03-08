@@ -21,6 +21,7 @@ import { traceabilityRouter } from "./routers/traceability.router";
 import { bulkImportRouter } from "./routers/bulkImport.router";
 import { searchRouter } from "./routers/search.router";
 import { sidebarBadgesRouter } from "./routers/sidebarBadges.router";
+import { stakeholderEnhancementsRouter } from "./routers/stakeholderEnhancements.router";
 
 export const appRouter = router({
   system: systemRouter,
@@ -39,6 +40,7 @@ export const appRouter = router({
   bulkImport: bulkImportRouter,
   search: searchRouter,
   sidebarBadges: sidebarBadgesRouter,
+  stakeholderEnhancements: stakeholderEnhancementsRouter,
 
   // Excel import/export
   excel: router({
@@ -1255,6 +1257,15 @@ export const appRouter = router({
         role: z.string().optional(),
         job: z.string().optional(),
         phone: z.string().optional(),
+        isInternalTeam: z.boolean().optional(),
+        powerLevel: z.number().min(1).max(5).optional(),
+        interestLevel: z.number().min(1).max(5).optional(),
+        engagementStrategy: z.string().optional(),
+        communicationFrequency: z.string().optional(),
+        communicationChannel: z.string().optional(),
+        communicationMessage: z.string().optional(),
+        communicationResponsible: z.string().optional(),
+        notes: z.string().optional(),
       }))
       .mutation(async ({ input }) => {
         const result = await db.createStakeholder(input);
@@ -1271,6 +1282,15 @@ export const appRouter = router({
           role: z.string().optional(),
           job: z.string().optional(),
           phone: z.string().optional(),
+          isInternalTeam: z.boolean().optional(),
+          powerLevel: z.number().min(1).max(5).optional(),
+          interestLevel: z.number().min(1).max(5).optional(),
+          engagementStrategy: z.string().optional(),
+          communicationFrequency: z.string().optional(),
+          communicationChannel: z.string().optional(),
+          communicationMessage: z.string().optional(),
+          communicationResponsible: z.string().optional(),
+          notes: z.string().optional(),
         }),
       }))
       .mutation(async ({ input }) => {

@@ -142,6 +142,16 @@ export const stakeholders = mysqlTable("stakeholders", {
   role: varchar("role", { length: 200 }),
   job: varchar("job", { length: 200 }),
   phone: varchar("phone", { length: 50 }),
+  // Internal team & engagement fields
+  isInternalTeam: boolean("isInternalTeam").default(false).notNull(),
+  powerLevel: int("powerLevel").default(3),       // 1-5
+  interestLevel: int("interestLevel").default(3),  // 1-5
+  engagementStrategy: varchar("engagementStrategy", { length: 100 }), // Manage Closely | Keep Satisfied | Keep Informed | Monitor
+  communicationFrequency: varchar("communicationFrequency", { length: 100 }),
+  communicationChannel: varchar("communicationChannel", { length: 100 }),
+  communicationMessage: text("communicationMessage"),
+  communicationResponsible: varchar("communicationResponsible", { length: 200 }),
+  notes: text("notes"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -900,3 +910,65 @@ export const taskDependencies = mysqlTable("taskDependencies", {
 
 export type TaskDependency = typeof taskDependencies.$inferSelect;
 export type InsertTaskDependency = typeof taskDependencies.$inferInsert;
+
+/**
+ * Stakeholder Task Groups - links Internal Team members to Task Groups (Development Plan)
+ */
+export const stakeholderTaskGroups = mysqlTable("stakeholderTaskGroups", {
+  id: int("id").autoincrement().primaryKey(),
+  stakeholderId: int("stakeholderId").notNull(),
+  taskGroupId: int("taskGroupId").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type StakeholderTaskGroup = typeof stakeholderTaskGroups.$inferSelect;
+export type InsertStakeholderTaskGroup = typeof stakeholderTaskGroups.$inferInsert;
+
+/**
+ * Stakeholder KPIs - performance indicators defined per stakeholder
+ */
+export const stakeholderKpis = mysqlTable("stakeholderKpis", {
+  id: int("id").autoincrement().primaryKey(),
+  stakeholderId: int("stakeholderId").notNull(),
+  projectId: int("projectId").notNull(),
+  name: varchar("name", { length: 200 }).notNull(),
+  description: text("description"),
+  target: varchar("target", { length: 100 }), // e.g. "95%", "10 tasks/week"
+  unit: varchar("unit", { length: 50 }),       // e.g. "%", "tasks", "score"
+  weight: int("weight").default(1),            // relative weight for weighted avg
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type StakeholderKpi = typeof stakeholderKpis.$inferSelect;
+export type InsertStakeholderKpi = typeof stakeholderKpis.$inferInsert;
+
+/**
+ * Stakeholder Assessments - periodic performance reviews
+ */
+export const stakeholderAssessments = mysqlTable("stakeholderAssessments", {
+  id: int("id").autoincrement().primaryKey(),
+  stakeholderId: int("stakeholderId").notNull(),
+  projectId: int("projectId").notNull(),
+  assessmentDate: date("assessmentDate").notNull(),
+  assessorName: varchar("assessorName", { length: 200 }),
+  notes: text("notes"),
+  overallScore: int("overallScore"),  // 0-100 weighted average
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type StakeholderAssessment = typeof stakeholderAssessments.$inferSelect;
+export type InsertStakeholderAssessment = typeof stakeholderAssessments.$inferInsert;
+
+/**
+ * Stakeholder KPI Scores - individual KPI scores per assessment
+ */
+export const stakeholderKpiScores = mysqlTable("stakeholderKpiScores", {
+  id: int("id").autoincrement().primaryKey(),
+  assessmentId: int("assessmentId").notNull(),
+  kpiId: int("kpiId").notNull(),
+  score: int("score").notNull(), // 0-100
+  notes: text("notes"),
+});
+
+export type StakeholderKpiScore = typeof stakeholderKpiScores.$inferSelect;
+export type InsertStakeholderKpiScore = typeof stakeholderKpiScores.$inferInsert;

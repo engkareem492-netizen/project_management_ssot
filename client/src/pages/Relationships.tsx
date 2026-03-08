@@ -1,556 +1,428 @@
-import { useState } from "react";
+/**
+ * Stakeholder Engagement Map
+ * Repurposed from the old "Relationships" page.
+ * Shows:
+ *  1. Power/Interest Grid — 2×2 quadrant with stakeholder cards
+ *  2. Communication Plan — table of all stakeholders with comms details
+ *  3. Engagement Summary — distribution analytics
+ */
+import { useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { useProject } from "@/contexts/ProjectContext";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, GitBranch, FileText, CheckSquare, AlertCircle, Users, ExternalLink, Filter, X } from "lucide-react";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import {
+  Users, Map, MessageSquare, BarChart2,
+  AlertTriangle, TrendingUp, Info, Eye,
+} from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function getEngagementColors(strategy: string | null | undefined) {
+  const map: Record<string, string> = {
+    "Manage Closely": "bg-red-100 text-red-700 border-red-200",
+    "Keep Satisfied": "bg-orange-100 text-orange-700 border-orange-200",
+    "Keep Informed": "bg-blue-100 text-blue-700 border-blue-200",
+    "Monitor": "bg-gray-100 text-gray-600 border-gray-200",
+  };
+  return map[strategy || ""] || "bg-muted text-muted-foreground border-border";
+}
+
+const QUADRANT_CONFIG = [
+  {
+    key: "manage-closely",
+    label: "Manage Closely",
+    subtitle: "High Power · High Interest",
+    color: "border-red-200 bg-red-50/40",
+    headerColor: "text-red-700",
+    Icon: AlertTriangle,
+  },
+  {
+    key: "keep-satisfied",
+    label: "Keep Satisfied",
+    subtitle: "High Power · Low Interest",
+    color: "border-orange-200 bg-orange-50/40",
+    headerColor: "text-orange-700",
+    Icon: TrendingUp,
+  },
+  {
+    key: "keep-informed",
+    label: "Keep Informed",
+    subtitle: "Low Power · High Interest",
+    color: "border-blue-200 bg-blue-50/40",
+    headerColor: "text-blue-700",
+    Icon: Info,
+  },
+  {
+    key: "monitor",
+    label: "Monitor",
+    subtitle: "Low Power · Low Interest",
+    color: "border-gray-200 bg-gray-50/40",
+    headerColor: "text-gray-600",
+    Icon: Eye,
+  },
+];
+
+function getQuadrant(s: any): string {
+  const power = s.powerLevel ?? 3;
+  const interest = s.interestLevel ?? 3;
+  if (power >= 3 && interest >= 3) return "manage-closely";
+  if (power >= 3 && interest < 3) return "keep-satisfied";
+  if (power < 3 && interest >= 3) return "keep-informed";
+  return "monitor";
+}
+
+// ─── Power/Interest Grid ──────────────────────────────────────────────────────
+function PowerInterestGrid({ stakeholders }: { stakeholders: any[] }) {
+  const grouped = useMemo(() => {
+    const map: Record<string, any[]> = {
+      "manage-closely": [],
+      "keep-satisfied": [],
+      "keep-informed": [],
+      "monitor": [],
+    };
+    stakeholders.forEach((s) => {
+      map[getQuadrant(s)].push(s);
+    });
+    return map;
+  }, [stakeholders]);
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Each stakeholder is placed based on their <strong>Power</strong> (1–5) and <strong>Interest</strong> (1–5) levels. Set these values in the Stakeholder Register.
+      </p>
+
+      {/* 2×2 grid */}
+      <div className="grid grid-cols-2 gap-3">
+        {QUADRANT_CONFIG.map((q) => {
+          const items = grouped[q.key] || [];
+          return (
+            <div key={q.key} className={`border-2 rounded-xl p-4 ${q.color} min-h-[180px]`}>
+              <div className="flex items-center gap-2 mb-3">
+                <q.Icon className={`h-4 w-4 ${q.headerColor}`} />
+                <div>
+                  <p className={`font-semibold text-sm ${q.headerColor}`}>{q.label}</p>
+                  <p className="text-xs text-muted-foreground">{q.subtitle}</p>
+                </div>
+                <Badge variant="outline" className="ml-auto text-xs">{items.length}</Badge>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {items.length === 0 ? (
+                  <p className="text-xs text-muted-foreground italic">No stakeholders in this quadrant</p>
+                ) : (
+                  items.map((s) => (
+                    <div
+                      key={s.id}
+                      className="bg-white border rounded-lg px-2.5 py-1.5 shadow-sm hover:shadow-md transition-shadow"
+                    >
+                      <p className="text-xs font-medium leading-tight">{s.fullName}</p>
+                      {s.position && <p className="text-[10px] text-muted-foreground">{s.position}</p>}
+                      <div className="flex gap-1 mt-1">
+                        <span className="text-[10px] bg-muted px-1 rounded">P:{s.powerLevel ?? "?"}</span>
+                        <span className="text-[10px] bg-muted px-1 rounded">I:{s.interestLevel ?? "?"}</span>
+                        {s.isInternalTeam && (
+                          <span className="text-[10px] bg-blue-100 text-blue-700 px-1 rounded">Int</span>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Legend */}
+      <div className="flex flex-wrap gap-4 text-xs text-muted-foreground border-t pt-3">
+        <span><strong>P</strong> = Power Level (1–5)</span>
+        <span><strong>I</strong> = Interest Level (1–5)</span>
+        <span><strong>Int</strong> = Internal Team Member</span>
+        <span>Threshold: ≥3 = High, &lt;3 = Low</span>
+      </div>
+    </div>
+  );
+}
+
+// ─── Communication Plan Table ─────────────────────────────────────────────────
+function CommunicationPlan({ stakeholders }: { stakeholders: any[] }) {
+  const withComms = stakeholders.filter(
+    (s) => s.communicationFrequency || s.communicationChannel || s.communicationMessage
+  );
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Communication plan derived from stakeholder engagement settings. Edit stakeholders in the Stakeholder Register to update their communication details.
+      </p>
+      {withComms.length === 0 ? (
+        <EmptyState
+          icon={MessageSquare}
+          title="No communication plans defined"
+          description="Edit stakeholders and fill in Communication Frequency, Channel, and Key Message fields to populate this plan."
+        />
+      ) : (
+        <div className="border rounded-lg overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/50">
+                <TableHead>Stakeholder</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Strategy</TableHead>
+                <TableHead>Frequency</TableHead>
+                <TableHead>Channel</TableHead>
+                <TableHead>Key Message</TableHead>
+                <TableHead>Responsible</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {withComms.map((s) => (
+                <TableRow key={s.id} className="hover:bg-muted/30">
+                  <TableCell>
+                    <div>
+                      <p className="font-medium text-sm">{s.fullName}</p>
+                      {s.position && <p className="text-xs text-muted-foreground">{s.position}</p>}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {s.isInternalTeam ? (
+                      <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-xs">Internal</Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-xs">External</Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {s.engagementStrategy ? (
+                      <Badge className={`text-xs border ${getEngagementColors(s.engagementStrategy)}`}>
+                        {s.engagementStrategy}
+                      </Badge>
+                    ) : (
+                      <span className="text-muted-foreground text-xs">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-sm">{s.communicationFrequency || "—"}</TableCell>
+                  <TableCell className="text-sm">{s.communicationChannel || "—"}</TableCell>
+                  <TableCell className="text-sm max-w-[200px]">
+                    <p className="truncate" title={s.communicationMessage || ""}>
+                      {s.communicationMessage || "—"}
+                    </p>
+                  </TableCell>
+                  <TableCell className="text-sm">{s.communicationResponsible || "—"}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Engagement Summary ───────────────────────────────────────────────────────
+function EngagementSummary({ stakeholders }: { stakeholders: any[] }) {
+  const strategyCount = useMemo(() => {
+    const counts: Record<string, number> = {
+      "Manage Closely": 0,
+      "Keep Satisfied": 0,
+      "Keep Informed": 0,
+      "Monitor": 0,
+      "Not Set": 0,
+    };
+    stakeholders.forEach((s) => {
+      const key = s.engagementStrategy || "Not Set";
+      counts[key] = (counts[key] || 0) + 1;
+    });
+    return counts;
+  }, [stakeholders]);
+
+  const total = stakeholders.length;
+  const barColors: Record<string, string> = {
+    "Manage Closely": "bg-red-500",
+    "Keep Satisfied": "bg-orange-500",
+    "Keep Informed": "bg-blue-500",
+    "Monitor": "bg-gray-400",
+    "Not Set": "bg-muted-foreground/30",
+  };
+
+  const internalCount = stakeholders.filter((s) => s.isInternalTeam).length;
+  const externalCount = stakeholders.filter((s) => !s.isInternalTeam).length;
+  const highPower = stakeholders.filter((s) => (s.powerLevel ?? 3) >= 3).length;
+  const highInterest = stakeholders.filter((s) => (s.interestLevel ?? 3) >= 3).length;
+
+  return (
+    <div className="space-y-6">
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="pt-4 pb-4">
+            <p className="text-xs text-muted-foreground">Total Stakeholders</p>
+            <p className="text-3xl font-bold mt-1">{total}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-4">
+            <p className="text-xs text-muted-foreground">Internal Team</p>
+            <p className="text-3xl font-bold mt-1 text-blue-600">{internalCount}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-4">
+            <p className="text-xs text-muted-foreground">High Power (≥3)</p>
+            <p className="text-3xl font-bold mt-1 text-red-600">{highPower}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-4">
+            <p className="text-xs text-muted-foreground">High Interest (≥3)</p>
+            <p className="text-3xl font-bold mt-1 text-primary">{highInterest}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Strategy Distribution */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Engagement Strategy Distribution</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {Object.entries(strategyCount).map(([strategy, count]) => {
+            if (count === 0) return null;
+            const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+            return (
+              <div key={strategy} className="space-y-1">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium">{strategy}</span>
+                  <span className="text-muted-foreground">{count} ({pct}%)</span>
+                </div>
+                <div className="h-2.5 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all ${barColors[strategy] || "bg-primary"}`}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </CardContent>
+      </Card>
+
+      {/* Internal vs External breakdown */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Team Composition</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-4">
+            <div className="flex-1">
+              <div className="h-4 bg-muted rounded-full overflow-hidden flex">
+                {total > 0 && (
+                  <>
+                    <div
+                      className="h-full bg-blue-500 transition-all"
+                      style={{ width: `${Math.round((internalCount / total) * 100)}%` }}
+                    />
+                    <div
+                      className="h-full bg-purple-400 transition-all"
+                      style={{ width: `${Math.round((externalCount / total) * 100)}%` }}
+                    />
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-6 mt-3 text-sm">
+            <div className="flex items-center gap-2">
+              <div className="h-3 w-3 rounded-full bg-blue-500" />
+              <span>Internal: {internalCount}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="h-3 w-3 rounded-full bg-purple-400" />
+              <span>External: {externalCount}</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
 export default function Relationships() {
   const { currentProjectId } = useProject();
-  const { data: relationships, isLoading } = trpc.relationships.getAll.useQuery(
-    { projectId: currentProjectId || undefined },
+
+  const { data: stakeholders = [], isLoading } = trpc.stakeholders.list.useQuery(
+    { projectId: currentProjectId! },
     { enabled: !!currentProjectId }
   );
-  const { data: stakeholders } = trpc.stakeholders.list.useQuery(
-    { projectId: currentProjectId || 0 },
-    { enabled: !!currentProjectId }
-  );
-  const { data: deliverables } = trpc.deliverables.list.useQuery(
-    { projectId: currentProjectId || 0 },
-    { enabled: !!currentProjectId }
-  );
-
-  const [selectedRequirement, setSelectedRequirement] = useState<any>(null);
-  const [selectedTask, setSelectedTask] = useState<any>(null);
-  const [selectedIssue, setSelectedIssue] = useState<any>(null);
-  const [showRequirementDialog, setShowRequirementDialog] = useState(false);
-  const [showTaskDialog, setShowTaskDialog] = useState(false);
-  const [showIssueDialog, setShowIssueDialog] = useState(false);
-  
-  // Column widths state
-  const [columnWidths, setColumnWidths] = useState({ requirement: 25, task: 35, issue: 35 });
-  
-  // Filter states
-  const [requirementOwnerFilter, setRequirementOwnerFilter] = useState<string>("ALL");
-  const [taskResponsibleFilter, setTaskResponsibleFilter] = useState<string>("ALL");
-  const [issueOwnerFilter, setIssueOwnerFilter] = useState<string>("ALL");
-
-  // Flatten relationships into table rows
-  const tableRows: any[] = [];
-  relationships?.forEach((rel) => {
-    if (rel.tasks.length === 0 && rel.issues.length === 0) {
-      // Requirement with no tasks or issues
-      tableRows.push({
-        requirement: rel.requirement,
-        task: null,
-        issue: null,
-      });
-    } else {
-      // Create rows for each task-issue combination
-      const maxLength = Math.max(rel.tasks.length, rel.issues.length);
-      for (let i = 0; i < maxLength; i++) {
-        tableRows.push({
-          requirement: rel.requirement, // Repeat requirement in all rows
-          task: rel.tasks[i] || null,
-          issue: rel.issues[i] || null,
-        });
-      }
-    }
-  });
-
-  // Apply filters
-  const filteredRows = tableRows.filter((row) => {
-    if (requirementOwnerFilter !== "ALL" && row.requirement && row.requirement.owner !== requirementOwnerFilter) {
-      return false;
-    }
-    if (taskResponsibleFilter !== "ALL" && row.task && row.task.responsible !== taskResponsibleFilter) {
-      return false;
-    }
-    if (issueOwnerFilter !== "ALL" && row.issue && row.issue.owner !== issueOwnerFilter) {
-      return false;
-    }
-    return true;
-  });
-
-  // Get unique stakeholder names for filters
-  const uniqueRequirementOwners = Array.from(new Set(
-    relationships?.flatMap(r => r.requirement.owner).filter(Boolean) || []
-  )).sort();
-  const uniqueTaskResponsibles = Array.from(new Set(
-    relationships?.flatMap(r => r.tasks.map(t => t.responsible)).filter(Boolean) || []
-  )).sort();
-  const uniqueIssueOwners = Array.from(new Set(
-    relationships?.flatMap(r => r.issues.map(i => i.owner)).filter(Boolean) || []
-  )).sort();
-
-  const handleRequirementClick = (req: any) => {
-    setSelectedRequirement(req);
-    setShowRequirementDialog(true);
-  };
-
-  const handleTaskClick = (task: any) => {
-    setSelectedTask(task);
-    setShowTaskDialog(true);
-  };
-
-  const handleIssueClick = (issue: any) => {
-    setSelectedIssue(issue);
-    setShowIssueDialog(true);
-  };
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
       </div>
     );
   }
 
   return (
     <div className="space-y-6 p-6">
-      {/* Page Header */}
-      <div className="bg-white border border-gray-200 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
+      {/* Header */}
+      <div className="bg-card border rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <GitBranch className="w-6 h-6 text-gray-500" />
-            Entity Relationships
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <Map className="w-6 h-6 text-primary" />
+            Stakeholder Engagement Map
           </h1>
-          <p className="text-gray-500 text-sm mt-1">Table view of requirements linked to tasks and issues. Click on any entity to view details.</p>
+          <p className="text-muted-foreground text-sm mt-1">
+            Power/Interest grid, communication plan, and engagement analytics for all stakeholders
+          </p>
         </div>
-        <Badge variant="outline" className="text-purple-700 border-purple-300">{filteredRows?.length || 0} Relationships</Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline">{stakeholders.length} Stakeholders</Badge>
+          <Badge className="bg-blue-100 text-blue-700 border-blue-200">
+            {stakeholders.filter((s) => s.isInternalTeam).length} Internal
+          </Badge>
+        </div>
       </div>
-      <Card>
-        <CardContent className="pt-6">
-          {/* Filters */}
-          <div className="flex gap-4 mb-4 flex-wrap">
-            <div className="flex items-center gap-2">
-              <Filter className="w-4 h-4 text-muted-foreground" />
-              <Label className="text-sm font-medium">Filters:</Label>
-            </div>
-            <div className="flex items-center gap-2">
-              <Label className="text-sm">Req. Owner:</Label>
-              <Select value={requirementOwnerFilter} onValueChange={setRequirementOwnerFilter}>
-                <SelectTrigger className="w-[180px] h-8">
-                  <SelectValue placeholder="All" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">All</SelectItem>
-                  {uniqueRequirementOwners.map((owner) => (
-                    <SelectItem key={owner as string} value={owner as string}>{owner}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {requirementOwnerFilter !== "ALL" && (
-                <Button size="sm" variant="ghost" onClick={() => setRequirementOwnerFilter("ALL")} className="h-6 w-6 p-0">
-                  <X className="w-3 h-3" />
-                </Button>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              <Label className="text-sm">Task Responsible:</Label>
-              <Select value={taskResponsibleFilter} onValueChange={setTaskResponsibleFilter}>
-                <SelectTrigger className="w-[180px] h-8">
-                  <SelectValue placeholder="All" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">All</SelectItem>
-                  {uniqueTaskResponsibles.map((responsible) => (
-                    <SelectItem key={responsible as string} value={responsible as string}>{responsible}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {taskResponsibleFilter !== "ALL" && (
-                <Button size="sm" variant="ghost" onClick={() => setTaskResponsibleFilter("ALL")} className="h-6 w-6 p-0">
-                  <X className="w-3 h-3" />
-                </Button>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              <Label className="text-sm">Issue Owner:</Label>
-              <Select value={issueOwnerFilter} onValueChange={setIssueOwnerFilter}>
-                <SelectTrigger className="w-[180px] h-8">
-                  <SelectValue placeholder="All" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">All</SelectItem>
-                  {uniqueIssueOwners.map((owner) => (
-                    <SelectItem key={owner as string} value={owner as string}>{owner}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {issueOwnerFilter !== "ALL" && (
-                <Button size="sm" variant="ghost" onClick={() => setIssueOwnerFilter("ALL")} className="h-6 w-6 p-0">
-                  <X className="w-3 h-3" />
-                </Button>
-              )}
-            </div>
-          </div>
 
-          {tableRows.length > 0 ? (
-            <div className="border rounded-lg overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[25%]">Requirement</TableHead>
-                    <TableHead className="w-[35%]">Task</TableHead>
-                    <TableHead className="w-[35%]">Issue</TableHead>
-                    <TableHead className="w-[5%]"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredRows.map((row, index) => (
-                    <TableRow key={index} className="hover:bg-muted/50">
-                      <TableCell>
-                        {row.requirement && (
-                          <Button
-                            variant="ghost"
-                            className="h-auto p-2 w-full justify-start text-left"
-                            onClick={() => handleRequirementClick(row.requirement)}
-                          >
-                            <div className="flex flex-col gap-1 w-full">
-                              <div className="flex items-center gap-2">
-                                <FileText className="w-4 h-4 text-blue-600 flex-shrink-0" />
-                                <span className="font-mono font-semibold text-sm">{row.requirement.idCode}</span>
-                              </div>
-                              <p className="text-xs text-muted-foreground line-clamp-2">
-                                {row.requirement.description}
-                              </p>
-                              {row.requirement.owner && (
-                                <p className="text-xs text-muted-foreground">
-                                  <span className="font-medium">Owner:</span> {row.requirement.owner}
-                                </p>
-                              )}
-                              {row.requirement.linkedDeliverables && row.requirement.linkedDeliverables.length > 0 && (
-                                <p className="text-xs text-muted-foreground">
-                                  <span className="font-medium">Deliverable:</span> {row.requirement.linkedDeliverables.map((d: any) => d.deliverableId).join(', ')}
-                                </p>
-                              )}
-                            </div>
-                          </Button>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {row.task && (
-                          <Button
-                            variant="ghost"
-                            className="h-auto p-2 w-full justify-start text-left"
-                            onClick={() => handleTaskClick(row.task)}
-                          >
-                            <div className="flex flex-col gap-1 w-full">
-                              <div className="flex items-center gap-2">
-                                <CheckSquare className="w-4 h-4 text-green-600 flex-shrink-0" />
-                                <span className="font-mono font-semibold text-sm">{row.task.taskId}</span>
-                                <Badge variant="outline" className="text-xs">{row.task.currentStatus}</Badge>
-                              </div>
-                              <p className="text-xs text-muted-foreground line-clamp-2">
-                                {row.task.description}
-                              </p>
-                              {row.task.responsible && (
-                                <p className="text-xs text-muted-foreground">
-                                  <span className="font-medium">Responsible:</span> {row.task.responsible}
-                                </p>
-                              )}
-                              {row.task.linkedDeliverables && row.task.linkedDeliverables.length > 0 && (
-                                <p className="text-xs text-muted-foreground">
-                                  <span className="font-medium">Deliverable:</span> {row.task.linkedDeliverables.map((d: any) => d.deliverableId).join(', ')}
-                                </p>
-                              )}
-                            </div>
-                          </Button>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {row.issue && (
-                          <Button
-                            variant="ghost"
-                            className="h-auto p-2 w-full justify-start text-left"
-                            onClick={() => handleIssueClick(row.issue)}
-                          >
-                            <div className="flex flex-col gap-1 w-full">
-                              <div className="flex items-center gap-2">
-                                <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
-                                <span className="font-mono font-semibold text-sm">{row.issue.issueId}</span>
-                                <Badge variant="destructive" className="text-xs">{row.issue.priority}</Badge>
-                              </div>
-                              <p className="text-xs text-muted-foreground line-clamp-2">
-                                {row.issue.description}
-                              </p>
-                              {row.issue.owner && (
-                                <p className="text-xs text-muted-foreground">
-                                  <span className="font-medium">Owner:</span> {row.issue.owner}
-                                </p>
-                              )}
-                              {row.issue.linkedDeliverables && row.issue.linkedDeliverables.length > 0 && (
-                                <p className="text-xs text-muted-foreground">
-                                  <span className="font-medium">Deliverable:</span> {row.issue.linkedDeliverables.map((d: any) => d.deliverableId).join(', ')}
-                                </p>
-                              )}
-                            </div>
-                          </Button>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <ExternalLink className="w-4 h-4 text-muted-foreground" />
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          ) : (
-            <div className="text-center py-12 text-muted-foreground">
-              <GitBranch className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p>No relationships found.</p>
-              <p className="text-sm mt-2">
-                Import data and ensure requirements have linked tasks or issues.
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {stakeholders.length === 0 ? (
+        <EmptyState
+          icon={Users}
+          title="No stakeholders found"
+          description="Add stakeholders in the Stakeholder Register first, then set their Power and Interest levels to see the engagement map."
+        />
+      ) : (
+        <Tabs defaultValue="grid">
+          <TabsList>
+            <TabsTrigger value="grid" className="gap-2">
+              <Map className="h-4 w-4" /> Power/Interest Grid
+            </TabsTrigger>
+            <TabsTrigger value="comms" className="gap-2">
+              <MessageSquare className="h-4 w-4" /> Communication Plan
+            </TabsTrigger>
+            <TabsTrigger value="summary" className="gap-2">
+              <BarChart2 className="h-4 w-4" /> Engagement Summary
+            </TabsTrigger>
+          </TabsList>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Relationship Summary</CardTitle>
-          <CardDescription>
-            Overview of entity connections
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid md:grid-cols-3 gap-4">
-            <Card>
-              <CardContent className="p-6 text-center">
-                <FileText className="w-8 h-8 mx-auto mb-2 text-blue-600" />
-                <div className="text-2xl font-bold">
-                  {relationships?.length || 0}
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  Requirements with Links
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-6 text-center">
-                <CheckSquare className="w-8 h-8 mx-auto mb-2 text-green-600" />
-                <div className="text-2xl font-bold">
-                  {relationships?.reduce((sum, rel) => sum + rel.tasks.length, 0) || 0}
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  Linked Tasks
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-6 text-center">
-                <AlertCircle className="w-8 h-8 mx-auto mb-2 text-red-600" />
-                <div className="text-2xl font-bold">
-                  {relationships?.reduce((sum, rel) => sum + rel.issues.length, 0) || 0}
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  Linked Issues
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </CardContent>
-      </Card>
+          <TabsContent value="grid" className="mt-4">
+            <PowerInterestGrid stakeholders={stakeholders} />
+          </TabsContent>
 
-      {/* Requirement Details Dialog */}
-      <Dialog open={showRequirementDialog} onOpenChange={setShowRequirementDialog}>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <FileText className="w-5 h-5 text-blue-600" />
-              Requirement Details
-            </DialogTitle>
-          </DialogHeader>
-          {selectedRequirement && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground uppercase">ID Code</Label>
-                  <p className="font-mono font-semibold">{selectedRequirement.idCode}</p>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground uppercase">Priority</Label>
-                  <Badge>{selectedRequirement.priority || 'N/A'}</Badge>
-                </div>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground uppercase">Description</Label>
-                <p className="text-sm">{selectedRequirement.description}</p>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground uppercase">Type</Label>
-                  <p className="text-sm">{selectedRequirement.type || 'N/A'}</p>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground uppercase">Category</Label>
-                  <p className="text-sm">{selectedRequirement.category || 'N/A'}</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground uppercase">Owner</Label>
-                  <p className="text-sm">{selectedRequirement.owner || 'N/A'}</p>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground uppercase">Creation Date</Label>
-                  <p className="text-sm">{selectedRequirement.creationDate || 'N/A'}</p>
-                </div>
-              </div>
-              {selectedRequirement.sourceType && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground uppercase">Source Type</Label>
-                    <p className="text-sm">{selectedRequirement.sourceType}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground uppercase">External Source</Label>
-                    <p className="text-sm">{selectedRequirement.refSource || 'N/A'}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+          <TabsContent value="comms" className="mt-4">
+            <CommunicationPlan stakeholders={stakeholders} />
+          </TabsContent>
 
-      {/* Task Details Dialog */}
-      <Dialog open={showTaskDialog} onOpenChange={setShowTaskDialog}>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <CheckSquare className="w-5 h-5 text-green-600" />
-              Task Details
-            </DialogTitle>
-          </DialogHeader>
-          {selectedTask && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground uppercase">Task ID</Label>
-                  <p className="font-mono font-semibold">{selectedTask.taskId}</p>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground uppercase">Status</Label>
-                  <Badge>{selectedTask.currentStatus || 'N/A'}</Badge>
-                </div>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground uppercase">Description</Label>
-                <p className="text-sm">{selectedTask.description}</p>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground uppercase">Priority</Label>
-                  <p className="text-sm">{selectedTask.priority || 'N/A'}</p>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground uppercase">Due Date</Label>
-                  <p className="text-sm">{selectedTask.dueDate || 'N/A'}</p>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground uppercase flex items-center gap-2">
-                  <Users className="w-4 h-4" />
-                  RACI Assignment
-                </Label>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
-                    <Label className="text-xs text-muted-foreground uppercase">Responsible</Label>
-                    <p className="text-sm font-medium">{selectedTask.responsible || 'N/A'}</p>
-                  </div>
-                  <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
-                    <Label className="text-xs text-muted-foreground uppercase">Accountable</Label>
-                    <p className="text-sm font-medium">{selectedTask.accountable || 'N/A'}</p>
-                  </div>
-                  <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
-                    <Label className="text-xs text-muted-foreground uppercase">Consulted</Label>
-                    <p className="text-sm font-medium">{selectedTask.consulted || 'N/A'}</p>
-                  </div>
-                  <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
-                    <Label className="text-xs text-muted-foreground uppercase">Informed</Label>
-                    <p className="text-sm font-medium">{selectedTask.informed || 'N/A'}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Issue Details Dialog */}
-      <Dialog open={showIssueDialog} onOpenChange={setShowIssueDialog}>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <AlertCircle className="w-5 h-5 text-red-600" />
-              Issue Details
-            </DialogTitle>
-          </DialogHeader>
-          {selectedIssue && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground uppercase">Issue ID</Label>
-                  <p className="font-mono font-semibold">{selectedIssue.issueId}</p>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground uppercase">Status</Label>
-                  <Badge>{selectedIssue.status || 'N/A'}</Badge>
-                </div>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground uppercase">Description</Label>
-                <p className="text-sm">{selectedIssue.description}</p>
-              </div>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground uppercase">Priority</Label>
-                  <Badge variant="destructive">{selectedIssue.priority || 'N/A'}</Badge>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground uppercase">Type</Label>
-                  <p className="text-sm">{selectedIssue.type || 'N/A'}</p>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground uppercase">Class</Label>
-                  <p className="text-sm">{selectedIssue.class || 'N/A'}</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground uppercase">Owner</Label>
-                  <p className="text-sm">{selectedIssue.owner || 'N/A'}</p>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground uppercase">Open Date</Label>
-                  <p className="text-sm">{selectedIssue.openDate || 'N/A'}</p>
-                </div>
-              </div>
-              {selectedIssue.sourceType && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground uppercase">Source Type</Label>
-                    <p className="text-sm">{selectedIssue.sourceType}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground uppercase">External Source</Label>
-                    <p className="text-sm">{selectedIssue.refSource || 'N/A'}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+          <TabsContent value="summary" className="mt-4">
+            <EngagementSummary stakeholders={stakeholders} />
+          </TabsContent>
+        </Tabs>
+      )}
     </div>
   );
 }

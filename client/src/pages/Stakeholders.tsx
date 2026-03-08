@@ -1,71 +1,675 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { useProject } from "@/contexts/ProjectContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Trash2, Pencil, Search, Users, Mail, Phone, Briefcase } from "lucide-react";
+import {
+  Plus, Trash2, Pencil, Search, Users, Mail, Phone, Briefcase,
+  Target, ClipboardList, Star, TrendingUp, UserCheck, Link2, Unlink,
+  BarChart2, ChevronRight, Award, Activity,
+} from "lucide-react";
 import { ImportExportToolbar } from "@/components/ImportExportToolbar";
 import { EmptyState } from "@/components/EmptyState";
+import { formatDate } from "@/lib/dateUtils";
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+type StakeholderFormData = {
+  fullName: string;
+  email: string;
+  position: string;
+  role: string;
+  job: string;
+  phone: string;
+  isInternalTeam: boolean;
+  powerLevel: number;
+  interestLevel: number;
+  engagementStrategy: string;
+  communicationFrequency: string;
+  communicationChannel: string;
+  communicationMessage: string;
+  communicationResponsible: string;
+  notes: string;
+};
+
+const EMPTY_FORM: StakeholderFormData = {
+  fullName: "", email: "", position: "", role: "", job: "", phone: "",
+  isInternalTeam: false, powerLevel: 3, interestLevel: 3,
+  engagementStrategy: "", communicationFrequency: "", communicationChannel: "",
+  communicationMessage: "", communicationResponsible: "", notes: "",
+};
+
+const ENGAGEMENT_STRATEGIES = [
+  "Manage Closely",
+  "Keep Satisfied",
+  "Keep Informed",
+  "Monitor",
+];
+
+const COMM_FREQUENCIES = ["Daily", "Weekly", "Bi-weekly", "Monthly", "Quarterly", "As needed"];
+const COMM_CHANNELS = ["Email", "Meeting", "Phone", "Slack", "Teams", "Report", "Newsletter"];
+
+function getEngagementBadge(strategy: string | null | undefined) {
+  const map: Record<string, string> = {
+    "Manage Closely": "bg-red-100 text-red-700 border-red-200",
+    "Keep Satisfied": "bg-orange-100 text-orange-700 border-orange-200",
+    "Keep Informed": "bg-blue-100 text-blue-700 border-blue-200",
+    "Monitor": "bg-gray-100 text-gray-600 border-gray-200",
+  };
+  return map[strategy || ""] || "bg-muted text-muted-foreground border-border";
+}
+
+function getScoreColor(score: number) {
+  if (score >= 80) return "text-green-600";
+  if (score >= 60) return "text-yellow-600";
+  return "text-red-600";
+}
+
+// ─── KPI Management Dialog ────────────────────────────────────────────────────
+function KpiManagementDialog({
+  stakeholder,
+  open,
+  onOpenChange,
+}: {
+  stakeholder: any;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}) {
+  const { currentProjectId } = useProject();
+  const utils = trpc.useUtils();
+  const [kpiForm, setKpiForm] = useState({ name: "", description: "", target: "", unit: "", weight: 1 });
+  const [editingKpi, setEditingKpi] = useState<any>(null);
+  const [assessmentOpen, setAssessmentOpen] = useState(false);
+  const [assessmentForm, setAssessmentForm] = useState({
+    assessmentDate: new Date().toISOString().split("T")[0],
+    assessorName: "",
+    notes: "",
+    scores: {} as Record<number, { score: number; notes: string }>,
+  });
+
+  const { data: kpis = [] } = trpc.stakeholderEnhancements.listKpis.useQuery(
+    { stakeholderId: stakeholder?.id },
+    { enabled: !!stakeholder?.id && open }
+  );
+  const { data: assessments = [] } = trpc.stakeholderEnhancements.listAssessments.useQuery(
+    { stakeholderId: stakeholder?.id },
+    { enabled: !!stakeholder?.id && open }
+  );
+
+  const createKpi = trpc.stakeholderEnhancements.createKpi.useMutation({
+    onSuccess: () => {
+      utils.stakeholderEnhancements.listKpis.invalidate({ stakeholderId: stakeholder.id });
+      setKpiForm({ name: "", description: "", target: "", unit: "", weight: 1 });
+      toast.success("KPI added");
+    },
+  });
+  const updateKpi = trpc.stakeholderEnhancements.updateKpi.useMutation({
+    onSuccess: () => {
+      utils.stakeholderEnhancements.listKpis.invalidate({ stakeholderId: stakeholder.id });
+      setEditingKpi(null);
+      toast.success("KPI updated");
+    },
+  });
+  const deleteKpi = trpc.stakeholderEnhancements.deleteKpi.useMutation({
+    onSuccess: () => {
+      utils.stakeholderEnhancements.listKpis.invalidate({ stakeholderId: stakeholder.id });
+      toast.success("KPI deleted");
+    },
+  });
+  const createAssessment = trpc.stakeholderEnhancements.createAssessment.useMutation({
+    onSuccess: (data) => {
+      utils.stakeholderEnhancements.listAssessments.invalidate({ stakeholderId: stakeholder.id });
+      setAssessmentOpen(false);
+      toast.success(`Assessment saved — Overall Score: ${data.overallScore}/100`);
+    },
+  });
+  const deleteAssessment = trpc.stakeholderEnhancements.deleteAssessment.useMutation({
+    onSuccess: () => {
+      utils.stakeholderEnhancements.listAssessments.invalidate({ stakeholderId: stakeholder.id });
+      toast.success("Assessment deleted");
+    },
+  });
+
+  const handleCreateAssessment = () => {
+    if (!currentProjectId) return;
+    const scores = kpis.map((k) => ({
+      kpiId: k.id,
+      score: assessmentForm.scores[k.id]?.score ?? 50,
+      notes: assessmentForm.scores[k.id]?.notes ?? "",
+    }));
+    createAssessment.mutate({
+      stakeholderId: stakeholder.id,
+      projectId: currentProjectId,
+      assessmentDate: assessmentForm.assessmentDate,
+      assessorName: assessmentForm.assessorName,
+      notes: assessmentForm.notes,
+      scores,
+    });
+  };
+
+  const latestScore = assessments[0]?.overallScore;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Target className="h-5 w-5 text-primary" />
+            KPIs & Assessments — {stakeholder?.fullName}
+          </DialogTitle>
+          <DialogDescription>
+            Define performance indicators and run periodic assessments to score this stakeholder.
+          </DialogDescription>
+        </DialogHeader>
+
+        <Tabs defaultValue="kpis">
+          <TabsList>
+            <TabsTrigger value="kpis">KPI Definitions</TabsTrigger>
+            <TabsTrigger value="assessments">Assessment History</TabsTrigger>
+          </TabsList>
+
+          {/* KPI Definitions Tab */}
+          <TabsContent value="kpis" className="space-y-4 mt-4">
+            <div className="border rounded-lg overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead>KPI Name</TableHead>
+                    <TableHead>Target</TableHead>
+                    <TableHead>Unit</TableHead>
+                    <TableHead>Weight</TableHead>
+                    <TableHead className="w-20">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {kpis.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                        No KPIs defined yet. Add one below.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    kpis.map((kpi) =>
+                      editingKpi?.id === kpi.id ? (
+                        <TableRow key={kpi.id}>
+                          <TableCell>
+                            <Input
+                              value={editingKpi.name}
+                              onChange={(e) => setEditingKpi({ ...editingKpi, name: e.target.value })}
+                              className="h-8"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              value={editingKpi.target || ""}
+                              onChange={(e) => setEditingKpi({ ...editingKpi, target: e.target.value })}
+                              className="h-8"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              value={editingKpi.unit || ""}
+                              onChange={(e) => setEditingKpi({ ...editingKpi, unit: e.target.value })}
+                              className="h-8 w-20"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              type="number"
+                              min={1}
+                              max={10}
+                              value={editingKpi.weight || 1}
+                              onChange={(e) => setEditingKpi({ ...editingKpi, weight: parseInt(e.target.value) || 1 })}
+                              className="h-8 w-16"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-1">
+                              <Button size="sm" className="h-7 px-2" onClick={() => updateKpi.mutate({ id: kpi.id, data: editingKpi })}>
+                                Save
+                              </Button>
+                              <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => setEditingKpi(null)}>
+                                Cancel
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        <TableRow key={kpi.id}>
+                          <TableCell className="font-medium">{kpi.name}</TableCell>
+                          <TableCell>{kpi.target || "—"}</TableCell>
+                          <TableCell>{kpi.unit || "—"}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{kpi.weight}x</Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-1">
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingKpi({ ...kpi })}>
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteKpi.mutate({ id: kpi.id })}>
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    )
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Add KPI form */}
+            <div className="border rounded-lg p-4 bg-muted/20 space-y-3">
+              <p className="text-sm font-medium">Add New KPI</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2">
+                  <Input
+                    placeholder="KPI Name (e.g. Task Completion Rate)"
+                    value={kpiForm.name}
+                    onChange={(e) => setKpiForm({ ...kpiForm, name: e.target.value })}
+                  />
+                </div>
+                <Input
+                  placeholder="Target (e.g. 95%)"
+                  value={kpiForm.target}
+                  onChange={(e) => setKpiForm({ ...kpiForm, target: e.target.value })}
+                />
+                <Input
+                  placeholder="Unit (e.g. %, tasks)"
+                  value={kpiForm.unit}
+                  onChange={(e) => setKpiForm({ ...kpiForm, unit: e.target.value })}
+                />
+                <div className="col-span-2">
+                  <Input
+                    placeholder="Description (optional)"
+                    value={kpiForm.description}
+                    onChange={(e) => setKpiForm({ ...kpiForm, description: e.target.value })}
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm">Weight:</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={10}
+                    value={kpiForm.weight}
+                    onChange={(e) => setKpiForm({ ...kpiForm, weight: parseInt(e.target.value) || 1 })}
+                    className="w-20"
+                  />
+                </div>
+              </div>
+              <Button
+                size="sm"
+                disabled={!kpiForm.name.trim() || createKpi.isPending}
+                onClick={() => {
+                  if (!currentProjectId) return;
+                  createKpi.mutate({ ...kpiForm, stakeholderId: stakeholder.id, projectId: currentProjectId });
+                }}
+              >
+                <Plus className="h-3.5 w-3.5 mr-1" />
+                Add KPI
+              </Button>
+            </div>
+          </TabsContent>
+
+          {/* Assessment History Tab */}
+          <TabsContent value="assessments" className="space-y-4 mt-4">
+            <div className="flex items-center justify-between">
+              {latestScore != null && (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Latest Score:</span>
+                  <span className={`text-2xl font-bold ${getScoreColor(latestScore)}`}>{latestScore}/100</span>
+                </div>
+              )}
+              <Button
+                size="sm"
+                onClick={() => {
+                  setAssessmentForm({
+                    assessmentDate: new Date().toISOString().split("T")[0],
+                    assessorName: "",
+                    notes: "",
+                    scores: {},
+                  });
+                  setAssessmentOpen(true);
+                }}
+                disabled={kpis.length === 0}
+              >
+                <Plus className="h-3.5 w-3.5 mr-1" />
+                New Assessment
+              </Button>
+            </div>
+            {kpis.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                Define KPIs first before running an assessment.
+              </p>
+            )}
+
+            <div className="space-y-3">
+              {assessments.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">No assessments yet.</p>
+              ) : (
+                assessments.map((a: any) => (
+                  <div key={a.id} className="border rounded-lg p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Award className="h-4 w-4 text-primary" />
+                        <span className="font-medium">{formatDate(a.assessmentDate)}</span>
+                        {a.assessorName && <span className="text-sm text-muted-foreground">by {a.assessorName}</span>}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {a.overallScore != null && (
+                          <span className={`text-lg font-bold ${getScoreColor(a.overallScore)}`}>
+                            {a.overallScore}/100
+                          </span>
+                        )}
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive"
+                          onClick={() => deleteAssessment.mutate({ id: a.id })}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                    {a.notes && <p className="text-sm text-muted-foreground">{a.notes}</p>}
+                    {a.scores?.length > 0 && (
+                      <div className="grid grid-cols-2 gap-2">
+                        {a.scores.map((s: any) => (
+                          <div key={s.id} className="flex items-center justify-between bg-muted/30 rounded px-3 py-1.5">
+                            <span className="text-sm">{s.kpiName || `KPI #${s.kpiId}`}</span>
+                            <span className={`text-sm font-semibold ${getScoreColor(s.score)}`}>{s.score}/100</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
+
+        {/* New Assessment Dialog */}
+        <Dialog open={assessmentOpen} onOpenChange={setAssessmentOpen}>
+          <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>New Assessment — {stakeholder?.fullName}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label>Assessment Date</Label>
+                  <Input
+                    type="date"
+                    value={assessmentForm.assessmentDate}
+                    onChange={(e) => setAssessmentForm({ ...assessmentForm, assessmentDate: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>Assessor Name</Label>
+                  <Input
+                    placeholder="Your name"
+                    value={assessmentForm.assessorName}
+                    onChange={(e) => setAssessmentForm({ ...assessmentForm, assessorName: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="space-y-3">
+                <Label className="font-medium">KPI Scores (0 – 100)</Label>
+                {kpis.map((kpi) => (
+                  <div key={kpi.id} className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">{kpi.name}</span>
+                      <span className={`text-sm font-bold ${getScoreColor(assessmentForm.scores[kpi.id]?.score ?? 50)}`}>
+                        {assessmentForm.scores[kpi.id]?.score ?? 50}
+                      </span>
+                    </div>
+                    {kpi.target && <p className="text-xs text-muted-foreground">Target: {kpi.target} {kpi.unit}</p>}
+                    <Slider
+                      min={0}
+                      max={100}
+                      step={1}
+                      value={[assessmentForm.scores[kpi.id]?.score ?? 50]}
+                      onValueChange={([val]) =>
+                        setAssessmentForm((prev) => ({
+                          ...prev,
+                          scores: { ...prev.scores, [kpi.id]: { score: val, notes: prev.scores[kpi.id]?.notes ?? "" } },
+                        }))
+                      }
+                    />
+                    <Input
+                      placeholder="Notes for this KPI (optional)"
+                      className="h-7 text-xs"
+                      value={assessmentForm.scores[kpi.id]?.notes ?? ""}
+                      onChange={(e) =>
+                        setAssessmentForm((prev) => ({
+                          ...prev,
+                          scores: { ...prev.scores, [kpi.id]: { score: prev.scores[kpi.id]?.score ?? 50, notes: e.target.value } },
+                        }))
+                      }
+                    />
+                  </div>
+                ))}
+              </div>
+              <div className="space-y-1">
+                <Label>Overall Notes</Label>
+                <Textarea
+                  placeholder="General assessment notes..."
+                  value={assessmentForm.notes}
+                  onChange={(e) => setAssessmentForm({ ...assessmentForm, notes: e.target.value })}
+                  rows={3}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setAssessmentOpen(false)}>Cancel</Button>
+              <Button onClick={handleCreateAssessment} disabled={createAssessment.isPending}>
+                {createAssessment.isPending ? "Saving..." : "Save Assessment"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Dev Plan Dialog (Internal Team Task Groups) ──────────────────────────────
+function DevPlanDialog({
+  stakeholder,
+  open,
+  onOpenChange,
+}: {
+  stakeholder: any;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}) {
+  const { currentProjectId } = useProject();
+  const utils = trpc.useUtils();
+  const [selectedTgId, setSelectedTgId] = useState<string>("");
+
+  const { data: links = [] } = trpc.stakeholderEnhancements.listTaskGroupLinks.useQuery(
+    { stakeholderId: stakeholder?.id },
+    { enabled: !!stakeholder?.id && open }
+  );
+  const { data: allTaskGroups = [] } = trpc.dropdownOptions.taskGroups.getAll.useQuery(
+    { projectId: currentProjectId! },
+    { enabled: !!currentProjectId && open }
+  );
+  const { data: allTasks = [] } = trpc.tasks.list.useQuery(
+    { projectId: currentProjectId! },
+    { enabled: !!currentProjectId && open }
+  );
+
+  const linkMutation = trpc.stakeholderEnhancements.linkTaskGroup.useMutation({
+    onSuccess: () => {
+      utils.stakeholderEnhancements.listTaskGroupLinks.invalidate({ stakeholderId: stakeholder.id });
+      setSelectedTgId("");
+      toast.success("Task Group linked");
+    },
+  });
+  const unlinkMutation = trpc.stakeholderEnhancements.unlinkTaskGroup.useMutation({
+    onSuccess: () => {
+      utils.stakeholderEnhancements.listTaskGroupLinks.invalidate({ stakeholderId: stakeholder.id });
+      toast.success("Task Group unlinked");
+    },
+  });
+
+  const linkedIds = new Set(links.map((l: any) => l.taskGroupId));
+  const availableTgs = allTaskGroups.filter((tg: any) => !linkedIds.has(tg.id));
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <ClipboardList className="h-5 w-5 text-primary" />
+            Development Plan — {stakeholder?.fullName}
+          </DialogTitle>
+          <DialogDescription>
+            Link Task Groups to this team member to define their development responsibilities.
+          </DialogDescription>
+        </DialogHeader>
+
+        {/* Link new task group */}
+        <div className="flex gap-2">
+          <Select value={selectedTgId} onValueChange={setSelectedTgId}>
+            <SelectTrigger className="flex-1">
+              <SelectValue placeholder="Select a Task Group to link..." />
+            </SelectTrigger>
+            <SelectContent>
+              {availableTgs.map((tg: any) => (
+                <SelectItem key={tg.id} value={String(tg.id)}>
+                  {tg.idCode} — {tg.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            disabled={!selectedTgId || linkMutation.isPending}
+            onClick={() => linkMutation.mutate({ stakeholderId: stakeholder.id, taskGroupId: parseInt(selectedTgId) })}
+          >
+            <Link2 className="h-4 w-4 mr-1" /> Link
+          </Button>
+        </div>
+
+        {/* Linked Task Groups with their tasks */}
+        <div className="space-y-4">
+          {links.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">No Task Groups linked yet.</p>
+          ) : (
+            links.map((link: any) => {
+              const groupTasks = allTasks.filter((t: any) => t.taskGroupId === link.taskGroupId);
+              const doneTasks = groupTasks.filter((t: any) =>
+                ["Completed", "Closed", "Done", "Solved", "Approved", "Passed"].some(
+                  (s) => (t.currentStatus || "").toLowerCase() === s.toLowerCase()
+                )
+              );
+              const progress = groupTasks.length > 0 ? Math.round((doneTasks.length / groupTasks.length) * 100) : 0;
+
+              return (
+                <div key={link.id} className="border rounded-lg p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="font-medium">{link.taskGroupCode} — {link.taskGroupName}</span>
+                      <span className="ml-2 text-sm text-muted-foreground">
+                        {doneTasks.length}/{groupTasks.length} tasks complete
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-primary">{progress}%</span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-destructive"
+                        onClick={() => unlinkMutation.mutate({ id: link.id })}
+                      >
+                        <Unlink className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                  {/* Progress bar */}
+                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-primary rounded-full transition-all"
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+                  {/* Task list */}
+                  {groupTasks.length > 0 && (
+                    <div className="space-y-1">
+                      {groupTasks.slice(0, 5).map((t: any) => (
+                        <div key={t.id} className="flex items-center gap-2 text-sm">
+                          <div className={`h-2 w-2 rounded-full shrink-0 ${
+                            ["Completed", "Closed", "Done", "Solved"].some((s) => (t.currentStatus || "").toLowerCase() === s.toLowerCase())
+                              ? "bg-green-500"
+                              : "bg-muted-foreground/40"
+                          }`} />
+                          <span className="flex-1 truncate">{t.taskId} — {t.description}</span>
+                          <Badge variant="outline" className="text-xs shrink-0">{t.currentStatus || "Open"}</Badge>
+                        </div>
+                      ))}
+                      {groupTasks.length > 5 && (
+                        <p className="text-xs text-muted-foreground pl-4">+{groupTasks.length - 5} more tasks</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Main Stakeholders Page ───────────────────────────────────────────────────
 export default function Stakeholders() {
   const { currentProjectId } = useProject();
   const [searchTerm, setSearchTerm] = useState("");
+  const [activeTab, setActiveTab] = useState("all");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [selectedStakeholder, setSelectedStakeholder] = useState<any>(null);
-  
-  // Form state
-  const [formData, setFormData] = useState({
-    fullName: "",
-    email: "",
-    position: "",
-    role: "",
-    job: "",
-    phone: "",
-  });
+  const [kpiDialogOpen, setKpiDialogOpen] = useState(false);
+  const [devPlanDialogOpen, setDevPlanDialogOpen] = useState(false);
+  const [formData, setFormData] = useState<StakeholderFormData>(EMPTY_FORM);
 
   const utils = trpc.useUtils();
-  const { data: stakeholders, isLoading } = trpc.stakeholders.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });  const createMutation = trpc.stakeholders.create.useMutation({
+  const { data: stakeholders = [], isLoading } = trpc.stakeholders.list.useQuery(
+    { projectId: currentProjectId! },
+    { enabled: !!currentProjectId }
+  );
+
+  const createMutation = trpc.stakeholders.create.useMutation({
     onSuccess: () => {
       utils.stakeholders.list.invalidate();
       setIsCreateOpen(false);
-      resetForm();
-      toast.success("Stakeholder created successfully");
+      setFormData(EMPTY_FORM);
+      toast.success("Stakeholder created");
     },
-    onError: (error) => {
-      toast.error(`Failed to create stakeholder: ${error.message}`);
-    },
+    onError: (e) => toast.error(`Failed: ${e.message}`),
   });
 
   const updateMutation = trpc.stakeholders.update.useMutation({
@@ -73,12 +677,10 @@ export default function Stakeholders() {
       utils.stakeholders.list.invalidate();
       setIsEditOpen(false);
       setSelectedStakeholder(null);
-      resetForm();
-      toast.success("Stakeholder updated successfully");
+      setFormData(EMPTY_FORM);
+      toast.success("Stakeholder updated");
     },
-    onError: (error) => {
-      toast.error(`Failed to update stakeholder: ${error.message}`);
-    },
+    onError: (e) => toast.error(`Failed: ${e.message}`),
   });
 
   const deleteMutation = trpc.stakeholders.delete.useMutation({
@@ -86,141 +688,333 @@ export default function Stakeholders() {
       utils.stakeholders.list.invalidate();
       setIsDeleteOpen(false);
       setSelectedStakeholder(null);
-      toast.success("Stakeholder deleted successfully");
-    },
-    onError: (error) => {
-      toast.error(`Failed to delete stakeholder: ${error.message}`);
+      toast.success("Stakeholder deleted");
     },
   });
 
-  const resetForm = () => {
+  const handleEdit = (s: any) => {
+    setSelectedStakeholder(s);
     setFormData({
-      fullName: "",
-      email: "",
-      position: "",
-      role: "",
-      job: "",
-      phone: "",
-    });
-  };
-
-  const handleCreate = () => {
-    if (!formData.fullName.trim()) {
-      toast.error("Full name is required");
-      return;
-    }
-    if (!currentProjectId) {
-      toast.error("No project selected");
-      return;
-    }
-    createMutation.mutate({ ...formData, projectId: currentProjectId });
-  };
-
-  const handleEdit = (stakeholder: any) => {
-    setSelectedStakeholder(stakeholder);
-    setFormData({
-      fullName: stakeholder.fullName || "",
-      email: stakeholder.email || "",
-      position: stakeholder.position || "",
-      role: stakeholder.role || "",
-      job: stakeholder.job || "",
-      phone: stakeholder.phone || "",
+      fullName: s.fullName || "",
+      email: s.email || "",
+      position: s.position || "",
+      role: s.role || "",
+      job: s.job || "",
+      phone: s.phone || "",
+      isInternalTeam: s.isInternalTeam || false,
+      powerLevel: s.powerLevel ?? 3,
+      interestLevel: s.interestLevel ?? 3,
+      engagementStrategy: s.engagementStrategy || "",
+      communicationFrequency: s.communicationFrequency || "",
+      communicationChannel: s.communicationChannel || "",
+      communicationMessage: s.communicationMessage || "",
+      communicationResponsible: s.communicationResponsible || "",
+      notes: s.notes || "",
     });
     setIsEditOpen(true);
   };
 
-  const handleUpdate = () => {
-    if (!selectedStakeholder) return;
-    if (!formData.fullName.trim()) {
-      toast.error("Full name is required");
-      return;
-    }
-    updateMutation.mutate({
-      id: selectedStakeholder.id,
-      data: formData,
+  const filteredStakeholders = useMemo(() => {
+    const q = searchTerm.toLowerCase();
+    return stakeholders.filter((s) => {
+      const matchesSearch =
+        !q ||
+        s.fullName?.toLowerCase().includes(q) ||
+        s.email?.toLowerCase().includes(q) ||
+        s.position?.toLowerCase().includes(q) ||
+        s.role?.toLowerCase().includes(q) ||
+        s.job?.toLowerCase().includes(q);
+      const matchesTab =
+        activeTab === "all" ||
+        (activeTab === "internal" && s.isInternalTeam) ||
+        (activeTab === "external" && !s.isInternalTeam);
+      return matchesSearch && matchesTab;
     });
-  };
+  }, [stakeholders, searchTerm, activeTab]);
 
-  const handleDelete = (stakeholder: any) => {
-    setSelectedStakeholder(stakeholder);
-    setIsDeleteOpen(true);
-  };
-
-  const confirmDelete = () => {
-    if (!selectedStakeholder) return;
-    deleteMutation.mutate({ id: selectedStakeholder.id });
-  };
-
-  const filteredStakeholders = stakeholders?.filter((s) => {
-    const search = searchTerm.toLowerCase();
-    return (
-      s.fullName?.toLowerCase().includes(search) ||
-      s.email?.toLowerCase().includes(search) ||
-      s.position?.toLowerCase().includes(search) ||
-      s.role?.toLowerCase().includes(search) ||
-      s.job?.toLowerCase().includes(search)
-    );
-  }) || [];
+  const internalCount = stakeholders.filter((s) => s.isInternalTeam).length;
+  const externalCount = stakeholders.filter((s) => !s.isInternalTeam).length;
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
       </div>
     );
   }
 
-  return (
-    <div className="space-y-6 p-6">
-      {/* Page Header */}
-      <div className="bg-white border border-gray-200 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Users className="w-6 h-6 text-gray-500" />
-            Stakeholder Register
-          </h1>
-          <p className="text-gray-500 text-sm mt-1">Manage project stakeholders for Owner, Responsible, Accountable, Informed, and Consulted roles</p>
+  // ─── Shared form fields ───────────────────────────────────────────────────
+  const renderFormFields = () => (
+    <div className="space-y-4">
+      {/* Basic Info */}
+      <div className="space-y-3">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Basic Information</p>
+        <div className="space-y-2">
+          <Label>Full Name *</Label>
+          <Input
+            value={formData.fullName}
+            onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+            placeholder="John Doe"
+          />
         </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="text-violet-700 border-violet-300">{stakeholders?.length || 0} Stakeholders</Badge>
-          <Button onClick={() => setIsCreateOpen(true)} className="bg-gray-900 hover:bg-gray-800 text-white gap-2">
-            <Plus className="h-4 w-4" />Add Stakeholder
-          </Button>
-          {currentProjectId && (
-            <ImportExportToolbar
-              module="stakeholders"
-              projectId={currentProjectId}
-              onImportSuccess={() => {}}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <Label>Email</Label>
+            <Input
+              type="email"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              placeholder="john@company.com"
             />
+          </div>
+          <div className="space-y-2">
+            <Label>Phone</Label>
+            <Input
+              value={formData.phone}
+              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              placeholder="+1 234 567 8900"
+            />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <Label>Position</Label>
+            <Input
+              value={formData.position}
+              onChange={(e) => setFormData({ ...formData, position: e.target.value })}
+              placeholder="Project Manager"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Role</Label>
+            <Input
+              value={formData.role}
+              onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+              placeholder="Sponsor"
+            />
+          </div>
+        </div>
+        <div className="space-y-2">
+          <Label>Department</Label>
+          <Input
+            value={formData.job}
+            onChange={(e) => setFormData({ ...formData, job: e.target.value })}
+            placeholder="IT Department"
+          />
+        </div>
+      </div>
+
+      {/* Internal Team */}
+      <div className="space-y-3 border-t pt-3">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Team Classification</p>
+        <div className="flex items-center gap-3">
+          <Switch
+            checked={formData.isInternalTeam}
+            onCheckedChange={(v) => setFormData({ ...formData, isInternalTeam: v })}
+          />
+          <Label>Internal Team Member</Label>
+          {formData.isInternalTeam && (
+            <Badge className="bg-blue-100 text-blue-700 border-blue-200">Internal</Badge>
           )}
         </div>
       </div>
-      <Card className="border-violet-100">
-        <CardContent className="pt-6">
 
-      {/* Search */}
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Search by name, email, position, role..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10"
-        />
+      {/* Engagement */}
+      <div className="space-y-3 border-t pt-3">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Engagement & Communication</p>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>Power Level: {formData.powerLevel}/5</Label>
+            <Slider
+              min={1} max={5} step={1}
+              value={[formData.powerLevel]}
+              onValueChange={([v]) => setFormData({ ...formData, powerLevel: v })}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Interest Level: {formData.interestLevel}/5</Label>
+            <Slider
+              min={1} max={5} step={1}
+              value={[formData.interestLevel]}
+              onValueChange={([v]) => setFormData({ ...formData, interestLevel: v })}
+            />
+          </div>
+        </div>
+        <div className="space-y-2">
+          <Label>Engagement Strategy</Label>
+          <Select value={formData.engagementStrategy} onValueChange={(v) => setFormData({ ...formData, engagementStrategy: v })}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select strategy..." />
+            </SelectTrigger>
+            <SelectContent>
+              {ENGAGEMENT_STRATEGIES.map((s) => (
+                <SelectItem key={s} value={s}>{s}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <Label>Communication Frequency</Label>
+            <Select value={formData.communicationFrequency} onValueChange={(v) => setFormData({ ...formData, communicationFrequency: v })}>
+              <SelectTrigger>
+                <SelectValue placeholder="Frequency..." />
+              </SelectTrigger>
+              <SelectContent>
+                {COMM_FREQUENCIES.map((f) => (
+                  <SelectItem key={f} value={f}>{f}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Channel</Label>
+            <Select value={formData.communicationChannel} onValueChange={(v) => setFormData({ ...formData, communicationChannel: v })}>
+              <SelectTrigger>
+                <SelectValue placeholder="Channel..." />
+              </SelectTrigger>
+              <SelectContent>
+                {COMM_CHANNELS.map((c) => (
+                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <div className="space-y-2">
+          <Label>Key Message</Label>
+          <Textarea
+            value={formData.communicationMessage}
+            onChange={(e) => setFormData({ ...formData, communicationMessage: e.target.value })}
+            placeholder="Key message to communicate to this stakeholder..."
+            rows={2}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Communication Responsible</Label>
+          <Input
+            value={formData.communicationResponsible}
+            onChange={(e) => setFormData({ ...formData, communicationResponsible: e.target.value })}
+            placeholder="Who is responsible for communication?"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Notes</Label>
+          <Textarea
+            value={formData.notes}
+            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+            placeholder="Additional notes..."
+            rows={2}
+          />
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-6 p-6">
+      {/* Header */}
+      <div className="bg-card border rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <Users className="w-6 h-6 text-primary" />
+            Stakeholder Management
+          </h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            Manage stakeholders, internal team development plans, KPIs, and engagement strategies
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline">{stakeholders.length} Total</Badge>
+          <Badge className="bg-blue-100 text-blue-700 border-blue-200">{internalCount} Internal</Badge>
+          <Button onClick={() => { setFormData(EMPTY_FORM); setIsCreateOpen(true); }} className="gap-2">
+            <Plus className="h-4 w-4" /> Add Stakeholder
+          </Button>
+          {currentProjectId && (
+            <ImportExportToolbar module="stakeholders" projectId={currentProjectId} onImportSuccess={() => {}} />
+          )}
+        </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-card border rounded-lg p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <Users className="h-5 w-5 text-blue-600" />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-100 rounded-lg"><Users className="h-5 w-5 text-blue-600" /></div>
+              <div>
+                <p className="text-xs text-muted-foreground">Total</p>
+                <p className="text-2xl font-bold">{stakeholders.length}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Total Stakeholders</p>
-              <p className="text-2xl font-bold">{stakeholders?.length || 0}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-green-100 rounded-lg"><UserCheck className="h-5 w-5 text-green-600" /></div>
+              <div>
+                <p className="text-xs text-muted-foreground">Internal Team</p>
+                <p className="text-2xl font-bold">{internalCount}</p>
+              </div>
             </div>
-          </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-purple-100 rounded-lg"><Briefcase className="h-5 w-5 text-purple-600" /></div>
+              <div>
+                <p className="text-xs text-muted-foreground">External</p>
+                <p className="text-2xl font-bold">{externalCount}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-red-100 rounded-lg"><Activity className="h-5 w-5 text-red-600" /></div>
+              <div>
+                <p className="text-xs text-muted-foreground">Manage Closely</p>
+                <p className="text-2xl font-bold">
+                  {stakeholders.filter((s) => s.engagementStrategy === "Manage Closely").length}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Tabs + Search */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search stakeholders..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <div className="flex gap-1 border rounded-lg p-1">
+          {[
+            { key: "all", label: "All" },
+            { key: "internal", label: "Internal Team" },
+            { key: "external", label: "External" },
+          ].map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setActiveTab(t.key)}
+              className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                activeTab === t.key
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -229,13 +1023,13 @@ export default function Stakeholders() {
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
-              <TableHead className="font-semibold">Full Name</TableHead>
-              <TableHead className="font-semibold">Email</TableHead>
-              <TableHead className="font-semibold">Position</TableHead>
-              <TableHead className="font-semibold">Role</TableHead>
-              <TableHead className="font-semibold">Department</TableHead>
-              <TableHead className="font-semibold">Phone</TableHead>
-              <TableHead className="font-semibold w-24">Actions</TableHead>
+              <TableHead>Name</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Position / Role</TableHead>
+              <TableHead>Contact</TableHead>
+              <TableHead>Engagement</TableHead>
+              <TableHead>Power / Interest</TableHead>
+              <TableHead className="w-32">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -245,59 +1039,97 @@ export default function Stakeholders() {
                   <EmptyState
                     icon={Users}
                     title={searchTerm ? "No stakeholders match your search" : "No stakeholders yet"}
-                    description={searchTerm ? "Try a different search term." : "Add your first stakeholder to track project contacts."}
+                    description={searchTerm ? "Try a different search term." : "Add your first stakeholder to get started."}
                     actionLabel={searchTerm ? undefined : "Add Stakeholder"}
                     onAction={searchTerm ? undefined : () => setIsCreateOpen(true)}
                   />
                 </TableCell>
               </TableRow>
             ) : (
-              filteredStakeholders.map((stakeholder) => (
-                <TableRow key={stakeholder.id} className="hover:bg-muted/30">
-                  <TableCell className="font-medium">{stakeholder.fullName}</TableCell>
+              filteredStakeholders.map((s) => (
+                <TableRow key={s.id} className="hover:bg-muted/30">
                   <TableCell>
-                    {stakeholder.email && (
-                      <span className="flex items-center gap-1">
-                        <Mail className="h-3 w-3 text-muted-foreground" />
-                        {stakeholder.email}
-                      </span>
-                    )}
+                    <div>
+                      <p className="font-medium">{s.fullName}</p>
+                      {s.job && <p className="text-xs text-muted-foreground">{s.job}</p>}
+                    </div>
                   </TableCell>
-                  <TableCell>{stakeholder.position || "-"}</TableCell>
-                  <TableCell>{stakeholder.role || "-"}</TableCell>
                   <TableCell>
-                    {stakeholder.job && (
-                      <span className="flex items-center gap-1">
-                        <Briefcase className="h-3 w-3 text-muted-foreground" />
-                        {stakeholder.job}
-                      </span>
+                    {s.isInternalTeam ? (
+                      <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-xs">Internal</Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-xs">External</Badge>
                     )}
                   </TableCell>
                   <TableCell>
-                    {stakeholder.phone && (
-                      <span className="flex items-center gap-1">
-                        <Phone className="h-3 w-3 text-muted-foreground" />
-                        {stakeholder.phone}
-                      </span>
+                    <div className="text-sm">
+                      {s.position && <p>{s.position}</p>}
+                      {s.role && <p className="text-muted-foreground">{s.role}</p>}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="text-sm space-y-0.5">
+                      {s.email && (
+                        <div className="flex items-center gap-1">
+                          <Mail className="h-3 w-3 text-muted-foreground" />
+                          <span className="truncate max-w-[140px]">{s.email}</span>
+                        </div>
+                      )}
+                      {s.phone && (
+                        <div className="flex items-center gap-1">
+                          <Phone className="h-3 w-3 text-muted-foreground" />
+                          {s.phone}
+                        </div>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {s.engagementStrategy ? (
+                      <Badge className={`text-xs border ${getEngagementBadge(s.engagementStrategy)}`}>
+                        {s.engagementStrategy}
+                      </Badge>
+                    ) : (
+                      <span className="text-muted-foreground text-xs">—</span>
                     )}
+                  </TableCell>
+                  <TableCell>
+                    <div className="text-xs text-muted-foreground">
+                      <span>P: {s.powerLevel ?? "—"}/5</span>
+                      <span className="mx-1">·</span>
+                      <span>I: {s.interestLevel ?? "—"}/5</span>
+                    </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
                       <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEdit(stakeholder)}
-                        className="h-8 w-8"
+                        variant="ghost" size="icon" className="h-7 w-7"
+                        title="Edit"
+                        onClick={() => handleEdit(s)}
                       >
-                        <Pencil className="h-4 w-4" />
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      {s.isInternalTeam && (
+                        <Button
+                          variant="ghost" size="icon" className="h-7 w-7 text-blue-600"
+                          title="Development Plan"
+                          onClick={() => { setSelectedStakeholder(s); setDevPlanDialogOpen(true); }}
+                        >
+                          <ClipboardList className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost" size="icon" className="h-7 w-7 text-primary"
+                        title="KPIs & Assessments"
+                        onClick={() => { setSelectedStakeholder(s); setKpiDialogOpen(true); }}
+                      >
+                        <Target className="h-3.5 w-3.5" />
                       </Button>
                       <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(stakeholder)}
-                        className="h-8 w-8 text-destructive hover:text-destructive"
+                        variant="ghost" size="icon" className="h-7 w-7 text-destructive"
+                        title="Delete"
+                        onClick={() => { setSelectedStakeholder(s); setIsDeleteOpen(true); }}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </div>
                   </TableCell>
@@ -310,80 +1142,22 @@ export default function Stakeholders() {
 
       {/* Create Dialog */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Add New Stakeholder</DialogTitle>
-            <DialogDescription>
-              Add a stakeholder to use in Owner, Responsible, Accountable, Informed, and Consulted fields.
-            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="fullName">Full Name *</Label>
-              <Input
-                id="fullName"
-                value={formData.fullName}
-                onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                placeholder="John Doe"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                placeholder="john.doe@company.com"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="position">Position</Label>
-                <Input
-                  id="position"
-                  value={formData.position}
-                  onChange={(e) => setFormData({ ...formData, position: e.target.value })}
-                  placeholder="Project Manager"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="role">Role</Label>
-                <Input
-                  id="role"
-                  value={formData.role}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                  placeholder="Sponsor"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="job">Department</Label>
-                <Input
-                  id="job"
-                  value={formData.job}
-                  onChange={(e) => setFormData({ ...formData, job: e.target.value })}
-                  placeholder="IT Department"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone</Label>
-                <Input
-                  id="phone"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  placeholder="+1 234 567 8900"
-                />
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setIsCreateOpen(false); resetForm(); }}>
-              Cancel
-            </Button>
-            <Button onClick={handleCreate} disabled={createMutation.isPending}>
-              {createMutation.isPending ? "Creating..." : "Create"}
+          {renderFormFields()}
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => { setIsCreateOpen(false); setFormData(EMPTY_FORM); }}>Cancel</Button>
+            <Button
+              onClick={() => {
+                if (!formData.fullName.trim()) { toast.error("Full name is required"); return; }
+                if (!currentProjectId) { toast.error("No project selected"); return; }
+                createMutation.mutate({ ...formData, projectId: currentProjectId });
+              }}
+              disabled={createMutation.isPending}
+            >
+              {createMutation.isPending ? "Creating..." : "Create Stakeholder"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -391,73 +1165,21 @@ export default function Stakeholders() {
 
       {/* Edit Dialog */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Edit Stakeholder</DialogTitle>
-            <DialogDescription>
-              Update stakeholder information.
-            </DialogDescription>
+            <DialogTitle>Edit Stakeholder — {selectedStakeholder?.fullName}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="editFullName">Full Name *</Label>
-              <Input
-                id="editFullName"
-                value={formData.fullName}
-                onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="editEmail">Email</Label>
-              <Input
-                id="editEmail"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="editPosition">Position</Label>
-                <Input
-                  id="editPosition"
-                  value={formData.position}
-                  onChange={(e) => setFormData({ ...formData, position: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="editRole">Role</Label>
-                <Input
-                  id="editRole"
-                  value={formData.role}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="editJob">Department</Label>
-                <Input
-                  id="editJob"
-                  value={formData.job}
-                  onChange={(e) => setFormData({ ...formData, job: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="editPhone">Phone</Label>
-                <Input
-                  id="editPhone"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                />
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setIsEditOpen(false); resetForm(); }}>
-              Cancel
-            </Button>
-            <Button onClick={handleUpdate} disabled={updateMutation.isPending}>
+          {renderFormFields()}
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => { setIsEditOpen(false); setFormData(EMPTY_FORM); }}>Cancel</Button>
+            <Button
+              onClick={() => {
+                if (!selectedStakeholder) return;
+                if (!formData.fullName.trim()) { toast.error("Full name is required"); return; }
+                updateMutation.mutate({ id: selectedStakeholder.id, data: formData });
+              }}
+              disabled={updateMutation.isPending}
+            >
               {updateMutation.isPending ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>
@@ -470,14 +1192,13 @@ export default function Stakeholders() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Stakeholder</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete <strong>{selectedStakeholder?.fullName}</strong>? 
-              This action cannot be undone.
+              Are you sure you want to delete <strong>{selectedStakeholder?.fullName}</strong>? This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={confirmDelete}
+              onClick={() => selectedStakeholder && deleteMutation.mutate({ id: selectedStakeholder.id })}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Delete
@@ -485,8 +1206,24 @@ export default function Stakeholders() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-        </CardContent>
-      </Card>
+
+      {/* KPI & Assessment Dialog */}
+      {selectedStakeholder && (
+        <KpiManagementDialog
+          stakeholder={selectedStakeholder}
+          open={kpiDialogOpen}
+          onOpenChange={setKpiDialogOpen}
+        />
+      )}
+
+      {/* Dev Plan Dialog */}
+      {selectedStakeholder && (
+        <DevPlanDialog
+          stakeholder={selectedStakeholder}
+          open={devPlanDialogOpen}
+          onOpenChange={setDevPlanDialogOpen}
+        />
+      )}
     </div>
   );
 }
