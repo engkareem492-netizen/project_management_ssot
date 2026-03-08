@@ -341,3 +341,7 @@
 ## Bug Fix: Risk Replace Mode ID Reset (duplicate sequence rows)
 
 - [x] Fix: risks have two idSequences rows ('RISK' and 'risk') — purgeModule now uses LOWER(entityType) = LOWER(target) to reset all case variants in one SQL statement
+
+## Bug Fix: Tasks Due Date / Assigned Date Format
+
+- [x] Fix garbled date display in Tasks table — root cause was toLocaleDateString() with ISO strings; now uses regex parse to DD/MM/YYYY without timezone shift

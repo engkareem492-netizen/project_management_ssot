@@ -21,6 +21,14 @@ import { DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { ImportExportToolbar } from "@/components/ImportExportToolbar";
 
+// Parse ISO date strings (YYYY-MM-DD) to DD/MM/YYYY without timezone shift
+function formatDate(dateString: string | null | undefined): string {
+  if (!dateString) return '-';
+  const match = String(dateString).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (match) return `${match[3]}/${match[2]}/${match[1]}`;
+  try { return new Date(dateString).toLocaleDateString('en-GB'); } catch { return String(dateString); }
+}
+
 export default function Tasks() {
   const { currentProjectId } = useProject();
   const [searchTerm, setSearchTerm] = useState("");
@@ -906,7 +914,7 @@ export default function Tasks() {
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="font-medium min-w-[100px]">Due Date:</span>
-                            <span>{task.dueDate || '-'}</span>
+                            <span>{formatDate(task.dueDate)}</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="font-medium min-w-[100px]">Status:</span>
@@ -1504,7 +1512,7 @@ export default function Tasks() {
                 {isEditMode ? (
                   <Input type="date" value={editFormData.assignDate} onChange={(e) => setEditFormData({...editFormData, assignDate: e.target.value})} className="h-8" />
                 ) : (
-                  <p className="font-medium">{selectedTask?.assignDate || '-'}</p>
+                  <p className="font-medium">{formatDate(selectedTask?.assignDate)}</p>
                 )}
               </div>
               <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
@@ -1512,7 +1520,7 @@ export default function Tasks() {
                 {isEditMode ? (
                   <Input type="date" value={editFormData.dueDate} onChange={(e) => setEditFormData({...editFormData, dueDate: e.target.value})} className="h-8" />
                 ) : (
-                  <p className="font-medium">{selectedTask?.dueDate || '-'}</p>
+                  <p className="font-medium">{formatDate(selectedTask?.dueDate)}</p>
                 )}
               </div>
             </div>

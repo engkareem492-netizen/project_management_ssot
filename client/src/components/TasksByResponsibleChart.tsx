@@ -81,9 +81,15 @@ export function TasksByResponsibleChart({ tasks, selectedResponsible: externalSe
   const formatDate = (dateString: string | null | undefined) => {
     if (!dateString) return '-';
     try {
-      return new Date(dateString).toLocaleDateString();
+      // Parse ISO date strings (YYYY-MM-DD) directly to avoid UTC timezone shift
+      const match = String(dateString).match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (match) {
+        const [, year, month, day] = match;
+        return `${day}/${month}/${year}`;
+      }
+      return new Date(dateString).toLocaleDateString('en-GB');
     } catch {
-      return dateString;
+      return String(dateString);
     }
   };
 
