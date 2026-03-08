@@ -93,6 +93,7 @@ import { toast } from "sonner";
 import { useProject } from "@/contexts/ProjectContext";
 import { ThemeSelector } from "./ThemeSelector";
 import { GlobalSearch } from "./GlobalSearch";
+import { NotificationBell } from "./NotificationBell";
 import { Search } from "lucide-react";
 
 const menuItems = [
@@ -567,6 +568,7 @@ function DashboardLayoutContent({
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <NotificationBell />
               <ThemeSelector />
             </div>
           </div>

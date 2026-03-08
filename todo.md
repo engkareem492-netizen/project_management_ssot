@@ -407,3 +407,15 @@
 - [x] Compact view: smaller row height, fewer visible columns (ID, Task Group, Description, Responsible, Status, Due Date, Actions), dense typography
 - [x] Fix main Tasks table to never require horizontal scroll — use flexible column widths that fill available space
 - [x] Collapse less-critical columns (RACI details, Requirement, Deliverable) into a popover/tooltip in compact mode
+
+## Merge: Claude Branch Features (Mar 9, 2026)
+
+- [x] Executive KPI Dashboard page with health score, 6 KPI cards, bar/pie charts
+- [x] Decisions CRUD page with action items checklist and status tracking
+- [x] Calendar view with color-coded events (tasks, issues, deliverables, risks)
+- [x] Budget & Cost Tracking page with total budget, entries, and spending summary
+- [x] Resource Management page with workload view and capacity settings
+- [x] NotificationBell component wired into mobile header
+- [x] DB tables: decisions, notifications, projectBudget, budgetEntries, resourceCapacity
+- [x] tRPC routers: decisions, notifications, budget, resources
+- [x] New sidebar items: Dashboard, Decisions, Calendar, Budget, Resources
