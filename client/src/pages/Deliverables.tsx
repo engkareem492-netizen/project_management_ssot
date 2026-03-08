@@ -44,6 +44,8 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Plus, Trash2, Pencil, Search, Package, Link2, X } from "lucide-react";
 import { ImportExportToolbar } from "@/components/ImportExportToolbar";
+import { formatDate } from "@/lib/dateUtils";
+import { EmptyState } from "@/components/EmptyState";
 
 export default function Deliverables() {
   const { currentProjectId } = useProject();
@@ -370,8 +372,14 @@ export default function Deliverables() {
           <TableBody>
             {filteredDeliverables.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                  {searchTerm ? "No deliverables match your search" : "No deliverables yet. Add your first deliverable!"}
+                <TableCell colSpan={6}>
+                  <EmptyState
+                    icon={Package}
+                    title={searchTerm ? "No deliverables match your search" : "No deliverables yet"}
+                    description={searchTerm ? "Try a different search term." : "Add your first deliverable to track project outputs."}
+                    actionLabel={searchTerm ? undefined : "Add Deliverable"}
+                    onAction={searchTerm ? undefined : () => setIsCreateOpen(true)}
+                  />
                 </TableCell>
               </TableRow>
             ) : (
@@ -384,7 +392,7 @@ export default function Deliverables() {
                       {deliverable.status || "N/A"}
                     </Badge>
                   </TableCell>
-                  <TableCell>{deliverable.dueDate || "-"}</TableCell>
+                  <TableCell>{formatDate(deliverable.dueDate) || "-"}</TableCell>
                   <TableCell>
                     <Button
                       variant="outline"

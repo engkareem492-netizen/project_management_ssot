@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
+import { formatDate as _formatDateUtil } from '@/lib/dateUtils';
 
 interface Task {
   id: number;
@@ -78,20 +79,7 @@ export function TasksByResponsibleChart({ tasks, selectedResponsible: externalSe
     return 'outline';
   };
 
-  const formatDate = (dateString: string | null | undefined) => {
-    if (!dateString) return '-';
-    try {
-      // Parse ISO date strings (YYYY-MM-DD) directly to avoid UTC timezone shift
-      const match = String(dateString).match(/^(\d{4})-(\d{2})-(\d{2})/);
-      if (match) {
-        const [, year, month, day] = match;
-        return `${day}/${month}/${year}`;
-      }
-      return new Date(dateString).toLocaleDateString('en-GB');
-    } catch {
-      return String(dateString);
-    }
-  };
+  const formatDate = (dateString: string | null | undefined) => _formatDateUtil(dateString);
 
   return (
     <div className="space-y-6">

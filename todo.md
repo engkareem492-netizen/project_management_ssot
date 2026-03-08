@@ -345,3 +345,24 @@
 ## Bug Fix: Tasks Due Date / Assigned Date Format
 
 - [x] Fix garbled date display in Tasks table — root cause was toLocaleDateString() with ISO strings; now uses regex parse to DD/MM/YYYY without timezone shift
+
+## Feature: Recurring Tasks, Sub-Tasks, Follow-up Tasks + Short-Term Improvements (Mar 8, 2026)
+
+### Task Enhancements
+- [ ] DB schema: add parentTaskId (sub-tasks), followUpOfId (follow-up), recurringType, recurringInterval, recurringEndDate, seriesId to tasks table
+- [ ] Server: createSubTask, createFollowUpTask procedures
+- [ ] Server: recurring task auto-generation (create next occurrence on completion)
+- [ ] Server: badge counts query (overdue tasks, open issues, high-severity risks)
+- [ ] Tasks UI: sub-task indentation with progress bar on parent task row
+- [ ] Tasks UI: "Add Sub-task" button on each task row / detail panel
+- [ ] Tasks UI: "Create Follow-up" button on completed/closed tasks
+- [ ] Tasks UI: Recurring config panel (frequency, interval, end date) in create/edit form
+- [ ] Tasks UI: recurring badge on task rows (e.g. "↻ Weekly")
+
+### Short-Term Improvements
+- [x] Global date fix: apply formatDate helper to Issues, Risks, Assumptions, Deliverables, Meetings pages
+- [x] Import validation summary: show dialog after upload with imported/skipped counts and per-row errors (already implemented in ImportExportToolbar)
+- [x] Empty states: add meaningful empty-state UI to all 9 module list pages (EmptyState component)
+- [x] Global search: search bar in sidebar header that searches across all modules (Ctrl+K shortcut)
+- [x] Sidebar badges: overdue task count, open issue count, high-severity risk count on sidebar items
+- [x] Sidebar drag-to-reorder: users can drag sidebar items to customize order (persisted in localStorage)

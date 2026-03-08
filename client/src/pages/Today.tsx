@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { formatDate } from "@/lib/dateUtils";
 
 // Statuses that mean the task is done and should not appear as overdue
 // DONE_STATUSES is now derived from statusOptions DB (see below), kept as fallback
@@ -639,7 +640,7 @@ export default function Today() {
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">
                         Responsible: {task.responsible || 'Unassigned'}
-                        {task.assignDate && ` • Assigned: ${task.assignDate}`}
+                        {task.assignDate && ` • Assigned: ${formatDate(task.assignDate)}`}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -728,8 +729,8 @@ export default function Today() {
                         <span className="text-sm">{task.description || 'No description'}</span>
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">
-                        ETD: {task.dueDate || 'No date'} • Responsible: {task.responsible || 'Unassigned'}
-                        {task.assignDate && ` • Assigned: ${task.assignDate}`}
+                        ETD: {formatDate(task.dueDate) || 'No date'} • Responsible: {task.responsible || 'Unassigned'}
+                        {task.assignDate && ` • Assigned: ${formatDate(task.assignDate)}`}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -819,8 +820,8 @@ export default function Today() {
                         <span className="text-sm">{task.description || 'No description'}</span>
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">
-                        ETD: {task.dueDate || 'No date'} • Responsible: {task.responsible || 'Unassigned'}
-                        {task.assignDate && ` • Assigned: ${task.assignDate}`}
+                        ETD: {formatDate(task.dueDate) || 'No date'} • Responsible: {task.responsible || 'Unassigned'}
+                        {task.assignDate && ` • Assigned: ${formatDate(task.assignDate)}`}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">

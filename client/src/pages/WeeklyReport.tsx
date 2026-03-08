@@ -11,10 +11,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { FileText, Download, Printer, CheckCircle2, AlertTriangle, Clock, Bug, FlaskConical, GitPullRequest, BookOpen, TrendingUp, Calendar } from "lucide-react";
 import { toast } from "sonner";
+import { formatDate as _formatDateUtil } from "@/lib/dateUtils";
 
 function formatDate(d: Date | string | null | undefined): string {
   if (!d) return "—";
-  try { return new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }); } catch { return String(d); }
+  return _formatDateUtil(d instanceof Date ? d.toISOString() : (d as string));
 }
 
 function todayStr(): string {

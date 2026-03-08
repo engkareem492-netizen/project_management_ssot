@@ -216,6 +216,15 @@ export const tasks = mysqlTable("tasks", {
   priority: varchar("priority", { length: 100 }),
   lastUpdate: text("lastUpdate"),
   updateDate: varchar("updateDate", { length: 50 }),
+  // Sub-task support: parentTaskId links a sub-task to its parent
+  parentTaskId: int("parentTaskId"),
+  // Follow-up support: followUpOfId links a follow-up task to the original
+  followUpOfId: int("followUpOfId"),
+  // Recurring task support
+  seriesId: int("seriesId"),
+  recurringType: mysqlEnum("recurringType", ["none", "daily", "weekly", "monthly", "custom"]).default("none"),
+  recurringInterval: int("recurringInterval").default(1),
+  recurringEndDate: varchar("recurringEndDate", { length: 50 }),
   importedAt: timestamp("importedAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

@@ -18,6 +18,8 @@ import { SelectWithCreate } from "@/components/SelectWithCreate";
 import { DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { ImportExportToolbar } from "@/components/ImportExportToolbar";
+import { formatDate } from "@/lib/dateUtils";
+import { EmptyState } from "@/components/EmptyState";
 
 export default function Issues() {
   const { currentProjectId } = useProject();
@@ -831,7 +833,7 @@ export default function Issues() {
                                 <div className="flex items-center gap-2">
                                   <span className="font-medium min-w-[100px] text-amber-700">Resolve By:</span>
                                   <span className={`text-sm font-medium ${new Date(issue.resolutionDate) < new Date() && issue.status?.toLowerCase() !== 'closed' ? 'text-red-600' : 'text-amber-700'}`}>
-                                    {issue.resolutionDate}
+                                    {formatDate(issue.resolutionDate)}
                                   </span>
                                 </div>
                               )}
@@ -882,9 +884,13 @@ export default function Issues() {
           </div>
 
           {filteredIssues?.length === 0 && (
-            <div className="text-center py-12 text-muted-foreground">
-              No issues found. Create a new issue or import an Excel file to get started.
-            </div>
+            <EmptyState
+              icon={AlertCircle}
+              title="No issues found"
+              description="Create a new issue or import an Excel file to get started."
+              actionLabel="Create Issue"
+              onAction={() => setCreateDialogOpen(true)}
+            />
           )}
         </CardContent>
       </Card>
@@ -1452,7 +1458,7 @@ export default function Issues() {
                 {isEditMode ? (
                   <Input type="date" value={editFormData.openDate || ''} onChange={(e) => setEditFormData({...editFormData, openDate: e.target.value})} className="h-8" />
                 ) : (
-                  <p className="font-medium">{selectedIssue?.openDate || '-'}</p>
+                  <p className="font-medium">{formatDate(selectedIssue?.openDate) || '-'}</p>
                 )}
               </div>
               <div className="space-y-1 p-3 bg-amber-50 rounded-lg border border-amber-200">
@@ -1460,7 +1466,7 @@ export default function Issues() {
                 {isEditMode ? (
                   <Input type="date" value={editFormData.resolutionDate || ''} onChange={(e) => setEditFormData({...editFormData, resolutionDate: e.target.value})} className="h-8 border-amber-300" />
                 ) : (
-                  <p className="font-medium text-amber-800">{selectedIssue?.resolutionDate || '-'}</p>
+                  <p className="font-medium text-amber-800">{formatDate(selectedIssue?.resolutionDate) || '-'}</p>
                 )}
               </div>
               {isEditMode && (
@@ -2033,7 +2039,7 @@ export default function Issues() {
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Due Date</Label>
-                <p className="font-medium">{selectedDeliverable?.dueDate || '-'}</p>
+                <p className="font-medium">{formatDate(selectedDeliverable?.dueDate) || '-'}</p>
               </div>
             </div>
             <div className="space-y-1">
@@ -2297,11 +2303,11 @@ export default function Issues() {
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Assign Date</Label>
-                <p className="font-medium">{selectedTask?.assignDate || '-'}</p>
+                <p className="font-medium">{formatDate(selectedTask?.assignDate) || '-'}</p>
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Due Date</Label>
-                <p className="font-medium">{selectedTask?.dueDate || '-'}</p>
+                <p className="font-medium">{formatDate(selectedTask?.dueDate) || '-'}</p>
               </div>
             </div>
             <div className="space-y-1">

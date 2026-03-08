@@ -15,8 +15,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Search, Loader2, Plus, Trash2, Lightbulb, Pencil, History, X } from "lucide-react";
 import { toast } from "sonner";
-import { format } from "date-fns";
 import { ImportExportToolbar } from "@/components/ImportExportToolbar";
+import { formatDate } from "@/lib/dateUtils";
+import { EmptyState } from "@/components/EmptyState";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 const NONE = "none";
@@ -484,9 +485,13 @@ export default function Assumptions() {
           </div>
 
           {filtered.length === 0 && (
-            <div className="text-center py-12 text-muted-foreground">
-              No assumptions found. Click "Create New" to add one.
-            </div>
+            <EmptyState
+              icon={Lightbulb}
+              title="No assumptions found"
+              description='Click &quot;Create New&quot; to add an assumption.'
+              actionLabel="Create Assumption"
+              onAction={() => setCreateOpen(true)}
+            />
           )}
         </CardContent>
       </Card>
@@ -547,7 +552,7 @@ export default function Assumptions() {
                   <div key={h.id} className="border rounded-lg p-3 space-y-2">
                     <div className="flex items-center justify-between text-sm">
                       <span className="font-medium">{h.changedByName ?? "System"}</span>
-                      <span className="text-muted-foreground">{format(new Date(h.changedAt), "dd MMM yyyy HH:mm")}</span>
+                      <span className="text-muted-foreground">{formatDate(h.changedAt)} {h.changedAt ? new Date(h.changedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : ''}</span>
                     </div>
                     <Separator />
                     <div className="space-y-1">

@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Eye, Pencil, Trash2, Users, CheckSquare } from "lucide-react";
 import { toast } from "sonner";
+import { formatDate as _formatDateUtil } from "@/lib/dateUtils";
 
 const MEETING_TYPE_COLORS: Record<string, string> = {
   "Steering Committee": "bg-purple-100 text-purple-700",
@@ -74,7 +75,7 @@ const emptyDecisionForm: DecisionForm = {
 
 function formatDate(d: Date | string | null | undefined): string {
   if (!d) return "—";
-  try { return new Date(d).toLocaleDateString(); } catch { return String(d); }
+  return _formatDateUtil(d instanceof Date ? d.toISOString() : (d as string));
 }
 
 export default function Meetings() {

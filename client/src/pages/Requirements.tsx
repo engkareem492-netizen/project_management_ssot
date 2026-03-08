@@ -19,6 +19,8 @@ import { SelectWithCreate } from "@/components/SelectWithCreate";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { ImportExportToolbar } from "@/components/ImportExportToolbar";
+import { formatDate as _formatDateUtil } from "@/lib/dateUtils";
+import { EmptyState } from "@/components/EmptyState";
 
 export default function Requirements() {
   const { currentProjectId } = useProject();
@@ -570,12 +572,7 @@ export default function Requirements() {
 
   const formatDate = (dateStr: string | null | undefined) => {
     if (!dateStr) return '-';
-    try {
-      const date = new Date(dateStr);
-      return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-    } catch {
-      return dateStr;
-    }
+    return _formatDateUtil(dateStr);
   };
 
   if (isLoading) {
@@ -857,9 +854,13 @@ export default function Requirements() {
           </div>
 
           {filteredRequirements?.length === 0 && (
-            <div className="text-center py-12 text-muted-foreground border border-dashed border-primary/20 rounded-lg mt-4">
-              No requirements found. Create a new requirement or import an Excel file to get started.
-            </div>
+            <EmptyState
+              icon={FileText}
+              title="No requirements found"
+              description="Create a new requirement or import an Excel file to get started."
+              actionLabel="Create Requirement"
+              onAction={() => setCreateDialogOpen(true)}
+            />
           )}
         </CardContent>
       </Card>

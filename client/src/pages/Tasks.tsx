@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Search, Edit, History, Loader2, Plus, Trash2, Settings, Eye, Save, X, CheckSquare, Info, AlertCircle, Link2 } from "lucide-react";
+import { Search, Edit, History, Loader2, Plus, Trash2, Settings, Eye, Save, X, CheckSquare, Info, AlertCircle, Link2, GitBranch, RefreshCw, ArrowRight, ChevronDown, ChevronRight, ListTree } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -20,14 +20,8 @@ import { SelectWithCreate } from "@/components/SelectWithCreate";
 import { DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { ImportExportToolbar } from "@/components/ImportExportToolbar";
-
-// Parse ISO date strings (YYYY-MM-DD) to DD/MM/YYYY without timezone shift
-function formatDate(dateString: string | null | undefined): string {
-  if (!dateString) return '-';
-  const match = String(dateString).match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (match) return `${match[3]}/${match[2]}/${match[1]}`;
-  try { return new Date(dateString).toLocaleDateString('en-GB'); } catch { return String(dateString); }
-}
+import { formatDate } from "@/lib/dateUtils";
+import { EmptyState } from "@/components/EmptyState";
 
 export default function Tasks() {
   const { currentProjectId } = useProject();
@@ -99,6 +93,22 @@ export default function Tasks() {
   const [bulkStatusDialogOpen, setBulkStatusDialogOpen] = useState(false);
   const [bulkStatus, setBulkStatus] = useState("");
   const [responsibleFilter, setResponsibleFilter] = useState<string | null>(null);
+
+  // Sub-task state
+  const [subTaskDialogOpen, setSubTaskDialogOpen] = useState(false);
+  const [parentTaskForSubTask, setParentTaskForSubTask] = useState<any>(null);
+  const [expandedTasks, setExpandedTasks] = useState<Set<number>>(new Set());
+  const [newSubTask, setNewSubTask] = useState({ description: '', status: 'Not Started', priority: 'Medium', dueDate: '' });
+
+  // Follow-up task state
+  const [followUpDialogOpen, setFollowUpDialogOpen] = useState(false);
+  const [sourceTaskForFollowUp, setSourceTaskForFollowUp] = useState<any>(null);
+  const [newFollowUp, setNewFollowUp] = useState({ description: '', status: 'Not Started', priority: 'Medium', dueDate: '', notes: '' });
+
+  // Recurring task state
+  const [recurringDialogOpen, setRecurringDialogOpen] = useState(false);
+  const [taskForRecurring, setTaskForRecurring] = useState<any>(null);
+  const [recurringConfig, setRecurringConfig] = useState({ recurringType: 'weekly', recurringInterval: 1, recurringEndDate: '' });
 
   const [newIssue, setNewIssue] = useState({
     description: '',
@@ -416,6 +426,49 @@ export default function Tasks() {
       toast.error(`Failed to create stakeholder: ${error.message}`);
     },
   });
+
+  // Sub-task mutation
+  const createSubTaskMutation = trpc.tasks.createSubTask.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Sub-task ${data.taskId} created`);
+      setSubTaskDialogOpen(false);
+      setNewSubTask({ description: '', status: 'Not Started', priority: 'Medium', dueDate: '' });
+      refetch();
+    },
+    onError: (err: any) => toast.error(`Failed: ${err.message}`),
+  });
+
+  // Follow-up mutation
+  const createFollowUpMutation = trpc.tasks.createFollowUp.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Follow-up task ${data.taskId} created`);
+      setFollowUpDialogOpen(false);
+      setNewFollowUp({ description: '', status: 'Not Started', priority: 'Medium', dueDate: '', notes: '' });
+      refetch();
+    },
+    onError: (err: any) => toast.error(`Failed: ${err.message}`),
+  });
+
+  // Recurring config mutation
+  const setRecurringMutation = trpc.tasks.setRecurring.useMutation({
+    onSuccess: () => {
+      toast.success('Recurring schedule saved');
+      setRecurringDialogOpen(false);
+      refetch();
+    },
+    onError: (err: any) => toast.error(`Failed: ${err.message}`),
+  });
+
+  // Helpers
+  const toggleExpand = (taskId: number) => {
+    setExpandedTasks(prev => {
+      const next = new Set(prev);
+      if (next.has(taskId)) next.delete(taskId); else next.add(taskId);
+      return next;
+    });
+  };
+
+  const getSubTasks = (parentId: number) => tasks?.filter((t: any) => t.parentTaskId === parentId) || [];
 
   const filteredTasks = tasks?.filter(task => {
     const matchesSearch =
@@ -862,12 +915,46 @@ export default function Tasks() {
                             </Button>
                             <Button size="sm" variant="destructive" onClick={() => handleDelete(task.id)} title="Delete">
                               <Trash2 className="w-3 h-3" />
+                            </Button>
+                            <Button size="sm" variant="outline" className="border-green-300 text-green-700 hover:bg-green-50" onClick={() => { setParentTaskForSubTask(task); setSubTaskDialogOpen(true); }} title="Add Sub-task">
+                              <GitBranch className="w-3 h-3" />
+                            </Button>
+                            <Button size="sm" variant="outline" className="border-purple-300 text-purple-700 hover:bg-purple-50" onClick={() => { setSourceTaskForFollowUp(task); setFollowUpDialogOpen(true); }} title="Create Follow-up Task">
+                              <ArrowRight className="w-3 h-3" />
+                            </Button>
+                            <Button size="sm" variant="outline" className="border-orange-300 text-orange-700 hover:bg-orange-50" onClick={() => { setTaskForRecurring(task); setRecurringConfig({ recurringType: task.recurringType || 'weekly', recurringInterval: task.recurringInterval || 1, recurringEndDate: task.recurringEndDate || '' }); setRecurringDialogOpen(true); }} title="Set Recurring Schedule">
+                              <RefreshCw className="w-3 h-3" />
                             </Button>                          </>
 
                             )}
                           </div>
                         </div>
 
+                        {/* Sub-task indicator + expand toggle */}
+                        {getSubTasks(task.id).length > 0 && (
+                          <div className="flex items-center gap-2 mt-1">
+                            <Button size="sm" variant="ghost" className="h-6 px-2 text-xs text-muted-foreground" onClick={() => toggleExpand(task.id)}>
+                              {expandedTasks.has(task.id) ? <ChevronDown className="w-3 h-3 mr-1" /> : <ChevronRight className="w-3 h-3 mr-1" />}
+                              {getSubTasks(task.id).length} sub-task{getSubTasks(task.id).length > 1 ? 's' : ''}
+                            </Button>
+                          </div>
+                        )}
+                        {/* Recurring badge */}
+                        {task.recurringType && (
+                          <div className="flex items-center gap-1 mt-1">
+                            <Badge variant="outline" className="text-orange-600 border-orange-300 text-xs gap-1">
+                              <RefreshCw className="w-3 h-3" />{task.recurringType}
+                            </Badge>
+                          </div>
+                        )}
+                        {/* Follow-up indicator */}
+                        {task.followUpOfId && (
+                          <div className="flex items-center gap-1 mt-1">
+                            <Badge variant="outline" className="text-purple-600 border-purple-300 text-xs gap-1">
+                              <ArrowRight className="w-3 h-3" />Follow-up task
+                            </Badge>
+                          </div>
+                        )}
                         {/* Line 2: Requirement, Deliverable, Responsible, Due Date, Status */}
                         <div className="grid grid-cols-1 gap-1 text-sm text-muted-foreground pl-4 border-l-2 border-muted">
                           <div className="flex items-center gap-2">
@@ -921,6 +1008,28 @@ export default function Tasks() {
                             <Badge>{task.currentStatus || 'No updates'}</Badge>
                           </div>
                         </div>
+                        {/* Expanded sub-tasks */}
+                        {expandedTasks.has(task.id) && getSubTasks(task.id).map((sub: any) => (
+                          <div key={sub.id} className="ml-6 mt-2 p-3 bg-muted/30 rounded border-l-4 border-green-300">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <GitBranch className="w-3 h-3 text-green-600" />
+                                <span className="font-semibold text-sm text-green-700">{sub.taskId}</span>
+                                <span className="text-sm">{sub.description}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline" className="text-xs">{sub.status || sub.currentStatus || 'Not Started'}</Badge>
+                                <span className="text-xs text-muted-foreground">{formatDate(sub.dueDate)}</span>
+                                <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => handleViewDetails(sub)} title="View sub-task">
+                                  <Eye className="w-3 h-3" />
+                                </Button>
+                                <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-destructive" onClick={() => handleDelete(sub.id)} title="Delete sub-task">
+                                  <Trash2 className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -930,9 +1039,13 @@ export default function Tasks() {
           </div>
 
           {filteredTasks?.length === 0 && (
-            <div className="text-center py-12 text-muted-foreground">
-              No tasks found. Create a new task or import an Excel file to get started.
-            </div>
+            <EmptyState
+              icon={CheckSquare}
+              title="No tasks found"
+              description="Create a new task or import an Excel file to get started."
+              actionLabel="Create Task"
+              onAction={() => setCreateDialogOpen(true)}
+            />
           )}
         </CardContent>
       </Card>
@@ -2458,6 +2571,133 @@ export default function Tasks() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Sub-task Dialog ── */}
+      <Dialog open={subTaskDialogOpen} onOpenChange={setSubTaskDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><GitBranch className="w-4 h-4 text-green-600" />Add Sub-task</DialogTitle>
+            <DialogDescription>Create a child task under <strong>{parentTaskForSubTask?.taskId}</strong></DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Description</Label>
+              <Textarea value={newSubTask.description} onChange={e => setNewSubTask(p => ({ ...p, description: e.target.value }))} placeholder="Sub-task description..." />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Status</Label>
+                <select className="w-full border rounded p-2 text-sm bg-background" value={newSubTask.status} onChange={e => setNewSubTask(p => ({ ...p, status: e.target.value }))}>
+                  {['Not Started','In Progress','Completed','On Hold','Cancelled'].map(s => <option key={s}>{s}</option>)}
+                </select>
+              </div>
+              <div>
+                <Label>Priority</Label>
+                <select className="w-full border rounded p-2 text-sm bg-background" value={newSubTask.priority} onChange={e => setNewSubTask(p => ({ ...p, priority: e.target.value }))}>
+                  {['Low','Medium','High','Critical'].map(s => <option key={s}>{s}</option>)}
+                </select>
+              </div>
+            </div>
+            <div>
+              <Label>Due Date</Label>
+              <Input type="date" value={newSubTask.dueDate} onChange={e => setNewSubTask(p => ({ ...p, dueDate: e.target.value }))} />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={() => setSubTaskDialogOpen(false)}>Cancel</Button>
+            <Button className="bg-green-600 hover:bg-green-700" disabled={!newSubTask.description || createSubTaskMutation.isPending} onClick={() => {
+              if (!parentTaskForSubTask || !currentProjectId) return;
+              createSubTaskMutation.mutate({ projectId: currentProjectId, parentTaskId: parentTaskForSubTask.id, description: newSubTask.description, status: newSubTask.status, priority: newSubTask.priority, dueDate: newSubTask.dueDate || undefined });
+            }}>
+              {createSubTaskMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create Sub-task'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Follow-up Task Dialog ── */}
+      <Dialog open={followUpDialogOpen} onOpenChange={setFollowUpDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><ArrowRight className="w-4 h-4 text-purple-600" />Create Follow-up Task</DialogTitle>
+            <DialogDescription>Create a follow-up linked to <strong>{sourceTaskForFollowUp?.taskId}</strong></DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Description</Label>
+              <Textarea value={newFollowUp.description} onChange={e => setNewFollowUp(p => ({ ...p, description: e.target.value }))} placeholder="Follow-up task description..." />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Status</Label>
+                <select className="w-full border rounded p-2 text-sm bg-background" value={newFollowUp.status} onChange={e => setNewFollowUp(p => ({ ...p, status: e.target.value }))}>
+                  {['Not Started','In Progress','Completed','On Hold','Cancelled'].map(s => <option key={s}>{s}</option>)}
+                </select>
+              </div>
+              <div>
+                <Label>Priority</Label>
+                <select className="w-full border rounded p-2 text-sm bg-background" value={newFollowUp.priority} onChange={e => setNewFollowUp(p => ({ ...p, priority: e.target.value }))}>
+                  {['Low','Medium','High','Critical'].map(s => <option key={s}>{s}</option>)}
+                </select>
+              </div>
+            </div>
+            <div>
+              <Label>Due Date</Label>
+              <Input type="date" value={newFollowUp.dueDate} onChange={e => setNewFollowUp(p => ({ ...p, dueDate: e.target.value }))} />
+            </div>
+            <div>
+              <Label>Notes</Label>
+              <Textarea value={newFollowUp.notes} onChange={e => setNewFollowUp(p => ({ ...p, notes: e.target.value }))} placeholder="Optional notes..." rows={2} />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={() => setFollowUpDialogOpen(false)}>Cancel</Button>
+            <Button className="bg-purple-600 hover:bg-purple-700" disabled={!newFollowUp.description || createFollowUpMutation.isPending} onClick={() => {
+              if (!sourceTaskForFollowUp || !currentProjectId) return;
+              createFollowUpMutation.mutate({ projectId: currentProjectId, followUpOfId: sourceTaskForFollowUp.id, description: newFollowUp.description, status: newFollowUp.status, priority: newFollowUp.priority, dueDate: newFollowUp.dueDate || undefined });
+            }}>
+              {createFollowUpMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create Follow-up'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Recurring Schedule Dialog ── */}
+      <Dialog open={recurringDialogOpen} onOpenChange={setRecurringDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><RefreshCw className="w-4 h-4 text-orange-600" />Set Recurring Schedule</DialogTitle>
+            <DialogDescription>Configure how often <strong>{taskForRecurring?.taskId}</strong> repeats</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Repeat Type</Label>
+              <select className="w-full border rounded p-2 text-sm bg-background" value={recurringConfig.recurringType} onChange={e => setRecurringConfig(p => ({ ...p, recurringType: e.target.value }))}>
+                {['daily','weekly','monthly','custom'].map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+              </select>
+            </div>
+            <div>
+              <Label>Every (interval)</Label>
+              <Input type="number" min={1} value={recurringConfig.recurringInterval} onChange={e => setRecurringConfig(p => ({ ...p, recurringInterval: parseInt(e.target.value) || 1 }))} />
+              <p className="text-xs text-muted-foreground mt-1">e.g. every 2 weeks</p>
+            </div>
+            <div>
+              <Label>End Date (optional)</Label>
+              <Input type="date" value={recurringConfig.recurringEndDate} onChange={e => setRecurringConfig(p => ({ ...p, recurringEndDate: e.target.value }))} />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={() => { if (taskForRecurring) setRecurringMutation.mutate({ id: taskForRecurring.id, recurringType: null }); setRecurringDialogOpen(false); }}>Remove Recurring</Button>
+            <Button variant="outline" onClick={() => setRecurringDialogOpen(false)}>Cancel</Button>
+            <Button className="bg-orange-600 hover:bg-orange-700" disabled={setRecurringMutation.isPending} onClick={() => {
+              if (!taskForRecurring) return;
+              setRecurringMutation.mutate({ id: taskForRecurring.id, recurringType: recurringConfig.recurringType as any, recurringInterval: recurringConfig.recurringInterval, recurringEndDate: recurringConfig.recurringEndDate || null });
+            }}>
+              {setRecurringMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save Schedule'}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

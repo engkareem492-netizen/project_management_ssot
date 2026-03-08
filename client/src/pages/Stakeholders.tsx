@@ -35,6 +35,7 @@ import {
 import { toast } from "sonner";
 import { Plus, Trash2, Pencil, Search, Users, Mail, Phone, Briefcase } from "lucide-react";
 import { ImportExportToolbar } from "@/components/ImportExportToolbar";
+import { EmptyState } from "@/components/EmptyState";
 
 export default function Stakeholders() {
   const { currentProjectId } = useProject();
@@ -240,8 +241,14 @@ export default function Stakeholders() {
           <TableBody>
             {filteredStakeholders.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                  {searchTerm ? "No stakeholders match your search" : "No stakeholders yet. Add your first stakeholder!"}
+                <TableCell colSpan={7}>
+                  <EmptyState
+                    icon={Users}
+                    title={searchTerm ? "No stakeholders match your search" : "No stakeholders yet"}
+                    description={searchTerm ? "Try a different search term." : "Add your first stakeholder to track project contacts."}
+                    actionLabel={searchTerm ? undefined : "Add Stakeholder"}
+                    onAction={searchTerm ? undefined : () => setIsCreateOpen(true)}
+                  />
                 </TableCell>
               </TableRow>
             ) : (

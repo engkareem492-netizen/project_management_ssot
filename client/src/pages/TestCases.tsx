@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Label } from "@/components/ui/label";
 import { Plus, Eye, Pencil, Trash2, FlaskConical, CheckCircle, XCircle, AlertCircle, Clock } from "lucide-react";
 import { toast } from "sonner";
+import { formatDate as _formatDate } from "@/lib/dateUtils";
 
 type TestStatus = "Not Executed" | "In Progress" | "Passed" | "Failed" | "Blocked" | "Skipped";
 
@@ -63,7 +64,7 @@ const emptyForm: TestForm = {
 
 function formatDate(d: Date | string | null | undefined): string {
   if (!d) return "—";
-  try { return new Date(d).toLocaleDateString(); } catch { return String(d); }
+  return _formatDate(d as string);
 }
 
 export default function TestCases() {

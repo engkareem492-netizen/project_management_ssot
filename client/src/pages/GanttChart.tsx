@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Trash2, GitBranch, BarChart3, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+import { formatDate as _formatDateUtil } from "@/lib/dateUtils";
 
 type DepType = "Finish-to-Start" | "Start-to-Start" | "Finish-to-Finish" | "Start-to-Finish";
 
@@ -41,7 +42,7 @@ function parseDate(d: string | null | undefined): Date | null {
 
 function formatDate(d: Date | string | null | undefined): string {
   if (!d) return "—";
-  try { return new Date(d).toLocaleDateString(); } catch { return String(d); }
+  return _formatDateUtil(d instanceof Date ? d.toISOString() : (d as string));
 }
 
 export default function GanttChart() {

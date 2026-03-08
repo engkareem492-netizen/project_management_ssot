@@ -2318,3 +2318,50 @@ export async function getAssumptionsEnhanced(projectId: number) {
     .where(eq(assumptions.projectId, projectId))
     .orderBy(assumptions.assumptionId);
 }
+
+// ─── Sub-tasks ───────────────────────────────────────────────────────────────
+
+export async function getSubTasks(parentTaskId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(tasks).where(eq(tasks.parentTaskId, parentTaskId)).orderBy(tasks.taskId);
+}
+
+// ─── Follow-up tasks ─────────────────────────────────────────────────────────
+
+export async function getFollowUpTasks(followUpOfId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(tasks).where(eq(tasks.followUpOfId, followUpOfId)).orderBy(tasks.taskId);
+}
+
+// ─── Badge counts ─────────────────────────────────────────────────────────────
+
+export async function getBadgeCounts(projectId: number) {
+  const db = await getDb();
+  if (!db) return { overdueTasks: 0, openIssues: 0, highRisks: 0 };
+
+  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+
+  // Overdue tasks: dueDate < today AND status not completed/closed
+  const allTasks = await db.select({ dueDate: tasks.dueDate, status: tasks.status, currentStatus: tasks.currentStatus })
+    .from(tasks).where(eq(tasks.projectId, projectId));
+  const overdueTasks = allTasks.filter(t => {
+    if (!t.dueDate) return false;
+    const done = ['completed', 'closed', 'done', 'complete'].includes((t.status || t.currentStatus || '').toLowerCase());
+    return !done && t.dueDate < today;
+  }).length;
+
+  // Open issues: status not resolved/closed
+  const allIssues = await db.select({ status: issues.status }).from(issues).where(eq(issues.projectId, projectId));
+  const openIssues = allIssues.filter(i => {
+    const s = (i.status || '').toLowerCase();
+    return !['resolved', 'closed', 'done', 'complete'].includes(s);
+  }).length;
+
+  // High-severity risks: score >= 15 and riskStatusId is not null (open)
+  const allRisks = await db.select({ score: risks.score, riskStatusId: risks.riskStatusId }).from(risks).where(eq(risks.projectId, projectId));
+  const highRisks = allRisks.filter(r => (r.score || 0) >= 15).length;
+
+  return { overdueTasks, openIssues, highRisks };
+}

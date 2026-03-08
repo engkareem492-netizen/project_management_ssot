@@ -32,6 +32,8 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useProject } from "@/contexts/ProjectContext";
 import { ImportExportToolbar } from "@/components/ImportExportToolbar";
+import { formatDate } from "@/lib/dateUtils";
+import { EmptyState } from "@/components/EmptyState";
 
 export default function RiskRegister() {
 
@@ -590,9 +592,13 @@ export default function RiskRegister() {
       ) : risks.length === 0 ? (
         <Card>
           <CardContent className="pt-6">
-            <p className="text-center text-muted-foreground">
-              No risks found. Click "Add Risk" to create one.
-            </p>
+            <EmptyState
+              icon={ShieldAlert}
+              title="No risks found"
+              description="Click Add Risk to register a new risk for this project."
+              actionLabel="Add Risk"
+              onAction={() => setIsCreateDialogOpen(true)}
+            />
           </CardContent>
         </Card>
       ) : (

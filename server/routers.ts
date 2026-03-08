@@ -19,6 +19,8 @@ import { testCasesRouter } from "./routers/testCases.router";
 import { taskDependenciesRouter } from "./routers/taskDependencies.router";
 import { traceabilityRouter } from "./routers/traceability.router";
 import { bulkImportRouter } from "./routers/bulkImport.router";
+import { searchRouter } from "./routers/search.router";
+import { sidebarBadgesRouter } from "./routers/sidebarBadges.router";
 
 export const appRouter = router({
   system: systemRouter,
@@ -35,6 +37,8 @@ export const appRouter = router({
   taskDependencies: taskDependenciesRouter,
   traceability: traceabilityRouter,
   bulkImport: bulkImportRouter,
+  search: searchRouter,
+  sidebarBadges: sidebarBadgesRouter,
 
   // Excel import/export
   excel: router({
@@ -614,6 +618,12 @@ export const appRouter = router({
         statusUpdate: z.string().optional(),
         status: z.string().optional(),
         priority: z.string().optional(),
+        parentTaskId: z.number().optional(),
+        followUpOfId: z.number().optional(),
+        seriesId: z.number().optional(),
+        recurringType: z.enum(['none', 'daily', 'weekly', 'monthly', 'custom']).optional(),
+        recurringInterval: z.number().optional(),
+        recurringEndDate: z.string().optional(),
       }))
       .mutation(async ({ input }) => {
         try {
@@ -756,6 +766,92 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         await db.updateTask(input.id, { requirementId: input.requirementId });
         return { success: true };
+      }),
+
+    // Sub-task: create a child task linked to a parent
+    createSubTask: protectedProcedure
+      .input(z.object({
+        projectId: z.number(),
+        parentTaskId: z.number(),
+        description: z.string().optional(),
+        responsible: z.string().optional(),
+        responsibleId: z.number().optional(),
+        dueDate: z.string().optional(),
+        status: z.string().optional(),
+        priority: z.string().optional(),
+        taskGroup: z.string().optional(),
+        requirementId: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const taskId = await db.getNextId('task', 'T', input.projectId);
+        await db.createTask({ ...input, taskId });
+        const created = await db.getTaskByTaskId(taskId);
+        return { success: true, taskId, id: created?.id };
+      }),
+
+    // Follow-up: create a new task linked to an original completed task
+    createFollowUp: protectedProcedure
+      .input(z.object({
+        projectId: z.number(),
+        followUpOfId: z.number(),
+        description: z.string().optional(),
+        responsible: z.string().optional(),
+        responsibleId: z.number().optional(),
+        accountable: z.string().optional(),
+        accountableId: z.number().optional(),
+        informed: z.string().optional(),
+        informedId: z.number().optional(),
+        consulted: z.string().optional(),
+        consultedId: z.number().optional(),
+        dueDate: z.string().optional(),
+        status: z.string().optional(),
+        priority: z.string().optional(),
+        taskGroup: z.string().optional(),
+        requirementId: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const taskId = await db.getNextId('task', 'T', input.projectId);
+        await db.createTask({ ...input, taskId });
+        const created = await db.getTaskByTaskId(taskId);
+        return { success: true, taskId, id: created?.id };
+      }),
+
+    // Get sub-tasks for a parent task
+    getSubTasks: protectedProcedure
+      .input(z.object({ parentTaskId: z.number() }))
+      .query(async ({ input }) => {
+        return await db.getSubTasks(input.parentTaskId);
+      }),
+
+    // Get follow-up tasks for an original task
+    getFollowUps: protectedProcedure
+      .input(z.object({ followUpOfId: z.number() }))
+      .query(async ({ input }) => {
+        return await db.getFollowUpTasks(input.followUpOfId);
+      }),
+
+    // Configure recurring schedule for a task
+    setRecurring: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        recurringType: z.enum(['daily', 'weekly', 'monthly', 'custom']).nullable(),
+        recurringInterval: z.number().optional(),
+        recurringEndDate: z.string().nullable().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        await db.updateTask(input.id, {
+          recurringType: input.recurringType,
+          recurringInterval: input.recurringInterval,
+          recurringEndDate: input.recurringEndDate || null,
+        });
+        return { success: true };
+      }),
+
+    // Badge counts: overdue tasks, open issues, high-severity risks
+    badgeCounts: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ input }) => {
+        return await db.getBadgeCounts(input.projectId);
       }),
   }),
 

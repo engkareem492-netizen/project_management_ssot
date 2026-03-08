@@ -12,6 +12,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { ImportExportToolbar } from "@/components/ImportExportToolbar";
+import { formatDate } from "@/lib/dateUtils";
+import { EmptyState } from "@/components/EmptyState";
 
 export default function Dependencies() {
   const { currentProjectId } = useProject();
@@ -150,7 +152,7 @@ export default function Dependencies() {
                     <TableCell>{dep.taskId || 'N/A'}</TableCell>
                     <TableCell>{dep.requirementId || 'N/A'}</TableCell>
                     <TableCell>{dep.responsible}</TableCell>
-                    <TableCell>{dep.dueDate || 'N/A'}</TableCell>
+                    <TableCell>{formatDate(dep.dueDate) || 'N/A'}</TableCell>
                     <TableCell>{dep.currentStatus || 'N/A'}</TableCell>
                     <TableCell>
                       <div className="flex gap-2">
@@ -166,9 +168,13 @@ export default function Dependencies() {
           </div>
 
           {filteredDependencies?.length === 0 && (
-            <div className="text-center py-12 text-muted-foreground">
-              No dependencies found. Create a new dependency or import an Excel file to get started.
-            </div>
+            <EmptyState
+              icon={Link2}
+              title="No dependencies found"
+              description="Create a new dependency or import an Excel file to get started."
+              actionLabel="Create Dependency"
+              onAction={() => setCreateDialogOpen(true)}
+            />
           )}
         </CardContent>
       </Card>

@@ -65,6 +65,23 @@ import {
   FileBarChart
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
@@ -72,6 +89,8 @@ import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useProject } from "@/contexts/ProjectContext";
 import { ThemeSelector } from "./ThemeSelector";
+import { GlobalSearch } from "./GlobalSearch";
+import { Search } from "lucide-react";
 
 const menuItems = [
   { icon: Calendar, label: "Today", path: "/today" },
@@ -94,6 +113,7 @@ const menuItems = [
   { icon: SettingsIcon, label: "Settings", path: "/settings" },
 ];
 
+const SIDEBAR_ORDER_KEY = "sidebar-order";
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
 const DEFAULT_WIDTH = 280;
 const MIN_WIDTH = 200;
@@ -174,6 +194,7 @@ function DashboardLayoutContent({
   const isCollapsed = state === "collapsed";
   const [isResizing, setIsResizing] = useState(false);
   const [themeDialogOpen, setThemeDialogOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const activeMenuItem = menuItems.find(item => item.path === location);
   const isMobile = useIsMobile();
@@ -181,6 +202,46 @@ function DashboardLayoutContent({
   const [excelMenuOpen, setExcelMenuOpen] = useState(false);
   const { currentProjectId, setCurrentProjectId } = useProject();
   const { data: projects } = trpc.projects.list.useQuery();
+
+  // Sortable menu items
+  const [orderedItems, setOrderedItems] = useState(() => {
+    try {
+      const saved = localStorage.getItem(SIDEBAR_ORDER_KEY);
+      if (saved) {
+        const paths: string[] = JSON.parse(saved);
+        const sorted = paths
+          .map((p) => menuItems.find((m) => m.path === p))
+          .filter(Boolean) as typeof menuItems;
+        // Add any new items not in saved order
+        const missing = menuItems.filter((m) => !paths.includes(m.path));
+        return [...sorted, ...missing];
+      }
+    } catch {}
+    return menuItems;
+  });
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setOrderedItems((items) => {
+        const oldIndex = items.findIndex((i) => i.path === active.id);
+        const newIndex = items.findIndex((i) => i.path === over.id);
+        const newOrder = arrayMove(items, oldIndex, newIndex);
+        localStorage.setItem(SIDEBAR_ORDER_KEY, JSON.stringify(newOrder.map((i) => i.path)));
+        return newOrder;
+      });
+    }
+  };
+
+  const { data: badgeCounts } = trpc.sidebarBadges.counts.useQuery(
+    { projectId: currentProjectId! },
+    { enabled: !!currentProjectId, refetchInterval: 60_000 }
+  );
   const currentProject = projects?.find(p => p.id === currentProjectId);
 
   const importMutation = trpc.excel.import.useMutation({
@@ -242,6 +303,17 @@ function DashboardLayoutContent({
       setIsResizing(false);
     }
   }, [isCollapsed]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -309,26 +381,60 @@ function DashboardLayoutContent({
           </SidebarHeader>
 
           <SidebarContent className="gap-0">
-            <SidebarMenu className="px-2 py-1">
-              {menuItems.map(item => {
-                const isActive = location === item.path;
-                return (
-                  <SidebarMenuItem key={item.path}>
-                    <SidebarMenuButton
-                      isActive={isActive}
-                      onClick={() => setLocation(item.path)}
-                      tooltip={item.label}
-                      className={`h-8 transition-all font-normal text-sm`}
-                    >
-                      <item.icon
-                        className={`h-4 w-4 ${isActive ? "text-primary" : ""}`}
+            {/* Global Search Button */}
+            <div className="px-2 py-1 group-data-[collapsible=icon]:hidden">
+              <button
+                onClick={() => setSearchOpen(true)}
+                className="w-full flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors border border-border/50"
+              >
+                <Search className="h-3.5 w-3.5 shrink-0" />
+                <span className="flex-1 text-left">Search...</span>
+                <kbd className="hidden sm:inline-flex h-5 items-center gap-0.5 rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
+                  <span className="text-xs">⌘</span>K
+                </kbd>
+              </button>
+            </div>
+            {/* Collapsed search icon */}
+            <div className="hidden group-data-[collapsible=icon]:flex justify-center px-2 py-1">
+              <button
+                onClick={() => setSearchOpen(true)}
+                title="Search (⌘K)"
+                className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+              >
+                <Search className="h-4 w-4" />
+              </button>
+            </div>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={orderedItems.map((i) => i.path)}
+                strategy={verticalListSortingStrategy}
+              >
+                <SidebarMenu className="px-2 py-1">
+                  {orderedItems.map(item => {
+                    const isActive = location === item.path;
+                    const badgeCount =
+                      item.path === "/tasks" ? badgeCounts?.tasks :
+                      item.path === "/issues" ? badgeCounts?.issues :
+                      item.path === "/dependencies" ? badgeCounts?.dependencies :
+                      item.path === "/risk-register" ? badgeCounts?.risks :
+                      undefined;
+                    return (
+                      <SortableSidebarItem
+                        key={item.path}
+                        item={item}
+                        isActive={isActive}
+                        badgeCount={badgeCount}
+                        onClick={() => setLocation(item.path)}
                       />
-                      <span>{item.label}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
+                    );
+                  })}
+                </SidebarMenu>
+              </SortableContext>
+            </DndContext>
           </SidebarContent>
 
           <SidebarFooter className="p-3 gap-2">
@@ -460,6 +566,8 @@ function DashboardLayoutContent({
         <main className="flex-1 p-4">{children}</main>
       </SidebarInset>
 
+      <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
+
       {/* Theme Settings Dialog */}
       <Dialog open={themeDialogOpen} onOpenChange={setThemeDialogOpen}>
         <DialogContent className="max-w-md">
@@ -475,5 +583,67 @@ function DashboardLayoutContent({
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+// ─── Sortable Sidebar Item ────────────────────────────────────────────────────
+type SortableSidebarItemProps = {
+  item: { icon: React.ElementType; label: string; path: string };
+  isActive: boolean;
+  badgeCount?: number;
+  onClick: () => void;
+};
+
+function SortableSidebarItem({ item, isActive, badgeCount, onClick }: SortableSidebarItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: item.path });
+
+  const style: CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 10 : undefined,
+  };
+
+  return (
+    <SidebarMenuItem ref={setNodeRef} style={style}>
+      <SidebarMenuButton
+        isActive={isActive}
+        onClick={onClick}
+        tooltip={item.label}
+        className="h-8 transition-all font-normal text-sm group/item"
+        {...attributes}
+      >
+        {/* Drag handle — only visible on hover, hidden when sidebar is collapsed */}
+        <span
+          {...listeners}
+          className="hidden group-hover/item:flex group-data-[collapsible=icon]:hidden items-center cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-muted-foreground shrink-0 -ml-1 mr-0.5"
+          onClick={(e) => e.stopPropagation()}
+          title="Drag to reorder"
+        >
+          <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor">
+            <circle cx="3" cy="2.5" r="1.2" />
+            <circle cx="7" cy="2.5" r="1.2" />
+            <circle cx="3" cy="7" r="1.2" />
+            <circle cx="7" cy="7" r="1.2" />
+            <circle cx="3" cy="11.5" r="1.2" />
+            <circle cx="7" cy="11.5" r="1.2" />
+          </svg>
+        </span>
+        <item.icon className={`h-4 w-4 shrink-0 ${isActive ? "text-primary" : ""}`} />
+        <span className="flex-1">{item.label}</span>
+        {badgeCount != null && badgeCount > 0 && (
+          <span className="ml-auto inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full text-[10px] font-semibold bg-destructive text-destructive-foreground">
+            {badgeCount > 99 ? "99+" : badgeCount}
+          </span>
+        )}
+      </SidebarMenuButton>
+    </SidebarMenuItem>
   );
 }

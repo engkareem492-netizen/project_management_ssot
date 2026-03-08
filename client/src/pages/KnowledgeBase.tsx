@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ImportExportToolbar } from "@/components/ImportExportToolbar";
+import { EmptyState } from "@/components/EmptyState";
 
 export default function KnowledgeBase() {
   const { currentProjectId } = useProject();
@@ -582,16 +583,14 @@ export default function KnowledgeBase() {
         </div>
       ) : entries.length === 0 ? (
         <Card>
-          <CardContent className="flex flex-col items-center justify-center p-12">
-            <BookOpen className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No entries yet</h3>
-            <p className="text-muted-foreground text-center mb-4">
-              Create your first knowledge base entry to get started
-            </p>
-            <Button onClick={() => setCreateDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Create First Entry
-            </Button>
+          <CardContent>
+            <EmptyState
+              icon={BookOpen}
+              title="No knowledge base entries yet"
+              description="Create your first entry to start documenting project knowledge."
+              actionLabel="Create First Entry"
+              onAction={() => setCreateDialogOpen(true)}
+            />
           </CardContent>
         </Card>
       ) : (
