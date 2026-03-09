@@ -466,3 +466,9 @@
 - [x] Task description: "Communicate with [Stakeholder Name] ([Frequency] via [Channel])"
 - [x] Task responsible = communicationResponsibleId, recurringType mapped from frequency
 - [x] Frequency mapping: Daily→daily/1, Weekly→weekly/1, Bi-weekly→weekly/2, Monthly→monthly/1, Quarterly→monthly/3
+
+## Bug Fix: Duplicate Communication Tasks & ID Reuse (Mar 9, 2026)
+
+- [x] Fix: duplicate communication tasks created on every stakeholder save (create + update both fire)
+- [x] Fix: add deduplication check — skip task creation if a communication task already exists for this stakeholder (uses communicationStakeholderId FK)
+- [x] Fix: task ID generator reuses IDs from closed/completed tasks — getNextId now always syncs with actual max before incrementing

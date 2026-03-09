@@ -232,6 +232,13 @@
       "when": 1773048582152,
       "tag": "0032_even_ultron",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "5",
+      "when": 1773049422011,
+      "tag": "0033_pale_klaw",
+      "breakpoints": true
     }
   ]
 }

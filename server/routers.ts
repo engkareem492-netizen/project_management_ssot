@@ -4,6 +4,9 @@ import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import * as db from "./db";
+import { getDb } from "./db";
+import { tasks } from "../drizzle/schema";
+import { eq, and } from "drizzle-orm";
 import * as XLSX from "xlsx";
 import { TRPCError } from "@trpc/server";
 import { projectsRouter } from "./projects.router";
@@ -1287,7 +1290,7 @@ export const appRouter = router({
           ...input,
           communicationResponsible: commResponsibleName,
         });
-        // Auto-create recurring task if frequency + responsible are set
+        // Auto-create recurring task if frequency + responsible are set (deduplication: one task per stakeholder)
         if (input.communicationFrequency && input.communicationFrequency !== 'None' && input.communicationResponsibleId) {
           const freqMap: Record<string, 'daily' | 'weekly' | 'monthly'> = {
             Daily: 'daily', Weekly: 'weekly', 'Bi-weekly': 'weekly',
@@ -1298,17 +1301,26 @@ export const appRouter = router({
           };
           const recurringType = freqMap[input.communicationFrequency] ?? 'weekly';
           const recurringInterval = intervalMap[input.communicationFrequency] ?? 1;
-          const taskId = await db.getNextId('task', 'T', input.projectId);
-          await db.createTask({
-            projectId: input.projectId,
-            taskId,
-            description: `Communicate with ${input.fullName} (${input.communicationFrequency} via ${input.communicationChannel ?? 'TBD'})`,
-            responsibleId: input.communicationResponsibleId,
-            responsible: commResponsibleName ?? undefined,
-            recurringType,
-            recurringInterval,
-            status: 'Open',
-          } as any);
+          const newStakeholderId = (result as any).id ?? (result as any).insertId;
+          // Check if a communication task already exists for this stakeholder
+          const dbConn = await getDb();
+          const existingCommTask = dbConn ? await dbConn.select().from(tasks)
+            .where(and(eq(tasks.projectId, input.projectId), eq(tasks.communicationStakeholderId, newStakeholderId)))
+            .limit(1) : [];
+          if (existingCommTask.length === 0) {
+            const taskId = await db.getNextId('task', 'T', input.projectId);
+            await db.createTask({
+              projectId: input.projectId,
+              taskId,
+              description: `Communicate with ${input.fullName} (${input.communicationFrequency} via ${input.communicationChannel ?? 'TBD'})`,
+              responsibleId: input.communicationResponsibleId,
+              responsible: commResponsibleName ?? undefined,
+              recurringType,
+              recurringInterval,
+              status: 'Open',
+              communicationStakeholderId: newStakeholderId,
+            } as any);
+          }
         }
         return result;
       }),
@@ -1342,11 +1354,10 @@ export const appRouter = router({
           if (resp) updateData.communicationResponsible = resp.fullName ?? updateData.communicationResponsible;
         }
         const result = await db.updateStakeholder(input.id, updateData);
-        // Auto-create recurring task if frequency + responsible changed
+        // Upsert recurring communication task (deduplication: one task per stakeholder)
         const freq = input.data.communicationFrequency;
         const respId = input.data.communicationResponsibleId;
         if (freq && freq !== 'None' && respId) {
-          // Get stakeholder to build task description
           const stakeholder = await db.getStakeholderById(input.id);
           const freqMap: Record<string, 'daily' | 'weekly' | 'monthly'> = {
             Daily: 'daily', Weekly: 'weekly', 'Bi-weekly': 'weekly',
@@ -1357,17 +1368,34 @@ export const appRouter = router({
           };
           const recurringType = freqMap[freq] ?? 'weekly';
           const recurringInterval = intervalMap[freq] ?? 1;
-          const taskId = await db.getNextId('task', 'T', stakeholder?.projectId ?? 1);
-          await db.createTask({
-            projectId: stakeholder?.projectId ?? 1,
-            taskId,
-            description: `Communicate with ${stakeholder?.fullName ?? 'Stakeholder'} (${freq} via ${input.data.communicationChannel ?? stakeholder?.communicationChannel ?? 'TBD'})`,
-            responsibleId: respId,
-            responsible: updateData.communicationResponsible ?? undefined,
-            recurringType,
-            recurringInterval,
-            status: 'Open',
-          } as any);
+          const newDesc = `Communicate with ${stakeholder?.fullName ?? 'Stakeholder'} (${freq} via ${input.data.communicationChannel ?? stakeholder?.communicationChannel ?? 'TBD'})`;
+          const dbConn = await getDb();
+          const existingCommTask = dbConn ? await dbConn.select().from(tasks)
+            .where(and(eq(tasks.projectId, stakeholder?.projectId ?? 1), eq(tasks.communicationStakeholderId, input.id)))
+            .limit(1) : [];
+          if (existingCommTask.length > 0) {
+            // Update existing communication task instead of creating a duplicate
+            await dbConn!.update(tasks).set({
+              description: newDesc,
+              responsibleId: respId,
+              responsible: updateData.communicationResponsible ?? undefined,
+              recurringType,
+              recurringInterval,
+            }).where(eq(tasks.id, existingCommTask[0].id));
+          } else {
+            const taskId = await db.getNextId('task', 'T', stakeholder?.projectId ?? 1);
+            await db.createTask({
+              projectId: stakeholder?.projectId ?? 1,
+              taskId,
+              description: newDesc,
+              responsibleId: respId,
+              responsible: updateData.communicationResponsible ?? undefined,
+              recurringType,
+              recurringInterval,
+              status: 'Open',
+              communicationStakeholderId: input.id,
+            } as any);
+          }
         }
         return result;
       }),

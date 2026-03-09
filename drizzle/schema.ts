@@ -231,6 +231,8 @@ export const tasks = mysqlTable("tasks", {
   parentTaskId: int("parentTaskId"),
   // Follow-up support: followUpOfId links a follow-up task to the original
   followUpOfId: int("followUpOfId"),
+  // Communication task link: links auto-created communication tasks to their stakeholder
+  communicationStakeholderId: int("communicationStakeholderId"),
   // Recurring task support
   seriesId: int("seriesId"),
   recurringType: mysqlEnum("recurringType", ["none", "daily", "weekly", "monthly", "custom"]).default("none"),
