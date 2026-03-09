@@ -419,3 +419,11 @@
 - [x] DB tables: decisions, notifications, projectBudget, budgetEntries, resourceCapacity
 - [x] tRPC routers: decisions, notifications, budget, resources
 - [x] New sidebar items: Dashboard, Decisions, Calendar, Budget, Resources
+
+## Merge: Claude Branch Phase 3 & 4 (Mar 9, 2026)
+
+- [x] Sidebar: combined Stakeholders + Resources into collapsible "Team" tree group
+- [x] Action Log: full rewrite with entity type filter, date range, search, expandable field diffs, pagination
+- [x] Deliverables: added Timeline tab with milestone view, progress bar, color-coded nodes
+- [x] Risk Register: added Heat Map tab (5×5 probability/impact matrix)
+- [x] Resources: Team Overview enhancements
