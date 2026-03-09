@@ -1272,14 +1272,46 @@ export const appRouter = router({
         communicationFrequency: z.string().optional(),
         communicationChannel: z.string().optional(),
         communicationMessage: z.string().optional(),
-        communicationResponsible: z.string().optional(),
+         communicationResponsible: z.string().optional(),
+        communicationResponsibleId: z.number().optional(),
         notes: z.string().optional(),
       }))
       .mutation(async ({ input }) => {
-        const result = await db.createStakeholder(input);
+        // Resolve communicationResponsibleId to name
+        let commResponsibleName = input.communicationResponsible;
+        if (input.communicationResponsibleId) {
+          const resp = await db.getStakeholderById(input.communicationResponsibleId);
+          if (resp) commResponsibleName = resp.fullName ?? commResponsibleName;
+        }
+        const result = await db.createStakeholder({
+          ...input,
+          communicationResponsible: commResponsibleName,
+        });
+        // Auto-create recurring task if frequency + responsible are set
+        if (input.communicationFrequency && input.communicationFrequency !== 'None' && input.communicationResponsibleId) {
+          const freqMap: Record<string, 'daily' | 'weekly' | 'monthly'> = {
+            Daily: 'daily', Weekly: 'weekly', 'Bi-weekly': 'weekly',
+            Monthly: 'monthly', Quarterly: 'monthly',
+          };
+          const intervalMap: Record<string, number> = {
+            Daily: 1, Weekly: 1, 'Bi-weekly': 2, Monthly: 1, Quarterly: 3,
+          };
+          const recurringType = freqMap[input.communicationFrequency] ?? 'weekly';
+          const recurringInterval = intervalMap[input.communicationFrequency] ?? 1;
+          const taskId = await db.getNextId('task', 'T', input.projectId);
+          await db.createTask({
+            projectId: input.projectId,
+            taskId,
+            description: `Communicate with ${input.fullName} (${input.communicationFrequency} via ${input.communicationChannel ?? 'TBD'})`,
+            responsibleId: input.communicationResponsibleId,
+            responsible: commResponsibleName ?? undefined,
+            recurringType,
+            recurringInterval,
+            status: 'Open',
+          } as any);
+        }
         return result;
       }),
-
     update: protectedProcedure
       .input(z.object({
         id: z.number(),
@@ -1298,11 +1330,45 @@ export const appRouter = router({
           communicationChannel: z.string().optional(),
           communicationMessage: z.string().optional(),
           communicationResponsible: z.string().optional(),
+          communicationResponsibleId: z.number().optional(),
           notes: z.string().optional(),
         }),
       }))
-      .mutation(async ({ input }) => {
-        const result = await db.updateStakeholder(input.id, input.data);
+      .mutation(async ({ input, ctx }) => {
+        // Resolve communicationResponsibleId to name
+        let updateData: any = { ...input.data };
+        if (input.data.communicationResponsibleId) {
+          const resp = await db.getStakeholderById(input.data.communicationResponsibleId);
+          if (resp) updateData.communicationResponsible = resp.fullName ?? updateData.communicationResponsible;
+        }
+        const result = await db.updateStakeholder(input.id, updateData);
+        // Auto-create recurring task if frequency + responsible changed
+        const freq = input.data.communicationFrequency;
+        const respId = input.data.communicationResponsibleId;
+        if (freq && freq !== 'None' && respId) {
+          // Get stakeholder to build task description
+          const stakeholder = await db.getStakeholderById(input.id);
+          const freqMap: Record<string, 'daily' | 'weekly' | 'monthly'> = {
+            Daily: 'daily', Weekly: 'weekly', 'Bi-weekly': 'weekly',
+            Monthly: 'monthly', Quarterly: 'monthly',
+          };
+          const intervalMap: Record<string, number> = {
+            Daily: 1, Weekly: 1, 'Bi-weekly': 2, Monthly: 1, Quarterly: 3,
+          };
+          const recurringType = freqMap[freq] ?? 'weekly';
+          const recurringInterval = intervalMap[freq] ?? 1;
+          const taskId = await db.getNextId('task', 'T', stakeholder?.projectId ?? 1);
+          await db.createTask({
+            projectId: stakeholder?.projectId ?? 1,
+            taskId,
+            description: `Communicate with ${stakeholder?.fullName ?? 'Stakeholder'} (${freq} via ${input.data.communicationChannel ?? stakeholder?.communicationChannel ?? 'TBD'})`,
+            responsibleId: respId,
+            responsible: updateData.communicationResponsible ?? undefined,
+            recurringType,
+            recurringInterval,
+            status: 'Open',
+          } as any);
+        }
         return result;
       }),
 

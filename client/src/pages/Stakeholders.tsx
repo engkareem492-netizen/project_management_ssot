@@ -49,6 +49,7 @@ type StakeholderFormData = {
   communicationChannel: string;
   communicationMessage: string;
   communicationResponsible: string;
+  communicationResponsibleId: number | undefined;
   notes: string;
 };
 
@@ -56,7 +57,7 @@ const EMPTY_FORM: StakeholderFormData = {
   fullName: "", email: "", position: "", role: "", job: "", phone: "",
   isInternalTeam: false, powerLevel: 3, interestLevel: 3,
   engagementStrategy: "", communicationFrequency: "", communicationChannel: "",
-  communicationMessage: "", communicationResponsible: "", notes: "",
+  communicationMessage: "", communicationResponsible: "", communicationResponsibleId: undefined, notes: "",
 };
 
 const ENGAGEMENT_STRATEGIES = [
@@ -709,6 +710,7 @@ export default function Stakeholders() {
       communicationChannel: s.communicationChannel || "",
       communicationMessage: s.communicationMessage || "",
       communicationResponsible: s.communicationResponsible || "",
+      communicationResponsibleId: s.communicationResponsibleId ?? undefined,
       notes: s.notes || "",
     });
     setIsEditOpen(true);
@@ -892,11 +894,30 @@ export default function Stakeholders() {
         </div>
         <div className="space-y-2">
           <Label>Communication Responsible</Label>
-          <Input
-            value={formData.communicationResponsible}
-            onChange={(e) => setFormData({ ...formData, communicationResponsible: e.target.value })}
-            placeholder="Who is responsible for communication?"
-          />
+          <Select
+            value={formData.communicationResponsibleId?.toString() ?? ""}
+            onValueChange={(val) => {
+              const id = parseInt(val);
+              const found = stakeholders.find((s) => s.id === id);
+              setFormData({
+                ...formData,
+                communicationResponsibleId: id,
+                communicationResponsible: found?.fullName ?? "",
+              });
+            }}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select responsible stakeholder..." />
+            </SelectTrigger>
+            <SelectContent>
+              {stakeholders.map((s) => (
+                <SelectItem key={s.id} value={s.id.toString()}>
+                  <span className="font-medium">{s.fullName}</span>
+                  {s.position && <span className="text-muted-foreground ml-1 text-xs">— {s.position}</span>}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="space-y-2">
           <Label>Notes</Label>

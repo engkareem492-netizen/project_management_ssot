@@ -444,3 +444,25 @@
 
 - [x] Tasks page: completed tasks (status with isComplete=true) must be visually distinct — dimmed row opacity, strikethrough on description, muted badge color
 - [x] Resources Workload tab: show stakeholder fullName instead of raw ID code ("Stakeholder 390027")
+
+## Feature: Communication Responsible as Stakeholder + Auto Recurring Task (Mar 9, 2026)
+
+- [ ] DB schema: add communicationResponsibleId (FK to stakeholders) to stakeholders table
+- [ ] Update stakeholders create/update router to accept communicationResponsibleId and auto-create recurring task
+- [ ] Stakeholders form: replace communicationResponsible free-text with stakeholder dropdown (communicationResponsibleId)
+- [ ] Auto-create recurring task: title = "Communicate with [Stakeholder Name]", assigned to responsible, recurrence = communication frequency, linked to project
+- [ ] Map frequency values (Daily/Weekly/Bi-weekly/Monthly/Quarterly) to recurringType/recurringInterval on the task
+- [ ] Avoid duplicate task creation: if a recurring task already exists for this stakeholder+responsible combo, skip creation
+
+## Feature: Communication Responsible as Stakeholder (Mar 9, 2026)
+
+- [x] Change Communication Responsible field from free-text Input to a Stakeholder Select dropdown
+- [x] Add communicationResponsibleId (FK to stakeholders) to stakeholders schema
+- [x] Run db:push to add communicationResponsibleId column
+- [x] Update stakeholders create router to accept communicationResponsibleId and resolve to name
+- [x] Update stakeholders update router to accept communicationResponsibleId and resolve to name
+- [x] Auto-create a recurring task when communication frequency + responsible are set on create
+- [x] Auto-create a recurring task when communication frequency + responsible are updated (edit)
+- [x] Task description: "Communicate with [Stakeholder Name] ([Frequency] via [Channel])"
+- [x] Task responsible = communicationResponsibleId, recurringType mapped from frequency
+- [x] Frequency mapping: Daily→daily/1, Weekly→weekly/1, Bi-weekly→weekly/2, Monthly→monthly/1, Quarterly→monthly/3

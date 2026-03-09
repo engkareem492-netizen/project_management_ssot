@@ -151,6 +151,7 @@ export const stakeholders = mysqlTable("stakeholders", {
   communicationChannel: varchar("communicationChannel", { length: 100 }),
   communicationMessage: text("communicationMessage"),
   communicationResponsible: varchar("communicationResponsible", { length: 200 }),
+  communicationResponsibleId: int("communicationResponsibleId"),  // FK to stakeholders.id
   notes: text("notes"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
