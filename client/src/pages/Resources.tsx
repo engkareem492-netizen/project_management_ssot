@@ -7,7 +7,8 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Users, Loader2, Settings } from "lucide-react";
+import { Users, Loader2, Settings, BarChart2, Mail, Briefcase, UserCheck, UserX } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 
 const DEFAULT_CAPACITY = 5; // tasks/week
@@ -140,6 +141,21 @@ export default function Resources() {
     );
   }
 
+  // Team overview analytics
+  const teamOverview = useMemo(() => {
+    const internal = stakeholders.filter((s: any) => s.isInternalTeam).length;
+    const external = stakeholders.length - internal;
+    const byRole: Record<string, number> = {};
+    const byStrategy: Record<string, number> = {};
+    stakeholders.forEach((s: any) => {
+      const role = s.role || s.stakeholderRole || "Unknown";
+      byRole[role] = (byRole[role] || 0) + 1;
+      const strategy = s.engagementStrategy || "Not set";
+      byStrategy[strategy] = (byStrategy[strategy] || 0) + 1;
+    });
+    return { internal, external, byRole, byStrategy };
+  }, [stakeholders]);
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -147,13 +163,20 @@ export default function Resources() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <Users className="w-6 h-6 text-gray-500" />
-            Resource Workload
+            Team & Workload
           </h1>
-          <p className="text-gray-500 text-sm mt-1">Team capacity and task distribution</p>
+          <p className="text-gray-500 text-sm mt-1">Team composition, capacity and task distribution</p>
         </div>
         {isLoading && <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />}
       </div>
 
+      <Tabs defaultValue="workload">
+        <TabsList className="mb-2">
+          <TabsTrigger value="workload"><BarChart2 className="w-3.5 h-3.5 mr-1.5" />Workload</TabsTrigger>
+          <TabsTrigger value="team"><Users className="w-3.5 h-3.5 mr-1.5" />Team Overview</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="workload" className="mt-0 space-y-6">
       {/* Summary Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="p-4">
@@ -281,6 +304,113 @@ export default function Resources() {
           })}
         </div>
       </div>
+
+        </TabsContent>
+
+        <TabsContent value="team" className="mt-0 space-y-6">
+          {/* Internal vs External */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Card className="p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <UserCheck className="w-4 h-4 text-blue-500" />
+                <div className="text-xs text-muted-foreground uppercase tracking-wide">Internal</div>
+              </div>
+              <div className="text-3xl font-bold text-blue-600">{teamOverview.internal}</div>
+            </Card>
+            <Card className="p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <UserX className="w-4 h-4 text-orange-500" />
+                <div className="text-xs text-muted-foreground uppercase tracking-wide">External</div>
+              </div>
+              <div className="text-3xl font-bold text-orange-600">{teamOverview.external}</div>
+            </Card>
+            <Card className="p-4 col-span-2">
+              <div className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Engagement Strategies</div>
+              <div className="flex flex-wrap gap-2">
+                {Object.entries(teamOverview.byStrategy).map(([s, count]) => (
+                  <span key={s} className="inline-flex items-center gap-1 text-xs bg-muted rounded-full px-2 py-1">
+                    <span className="font-semibold">{count}</span> {s}
+                  </span>
+                ))}
+                {Object.keys(teamOverview.byStrategy).length === 0 && (
+                  <span className="text-xs text-muted-foreground">No strategies set</span>
+                )}
+              </div>
+            </Card>
+          </div>
+
+          {/* Role distribution */}
+          {Object.keys(teamOverview.byRole).length > 0 && (
+            <div className="bg-white border border-gray-200 rounded-xl p-5">
+              <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                <Briefcase className="w-4 h-4 text-muted-foreground" />
+                Role Distribution
+              </h3>
+              <div className="flex flex-wrap gap-3">
+                {Object.entries(teamOverview.byRole).sort((a, b) => b[1] - a[1]).map(([role, count]) => (
+                  <div key={role} className="flex items-center gap-2 bg-muted/40 rounded-lg px-3 py-2">
+                    <span className="text-2xl font-bold text-primary">{count}</span>
+                    <span className="text-sm text-muted-foreground">{role}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Team member cards */}
+          <div>
+            <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
+              <Users className="w-4 h-4 text-muted-foreground" />
+              All Team Members ({stakeholders.length})
+            </h3>
+            {isLoading ? (
+              <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+            ) : stakeholders.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground text-sm">No stakeholders found.</div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {stakeholders.map((s: any) => {
+                  const name = s.name ?? s.stakeholderName ?? `Stakeholder ${s.id}`;
+                  const assignedCount = workloadData.find(w => w.name === name)?.totalAssigned ?? 0;
+                  return (
+                    <div key={s.id} className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-sm transition-shadow">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-semibold text-sm">{name}</span>
+                            {s.isInternalTeam && (
+                              <Badge className="text-[10px] bg-blue-100 text-blue-700 px-1 py-0">Internal</Badge>
+                            )}
+                          </div>
+                          {(s.role || s.stakeholderRole) && (
+                            <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
+                              <Briefcase className="w-3 h-3" />{s.role || s.stakeholderRole}
+                            </div>
+                          )}
+                          {s.email && (
+                            <div className="flex items-center gap-1 mt-0.5 text-xs text-muted-foreground">
+                              <Mail className="w-3 h-3" />{s.email}
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-right shrink-0">
+                          <div className="text-xl font-bold">{assignedCount}</div>
+                          <div className="text-[10px] text-muted-foreground">tasks</div>
+                        </div>
+                      </div>
+                      {s.engagementStrategy && (
+                        <div className="mt-2">
+                          <Badge variant="outline" className="text-[10px]">{s.engagementStrategy}</Badge>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </TabsContent>
+      </Tabs>
 
       {/* Set Capacity Dialog */}
       <Dialog open={showCapacityDialog} onOpenChange={setShowCapacityDialog}>

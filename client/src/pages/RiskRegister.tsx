@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,8 +27,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Edit, Trash2, FileText, AlertTriangle, ShieldAlert } from "lucide-react";
+import { Plus, Edit, Trash2, FileText, AlertTriangle, ShieldAlert, Grid3X3 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { useProject } from "@/contexts/ProjectContext";
 import { ImportExportToolbar } from "@/components/ImportExportToolbar";
@@ -583,6 +584,17 @@ export default function RiskRegister() {
         </div>
       </div>
 
+      <Tabs defaultValue="table">
+        <TabsList className="mb-4">
+          <TabsTrigger value="table"><FileText className="w-3.5 h-3.5 mr-1.5" />Risk Table</TabsTrigger>
+          <TabsTrigger value="heatmap"><Grid3X3 className="w-3.5 h-3.5 mr-1.5" />Heat Map</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="heatmap">
+          <RiskHeatMap risks={risks ?? []} />
+        </TabsContent>
+
+        <TabsContent value="table">
       {isLoading ? (
         <Card>
           <CardContent className="pt-6">
@@ -679,6 +691,8 @@ export default function RiskRegister() {
           </CardContent>
         </Card>
       )}
+        </TabsContent>
+      </Tabs>
 
       {/* Edit Dialog - Same structure as Create Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
@@ -1388,5 +1402,150 @@ function RiskAnalysisDialog({
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ─── Risk Heat Map Component ──────────────────────────────────────────────────
+function RiskHeatMap({ risks }: { risks: Array<{ id: number; riskId: string; title: string; impact: number | null; probability: number | null; score: number | null }> }) {
+  const [selectedCell, setSelectedCell] = useState<{ impact: number; prob: number } | null>(null);
+
+  const cellMap = useMemo(() => {
+    const m: Record<string, typeof risks> = {};
+    risks.forEach(r => {
+      const imp = r.impact ?? 1;
+      const prob = r.probability ?? 1;
+      const key = `${imp}-${prob}`;
+      if (!m[key]) m[key] = [];
+      m[key].push(r);
+    });
+    return m;
+  }, [risks]);
+
+  function getCellColor(impact: number, prob: number) {
+    const score = impact * prob;
+    if (score >= 20) return "bg-red-500 hover:bg-red-400 text-white";
+    if (score >= 12) return "bg-orange-400 hover:bg-orange-300 text-white";
+    if (score >= 6) return "bg-yellow-400 hover:bg-yellow-300 text-gray-800";
+    return "bg-green-300 hover:bg-green-200 text-gray-800";
+  }
+
+  function getCellLabel(score: number) {
+    if (score >= 20) return "Critical";
+    if (score >= 12) return "High";
+    if (score >= 6) return "Medium";
+    return "Low";
+  }
+
+  const selectedRisks = selectedCell
+    ? (cellMap[`${selectedCell.impact}-${selectedCell.prob}`] ?? [])
+    : [];
+
+  const levels = [5, 4, 3, 2, 1];
+  const probs = [1, 2, 3, 4, 5];
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap gap-4 items-center">
+        {[
+          { label: "Critical (≥20)", color: "bg-red-500" },
+          { label: "High (12–19)", color: "bg-orange-400" },
+          { label: "Medium (6–11)", color: "bg-yellow-400" },
+          { label: "Low (<6)", color: "bg-green-300" },
+        ].map(l => (
+          <div key={l.label} className="flex items-center gap-2">
+            <div className={`w-4 h-4 rounded ${l.color}`} />
+            <span className="text-sm text-muted-foreground">{l.label}</span>
+          </div>
+        ))}
+        <span className="text-xs text-muted-foreground ml-auto">Click a cell to see risks</span>
+      </div>
+
+      <div className="flex gap-6 flex-wrap items-start">
+        <div className="overflow-x-auto">
+          <div className="inline-block">
+            <div className="flex">
+              <div className="w-10 flex items-center justify-center">
+                <span className="text-xs font-semibold text-muted-foreground -rotate-90 whitespace-nowrap">Impact</span>
+              </div>
+              <div>
+                <div className="flex gap-1 mb-1">
+                  {probs.map(p => (
+                    <div key={p} className="w-20 h-6 flex items-center justify-center text-xs font-semibold text-muted-foreground">{p}</div>
+                  ))}
+                </div>
+                <div className="text-center text-xs font-semibold text-muted-foreground mb-2">Probability →</div>
+                {levels.map(impact => (
+                  <div key={impact} className="flex gap-1 mb-1 items-center">
+                    <span className="w-5 text-xs font-semibold text-muted-foreground text-right mr-1">{impact}</span>
+                    {probs.map(prob => {
+                      const key = `${impact}-${prob}`;
+                      const cellRisks = cellMap[key] ?? [];
+                      const score = impact * prob;
+                      const isSelected = selectedCell?.impact === impact && selectedCell?.prob === prob;
+                      return (
+                        <button
+                          key={prob}
+                          onClick={() => setSelectedCell(isSelected ? null : { impact, prob })}
+                          className={`w-20 h-16 rounded-lg flex flex-col items-center justify-center gap-0.5 border-2 transition-all ${getCellColor(impact, prob)} ${isSelected ? "ring-2 ring-offset-2 ring-gray-800 border-gray-800" : "border-transparent"}`}
+                          title={`Impact ${impact} × Probability ${prob} = ${score} (${getCellLabel(score)})`}
+                        >
+                          <span className="text-lg font-bold leading-none">{score}</span>
+                          {cellRisks.length > 0 && (
+                            <span className="text-[10px] font-semibold bg-white/30 rounded px-1">
+                              {cellRisks.length} risk{cellRisks.length !== 1 ? "s" : ""}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {selectedCell && (
+          <div className="flex-1 min-w-[240px]">
+            <div className="bg-card border rounded-xl p-4 space-y-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="font-semibold text-sm">
+                  I={selectedCell.impact} × P={selectedCell.prob} → Score {selectedCell.impact * selectedCell.prob}
+                </h3>
+                <Badge variant="outline" className="text-xs">
+                  {getCellLabel(selectedCell.impact * selectedCell.prob)}
+                </Badge>
+              </div>
+              {selectedRisks.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No risks in this cell.</p>
+              ) : (
+                <div className="space-y-2">
+                  {selectedRisks.map(r => (
+                    <div key={r.id} className="flex items-start gap-2 text-sm p-2 rounded-lg bg-muted/40 border">
+                      <span className="font-mono font-bold text-xs text-muted-foreground shrink-0">{r.riskId}</span>
+                      <span className="text-sm">{r.title}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-4 gap-3">
+        {[
+          { label: "Critical (≥20)", color: "text-red-600", bg: "bg-red-50 border-red-200", count: risks.filter(r => (r.score ?? 0) >= 20).length },
+          { label: "High (12–19)", color: "text-orange-600", bg: "bg-orange-50 border-orange-200", count: risks.filter(r => { const s = r.score ?? 0; return s >= 12 && s < 20; }).length },
+          { label: "Medium (6–11)", color: "text-yellow-600", bg: "bg-yellow-50 border-yellow-200", count: risks.filter(r => { const s = r.score ?? 0; return s >= 6 && s < 12; }).length },
+          { label: "Low (<6)", color: "text-green-600", bg: "bg-green-50 border-green-200", count: risks.filter(r => (r.score ?? 0) < 6).length },
+        ].map(item => (
+          <div key={item.label} className={`rounded-xl border p-3 text-center ${item.bg}`}>
+            <div className={`text-2xl font-bold ${item.color}`}>{item.count}</div>
+            <div className="text-xs text-muted-foreground mt-0.5">{item.label}</div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
