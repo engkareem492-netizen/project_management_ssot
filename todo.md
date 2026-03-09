@@ -427,3 +427,10 @@
 - [x] Deliverables: added Timeline tab with milestone view, progress bar, color-coded nodes
 - [x] Risk Register: added Heat Map tab (5×5 probability/impact matrix)
 - [x] Resources: Team Overview enhancements
+
+## Fix: Tasks Full-Width Layout (Mar 9, 2026)
+
+- [ ] Match Requirements page layout: full viewport width table, no card-style rows, all columns fit on screen
+- [ ] Keep compact view toggle (original + compact)
+- [ ] Original view: all columns visible without any horizontal scroll
+- [ ] Compact view: dense single-line rows, fewer columns
