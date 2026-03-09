@@ -472,3 +472,12 @@
 - [x] Fix: duplicate communication tasks created on every stakeholder save (create + update both fire)
 - [x] Fix: add deduplication check — skip task creation if a communication task already exists for this stakeholder (uses communicationStakeholderId FK)
 - [x] Fix: task ID generator reuses IDs from closed/completed tasks — getNextId now always syncs with actual max before incrementing
+
+## Merge: Claude Branch Phase 3&4 Part 2 (Mar 10, 2026)
+
+- [x] MS Project-style Gantt Chart rewrite (GanttChart.tsx overhaul)
+- [x] New Periodic Report page (PeriodicReport.tsx)
+- [x] Decisions merged into Meetings page (separate Decisions sidebar item removed)
+- [x] Tasks: link tasks to decisions, RACI contact cards on hover
+- [x] Nav updates in App.tsx and DashboardLayout.tsx
+- [x] Fix: Tasks.tsx decisionDate Date→string type error after merge
