@@ -96,7 +96,10 @@ import { GlobalSearch } from "./GlobalSearch";
 import { NotificationBell } from "./NotificationBell";
 import { Search } from "lucide-react";
 
-const menuItems = [
+type SubMenuItem = { icon: React.ElementType; label: string; path: string };
+type MenuItem = { icon: React.ElementType; label: string; path: string; children?: SubMenuItem[] };
+
+const menuItems: MenuItem[] = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
   { icon: Calendar, label: "Today", path: "/today" },
   { icon: FileText, label: "Requirements", path: "/requirements" },
@@ -104,7 +107,15 @@ const menuItems = [
   { icon: AlertCircle, label: "Issues", path: "/issues" },
   { icon: Link2, label: "Dependencies", path: "/dependencies" },
   { icon: FileCheck, label: "Assumptions", path: "/assumptions" },
-  { icon: Users, label: "Stakeholders", path: "/stakeholders" },
+  {
+    icon: Users,
+    label: "Team",
+    path: "__team__",
+    children: [
+      { icon: Users, label: "Stakeholders", path: "/stakeholders" },
+      { icon: BarChart2, label: "Workload", path: "/resources" },
+    ],
+  },
   { icon: Package, label: "Deliverables", path: "/deliverables" },
   { icon: BookOpen, label: "Knowledge Base", path: "/knowledge-base" },
   { icon: AlertTriangle, label: "Risk Register", path: "/risk-register" },
@@ -114,7 +125,6 @@ const menuItems = [
   { icon: Scale, label: "Decisions", path: "/decisions" },
   { icon: CalendarRange, label: "Calendar", path: "/calendar" },
   { icon: DollarSign, label: "Budget", path: "/budget" },
-  { icon: Users, label: "Resources", path: "/resources" },
   { icon: FlaskConical, label: "Test Cases", path: "/test-cases" },
   { icon: BarChart2, label: "Gantt Chart", path: "/gantt" },
   { icon: Layers, label: "Traceability Matrix", path: "/traceability" },
@@ -205,7 +215,9 @@ function DashboardLayoutContent({
   const [themeDialogOpen, setThemeDialogOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
-  const activeMenuItem = menuItems.find(item => item.path === location);
+  const activeMenuItem = menuItems.find(item =>
+    item.path === location || item.children?.some(c => c.path === location)
+  );
   const isMobile = useIsMobile();
   const [uploading, setUploading] = useState(false);
   const [excelMenuOpen, setExcelMenuOpen] = useState(false);
@@ -424,7 +436,9 @@ function DashboardLayoutContent({
               >
                 <SidebarMenu className="px-2 py-1">
                   {orderedItems.map(item => {
-                    const isActive = location === item.path;
+                    const isActive = item.children
+                      ? item.children.some(c => c.path === location)
+                      : location === item.path;
                     const badgeCount =
                       item.path === "/tasks" ? badgeCounts?.tasks :
                       item.path === "/issues" ? badgeCounts?.issues :
@@ -437,7 +451,10 @@ function DashboardLayoutContent({
                         item={item}
                         isActive={isActive}
                         badgeCount={badgeCount}
-                        onClick={() => setLocation(item.path)}
+                        isCollapsed={isCollapsed}
+                        currentLocation={location}
+                        navigate={setLocation}
+                        onClick={() => !item.children && setLocation(item.path)}
                       />
                     );
                   })}
@@ -598,13 +615,16 @@ function DashboardLayoutContent({
 
 // ─── Sortable Sidebar Item ────────────────────────────────────────────────────
 type SortableSidebarItemProps = {
-  item: { icon: React.ElementType; label: string; path: string };
+  item: MenuItem;
   isActive: boolean;
   badgeCount?: number;
+  isCollapsed: boolean;
+  currentLocation: string;
+  navigate: (path: string) => void;
   onClick: () => void;
 };
 
-function SortableSidebarItem({ item, isActive, badgeCount, onClick }: SortableSidebarItemProps) {
+function SortableSidebarItem({ item, isActive, badgeCount, isCollapsed, currentLocation, navigate, onClick }: SortableSidebarItemProps) {
   const {
     attributes,
     listeners,
@@ -614,12 +634,71 @@ function SortableSidebarItem({ item, isActive, badgeCount, onClick }: SortableSi
     isDragging,
   } = useSortable({ id: item.path });
 
+  const hasChildren = !!(item.children && item.children.length > 0);
+  const isChildActive = hasChildren && item.children!.some(c => c.path === currentLocation);
+  const [groupOpen, setGroupOpen] = useState(() => isChildActive);
+
   const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
     zIndex: isDragging ? 10 : undefined,
   };
+
+  const dragHandle = (
+    <span
+      {...listeners}
+      className="hidden group-hover/item:flex group-data-[collapsible=icon]:hidden items-center cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-muted-foreground shrink-0 -ml-1 mr-0.5"
+      onClick={(e) => e.stopPropagation()}
+      title="Drag to reorder"
+    >
+      <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor">
+        <circle cx="3" cy="2.5" r="1.2" />
+        <circle cx="7" cy="2.5" r="1.2" />
+        <circle cx="3" cy="7" r="1.2" />
+        <circle cx="7" cy="7" r="1.2" />
+        <circle cx="3" cy="11.5" r="1.2" />
+        <circle cx="7" cy="11.5" r="1.2" />
+      </svg>
+    </span>
+  );
+
+  if (hasChildren) {
+    return (
+      <SidebarMenuItem ref={setNodeRef} style={style}>
+        <SidebarMenuButton
+          isActive={isChildActive}
+          onClick={() => isCollapsed ? navigate(item.children![0].path) : setGroupOpen(o => !o)}
+          tooltip={item.label}
+          className="h-8 transition-all font-normal text-sm group/item"
+          {...attributes}
+        >
+          {dragHandle}
+          <item.icon className={`h-4 w-4 shrink-0 ${isChildActive ? "text-primary" : ""}`} />
+          <span className="flex-1">{item.label}</span>
+          <ChevronRight
+            className={`h-3.5 w-3.5 shrink-0 transition-transform duration-200 group-data-[collapsible=icon]:hidden ${groupOpen ? "rotate-90" : ""}`}
+          />
+        </SidebarMenuButton>
+        {groupOpen && !isCollapsed && (
+          <SidebarMenuSub>
+            {item.children!.map(child => (
+              <SidebarMenuSubItem key={child.path}>
+                <SidebarMenuSubButton
+                  isActive={currentLocation === child.path}
+                  onClick={() => navigate(child.path)}
+                  className="h-7 text-sm"
+                >
+                  <child.icon className="h-3.5 w-3.5 shrink-0" />
+                  <span>{child.label}</span>
+                </SidebarMenuSubButton>
+              </SidebarMenuSubItem>
+            ))}
+          </SidebarMenuSub>
+        )}
+      </SidebarMenuItem>
+    );
+  }
 
   return (
     <SidebarMenuItem ref={setNodeRef} style={style}>
@@ -630,22 +709,7 @@ function SortableSidebarItem({ item, isActive, badgeCount, onClick }: SortableSi
         className="h-8 transition-all font-normal text-sm group/item"
         {...attributes}
       >
-        {/* Drag handle — only visible on hover, hidden when sidebar is collapsed */}
-        <span
-          {...listeners}
-          className="hidden group-hover/item:flex group-data-[collapsible=icon]:hidden items-center cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-muted-foreground shrink-0 -ml-1 mr-0.5"
-          onClick={(e) => e.stopPropagation()}
-          title="Drag to reorder"
-        >
-          <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor">
-            <circle cx="3" cy="2.5" r="1.2" />
-            <circle cx="7" cy="2.5" r="1.2" />
-            <circle cx="3" cy="7" r="1.2" />
-            <circle cx="7" cy="7" r="1.2" />
-            <circle cx="3" cy="11.5" r="1.2" />
-            <circle cx="7" cy="11.5" r="1.2" />
-          </svg>
-        </span>
+        {dragHandle}
         <item.icon className={`h-4 w-4 shrink-0 ${isActive ? "text-primary" : ""}`} />
         <span className="flex-1">{item.label}</span>
         {badgeCount != null && badgeCount > 0 && (

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { useProject } from "@/contexts/ProjectContext";
 import { Button } from "@/components/ui/button";
@@ -41,8 +41,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { Plus, Trash2, Pencil, Search, Package, Link2, X } from "lucide-react";
+import { Plus, Trash2, Pencil, Search, Package, Link2, X, CalendarDays, CheckCircle2, Clock, AlertCircle } from "lucide-react";
 import { ImportExportToolbar } from "@/components/ImportExportToolbar";
 import { formatDate } from "@/lib/dateUtils";
 import { EmptyState } from "@/components/EmptyState";
@@ -289,8 +291,14 @@ export default function Deliverables() {
         </div>
       </div>
       <Card className="border-orange-100">
-        <CardContent className="pt-6">
+        <CardContent className="pt-4">
+      <Tabs defaultValue="table" className="w-full">
+        <TabsList className="mb-4">
+          <TabsTrigger value="table"><Package className="w-3.5 h-3.5 mr-1.5" />Table</TabsTrigger>
+          <TabsTrigger value="timeline"><CalendarDays className="w-3.5 h-3.5 mr-1.5" />Timeline</TabsTrigger>
+        </TabsList>
 
+        <TabsContent value="table" className="mt-0 space-y-4">
       {/* Search */}
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -430,6 +438,16 @@ export default function Deliverables() {
           </TableBody>
         </Table>
       </div>
+        </TabsContent>
+
+        <TabsContent value="timeline" className="mt-0">
+          <DeliverableTimeline
+            deliverables={filteredDeliverables}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+          />
+        </TabsContent>
+      </Tabs>
 
       {/* Create Dialog */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
@@ -695,6 +713,156 @@ export default function Deliverables() {
       </AlertDialog>
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+// ─── Timeline Tab Component ───────────────────────────────────────────────────
+function DeliverableTimeline({ deliverables, onEdit, onDelete }: {
+  deliverables: any[];
+  onEdit: (d: any) => void;
+  onDelete: (d: any) => void;
+}) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const sorted = useMemo(() => {
+    return [...deliverables].sort((a, b) => {
+      const da = a.dueDate ? new Date(a.dueDate).getTime() : Infinity;
+      const db = b.dueDate ? new Date(b.dueDate).getTime() : Infinity;
+      return da - db;
+    });
+  }, [deliverables]);
+
+  const total = sorted.length;
+  const completed = sorted.filter(d => d.status?.toLowerCase() === "completed").length;
+  const overdue = sorted.filter(d => {
+    if (!d.dueDate) return false;
+    return new Date(d.dueDate) < today && d.status?.toLowerCase() !== "completed";
+  }).length;
+
+  function getNodeStyle(d: any): { dot: string; line: string; badge: string; icon: React.ReactNode } {
+    const status = d.status?.toLowerCase() ?? "";
+    const isOverdue = d.dueDate && new Date(d.dueDate) < today && status !== "completed";
+    if (status === "completed") return {
+      dot: "bg-green-500 border-green-300 ring-green-100",
+      line: "bg-green-200",
+      badge: "bg-green-100 text-green-700",
+      icon: <CheckCircle2 className="w-4 h-4 text-white" />,
+    };
+    if (isOverdue) return {
+      dot: "bg-red-500 border-red-300 ring-red-100",
+      line: "bg-red-200",
+      badge: "bg-red-100 text-red-700",
+      icon: <AlertCircle className="w-4 h-4 text-white" />,
+    };
+    if (status === "in progress") return {
+      dot: "bg-blue-500 border-blue-300 ring-blue-100",
+      line: "bg-blue-200",
+      badge: "bg-blue-100 text-blue-700",
+      icon: <Clock className="w-4 h-4 text-white" />,
+    };
+    return {
+      dot: "bg-gray-400 border-gray-300 ring-gray-100",
+      line: "bg-gray-200",
+      badge: "bg-gray-100 text-gray-600",
+      icon: <Package className="w-4 h-4 text-white" />,
+    };
+  }
+
+  if (sorted.length === 0) {
+    return (
+      <div className="text-center py-16 text-muted-foreground">
+        <CalendarDays className="w-12 h-12 mx-auto mb-3 opacity-30" />
+        <p>No deliverables to show on the timeline.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Progress Summary */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="bg-card border rounded-lg p-3 text-center">
+          <div className="text-2xl font-bold text-green-600">{completed}</div>
+          <div className="text-xs text-muted-foreground mt-0.5">Completed</div>
+        </div>
+        <div className="bg-card border rounded-lg p-3 text-center">
+          <div className="text-2xl font-bold text-red-500">{overdue}</div>
+          <div className="text-xs text-muted-foreground mt-0.5">Overdue</div>
+        </div>
+        <div className="bg-card border rounded-lg p-3 text-center">
+          <div className="text-2xl font-bold text-blue-600">{total - completed - overdue}</div>
+          <div className="text-xs text-muted-foreground mt-0.5">Upcoming</div>
+        </div>
+      </div>
+      <div className="space-y-1">
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span>Overall Progress</span>
+          <span>{total > 0 ? Math.round((completed / total) * 100) : 0}%</span>
+        </div>
+        <Progress value={total > 0 ? (completed / total) * 100 : 0} className="h-2" />
+      </div>
+
+      {/* Timeline */}
+      <div className="relative pl-8">
+        {/* Vertical line */}
+        <div className="absolute left-[18px] top-2 bottom-2 w-0.5 bg-border" />
+
+        <div className="space-y-4">
+          {sorted.map((d, idx) => {
+            const style = getNodeStyle(d);
+            const dueDate = d.dueDate ? new Date(d.dueDate) : null;
+            const formattedDate = dueDate
+              ? dueDate.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+              : "No date";
+            const daysLabel = dueDate
+              ? (() => {
+                  const diff = Math.ceil((dueDate.getTime() - today.getTime()) / 86400000);
+                  if (diff === 0) return "Today";
+                  if (diff > 0) return `in ${diff}d`;
+                  return `${Math.abs(diff)}d ago`;
+                })()
+              : "";
+
+            return (
+              <div key={d.id} className="relative flex gap-4 items-start group">
+                {/* Dot */}
+                <div className={`absolute -left-8 flex items-center justify-center w-9 h-9 rounded-full border-2 ring-4 shrink-0 z-10 ${style.dot}`}>
+                  {style.icon}
+                </div>
+
+                {/* Card */}
+                <div className="flex-1 bg-card border rounded-lg p-3 hover:shadow-sm transition-shadow">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-mono text-xs font-bold text-muted-foreground">{d.deliverableId}</span>
+                        <Badge className={`text-xs ${style.badge}`}>{d.status || "Pending"}</Badge>
+                        {dueDate && <span className="text-xs text-muted-foreground">{formattedDate}</span>}
+                        {daysLabel && (
+                          <span className={`text-xs font-medium ${daysLabel.includes("ago") ? "text-red-500" : daysLabel === "Today" ? "text-amber-500" : "text-blue-500"}`}>
+                            ({daysLabel})
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm mt-1 text-muted-foreground truncate">{d.description || "—"}</p>
+                    </div>
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                      <button onClick={() => onEdit(d)} className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground">
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                      <button onClick={() => onDelete(d)} className="p-1 rounded hover:bg-accent text-red-400 hover:text-red-600">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
