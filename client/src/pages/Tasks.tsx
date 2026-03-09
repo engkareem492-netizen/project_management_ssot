@@ -1852,16 +1852,14 @@ export default function Tasks() {
                         <div key={label} className={`rounded-lg border p-3 ${color}`}>
                           <div className="text-xs font-semibold text-muted-foreground mb-1">{label}</div>
                           <div className="font-semibold text-sm">{name}</div>
+                          {sh?.engagementStrategy && (
+                            <span className="inline-block mt-1 px-2 py-0.5 rounded-full bg-white/70 border text-[11px] font-medium">{sh.engagementStrategy}</span>
+                          )}
                           {sh && (
                             <div className="mt-2 space-y-1 text-xs text-muted-foreground">
                               {sh.position && <div>📋 {sh.position}</div>}
                               {sh.email && <div>✉️ <a href={`mailto:${sh.email}`} className="text-blue-600 underline">{sh.email}</a></div>}
                               {sh.phone && <div>📞 {sh.phone}</div>}
-                              {sh.engagementStrategy && (
-                                <div className="mt-1">
-                                  <span className="inline-block px-2 py-0.5 rounded-full bg-white/70 border text-[11px] font-medium">{sh.engagementStrategy}</span>
-                                </div>
-                              )}
                               {sh.communicationFrequency && <div className="text-[11px]">🔁 {sh.communicationFrequency}</div>}
                               {sh.communicationChannel && <div className="text-[11px]">📡 {sh.communicationChannel}</div>}
                             </div>
