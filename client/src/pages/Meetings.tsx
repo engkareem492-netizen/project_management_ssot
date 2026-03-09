@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Eye, Pencil, Trash2, Users, CheckSquare } from "lucide-react";
+import { Plus, Eye, Pencil, Trash2, Users, CheckSquare, Link2 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDate as _formatDateUtil } from "@/lib/dateUtils";
 
@@ -61,6 +61,7 @@ interface DecisionForm {
   requirementId: string;
   taskId: string;
   issueId: string;
+  meetingId: number | "";
 }
 
 const emptyMeetingForm: MeetingForm = {
@@ -70,7 +71,7 @@ const emptyMeetingForm: MeetingForm = {
 
 const emptyDecisionForm: DecisionForm = {
   title: "", description: "", decidedBy: "", decisionDate: "",
-  status: "Open", impact: "", requirementId: "", taskId: "", issueId: "",
+  status: "Open", impact: "", requirementId: "", taskId: "", issueId: "", meetingId: "",
 };
 
 function formatDate(d: Date | string | null | undefined): string {
@@ -159,8 +160,14 @@ export default function Meetings() {
       requirementId: d.requirementId ?? "",
       taskId: d.taskId ?? "",
       issueId: d.issueId ?? "",
+      meetingId: (d as any).meetingId ?? "",
     });
     setShowEditDecision(true);
+  }
+
+  function openCreateDecisionForMeeting(meetingDbId: number) {
+    setDecisionForm({ ...emptyDecisionForm, meetingId: meetingDbId });
+    setShowCreateDecision(true);
   }
 
   return (
@@ -254,7 +261,7 @@ export default function Meetings() {
                   <TableHead className="w-28 font-semibold">Date</TableHead>
                   <TableHead className="w-36 font-semibold">Decided By</TableHead>
                   <TableHead className="w-32 font-semibold">Status</TableHead>
-                  <TableHead className="w-32 font-semibold">Linked To</TableHead>
+                  <TableHead className="w-36 font-semibold">Meeting</TableHead>
                   <TableHead className="w-32 font-semibold text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -274,9 +281,12 @@ export default function Meetings() {
                     <TableCell className="text-sm">{d.decidedBy ?? "—"}</TableCell>
                     <TableCell><Badge className={`text-xs ${DECISION_STATUS_COLORS[d.status ?? "Open"] ?? ""}`}>{d.status ?? "Open"}</Badge></TableCell>
                     <TableCell className="text-xs text-muted-foreground">
-                      {d.requirementId && <div>REQ: {d.requirementId}</div>}
-                      {d.taskId && <div>TASK: {d.taskId}</div>}
-                      {!d.requirementId && !d.taskId && "—"}
+                      {(d as any).meetingId ? (
+                        <span className="flex items-center gap-1 text-indigo-700">
+                          <Link2 className="w-3 h-3" />
+                          {meetings.find((m) => m.id === (d as any).meetingId)?.meetingId ?? "—"}
+                        </span>
+                      ) : "—"}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
@@ -353,23 +363,57 @@ export default function Meetings() {
       <Dialog open={showViewMeeting} onOpenChange={setShowViewMeeting}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Meeting Details</DialogTitle></DialogHeader>
-          {selectedMeetingData && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-3 flex-wrap">
-                <span className="font-mono font-bold text-indigo-700">{selectedMeetingData.meetingId}</span>
-                <Badge className={MEETING_STATUS_COLORS[selectedMeetingData.status ?? "Scheduled"]}>{selectedMeetingData.status}</Badge>
+          {selectedMeetingData && (() => {
+            const linkedDecisions = decisions.filter((d) => (d as any).meetingId === selectedMeetingData.id);
+            return (
+              <div className="space-y-4">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className="font-mono font-bold text-indigo-700">{selectedMeetingData.meetingId}</span>
+                  <Badge className={MEETING_STATUS_COLORS[selectedMeetingData.status ?? "Scheduled"]}>{selectedMeetingData.status}</Badge>
+                </div>
+                <h2 className="text-xl font-semibold">{selectedMeetingData.title}</h2>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div><span className="font-medium">Date:</span> {formatDate(selectedMeetingData.meetingDate)}</div>
+                  <div><span className="font-medium">Location:</span> {selectedMeetingData.location ?? "—"}</div>
+                  <div><span className="font-medium">Organizer:</span> {selectedMeetingData.organizer ?? "—"}</div>
+                  <div><span className="font-medium">Attendees:</span> {Array.isArray(selectedMeetingData.attendees) ? (selectedMeetingData.attendees as string[]).join(", ") : "—"}</div>
+                </div>
+                {selectedMeetingData.agenda && <div><span className="font-medium text-sm">Agenda:</span><p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap">{selectedMeetingData.agenda}</p></div>}
+                {selectedMeetingData.minutes && <div><span className="font-medium text-sm">Minutes / Summary:</span><p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap">{selectedMeetingData.minutes}</p></div>}
+
+                {/* Linked Decisions */}
+                <div className="border-t pt-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-medium text-sm flex items-center gap-1"><CheckSquare className="w-4 h-4" /> Decisions from this Meeting</span>
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setShowViewMeeting(false); openCreateDecisionForMeeting(selectedMeetingData.id); }}>
+                      <Plus className="w-3 h-3 mr-1" /> Add Decision
+                    </Button>
+                  </div>
+                  {linkedDecisions.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">No decisions logged for this meeting yet.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {linkedDecisions.map((d) => (
+                        <div key={d.id} className="flex items-start justify-between rounded-lg border px-3 py-2 bg-gray-50">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-xs font-semibold text-indigo-700">{d.decisionId}</span>
+                              <Badge className={`text-xs ${DECISION_STATUS_COLORS[d.status ?? "Open"]}`}>{d.status ?? "Open"}</Badge>
+                            </div>
+                            <div className="text-sm font-medium mt-0.5">{d.title}</div>
+                            {d.impact && <div className="text-xs text-muted-foreground mt-0.5">{d.impact}</div>}
+                          </div>
+                          <Button size="sm" variant="ghost" className="h-6 w-6 p-0 ml-2 shrink-0" onClick={() => { setShowViewMeeting(false); openEditDecision(d); }}>
+                            <Pencil className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
-              <h2 className="text-xl font-semibold">{selectedMeetingData.title}</h2>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div><span className="font-medium">Date:</span> {formatDate(selectedMeetingData.meetingDate)}</div>
-                <div><span className="font-medium">Location:</span> {selectedMeetingData.location ?? "—"}</div>
-                <div><span className="font-medium">Organizer:</span> {selectedMeetingData.organizer ?? "—"}</div>
-                <div><span className="font-medium">Attendees:</span> {Array.isArray(selectedMeetingData.attendees) ? (selectedMeetingData.attendees as string[]).join(", ") : "—"}</div>
-              </div>
-              {selectedMeetingData.agenda && <div><span className="font-medium text-sm">Agenda:</span><p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap">{selectedMeetingData.agenda}</p></div>}
-              {selectedMeetingData.minutes && <div><span className="font-medium text-sm">Minutes / Summary:</span><p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap">{selectedMeetingData.minutes}</p></div>}
-            </div>
-          )}
+            );
+          })()}
         </DialogContent>
       </Dialog>
 
@@ -388,14 +432,23 @@ export default function Meetings() {
                 <SelectContent>{(["Open", "Implemented", "Deferred", "Cancelled"] as DecisionStatus[]).map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div className="space-y-1"><Label>Linked Requirement ID</Label><Input value={decisionForm.requirementId} onChange={(e) => setDecisionForm({ ...decisionForm, requirementId: e.target.value })} placeholder="e.g. EQ-0001" /></div>
+            <div className="space-y-1"><Label>Linked Meeting</Label>
+              <Select value={String(decisionForm.meetingId)} onValueChange={(v) => setDecisionForm({ ...decisionForm, meetingId: v === "none" ? "" : Number(v) })}>
+                <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  {meetings.map((m) => <SelectItem key={m.id} value={String(m.id)}>{m.meetingId} — {m.title}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1"><Label>Linked Requirement ID</Label><Input value={decisionForm.requirementId} onChange={(e) => setDecisionForm({ ...decisionForm, requirementId: e.target.value })} placeholder="e.g. REQ-0001" /></div>
             <div className="col-span-2 space-y-1"><Label>Impact</Label><Textarea value={decisionForm.impact} onChange={(e) => setDecisionForm({ ...decisionForm, impact: e.target.value })} rows={2} /></div>
             <div className="space-y-1"><Label>Linked Task ID</Label><Input value={decisionForm.taskId} onChange={(e) => setDecisionForm({ ...decisionForm, taskId: e.target.value })} /></div>
             <div className="space-y-1"><Label>Linked Issue ID</Label><Input value={decisionForm.issueId} onChange={(e) => setDecisionForm({ ...decisionForm, issueId: e.target.value })} /></div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCreateDecision(false)}>Cancel</Button>
-            <Button className="bg-gray-900 hover:bg-gray-800 text-white" onClick={() => createDecisionMutation.mutate({ projectId, title: decisionForm.title, description: decisionForm.description, decidedBy: decisionForm.decidedBy, decisionDate: decisionForm.decisionDate, status: decisionForm.status, impact: decisionForm.impact, requirementId: decisionForm.requirementId, taskId: decisionForm.taskId, issueId: decisionForm.issueId })} disabled={!decisionForm.title || createDecisionMutation.isPending}>
+            <Button className="bg-gray-900 hover:bg-gray-800 text-white" onClick={() => createDecisionMutation.mutate({ projectId, title: decisionForm.title, description: decisionForm.description, decidedBy: decisionForm.decidedBy, decisionDate: decisionForm.decisionDate, status: decisionForm.status, impact: decisionForm.impact, requirementId: decisionForm.requirementId, taskId: decisionForm.taskId, issueId: decisionForm.issueId, meetingId: decisionForm.meetingId !== "" ? decisionForm.meetingId : undefined })} disabled={!decisionForm.title || createDecisionMutation.isPending}>
               {createDecisionMutation.isPending ? "Saving..." : "Log Decision"}
             </Button>
           </DialogFooter>
@@ -417,6 +470,15 @@ export default function Meetings() {
                 <SelectContent>{(["Open", "Implemented", "Deferred", "Cancelled"] as DecisionStatus[]).map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
               </Select>
             </div>
+            <div className="space-y-1"><Label>Linked Meeting</Label>
+              <Select value={String(decisionForm.meetingId)} onValueChange={(v) => setDecisionForm({ ...decisionForm, meetingId: v === "none" ? "" : Number(v) })}>
+                <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  {meetings.map((m) => <SelectItem key={m.id} value={String(m.id)}>{m.meetingId} — {m.title}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-1"><Label>Linked Requirement ID</Label><Input value={decisionForm.requirementId} onChange={(e) => setDecisionForm({ ...decisionForm, requirementId: e.target.value })} /></div>
             <div className="col-span-2 space-y-1"><Label>Impact</Label><Textarea value={decisionForm.impact} onChange={(e) => setDecisionForm({ ...decisionForm, impact: e.target.value })} rows={2} /></div>
             <div className="space-y-1"><Label>Linked Task ID</Label><Input value={decisionForm.taskId} onChange={(e) => setDecisionForm({ ...decisionForm, taskId: e.target.value })} /></div>
@@ -424,7 +486,7 @@ export default function Meetings() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowEditDecision(false)}>Cancel</Button>
-            <Button className="bg-gray-900 hover:bg-gray-800 text-white" onClick={() => selectedDecision && updateDecisionMutation.mutate({ id: selectedDecision, title: decisionForm.title, description: decisionForm.description, decidedBy: decisionForm.decidedBy, decisionDate: decisionForm.decisionDate, status: decisionForm.status, impact: decisionForm.impact, requirementId: decisionForm.requirementId, taskId: decisionForm.taskId, issueId: decisionForm.issueId })} disabled={!decisionForm.title || updateDecisionMutation.isPending}>
+            <Button className="bg-gray-900 hover:bg-gray-800 text-white" onClick={() => selectedDecision && updateDecisionMutation.mutate({ id: selectedDecision, title: decisionForm.title, description: decisionForm.description, decidedBy: decisionForm.decidedBy, decisionDate: decisionForm.decisionDate, status: decisionForm.status, impact: decisionForm.impact, requirementId: decisionForm.requirementId, taskId: decisionForm.taskId, issueId: decisionForm.issueId, meetingId: decisionForm.meetingId !== "" ? decisionForm.meetingId : null })} disabled={!decisionForm.title || updateDecisionMutation.isPending}>
               {updateDecisionMutation.isPending ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>
@@ -446,6 +508,15 @@ export default function Meetings() {
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div><span className="font-medium">Decided By:</span> {selectedDecisionData.decidedBy ?? "—"}</div>
                 <div><span className="font-medium">Date:</span> {formatDate(selectedDecisionData.decisionDate)}</div>
+                {(selectedDecisionData as any).meetingId && (
+                  <div className="col-span-2">
+                    <span className="font-medium">Meeting:</span>{" "}
+                    <span className="text-indigo-700">
+                      {meetings.find((m) => m.id === (selectedDecisionData as any).meetingId)?.meetingId} —{" "}
+                      {meetings.find((m) => m.id === (selectedDecisionData as any).meetingId)?.title ?? "—"}
+                    </span>
+                  </div>
+                )}
                 {selectedDecisionData.requirementId && <div><span className="font-medium">Requirement:</span> {selectedDecisionData.requirementId}</div>}
                 {selectedDecisionData.taskId && <div><span className="font-medium">Task:</span> {selectedDecisionData.taskId}</div>}
                 {selectedDecisionData.issueId && <div><span className="font-medium">Issue:</span> {selectedDecisionData.issueId}</div>}

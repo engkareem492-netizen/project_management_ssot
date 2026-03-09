@@ -173,6 +173,7 @@ export const meetingsRouter = router({
       requirementId: z.string().optional(),
       taskId: z.string().optional(),
       issueId: z.string().optional(),
+      meetingId: z.number().nullable().optional(),
       actionItems: z.array(z.object({
         description: z.string(),
         owner: z.string().optional(),
