@@ -99,9 +99,17 @@ type MenuItem = { icon: React.ElementType; label: string; path: string; children
 
 const menuItems: MenuItem[] = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
-  { icon: Calendar, label: "Today", path: "/today" },
   { icon: FileText, label: "Requirements", path: "/requirements" },
-  { icon: CheckSquare, label: "Tasks", path: "/tasks" },
+  {
+    icon: CheckSquare,
+    label: "Tasks",
+    path: "__tasks__",
+    children: [
+      { icon: CheckSquare, label: "Task List", path: "/tasks" },
+      { icon: Calendar, label: "Today", path: "/today" },
+      { icon: BarChart2, label: "Gantt Chart", path: "/gantt" },
+    ],
+  },
   { icon: AlertCircle, label: "Issues", path: "/issues" },
   { icon: Link2, label: "Dependencies", path: "/dependencies" },
   { icon: FileCheck, label: "Assumptions", path: "/assumptions" },
@@ -123,7 +131,6 @@ const menuItems: MenuItem[] = [
   { icon: CalendarRange, label: "Calendar", path: "/calendar" },
   { icon: DollarSign, label: "Budget", path: "/budget" },
   { icon: FlaskConical, label: "Test Cases", path: "/test-cases" },
-  { icon: BarChart2, label: "Gantt Chart", path: "/gantt" },
   { icon: Layers, label: "Traceability Matrix", path: "/traceability" },
   { icon: FileBarChart, label: "Periodic Report", path: "/periodic-report" },
   { icon: SettingsIcon, label: "Settings", path: "/settings" },

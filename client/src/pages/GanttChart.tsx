@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
 import { useProject } from "@/contexts/ProjectContext";
 import { Button } from "@/components/ui/button";
@@ -121,6 +121,15 @@ export default function GanttChart() {
     dependencyType: "Finish-to-Start" as DepType,
     lagDays: 0,
   });
+
+  // Drag-to-connect state
+  const timelineRef = useRef<HTMLDivElement>(null);
+  const [connecting, setConnecting] = useState<null | {
+    fromTaskId: string;
+    fromSide: "start" | "end";
+    fromX: number; fromY: number;
+    curX: number; curY: number;
+  }>(null);
 
   // % complete stored in localStorage per project
   const [pctMap, setPctMap] = useState<Record<string, number>>(() => {
@@ -360,6 +369,60 @@ export default function GanttChart() {
     setShowEditTask(false);
   }
 
+  // Drag-to-connect handlers
+  const ROW_H = 40;
+  const HEADER_H = 40;
+
+  const startConnect = useCallback((e: React.MouseEvent, taskId: string, side: "start" | "end", barX: number, rowIdx: number) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const rect = timelineRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const fromX = barX;
+    const fromY = HEADER_H + rowIdx * ROW_H + ROW_H / 2;
+    const curX = e.clientX - rect.left;
+    const curY = e.clientY - rect.top;
+    setConnecting({ fromTaskId: taskId, fromSide: side, fromX, fromY, curX, curY });
+  }, []);
+
+  const onMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!connecting) return;
+    const rect = timelineRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    setConnecting(c => c ? { ...c, curX: e.clientX - rect.left, curY: e.clientY - rect.top } : null);
+  }, [connecting]);
+
+  const onMouseUp = useCallback((e: React.MouseEvent) => {
+    if (!connecting) return;
+    const rect = timelineRef.current?.getBoundingClientRect();
+    if (!rect) { setConnecting(null); return; }
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    // Determine which row was released on
+    const rowIdx = Math.floor((my - HEADER_H) / ROW_H);
+    const targetRow = visibleRows[rowIdx];
+    if (targetRow && targetRow.taskId !== connecting.fromTaskId && (targetRow.startParsed || targetRow.endParsed)) {
+      // Determine drop side (left half = start, right half = end)
+      const barLeftPx = targetRow.barStart * pxPerDay;
+      const barRightPx = barLeftPx + Math.max(8, targetRow.barDuration * pxPerDay);
+      const toSide = mx < (barLeftPx + barRightPx) / 2 ? "start" : "end";
+      // Map from→to sides to dependency type
+      const typeMap: Record<string, Record<string, DepType>> = {
+        end:   { start: "Finish-to-Start", end: "Finish-to-Finish" },
+        start: { start: "Start-to-Start",  end: "Start-to-Finish"  },
+      };
+      const depType = typeMap[connecting.fromSide]?.[toSide] ?? "Finish-to-Start";
+      createDepMutation.mutate({
+        projectId,
+        predecessorTaskId: connecting.fromTaskId,
+        successorTaskId: targetRow.taskId,
+        dependencyType: depType,
+        lagDays: 0,
+      });
+    }
+    setConnecting(null);
+  }, [connecting, visibleRows, pxPerDay, projectId, createDepMutation]);
+
   const totalTasks = allTasks.length;
   const completedTasks = allTasks.filter((t) => ["completed", "done"].includes((t.status ?? "").toLowerCase())).length;
   const avgPct = totalTasks > 0
@@ -513,7 +576,13 @@ export default function GanttChart() {
 
                 {/* ── Right panel: timeline ── */}
                 <div className="flex-1 overflow-x-auto">
-                  <div style={{ width: `${Math.max(totalWidth, 500)}px`, position: "relative" }}>
+                  <div
+                    ref={timelineRef}
+                    style={{ width: `${Math.max(totalWidth, 500)}px`, position: "relative", userSelect: connecting ? "none" : undefined }}
+                    onMouseMove={onMouseMove}
+                    onMouseUp={onMouseUp}
+                    onMouseLeave={() => setConnecting(null)}
+                  >
                     {/* Timeline headers */}
                     <div className="flex border-b bg-violet-50 h-10 relative">
                       {timelineHeaders.map((h, i) => (
@@ -574,30 +643,100 @@ export default function GanttChart() {
                                 className={`absolute top-2 bottom-2 rounded cursor-pointer group overflow-hidden ${t.isCritical ? "border-2 border-red-500" : ""}`}
                                 style={{ left: `${barLeftPx}px`, width: `${barWidthPx}px`, backgroundColor: color }}
                                 title={`${t.taskId}: ${t.description}\n${fmtDate(t.assignDate)} → ${fmtDate(t.dueDate)}\nStatus: ${t.status ?? "—"}\n% Complete: ${pct}%`}
-                                onClick={() => openEditPct(t)}
+                                onClick={() => !connecting && openEditPct(t)}
                               >
                                 {/* % complete fill */}
                                 {pct > 0 && (
-                                  <div
-                                    className="absolute inset-0 bg-white/25"
-                                    style={{ width: `${pct}%` }}
-                                  />
+                                  <div className="absolute inset-0 bg-white/25" style={{ width: `${pct}%` }} />
                                 )}
                                 {/* Label */}
                                 <span className="relative z-10 text-white text-[10px] font-medium px-1.5 truncate leading-[28px] inline-block">
                                   {barWidthPx > 60 ? `${t.taskId}${pct > 0 ? ` (${pct}%)` : ""}` : barWidthPx > 24 ? t.taskId : ""}
                                 </span>
+                                {/* Connection handles — left (start) */}
+                                <div
+                                  className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-white border-2 border-violet-500 opacity-0 group-hover:opacity-100 hover:!opacity-100 z-20 cursor-crosshair transition-opacity"
+                                  title="Drag to connect (Start)"
+                                  onMouseDown={(e) => startConnect(e, t.taskId, "start", barLeftPx, i)}
+                                />
+                                {/* Connection handles — right (end) */}
+                                <div
+                                  className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-3 h-3 rounded-full bg-white border-2 border-violet-500 opacity-0 group-hover:opacity-100 hover:!opacity-100 z-20 cursor-crosshair transition-opacity"
+                                  title="Drag to connect (End)"
+                                  onMouseDown={(e) => startConnect(e, t.taskId, "end", barLeftPx + barWidthPx, i)}
+                                />
                               </div>
                             )
                           )}
                         </div>
                       );
                     })}
+
+                    {/* SVG overlay: dependency arrows + rubber-band */}
+                    {(() => {
+                      const svgH = HEADER_H + visibleRows.length * ROW_H;
+                      const svgW = Math.max(totalWidth, 500);
+                      const rowIdxMap: Record<string, number> = {};
+                      visibleRows.forEach((r, i) => { rowIdxMap[r.taskId] = i; });
+                      return (
+                        <svg
+                          className="absolute top-0 left-0 pointer-events-none z-30"
+                          width={svgW} height={svgH}
+                          style={{ overflow: "visible" }}
+                        >
+                          <defs>
+                            <marker id="arrowhead" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+                              <path d="M0,0 L0,6 L6,3 z" fill="#7c3aed" />
+                            </marker>
+                          </defs>
+                          {/* Existing dependency arrows */}
+                          {dependencies.map(d => {
+                            const predRow = rowIdxMap[d.predecessorTaskId];
+                            const succRow = rowIdxMap[d.successorTaskId];
+                            const predTask = visibleRows[predRow];
+                            const succTask = visibleRows[succRow];
+                            if (predRow === undefined || succRow === undefined || !predTask || !succTask) return null;
+                            const depType = d.dependencyType ?? "Finish-to-Start";
+                            const predBarEnd = (predTask.barStart + predTask.barDuration) * pxPerDay;
+                            const predBarStart = predTask.barStart * pxPerDay;
+                            const succBarStart = succTask.barStart * pxPerDay;
+                            const succBarEnd = (succTask.barStart + succTask.barDuration) * pxPerDay;
+                            const x1 = depType.startsWith("Finish") ? predBarEnd : predBarStart;
+                            const x2 = depType.endsWith("Start") ? succBarStart : succBarEnd;
+                            const y1 = HEADER_H + predRow * ROW_H + ROW_H / 2;
+                            const y2 = HEADER_H + succRow * ROW_H + ROW_H / 2;
+                            const cx = (x1 + x2) / 2;
+                            return (
+                              <path key={d.id}
+                                d={`M${x1},${y1} C${cx},${y1} ${cx},${y2} ${x2},${y2}`}
+                                fill="none" stroke="#7c3aed" strokeWidth="1.5" strokeDasharray="4 2"
+                                markerEnd="url(#arrowhead)" opacity="0.7"
+                              />
+                            );
+                          })}
+                          {/* Rubber-band line while dragging */}
+                          {connecting && (
+                            <line
+                              x1={connecting.fromX} y1={connecting.fromY}
+                              x2={connecting.curX} y2={connecting.curY}
+                              stroke="#7c3aed" strokeWidth="2" strokeDasharray="5 3"
+                              markerEnd="url(#arrowhead)"
+                            />
+                          )}
+                        </svg>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>
 
               {/* Legend row */}
+              {connecting && (
+                <div className="px-4 py-1 bg-violet-50 border-t text-xs text-violet-700 font-medium">
+                  Drag to another bar's ● handle to create a dependency. Release on empty space to cancel.
+                  <span className="ml-2 text-muted-foreground">end→start = FS • start→start = SS • end→end = FF • start→end = SF</span>
+                </div>
+              )}
               <div className="p-3 border-t bg-gray-50 flex flex-wrap gap-3 items-center">
                 {Object.entries(STATUS_COLORS).slice(0, 6).map(([s, c]) => (
                   <div key={s} className="flex items-center gap-1.5">
@@ -735,11 +874,11 @@ export default function GanttChart() {
         </TabsContent>
       </Tabs>
 
-      {/* Edit % Complete Dialog */}
+      {/* Edit Task Dialog — progress + dependencies */}
       <Dialog open={showEditTask} onOpenChange={setShowEditTask}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Edit Task Progress</DialogTitle>
+            <DialogTitle>Edit Task</DialogTitle>
           </DialogHeader>
           {editingTask && (
             <div className="space-y-4 py-2">
@@ -755,21 +894,86 @@ export default function GanttChart() {
               </div>
               <div className="space-y-2">
                 <Label>% Complete: <span className="font-bold text-violet-700">{editPct}%</span></Label>
-                <input
-                  type="range"
-                  min={0}
-                  max={100}
-                  step={5}
-                  value={editPct}
-                  onChange={(e) => setEditPct(Number(e.target.value))}
-                  className="w-full accent-violet-600"
-                />
+                <input type="range" min={0} max={100} step={5} value={editPct}
+                  onChange={(e) => setEditPct(Number(e.target.value))} className="w-full accent-violet-600" />
                 <Progress value={editPct} className="h-2" />
+              </div>
+
+              {/* Dependencies inline */}
+              <div className="border-t pt-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-semibold flex items-center gap-1"><GitBranch className="w-3.5 h-3.5" /> Dependencies</Label>
+                </div>
+                {/* Predecessors */}
+                {(() => {
+                  const preds = dependencies.filter(d => d.successorTaskId === editingTask.taskId);
+                  const succs = dependencies.filter(d => d.predecessorTaskId === editingTask.taskId);
+                  return (
+                    <div className="space-y-2 text-xs">
+                      {preds.length > 0 && (
+                        <div>
+                          <div className="text-muted-foreground font-medium mb-1">Predecessors</div>
+                          {preds.map(d => (
+                            <div key={d.id} className="flex items-center justify-between bg-violet-50 rounded px-2 py-1 mb-1">
+                              <span><span className="font-mono font-bold text-violet-700">{d.predecessorTaskId}</span> <span className="text-muted-foreground">({d.dependencyType ?? "FS"})</span></span>
+                              <Button size="sm" variant="ghost" className="h-5 w-5 p-0 text-red-500 hover:text-red-700"
+                                onClick={() => { if (confirm("Remove?")) deleteDepMutation.mutate({ id: d.id }); }}>
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {succs.length > 0 && (
+                        <div>
+                          <div className="text-muted-foreground font-medium mb-1">Successors</div>
+                          {succs.map(d => (
+                            <div key={d.id} className="flex items-center justify-between bg-blue-50 rounded px-2 py-1 mb-1">
+                              <span><span className="font-mono font-bold text-blue-700">{d.successorTaskId}</span> <span className="text-muted-foreground">({d.dependencyType ?? "FS"})</span></span>
+                              <Button size="sm" variant="ghost" className="h-5 w-5 p-0 text-red-500 hover:text-red-700"
+                                onClick={() => { if (confirm("Remove?")) deleteDepMutation.mutate({ id: d.id }); }}>
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {/* Add dependency inline */}
+                      <div className="rounded border p-2 space-y-2 bg-gray-50">
+                        <div className="font-medium text-muted-foreground">Add Link</div>
+                        <div className="grid grid-cols-3 gap-1">
+                          <Select value={depForm.predecessorTaskId || "__none__"}
+                            onValueChange={(v) => setDepForm({ ...depForm, predecessorTaskId: v === "__none__" ? "" : v, successorTaskId: v === "__none__" ? "" : editingTask.taskId })}>
+                            <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Predecessor…" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__none__">— predecessor</SelectItem>
+                              {allTasks.filter(t => t.taskId !== editingTask.taskId).map(t =>
+                                <SelectItem key={t.taskId} value={t.taskId}>{t.taskId}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                          <Select value={depForm.dependencyType}
+                            onValueChange={(v) => setDepForm({ ...depForm, dependencyType: v as DepType })}>
+                            <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {(["Finish-to-Start","Start-to-Start","Finish-to-Finish","Start-to-Finish"] as DepType[]).map(t =>
+                                <SelectItem key={t} value={t}>{t.replace("Finish","F").replace("Start","S").replace("-to-","→")}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                          <Button size="sm" className="h-7 bg-violet-600 hover:bg-violet-700 text-white text-xs"
+                            disabled={!depForm.predecessorTaskId || createDepMutation.isPending}
+                            onClick={() => createDepMutation.mutate({ projectId, predecessorTaskId: depForm.predecessorTaskId, successorTaskId: editingTask.taskId, dependencyType: depForm.dependencyType, lagDays: depForm.lagDays })}>
+                            + Link
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowEditTask(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setShowEditTask(false)}>Close</Button>
             <Button className="bg-violet-600 hover:bg-violet-700 text-white" onClick={savePct}>Save Progress</Button>
           </DialogFooter>
         </DialogContent>

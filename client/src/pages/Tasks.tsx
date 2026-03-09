@@ -1961,7 +1961,7 @@ export default function Tasks() {
                                 <span className="font-mono text-xs font-bold text-indigo-700">{d.decisionId}</span>
                                 <Badge className={`text-xs ${DECISION_STATUS_COLORS[d.status ?? 'Open'] ?? ''}`}>{d.status ?? 'Open'}</Badge>
                               </div>
-                              <span className="text-xs text-muted-foreground">{formatDate(d.decisionDate)}</span>
+                              <span className="text-xs text-muted-foreground">{formatDate(d.decisionDate ? (d.decisionDate instanceof Date ? d.decisionDate.toISOString() : String(d.decisionDate)) : null)}</span>
                             </div>
                             <div className="font-medium text-sm">{d.title}</div>
                             {d.description && <div className="text-xs text-muted-foreground">{d.description}</div>}
