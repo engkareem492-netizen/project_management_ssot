@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { useProject } from "@/contexts/ProjectContext";
 import { Button } from "@/components/ui/button";
@@ -9,11 +9,20 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Trash2, GitBranch, BarChart3, AlertTriangle } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import {
+  Plus, Trash2, GitBranch, BarChart3, AlertTriangle,
+  ChevronRight, ChevronDown, Pencil, Diamond, CalendarDays, List,
+} from "lucide-react";
 import { toast } from "sonner";
 import { formatDate as _formatDateUtil } from "@/lib/dateUtils";
 
+// ─── Types ────────────────────────────────────────────────────────────────────
 type DepType = "Finish-to-Start" | "Start-to-Start" | "Finish-to-Finish" | "Start-to-Finish";
+type ZoomLevel = "days" | "weeks" | "months";
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+const DAY_MS = 1000 * 60 * 60 * 24;
 
 const STATUS_COLORS: Record<string, string> = {
   "Completed": "#22c55e",
@@ -26,6 +35,7 @@ const STATUS_COLORS: Record<string, string> = {
   "Not Started": "#94a3b8",
 };
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 function getStatusColor(status: string | null | undefined): string {
   if (!status) return "#94a3b8";
   for (const [key, color] of Object.entries(STATUS_COLORS)) {
@@ -40,23 +50,102 @@ function parseDate(d: string | null | undefined): Date | null {
   return isNaN(parsed.getTime()) ? null : parsed;
 }
 
-function formatDate(d: Date | string | null | undefined): string {
+function fmtDate(d: Date | string | null | undefined): string {
   if (!d) return "—";
   return _formatDateUtil(d instanceof Date ? d.toISOString() : (d as string));
 }
 
+function daysBetween(a: Date, b: Date): number {
+  return Math.round((b.getTime() - a.getTime()) / DAY_MS);
+}
+
+function pctKey(projectId: number) {
+  return `gantt-pct-v2-${projectId}`;
+}
+
+// Build WBS numbering from parentTaskId hierarchy
+function buildWBSMap(tasks: Array<{ id: number; parentTaskId?: number | null }>): Map<number, string> {
+  const childrenMap = new Map<number | null, typeof tasks>();
+  tasks.forEach((t) => {
+    const key = (t.parentTaskId as number | null | undefined) ?? null;
+    if (!childrenMap.has(key)) childrenMap.set(key, []);
+    childrenMap.get(key)!.push(t);
+  });
+
+  const result = new Map<number, string>();
+
+  function traverse(parentId: number | null, prefix: string) {
+    const children = childrenMap.get(parentId) ?? [];
+    children.forEach((t, i) => {
+      const wbs = prefix ? `${prefix}.${i + 1}` : `${i + 1}`;
+      result.set(t.id, wbs);
+      traverse(t.id, wbs);
+    });
+  }
+
+  traverse(null, "");
+  return result;
+}
+
+// Sort tasks by WBS for display
+function sortByWBS(tasks: any[], wbsMap: Map<number, string>): any[] {
+  return [...tasks].sort((a, b) => {
+    const wa = wbsMap.get(a.id) ?? "999";
+    const wb = wbsMap.get(b.id) ?? "999";
+    const partsA = wa.split(".").map(Number);
+    const partsB = wb.split(".").map(Number);
+    for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
+      const diff = (partsA[i] ?? 0) - (partsB[i] ?? 0);
+      if (diff !== 0) return diff;
+    }
+    return 0;
+  });
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
 export default function GanttChart() {
   const { currentProjectId } = useProject();
   const projectId = currentProjectId ?? 0;
 
   const [tab, setTab] = useState("gantt");
-  const [showAddDep, setShowAddDep] = useState(false);
-  const [depForm, setDepForm] = useState({ predecessorTaskId: "", successorTaskId: "", dependencyType: "Finish-to-Start" as DepType, lagDays: 0 });
+  const [zoom, setZoom] = useState<ZoomLevel>("weeks");
   const [search, setSearch] = useState("");
+  const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
+  const [showAddDep, setShowAddDep] = useState(false);
+  const [showEditTask, setShowEditTask] = useState(false);
+  const [editingTask, setEditingTask] = useState<any>(null);
+  const [editPct, setEditPct] = useState(0);
+  const [depForm, setDepForm] = useState({
+    predecessorTaskId: "",
+    successorTaskId: "",
+    dependencyType: "Finish-to-Start" as DepType,
+    lagDays: 0,
+  });
+
+  // % complete stored in localStorage per project
+  const [pctMap, setPctMap] = useState<Record<string, number>>(() => {
+    try {
+      const raw = localStorage.getItem(pctKey(projectId));
+      return raw ? JSON.parse(raw) : {};
+    } catch { return {}; }
+  });
+
+  useEffect(() => {
+    localStorage.setItem(pctKey(projectId), JSON.stringify(pctMap));
+  }, [pctMap, projectId]);
 
   const utils = trpc.useUtils();
-  const { data: ganttData, isLoading } = trpc.taskDependencies.ganttData.useQuery({ projectId }, { enabled: !!projectId });
-  const { data: dependencies = [] } = trpc.taskDependencies.list.useQuery({ projectId }, { enabled: !!projectId });
+  const { data: ganttData, isLoading: ganttLoading } = trpc.taskDependencies.ganttData.useQuery(
+    { projectId }, { enabled: !!projectId }
+  );
+  const { data: fullTasks = [], isLoading: tasksLoading } = trpc.tasks.list.useQuery(
+    { projectId }, { enabled: !!projectId }
+  );
+  const { data: dependencies = [] } = trpc.taskDependencies.list.useQuery(
+    { projectId }, { enabled: !!projectId }
+  );
+
+  const isLoading = ganttLoading || tasksLoading;
 
   const createDepMutation = trpc.taskDependencies.create.useMutation({
     onSuccess: () => {
@@ -68,6 +157,7 @@ export default function GanttChart() {
     },
     onError: (e) => toast.error(e.message),
   });
+
   const deleteDepMutation = trpc.taskDependencies.delete.useMutation({
     onSuccess: () => {
       utils.taskDependencies.ganttData.invalidate();
@@ -77,221 +167,548 @@ export default function GanttChart() {
     onError: (e) => toast.error(e.message),
   });
 
-  const allTasks = ganttData?.tasks ?? [];
+  // Merge ganttData tasks with fullTasks to get parentTaskId
+  const allTasks = useMemo(() => {
+    const ganttTasks = ganttData?.tasks ?? [];
+    const fullMap = new Map(fullTasks.map((t: any) => [t.taskId, t]));
+    return ganttTasks.map((gt) => {
+      const full = fullMap.get(gt.taskId) as any;
+      return {
+        ...gt,
+        parentTaskId: full?.parentTaskId ?? null,
+        responsible: full?.responsible ?? gt.responsible ?? null,
+        priority: full?.priority ?? null,
+      };
+    });
+  }, [ganttData, fullTasks]);
 
-  // Build Gantt rows with date-based bar positioning
+  // Build WBS map
+  const wbsMap = useMemo(() => buildWBSMap(allTasks), [allTasks]);
+
+  // Successor set for critical path highlighting
+  const successorSet = useMemo(() => {
+    const s = new Set<string>();
+    dependencies.forEach((d) => s.add(d.predecessorTaskId));
+    return s;
+  }, [dependencies]);
+
+  // Build sorted + enriched rows
   const ganttRows = useMemo(() => {
-    const tasksWithDates = allTasks.map((t) => ({
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const withDates = allTasks.map((t) => ({
       ...t,
       startParsed: parseDate(t.assignDate),
       endParsed: parseDate(t.dueDate),
+      wbs: wbsMap.get(t.id) ?? "",
     }));
 
-    // Find overall date range
-    const allDates = tasksWithDates.flatMap((t) => [t.startParsed, t.endParsed].filter(Boolean) as Date[]);
-    if (allDates.length === 0) return { rows: tasksWithDates, minDate: new Date(), maxDate: new Date(), totalDays: 30 };
+    const sorted = sortByWBS(withDates, wbsMap);
+
+    // Date range
+    const allDates = sorted.flatMap((t) => [t.startParsed, t.endParsed].filter(Boolean) as Date[]);
+    if (allDates.length === 0) {
+      const start = new Date(today);
+      start.setDate(today.getDate() - 7);
+      const end = new Date(today);
+      end.setDate(today.getDate() + 30);
+      return { rows: sorted, minDate: start, maxDate: end, totalDays: 37, todayOffset: 7 };
+    }
 
     const minDate = new Date(Math.min(...allDates.map((d) => d.getTime())));
     const maxDate = new Date(Math.max(...allDates.map((d) => d.getTime())));
-    minDate.setDate(minDate.getDate() - 2);
-    maxDate.setDate(maxDate.getDate() + 2);
-    const totalDays = Math.max(30, Math.ceil((maxDate.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24)));
+    minDate.setDate(minDate.getDate() - 3);
+    maxDate.setDate(maxDate.getDate() + 5);
+    const totalDays = Math.max(30, daysBetween(minDate, maxDate));
+    const todayOffset = Math.max(0, Math.min(totalDays, daysBetween(minDate, today)));
 
-    const rows = tasksWithDates.map((t) => {
-      const start = t.startParsed ?? t.endParsed ?? minDate;
-      const end = t.endParsed ?? t.startParsed ?? maxDate;
-      const startOffset = Math.max(0, (start.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24));
-      const duration = Math.max(1, (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-      return { ...t, startOffset, duration, totalDays };
+    const rows = sorted.map((t) => {
+      const start = t.startParsed ?? t.endParsed ?? today;
+      const end = t.endParsed ?? t.startParsed ?? today;
+      const duration = Math.max(0, daysBetween(start, end));
+      const isMilestone = duration === 0 && (t.startParsed || t.endParsed);
+      const isParent = allTasks.some((other) => (other as any).parentTaskId === t.id);
+      const isCritical = successorSet.has(t.taskId) && !["completed", "done"].includes((t.status ?? "").toLowerCase());
+
+      const startOffset = Math.max(0, daysBetween(minDate, start));
+
+      // For parent tasks, span all children
+      let barStart = startOffset;
+      let barDuration = Math.max(1, duration);
+      if (isParent) {
+        const children = allTasks.filter((c) => (c as any).parentTaskId === t.id);
+        const childDates = children.flatMap((c) => [parseDate(c.assignDate), parseDate(c.dueDate)].filter(Boolean) as Date[]);
+        if (childDates.length > 0) {
+          const childMin = new Date(Math.min(...childDates.map((d) => d.getTime())));
+          const childMax = new Date(Math.max(...childDates.map((d) => d.getTime())));
+          barStart = Math.max(0, daysBetween(minDate, childMin));
+          barDuration = Math.max(1, daysBetween(childMin, childMax));
+        }
+      }
+
+      return {
+        ...t,
+        duration,
+        isMilestone,
+        isParent,
+        isCritical,
+        barStart,
+        barDuration,
+        depth: (t.wbs.match(/\./g) ?? []).length,
+      };
     });
 
-    return { rows, minDate, maxDate, totalDays };
-  }, [allTasks]);
+    return { rows, minDate, maxDate, totalDays, todayOffset };
+  }, [allTasks, wbsMap, successorSet]);
 
-  const filteredTasks = allTasks.filter((t) => !search || t.taskId.toLowerCase().includes(search.toLowerCase()) || (t.description ?? "").toLowerCase().includes(search.toLowerCase()));
+  // Generate timeline headers based on zoom
+  const timelineHeaders = useMemo(() => {
+    const { minDate, totalDays } = ganttRows;
+    const headers: { label: string; offset: number; days: number }[] = [];
 
-  // Build dependency map for display
+    if (zoom === "days") {
+      for (let i = 0; i < totalDays; i++) {
+        const d = new Date(minDate);
+        d.setDate(minDate.getDate() + i);
+        headers.push({
+          label: d.toLocaleDateString("en", { weekday: "short", day: "numeric" }),
+          offset: i,
+          days: 1,
+        });
+      }
+    } else if (zoom === "weeks") {
+      let offset = 0;
+      const cur = new Date(minDate);
+      while (offset < totalDays) {
+        const days = Math.min(7, totalDays - offset);
+        headers.push({
+          label: cur.toLocaleDateString("en", { month: "short", day: "numeric" }),
+          offset,
+          days,
+        });
+        cur.setDate(cur.getDate() + 7);
+        offset += 7;
+      }
+    } else {
+      // months
+      let cur = new Date(minDate.getFullYear(), minDate.getMonth(), 1);
+      while (cur.getTime() < ganttRows.maxDate.getTime()) {
+        const start = cur < minDate ? minDate : cur;
+        const nextMonth = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
+        const end = nextMonth > ganttRows.maxDate ? ganttRows.maxDate : nextMonth;
+        const days = Math.max(1, daysBetween(start, end));
+        const offset = Math.max(0, daysBetween(minDate, start));
+        headers.push({
+          label: cur.toLocaleDateString("en", { month: "long", year: "numeric" }),
+          offset,
+          days,
+        });
+        cur = nextMonth;
+      }
+    }
+    return headers;
+  }, [ganttRows, zoom]);
+
+  // Pixels per day based on zoom
+  const pxPerDay = zoom === "days" ? 40 : zoom === "weeks" ? 24 : 4;
+  const totalWidth = ganttRows.totalDays * pxPerDay;
+
+  const filteredRows = ganttRows.rows.filter((t) => {
+    if (!search) return true;
+    return (
+      t.taskId.toLowerCase().includes(search.toLowerCase()) ||
+      (t.description ?? "").toLowerCase().includes(search.toLowerCase()) ||
+      (t.responsible ?? "").toLowerCase().includes(search.toLowerCase())
+    );
+  });
+
+  const visibleRows = filteredRows.filter((t) => {
+    const parentId = (t as any).parentTaskId;
+    if (!parentId) return true;
+    // Hide if parent is collapsed
+    const parent = allTasks.find((p) => p.id === parentId);
+    if (!parent) return true;
+    return !collapsed.has(parentId);
+  });
+
   const taskMap = useMemo(() => {
     const m: Record<string, string> = {};
     allTasks.forEach((t) => { m[t.taskId] = t.description?.slice(0, 40) ?? t.taskId; });
     return m;
   }, [allTasks]);
 
-  // Generate week headers for Gantt
-  const weekHeaders = useMemo(() => {
-    const headers: { label: string; offset: number; width: number }[] = [];
-    if (!ganttRows.minDate || ganttRows.totalDays === 0) return headers;
-    const current = new Date(ganttRows.minDate);
-    let offset = 0;
-    while (offset < ganttRows.totalDays) {
-      const weekStart = new Date(current);
-      const daysLeft = Math.min(7, ganttRows.totalDays - offset);
-      headers.push({
-        label: weekStart.toLocaleDateString("en", { month: "short", day: "numeric" }),
-        offset,
-        width: (daysLeft / ganttRows.totalDays) * 100,
-      });
-      current.setDate(current.getDate() + 7);
-      offset += 7;
-    }
-    return headers;
-  }, [ganttRows]);
+  function toggleCollapse(id: number) {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function openEditPct(task: any) {
+    setEditingTask(task);
+    setEditPct(pctMap[task.taskId] ?? 0);
+    setShowEditTask(true);
+  }
+
+  function savePct() {
+    if (!editingTask) return;
+    setPctMap((prev) => ({ ...prev, [editingTask.taskId]: editPct }));
+    toast.success(`% Complete updated for ${editingTask.taskId}`);
+    setShowEditTask(false);
+  }
+
+  const totalTasks = allTasks.length;
+  const completedTasks = allTasks.filter((t) => ["completed", "done"].includes((t.status ?? "").toLowerCase())).length;
+  const avgPct = totalTasks > 0
+    ? Math.round(Object.values(pctMap).reduce((s, v) => s + v, 0) / Math.max(totalTasks, 1))
+    : 0;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-5">
       {/* Header */}
       <div className="bg-white border border-gray-200 rounded-xl p-5">
-        <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
               <BarChart3 className="w-6 h-6 text-gray-500" />
-              Gantt Chart & Task Dependencies
+              Gantt Chart
             </h1>
-            <p className="text-gray-500 text-sm mt-1">Visualize task timelines and manage dependencies between tasks</p>
+            <p className="text-gray-500 text-sm mt-1">Microsoft Project-style timeline with WBS, % complete, milestones and critical path</p>
           </div>
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-violet-700 border-violet-300">{allTasks.length} Tasks</Badge>
-            <Badge variant="outline" className="text-violet-700 border-violet-300">{dependencies.length} Dependencies</Badge>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="text-center">
+              <div className="text-xl font-bold">{totalTasks}</div>
+              <div className="text-xs text-muted-foreground">Tasks</div>
+            </div>
+            <div className="text-center">
+              <div className="text-xl font-bold text-green-600">{completedTasks}</div>
+              <div className="text-xs text-muted-foreground">Done</div>
+            </div>
+            <div className="text-center">
+              <div className="text-xl font-bold text-violet-600">{dependencies.length}</div>
+              <div className="text-xs text-muted-foreground">Links</div>
+            </div>
+            <div className="min-w-[120px]">
+              <div className="text-xs text-muted-foreground mb-1">Overall Progress</div>
+              <Progress value={totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0} className="h-2" />
+              <div className="text-xs text-muted-foreground mt-0.5">{totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0}% of tasks done</div>
+            </div>
           </div>
+        </div>
+      </div>
+
+      {/* Legend */}
+      <div className="flex flex-wrap gap-4 text-xs text-muted-foreground items-center bg-white border border-gray-200 rounded-lg px-4 py-2">
+        <div className="flex items-center gap-1.5"><div className="w-8 h-3 rounded bg-blue-500" />Normal Task</div>
+        <div className="flex items-center gap-1.5"><div className="w-8 h-3 rounded bg-gray-700" />Summary (Parent)</div>
+        <div className="flex items-center gap-1.5"><div className="w-3 h-3 rotate-45 bg-yellow-500 rounded-sm" />Milestone</div>
+        <div className="flex items-center gap-1.5"><div className="w-8 h-3 rounded border-2 border-red-500 bg-red-100" />Critical Path</div>
+        <div className="flex items-center gap-1.5"><div className="w-0.5 h-4 bg-red-500" />Today</div>
+        <div className="ml-auto flex items-center gap-2">
+          <span>Zoom:</span>
+          {(["days", "weeks", "months"] as ZoomLevel[]).map((z) => (
+            <button
+              key={z}
+              onClick={() => setZoom(z)}
+              className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${zoom === z ? "bg-violet-600 text-white" : "bg-muted hover:bg-muted/80"}`}
+            >
+              {z.charAt(0).toUpperCase() + z.slice(1)}
+            </button>
+          ))}
         </div>
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
         <div className="flex items-center justify-between flex-wrap gap-3">
           <TabsList>
-            <TabsTrigger value="gantt"><BarChart3 className="w-4 h-4 mr-1" />Gantt View</TabsTrigger>
+            <TabsTrigger value="gantt"><CalendarDays className="w-4 h-4 mr-1" />Gantt View</TabsTrigger>
+            <TabsTrigger value="tasks"><List className="w-4 h-4 mr-1" />Task Table</TabsTrigger>
             <TabsTrigger value="dependencies"><GitBranch className="w-4 h-4 mr-1" />Dependencies</TabsTrigger>
           </TabsList>
           <div className="flex gap-2">
-            <Input placeholder="Search tasks..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-52" />
+            <Input placeholder="Search tasks…" value={search} onChange={(e) => setSearch(e.target.value)} className="w-52 h-8" />
             {tab === "dependencies" && (
-              <Button onClick={() => setShowAddDep(true)} className="bg-gray-900 hover:bg-gray-800 text-white">
-                <Plus className="w-4 h-4 mr-1" /> Add Dependency
+              <Button onClick={() => setShowAddDep(true)} size="sm" className="bg-gray-900 hover:bg-gray-800 text-white">
+                <Plus className="w-4 h-4 mr-1" /> Add Link
               </Button>
             )}
           </div>
         </div>
 
-        {/* Gantt Tab */}
+        {/* ── GANTT VIEW ── */}
         <TabsContent value="gantt">
           {isLoading ? (
-            <div className="text-center py-12 text-muted-foreground">Loading Gantt data...</div>
+            <div className="text-center py-16 text-muted-foreground">Loading Gantt data…</div>
           ) : allTasks.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <BarChart3 className="w-12 h-12 mx-auto mb-3 opacity-30" />
-              <p>No tasks found. Import tasks to see the Gantt chart.</p>
+            <div className="text-center py-16 text-muted-foreground">
+              <BarChart3 className="w-12 h-12 mx-auto mb-3 opacity-20" />
+              <p className="font-medium">No tasks found</p>
+              <p className="text-sm mt-1">Add tasks with start and due dates to see the Gantt chart.</p>
             </div>
           ) : (
             <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
-              {/* Gantt Chart */}
-              <div className="overflow-x-auto">
-                <div style={{ minWidth: "900px" }}>
-                  {/* Header row */}
-                  <div className="flex border-b bg-violet-50">
-                    <div className="w-72 shrink-0 px-4 py-2 text-xs font-semibold text-violet-700 border-r">Task</div>
-                    <div className="flex-1 relative h-8">
-                      {weekHeaders.map((w, i) => (
-                        <div key={i} className="absolute top-0 bottom-0 border-r border-violet-200 flex items-center px-1" style={{ left: `${w.offset / ganttRows.totalDays * 100}%`, width: `${w.width}%` }}>
-                          <span className="text-xs text-violet-600 truncate">{w.label}</span>
-                        </div>
-                      ))}
-                    </div>
+              <div className="flex">
+                {/* ── Left panel: task info ── */}
+                <div className="w-[380px] shrink-0 border-r flex flex-col">
+                  {/* Column headers */}
+                  <div className="flex items-center border-b bg-violet-50 h-10 px-3 gap-2 text-xs font-semibold text-violet-700 shrink-0">
+                    <span className="w-10">WBS</span>
+                    <span className="w-16">ID</span>
+                    <span className="flex-1">Task</span>
+                    <span className="w-12 text-right">Days</span>
+                    <span className="w-10 text-right">%</span>
                   </div>
-
                   {/* Task rows */}
-                  {ganttRows.rows
-                    .filter((t) => !search || t.taskId.toLowerCase().includes(search.toLowerCase()) || (t.description ?? "").toLowerCase().includes(search.toLowerCase()))
-                    .map((t, i) => {
-                      const startOffset = (t as typeof t & { startOffset: number }).startOffset ?? 0;
-                      const duration = (t as typeof t & { duration: number }).duration ?? 1;
-                      const barLeft = (startOffset / ganttRows.totalDays) * 100;
-                      const barWidth = (duration / ganttRows.totalDays) * 100;
-                      const color = getStatusColor(t.status);
-                      const hasDep = dependencies.some((d) => d.successorTaskId === t.taskId || d.predecessorTaskId === t.taskId);
-
+                  <div className="overflow-y-auto">
+                    {visibleRows.map((t, i) => {
+                      const pct = pctMap[t.taskId] ?? 0;
+                      const isCollapsible = t.isParent;
+                      const isCollapsedNow = collapsed.has(t.id);
                       return (
-                        <div key={t.id} className={`flex border-b hover:bg-violet-50/30 ${i % 2 === 0 ? "" : "bg-gray-50/30"}`} style={{ minHeight: "40px" }}>
-                          <div className="w-72 shrink-0 px-4 py-2 border-r flex items-center gap-2">
-                            <div>
-                              <div className="flex items-center gap-1">
-                                <span className="font-mono text-xs font-semibold text-violet-700">{t.taskId}</span>
-                                {hasDep && <GitBranch className="w-3 h-3 text-violet-400" />}
-                              </div>
-                              <div className="text-xs text-muted-foreground truncate max-w-[200px]">{t.description?.slice(0, 35)}</div>
-                            </div>
-                          </div>
-                          <div className="flex-1 relative py-2 px-1">
-                            {/* Week grid lines */}
-                            {weekHeaders.map((w, wi) => (
-                              <div key={wi} className="absolute top-0 bottom-0 border-r border-gray-100" style={{ left: `${w.offset / ganttRows.totalDays * 100}%` }} />
-                            ))}
-                            {/* Task bar */}
-                            {(t.startParsed || t.endParsed) && (
-                              <div
-                                className="absolute top-2 bottom-2 rounded flex items-center px-2 text-white text-xs font-medium overflow-hidden"
-                                style={{ left: `${barLeft}%`, width: `${Math.max(barWidth, 2)}%`, backgroundColor: color, minWidth: "4px" }}
-                                title={`${t.taskId}: ${t.description ?? ""}\n${formatDate(t.assignDate)} → ${formatDate(t.dueDate)}\nStatus: ${t.status ?? "—"}`}
+                        <div
+                          key={t.id}
+                          className={`flex items-center border-b h-10 px-3 gap-2 hover:bg-violet-50/40 cursor-pointer text-xs ${i % 2 === 0 ? "" : "bg-gray-50/30"}`}
+                          onClick={() => openEditPct(t)}
+                        >
+                          {/* WBS */}
+                          <span className="w-10 font-mono text-muted-foreground shrink-0" style={{ paddingLeft: `${t.depth * 8}px` }}>
+                            {isCollapsible && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); toggleCollapse(t.id); }}
+                                className="mr-0.5"
                               >
-                                <span className="truncate">{barWidth > 8 ? t.taskId : ""}</span>
-                              </div>
+                                {isCollapsedNow
+                                  ? <ChevronRight className="w-3 h-3 inline" />
+                                  : <ChevronDown className="w-3 h-3 inline" />
+                                }
+                              </button>
                             )}
-                            {!t.startParsed && !t.endParsed && (
-                              <div className="absolute inset-0 flex items-center px-2">
-                                <span className="text-xs text-gray-300 italic">No dates set</span>
-                              </div>
-                            )}
-                          </div>
+                            {t.wbs || "—"}
+                          </span>
+                          {/* Task ID */}
+                          <span className={`w-16 font-mono font-bold shrink-0 truncate ${t.isCritical ? "text-red-600" : "text-violet-700"}`}>
+                            {t.taskId}
+                          </span>
+                          {/* Description */}
+                          <span className={`flex-1 truncate ${t.isParent ? "font-semibold" : ""}`}>
+                            {t.isMilestone && <span className="mr-1 text-yellow-500">◆</span>}
+                            {t.description?.slice(0, 30) ?? "—"}
+                          </span>
+                          {/* Duration */}
+                          <span className="w-12 text-right text-muted-foreground shrink-0">
+                            {t.isMilestone ? "MS" : `${t.duration}d`}
+                          </span>
+                          {/* % complete */}
+                          <span className={`w-10 text-right font-semibold shrink-0 ${pct >= 100 ? "text-green-600" : pct > 0 ? "text-blue-600" : "text-muted-foreground"}`}>
+                            {pct}%
+                          </span>
                         </div>
                       );
                     })}
+                  </div>
+                </div>
+
+                {/* ── Right panel: timeline ── */}
+                <div className="flex-1 overflow-x-auto">
+                  <div style={{ width: `${Math.max(totalWidth, 500)}px`, position: "relative" }}>
+                    {/* Timeline headers */}
+                    <div className="flex border-b bg-violet-50 h-10 relative">
+                      {timelineHeaders.map((h, i) => (
+                        <div
+                          key={i}
+                          className="border-r border-violet-200 flex items-center px-2 h-full shrink-0"
+                          style={{ width: `${h.days * pxPerDay}px` }}
+                        >
+                          <span className="text-xs text-violet-600 font-medium truncate">{h.label}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Today line */}
+                    {ganttRows.todayOffset > 0 && ganttRows.todayOffset < ganttRows.totalDays && (
+                      <div
+                        className="absolute top-0 bottom-0 pointer-events-none z-20"
+                        style={{ left: `${ganttRows.todayOffset * pxPerDay}px` }}
+                      >
+                        <div className="w-0.5 h-10 bg-red-500 opacity-80" />
+                        <div className="w-0.5 bg-red-400 opacity-50" style={{ height: `${visibleRows.length * 40}px` }} />
+                      </div>
+                    )}
+
+                    {/* Grid + task bars */}
+                    {visibleRows.map((t, i) => {
+                      const barLeftPx = t.barStart * pxPerDay;
+                      const barWidthPx = Math.max(t.isMilestone ? 16 : 8, t.barDuration * pxPerDay);
+                      const pct = pctMap[t.taskId] ?? 0;
+                      const color = t.isParent ? "#374151" : getStatusColor(t.status);
+
+                      return (
+                        <div
+                          key={t.id}
+                          className={`relative border-b h-10 flex items-center ${i % 2 === 0 ? "" : "bg-gray-50/30"}`}
+                        >
+                          {/* Vertical grid lines */}
+                          {timelineHeaders.map((h, hi) => (
+                            <div
+                              key={hi}
+                              className="absolute top-0 bottom-0 border-r border-gray-100 pointer-events-none"
+                              style={{ left: `${h.offset * pxPerDay}px` }}
+                            />
+                          ))}
+
+                          {/* Bar or milestone */}
+                          {(t.startParsed || t.endParsed) && (
+                            t.isMilestone ? (
+                              /* Milestone diamond */
+                              <div
+                                className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-4 h-4 rotate-45 bg-yellow-400 border-2 border-yellow-600 cursor-pointer hover:scale-125 transition-transform z-10"
+                                style={{ left: `${barLeftPx}px` }}
+                                title={`${t.taskId}: ${t.description} — Milestone`}
+                              />
+                            ) : (
+                              /* Task bar */
+                              <div
+                                className={`absolute top-2 bottom-2 rounded cursor-pointer group overflow-hidden ${t.isCritical ? "border-2 border-red-500" : ""}`}
+                                style={{ left: `${barLeftPx}px`, width: `${barWidthPx}px`, backgroundColor: color }}
+                                title={`${t.taskId}: ${t.description}\n${fmtDate(t.assignDate)} → ${fmtDate(t.dueDate)}\nStatus: ${t.status ?? "—"}\n% Complete: ${pct}%`}
+                                onClick={() => openEditPct(t)}
+                              >
+                                {/* % complete fill */}
+                                {pct > 0 && (
+                                  <div
+                                    className="absolute inset-0 bg-white/25"
+                                    style={{ width: `${pct}%` }}
+                                  />
+                                )}
+                                {/* Label */}
+                                <span className="relative z-10 text-white text-[10px] font-medium px-1.5 truncate leading-[28px] inline-block">
+                                  {barWidthPx > 60 ? `${t.taskId}${pct > 0 ? ` (${pct}%)` : ""}` : barWidthPx > 24 ? t.taskId : ""}
+                                </span>
+                              </div>
+                            )
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 
-              {/* Legend */}
-              <div className="p-3 border-t bg-gray-50 flex flex-wrap gap-3">
-                {Object.entries(STATUS_COLORS).slice(0, 5).map(([status, color]) => (
-                  <div key={status} className="flex items-center gap-1.5">
-                    <div className="w-3 h-3 rounded" style={{ backgroundColor: color }} />
-                    <span className="text-xs text-muted-foreground">{status}</span>
+              {/* Legend row */}
+              <div className="p-3 border-t bg-gray-50 flex flex-wrap gap-3 items-center">
+                {Object.entries(STATUS_COLORS).slice(0, 6).map(([s, c]) => (
+                  <div key={s} className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 rounded" style={{ backgroundColor: c }} />
+                    <span className="text-xs text-muted-foreground">{s}</span>
                   </div>
                 ))}
+                <span className="ml-auto text-xs text-muted-foreground">
+                  Click any task row to edit % complete
+                </span>
               </div>
             </div>
           )}
         </TabsContent>
 
-        {/* Dependencies Tab */}
+        {/* ── TASK TABLE ── */}
+        <TabsContent value="tasks">
+          <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-violet-50">
+                  <TableHead className="font-semibold w-16">WBS</TableHead>
+                  <TableHead className="font-semibold w-24">Task ID</TableHead>
+                  <TableHead className="font-semibold">Description</TableHead>
+                  <TableHead className="font-semibold w-28">Responsible</TableHead>
+                  <TableHead className="font-semibold w-24">Start</TableHead>
+                  <TableHead className="font-semibold w-24">Finish</TableHead>
+                  <TableHead className="font-semibold w-16">Days</TableHead>
+                  <TableHead className="font-semibold w-28">% Complete</TableHead>
+                  <TableHead className="font-semibold w-28">Status</TableHead>
+                  <TableHead className="w-10" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {ganttRows.rows.length === 0 ? (
+                  <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground">No tasks found.</TableCell></TableRow>
+                ) : ganttRows.rows.map((t) => {
+                  const pct = pctMap[t.taskId] ?? 0;
+                  return (
+                    <TableRow key={t.id} className="hover:bg-violet-50/30">
+                      <TableCell className="font-mono text-xs text-muted-foreground">{t.wbs || "—"}</TableCell>
+                      <TableCell className={`font-mono text-sm font-bold ${t.isCritical ? "text-red-600" : "text-violet-700"}`}>
+                        {t.isMilestone && <span className="mr-1 text-yellow-500">◆</span>}
+                        {t.taskId}
+                      </TableCell>
+                      <TableCell className="max-w-xs">
+                        <span className={t.isParent ? "font-semibold" : ""}>{t.description?.slice(0, 60)}</span>
+                        {t.isParent && <Badge className="ml-2 text-[10px] bg-gray-100 text-gray-600">Summary</Badge>}
+                        {t.isCritical && <Badge className="ml-1 text-[10px] bg-red-100 text-red-700">Critical</Badge>}
+                      </TableCell>
+                      <TableCell className="text-sm">{(t as any).responsible || "—"}</TableCell>
+                      <TableCell className="text-sm">{fmtDate(t.assignDate)}</TableCell>
+                      <TableCell className="text-sm">{fmtDate(t.dueDate)}</TableCell>
+                      <TableCell className="text-sm text-center">{t.isMilestone ? "—" : `${t.duration}d`}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Progress value={pct} className="h-1.5 flex-1" />
+                          <span className="text-xs font-semibold w-8 text-right">{pct}%</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className="text-xs" style={{ backgroundColor: getStatusColor(t.status) + "20", color: getStatusColor(t.status) }}>
+                          {t.status ?? "—"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Button size="sm" variant="ghost" onClick={() => openEditPct(t)} title="Edit % complete">
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </TabsContent>
+
+        {/* ── DEPENDENCIES ── */}
         <TabsContent value="dependencies">
           <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
             <Table>
               <TableHeader>
                 <TableRow className="bg-violet-50">
-                  <TableHead className="font-semibold">Predecessor Task</TableHead>
-                  <TableHead className="w-40 font-semibold">Dependency Type</TableHead>
-                  <TableHead className="font-semibold">Successor Task</TableHead>
-                  <TableHead className="w-20 font-semibold">Lag (days)</TableHead>
-                  <TableHead className="w-20 font-semibold text-right">Remove</TableHead>
+                  <TableHead className="font-semibold">Predecessor</TableHead>
+                  <TableHead className="w-44 font-semibold">Link Type</TableHead>
+                  <TableHead className="font-semibold">Successor</TableHead>
+                  <TableHead className="w-20 font-semibold">Lag</TableHead>
+                  <TableHead className="w-16 text-right font-semibold">Remove</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {dependencies.length === 0 ? (
-                  <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No dependencies defined yet. Add dependencies to build the Gantt chart.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No dependencies defined. Use "Add Link" to create task dependencies.</TableCell></TableRow>
                 ) : dependencies.map((d) => (
                   <TableRow key={d.id} className="hover:bg-violet-50/30">
                     <TableCell>
-                      <div className="font-mono text-sm font-semibold text-violet-700">{d.predecessorTaskId}</div>
-                      <div className="text-xs text-muted-foreground truncate max-w-xs">{taskMap[d.predecessorTaskId] ?? ""}</div>
+                      <div className="font-mono text-sm font-bold text-violet-700">{d.predecessorTaskId}</div>
+                      <div className="text-xs text-muted-foreground truncate max-w-[200px]">{taskMap[d.predecessorTaskId]}</div>
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline" className="text-xs">{d.dependencyType ?? "Finish-to-Start"}</Badge>
                     </TableCell>
                     <TableCell>
-                      <div className="font-mono text-sm font-semibold text-violet-700">{d.successorTaskId}</div>
-                      <div className="text-xs text-muted-foreground truncate max-w-xs">{taskMap[d.successorTaskId] ?? ""}</div>
+                      <div className="font-mono text-sm font-bold text-violet-700">{d.successorTaskId}</div>
+                      <div className="text-xs text-muted-foreground truncate max-w-[200px]">{taskMap[d.successorTaskId]}</div>
                     </TableCell>
-                    <TableCell className="text-sm">{d.lagDays ?? 0}</TableCell>
+                    <TableCell className="text-sm">{d.lagDays ?? 0}d</TableCell>
                     <TableCell className="text-right">
-                      <Button size="sm" variant="ghost" className="text-red-500" onClick={() => { if (confirm("Remove this dependency?")) deleteDepMutation.mutate({ id: d.id }); }}>
+                      <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-700"
+                        onClick={() => { if (confirm("Remove this dependency?")) deleteDepMutation.mutate({ id: d.id }); }}>
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </TableCell>
@@ -301,71 +718,115 @@ export default function GanttChart() {
             </Table>
           </div>
 
-          {/* Dependency warnings */}
-          {dependencies.length > 0 && (
-            <div className="mt-4 space-y-2">
-              {dependencies.filter((d) => {
-                const pred = allTasks.find((t) => t.taskId === d.predecessorTaskId);
-                const succ = allTasks.find((t) => t.taskId === d.successorTaskId);
-                if (!pred || !succ) return false;
-                const predEnd = parseDate(pred.dueDate);
-                const succStart = parseDate(succ.assignDate);
-                if (!predEnd || !succStart) return false;
-                return succStart < predEnd;
-              }).map((d) => (
-                <div key={d.id} className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2">
-                  <AlertTriangle className="w-4 h-4 shrink-0" />
-                  <span><strong>{d.successorTaskId}</strong> starts before its predecessor <strong>{d.predecessorTaskId}</strong> finishes — scheduling conflict detected.</span>
-                </div>
-              ))}
+          {/* Scheduling conflicts */}
+          {dependencies.filter((d) => {
+            const pred = allTasks.find((t) => t.taskId === d.predecessorTaskId);
+            const succ = allTasks.find((t) => t.taskId === d.successorTaskId);
+            if (!pred || !succ) return false;
+            const predEnd = parseDate(pred.dueDate);
+            const succStart = parseDate(succ.assignDate);
+            return predEnd && succStart && succStart < predEnd;
+          }).map((d) => (
+            <div key={d.id} className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2 mt-3">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              <span><strong>{d.successorTaskId}</strong> starts before predecessor <strong>{d.predecessorTaskId}</strong> finishes — scheduling conflict.</span>
             </div>
-          )}
+          ))}
         </TabsContent>
       </Tabs>
+
+      {/* Edit % Complete Dialog */}
+      <Dialog open={showEditTask} onOpenChange={setShowEditTask}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Edit Task Progress</DialogTitle>
+          </DialogHeader>
+          {editingTask && (
+            <div className="space-y-4 py-2">
+              <div>
+                <div className="font-mono font-bold text-violet-700">{editingTask.taskId}</div>
+                <div className="text-sm text-muted-foreground mt-0.5">{editingTask.description}</div>
+              </div>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div><span className="text-muted-foreground">Start:</span> {fmtDate(editingTask.assignDate)}</div>
+                <div><span className="text-muted-foreground">Finish:</span> {fmtDate(editingTask.dueDate)}</div>
+                <div><span className="text-muted-foreground">Duration:</span> {editingTask.isMilestone ? "Milestone" : `${editingTask.duration} days`}</div>
+                <div><span className="text-muted-foreground">Status:</span> {editingTask.status ?? "—"}</div>
+              </div>
+              <div className="space-y-2">
+                <Label>% Complete: <span className="font-bold text-violet-700">{editPct}%</span></Label>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={5}
+                  value={editPct}
+                  onChange={(e) => setEditPct(Number(e.target.value))}
+                  className="w-full accent-violet-600"
+                />
+                <Progress value={editPct} className="h-2" />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditTask(false)}>Cancel</Button>
+            <Button className="bg-violet-600 hover:bg-violet-700 text-white" onClick={savePct}>Save Progress</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Add Dependency Dialog */}
       <Dialog open={showAddDep} onOpenChange={setShowAddDep}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>Add Task Dependency</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Add Task Dependency (Link)</DialogTitle></DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1">
-              <Label>Predecessor Task (must finish/start first)</Label>
-              <Select value={depForm.predecessorTaskId || "none"} onValueChange={(v) => setDepForm({ ...depForm, predecessorTaskId: v === "none" ? "" : v })}>
-                <SelectTrigger><SelectValue placeholder="Select predecessor..." /></SelectTrigger>
+              <Label>Predecessor Task (finishes/starts first)</Label>
+              <Select value={depForm.predecessorTaskId || "__none__"} onValueChange={(v) => setDepForm({ ...depForm, predecessorTaskId: v === "__none__" ? "" : v })}>
+                <SelectTrigger><SelectValue placeholder="Select predecessor…" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Select...</SelectItem>
-                  {filteredTasks.map((t) => <SelectItem key={t.id} value={t.taskId}>{t.taskId} — {t.description?.slice(0, 40)}</SelectItem>)}
+                  <SelectItem value="__none__">Select…</SelectItem>
+                  {allTasks.map((t) => <SelectItem key={t.id} value={t.taskId}>{t.taskId} — {t.description?.slice(0, 40)}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1">
-              <Label>Dependency Type</Label>
+              <Label>Link Type</Label>
               <Select value={depForm.dependencyType} onValueChange={(v) => setDepForm({ ...depForm, dependencyType: v as DepType })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {(["Finish-to-Start", "Start-to-Start", "Finish-to-Finish", "Start-to-Finish"] as DepType[]).map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                  {(["Finish-to-Start", "Start-to-Start", "Finish-to-Finish", "Start-to-Finish"] as DepType[]).map((t) => (
+                    <SelectItem key={t} value={t}>{t}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1">
               <Label>Successor Task (depends on predecessor)</Label>
-              <Select value={depForm.successorTaskId || "none"} onValueChange={(v) => setDepForm({ ...depForm, successorTaskId: v === "none" ? "" : v })}>
-                <SelectTrigger><SelectValue placeholder="Select successor..." /></SelectTrigger>
+              <Select value={depForm.successorTaskId || "__none__"} onValueChange={(v) => setDepForm({ ...depForm, successorTaskId: v === "__none__" ? "" : v })}>
+                <SelectTrigger><SelectValue placeholder="Select successor…" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Select...</SelectItem>
-                  {filteredTasks.filter((t) => t.taskId !== depForm.predecessorTaskId).map((t) => <SelectItem key={t.id} value={t.taskId}>{t.taskId} — {t.description?.slice(0, 40)}</SelectItem>)}
+                  <SelectItem value="__none__">Select…</SelectItem>
+                  {allTasks.filter((t) => t.taskId !== depForm.predecessorTaskId).map((t) => (
+                    <SelectItem key={t.id} value={t.taskId}>{t.taskId} — {t.description?.slice(0, 40)}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1">
               <Label>Lag Days (0 = no lag)</Label>
-              <Input type="number" min={0} value={depForm.lagDays} onChange={(e) => setDepForm({ ...depForm, lagDays: parseInt(e.target.value) || 0 })} />
+              <Input type="number" min={0} value={depForm.lagDays}
+                onChange={(e) => setDepForm({ ...depForm, lagDays: parseInt(e.target.value) || 0 })} />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAddDep(false)}>Cancel</Button>
-            <Button className="bg-gray-900 hover:bg-gray-800 text-white" onClick={() => createDepMutation.mutate({ projectId, ...depForm })} disabled={!depForm.predecessorTaskId || !depForm.successorTaskId || createDepMutation.isPending}>
-              {createDepMutation.isPending ? "Adding..." : "Add Dependency"}
+            <Button
+              className="bg-gray-900 hover:bg-gray-800 text-white"
+              onClick={() => createDepMutation.mutate({ projectId, ...depForm })}
+              disabled={!depForm.predecessorTaskId || !depForm.successorTaskId || createDepMutation.isPending}
+            >
+              {createDepMutation.isPending ? "Adding…" : "Add Link"}
             </Button>
           </DialogFooter>
         </DialogContent>

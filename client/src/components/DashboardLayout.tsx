@@ -64,7 +64,6 @@ import {
   Layers,
   FileBarChart,
   DollarSign,
-  Scale,
   CalendarRange,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
@@ -122,13 +121,12 @@ const menuItems: MenuItem[] = [
   { icon: Map, label: "Engagement Map", path: "/relationships" },
   { icon: GitPullRequest, label: "Change Requests", path: "/change-requests" },
   { icon: MessageSquare, label: "Meetings & Decisions", path: "/meetings" },
-  { icon: Scale, label: "Decisions", path: "/decisions" },
   { icon: CalendarRange, label: "Calendar", path: "/calendar" },
   { icon: DollarSign, label: "Budget", path: "/budget" },
   { icon: FlaskConical, label: "Test Cases", path: "/test-cases" },
   { icon: BarChart2, label: "Gantt Chart", path: "/gantt" },
   { icon: Layers, label: "Traceability Matrix", path: "/traceability" },
-  { icon: FileBarChart, label: "Weekly Report", path: "/weekly-report" },
+  { icon: FileBarChart, label: "Periodic Report", path: "/periodic-report" },
   { icon: SettingsIcon, label: "Settings", path: "/settings" },
 ];
 

@@ -24,7 +24,7 @@ import Meetings from "./pages/Meetings";
 import TestCases from "./pages/TestCases";
 import GanttChart from "./pages/GanttChart";
 import TraceabilityMatrix from "./pages/TraceabilityMatrix";
-import WeeklyReport from "./pages/WeeklyReport";
+import PeriodicReport from "./pages/PeriodicReport";
 import DashboardLayout from "./components/DashboardLayout";
 import Dashboard from "./pages/Dashboard";
 import Decisions from "./pages/Decisions";
@@ -140,7 +140,12 @@ function Router() {
       </Route>
       <Route path={"/weekly-report"}>
         <DashboardLayout>
-          <WeeklyReport />
+          <PeriodicReport />
+        </DashboardLayout>
+      </Route>
+      <Route path={"/periodic-report"}>
+        <DashboardLayout>
+          <PeriodicReport />
         </DashboardLayout>
       </Route>
       <Route path={"/dashboard"}>

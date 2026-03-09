@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Search, Edit, History, Loader2, Plus, Trash2, Settings, Eye, Save, X, CheckSquare, Info, AlertCircle, Link2, GitBranch, RefreshCw, ArrowRight, ChevronDown, ChevronRight, ListTree, LayoutList, AlignJustify } from "lucide-react";
+import { Search, Edit, History, Loader2, Plus, Trash2, Settings, Eye, Save, X, CheckSquare, Info, AlertCircle, Link2, GitBranch, RefreshCw, ArrowRight, ChevronDown, ChevronRight, ListTree, LayoutList, AlignJustify, Users } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -105,6 +105,11 @@ export default function Tasks() {
   const [sourceTaskForFollowUp, setSourceTaskForFollowUp] = useState<any>(null);
   const [newFollowUp, setNewFollowUp] = useState({ description: '', status: 'Not Started', priority: 'Medium', dueDate: '', notes: '' });
 
+  // Quick-log decision from task
+  const [showQuickDecision, setShowQuickDecision] = useState(false);
+  const [quickDecisionForm, setQuickDecisionForm] = useState({ title: '', description: '', decidedBy: '', impact: '', status: 'Open' as const });
+  const [taskDetailTab, setTaskDetailTab] = useState('details');
+
   // View mode: 'normal' | 'compact'
   const [viewMode, setViewMode] = useState<'normal' | 'compact'>(() => {
     return (localStorage.getItem('tasks-view-mode') as 'normal' | 'compact') || 'normal';
@@ -178,6 +183,7 @@ export default function Tasks() {
     { entityType: "task", entityId: selectedTask?.taskId || "" },
     { enabled: viewDialogOpen && !!selectedTask?.taskId }
   );
+  const { data: allDecisions } = trpc.meetings.listDecisions.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
   const { data: actionLogs } = trpc.actionLogs.getByEntity.useQuery(
     { entityType: "task", entityId: selectedEntityId },
     { enabled: historyDialogOpen && !!selectedEntityId }
@@ -350,6 +356,14 @@ export default function Tasks() {
     onError: (error) => {
       toast.error(`Delete failed: ${error.message}`);
     },
+  });
+
+  const createDecisionFromTaskMutation = trpc.meetings.createDecision.useMutation({
+    onSuccess: () => {
+      toast.success('Decision logged and linked to task');
+      utils.meetings.listDecisions.invalidate();
+    },
+    onError: (e) => toast.error(e.message),
   });
 
   const updateMutation = trpc.tasks.update.useMutation({
@@ -609,6 +623,8 @@ export default function Tasks() {
   const handleViewDetails = (task: any) => {
     setSelectedTask(task);
     setIsEditMode(false);
+    setTaskDetailTab('details');
+    setShowQuickDecision(false);
     setEditFormData({
       taskGroup: task.taskGroup || '',
       description: task.description || '',
@@ -1517,7 +1533,15 @@ export default function Tasks() {
             </DialogDescription>
           </DialogHeader>
           
-          <div className="flex-1 overflow-y-auto mt-4 space-y-4">
+          <Tabs value={taskDetailTab} onValueChange={setTaskDetailTab} className="flex-1 flex flex-col overflow-hidden mt-2">
+            <TabsList className="flex-shrink-0 mb-2">
+              <TabsTrigger value="details">Details</TabsTrigger>
+              <TabsTrigger value="team">Team & Contacts</TabsTrigger>
+              <TabsTrigger value="decisions">Decisions {allDecisions?.filter(d => d.taskId === selectedTask?.taskId).length ? `(${allDecisions.filter(d => d.taskId === selectedTask?.taskId).length})` : ""}</TabsTrigger>
+              <TabsTrigger value="issues">Issues & Updates</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="details" className="flex-1 overflow-y-auto space-y-4 pr-1">
             {/* Basic Information */}
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
@@ -1705,8 +1729,12 @@ export default function Tasks() {
               </div>
             </div>
 
+            </TabsContent>
+
+            {/* ── Team & Contacts Tab ─────────────────────────────────────────── */}
+            <TabsContent value="team" className="flex-1 overflow-y-auto space-y-4 pr-1">
             {/* RACI Assignment */}
-            <div className="border-t pt-4">
+            <div className="pt-1">
               <h4 className="font-medium mb-3">RACI Assignment</h4>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -1771,7 +1799,7 @@ export default function Tasks() {
             {/* Description */}
             <div className="border-t pt-4">
               <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
-                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Description</Label>
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Description / Notes</Label>
                 {isEditMode ? (
                   <Textarea value={editFormData.description} onChange={(e) => setEditFormData({...editFormData, description: e.target.value})} className="min-h-[80px]" />
                 ) : (
@@ -1779,6 +1807,157 @@ export default function Tasks() {
                 )}
               </div>
             </div>
+
+            {/* Stakeholder Contact Cards */}
+            {!isEditMode && (() => {
+              const raciMap = [
+                { label: 'Responsible (R)', name: selectedTask?.responsible, color: 'border-blue-300 bg-blue-50' },
+                { label: 'Accountable (A)', name: selectedTask?.accountable, color: 'border-purple-300 bg-purple-50' },
+                { label: 'Consulted (C)', name: selectedTask?.consulted, color: 'border-green-300 bg-green-50' },
+                { label: 'Informed (I)', name: selectedTask?.informed, color: 'border-orange-300 bg-orange-50' },
+              ].filter(r => r.name);
+              if (raciMap.length === 0) return null;
+              return (
+                <div className="border-t pt-4">
+                  <h4 className="font-medium mb-3 flex items-center gap-2">
+                    <Users className="w-4 h-4 text-primary" /> Stakeholder Contact Cards
+                  </h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    {raciMap.map(({ label, name, color }) => {
+                      const sh = stakeholders?.find(s => s.fullName === name || s.fullName?.toLowerCase() === name?.toLowerCase());
+                      return (
+                        <div key={label} className={`rounded-lg border p-3 ${color}`}>
+                          <div className="text-xs font-semibold text-muted-foreground mb-1">{label}</div>
+                          <div className="font-semibold text-sm">{name}</div>
+                          {sh && (
+                            <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                              {sh.position && <div>📋 {sh.position}</div>}
+                              {sh.email && <div>✉️ <a href={`mailto:${sh.email}`} className="text-blue-600 underline">{sh.email}</a></div>}
+                              {sh.phone && <div>📞 {sh.phone}</div>}
+                              {sh.engagementStrategy && (
+                                <div className="mt-1">
+                                  <span className="inline-block px-2 py-0.5 rounded-full bg-white/70 border text-[11px] font-medium">{sh.engagementStrategy}</span>
+                                </div>
+                              )}
+                              {sh.communicationFrequency && <div className="text-[11px]">🔁 {sh.communicationFrequency}</div>}
+                              {sh.communicationChannel && <div className="text-[11px]">📡 {sh.communicationChannel}</div>}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+            </TabsContent>
+
+            {/* ── Decisions Tab ───────────────────────────────────────────────── */}
+            <TabsContent value="decisions" className="flex-1 overflow-y-auto space-y-4 pr-1">
+            {(() => {
+              const taskDecisions = allDecisions?.filter(d => d.taskId === selectedTask?.taskId) ?? [];
+              return (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-medium flex items-center gap-2">
+                      <CheckSquare className="w-4 h-4 text-primary" /> Linked Decisions
+                    </h4>
+                    <Button size="sm" variant="outline" onClick={() => setShowQuickDecision(v => !v)}>
+                      <Plus className="w-3 h-3 mr-1" /> Log Decision
+                    </Button>
+                  </div>
+
+                  {showQuickDecision && (
+                    <div className="rounded-lg border p-4 bg-muted/30 space-y-3">
+                      <h5 className="text-sm font-semibold">Quick-Log Decision for this Task</h5>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="col-span-2 space-y-1">
+                          <Label className="text-xs">Decision Title *</Label>
+                          <Input value={quickDecisionForm.title} onChange={e => setQuickDecisionForm(f => ({ ...f, title: e.target.value }))} placeholder="What was decided?" />
+                        </div>
+                        <div className="col-span-2 space-y-1">
+                          <Label className="text-xs">Description</Label>
+                          <Textarea rows={2} value={quickDecisionForm.description} onChange={e => setQuickDecisionForm(f => ({ ...f, description: e.target.value }))} />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Decided By</Label>
+                          <Input value={quickDecisionForm.decidedBy} onChange={e => setQuickDecisionForm(f => ({ ...f, decidedBy: e.target.value }))} placeholder={selectedTask?.responsible || ''} />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Status</Label>
+                          <Select value={quickDecisionForm.status} onValueChange={v => setQuickDecisionForm(f => ({ ...f, status: v as any }))}>
+                            <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {['Open','Implemented','Deferred','Cancelled'].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="col-span-2 space-y-1">
+                          <Label className="text-xs">Impact</Label>
+                          <Input value={quickDecisionForm.impact} onChange={e => setQuickDecisionForm(f => ({ ...f, impact: e.target.value }))} placeholder="Scope, timeline, budget..." />
+                        </div>
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <Button size="sm" variant="ghost" onClick={() => setShowQuickDecision(false)}>Cancel</Button>
+                        <Button size="sm" className="bg-gray-900 hover:bg-gray-800 text-white"
+                          disabled={!quickDecisionForm.title || createDecisionFromTaskMutation.isPending}
+                          onClick={() => {
+                            if (!quickDecisionForm.title) return;
+                            createDecisionFromTaskMutation.mutate({
+                              projectId: currentProjectId!,
+                              title: quickDecisionForm.title,
+                              description: quickDecisionForm.description,
+                              decidedBy: quickDecisionForm.decidedBy || selectedTask?.responsible || '',
+                              decisionDate: new Date().toISOString().split('T')[0],
+                              status: quickDecisionForm.status as any,
+                              impact: quickDecisionForm.impact,
+                              taskId: selectedTask?.taskId,
+                            });
+                            setShowQuickDecision(false);
+                            setQuickDecisionForm({ title: '', description: '', decidedBy: '', impact: '', status: 'Open' });
+                          }}>
+                          {createDecisionFromTaskMutation.isPending ? 'Saving...' : 'Log Decision'}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {taskDecisions.length === 0 && !showQuickDecision ? (
+                    <div className="text-center py-8 text-muted-foreground border border-dashed rounded-lg">
+                      No decisions linked to this task yet. Click "Log Decision" to add one.
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {taskDecisions.map(d => {
+                        const DECISION_STATUS_COLORS: Record<string, string> = {
+                          Open: 'bg-blue-100 text-blue-700', Implemented: 'bg-green-100 text-green-700',
+                          Deferred: 'bg-gray-100 text-gray-600', Cancelled: 'bg-red-100 text-red-600',
+                        };
+                        return (
+                          <div key={d.id} className="rounded-lg border px-4 py-3 bg-white space-y-1">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono text-xs font-bold text-indigo-700">{d.decisionId}</span>
+                                <Badge className={`text-xs ${DECISION_STATUS_COLORS[d.status ?? 'Open'] ?? ''}`}>{d.status ?? 'Open'}</Badge>
+                              </div>
+                              <span className="text-xs text-muted-foreground">{formatDate(d.decisionDate)}</span>
+                            </div>
+                            <div className="font-medium text-sm">{d.title}</div>
+                            {d.description && <div className="text-xs text-muted-foreground">{d.description}</div>}
+                            {d.impact && <div className="text-xs"><span className="font-medium">Impact:</span> {d.impact}</div>}
+                            {d.decidedBy && <div className="text-xs text-muted-foreground">Decided by: {d.decidedBy}</div>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+            </TabsContent>
+
+            {/* ── Issues & Updates Tab ────────────────────────────────────────── */}
+            <TabsContent value="issues" className="flex-1 overflow-y-auto space-y-4 pr-1">
 
             {/* Linked Issues Section */}
             <div className="border-t pt-4 mt-4">
@@ -1925,7 +2104,8 @@ export default function Tasks() {
                 )}
               </div>
             </div>
-          </div>
+            </TabsContent>
+          </Tabs>
         </DialogContent>
       </Dialog>
 
