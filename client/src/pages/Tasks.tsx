@@ -191,6 +191,14 @@ export default function Tasks() {
     { enabled: !!currentProjectId }
   );
   const { data: statusOptions } = trpc.dropdownOptions.status.getAll.useQuery();
+
+  // Helper: check if a task's status is marked as "complete" in statusOptions
+  const isTaskComplete = (task: any): boolean => {
+    const statusVal = (task.status || task.currentStatus || '').toLowerCase();
+    if (!statusOptions) return false;
+    const match = statusOptions.find((s: any) => (s.value || '').toLowerCase() === statusVal);
+    return match?.isComplete === true;
+  };
   const { data: priorityOptions } = trpc.dropdownOptions.priority.getAll.useQuery();
 
   const utils = trpc.useUtils();
@@ -884,8 +892,10 @@ export default function Tasks() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredTasks?.map((task) => (
-                    <TableRow key={task.id} className={`hover:bg-primary/5 text-xs ${selectedTaskIds.includes(task.id) ? 'bg-primary/10' : ''}`}>
+                  {filteredTasks?.map((task) => {
+                    const complete = isTaskComplete(task);
+                    return (
+                    <TableRow key={task.id} className={`hover:bg-primary/5 text-xs ${selectedTaskIds.includes(task.id) ? 'bg-primary/10' : ''} ${complete ? 'opacity-50' : ''}`}>
                       <TableCell className="w-8 px-2 py-1" onClick={(e) => e.stopPropagation()}>
                         <Checkbox
                           checked={selectedTaskIds.includes(task.id)}
@@ -902,7 +912,7 @@ export default function Tasks() {
                           {task.parentTaskId && <GitBranch className="w-3 h-3 text-green-600 flex-shrink-0" />}
                           {task.followUpOfId && <ArrowRight className="w-3 h-3 text-purple-600 flex-shrink-0" />}
                           {task.recurringType && <RefreshCw className="w-3 h-3 text-orange-500 flex-shrink-0" />}
-                          <span className="truncate" title={task.description ?? undefined}>{task.description}</span>
+                          <span className={`truncate ${complete ? 'line-through text-muted-foreground' : ''}`} title={task.description ?? undefined}>{task.description}</span>
                           {task.requirementId && (
                             <Badge variant="secondary" className="text-[10px] px-1 py-0 flex-shrink-0">{task.requirementId}</Badge>
                           )}
@@ -922,7 +932,8 @@ export default function Tasks() {
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                    );
+                  })}
                 </TableBody>
               </Table>
             ) : (
@@ -942,8 +953,10 @@ export default function Tasks() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredTasks?.map((task) => (
-                  <TableRow key={task.id} className={`hover:bg-primary/5 ${selectedTaskIds.includes(task.id) ? 'bg-primary/10' : ''}`}>
+                {filteredTasks?.map((task) => {
+                  const complete = isTaskComplete(task);
+                  return (
+                  <TableRow key={task.id} className={`hover:bg-primary/5 ${selectedTaskIds.includes(task.id) ? 'bg-primary/10' : ''} ${complete ? 'opacity-50' : ''}`}>
                     <TableCell className="w-10 align-top pt-5" onClick={(e) => e.stopPropagation()}>
                       <Checkbox
                         checked={selectedTaskIds.includes(task.id)}
@@ -966,7 +979,7 @@ export default function Tasks() {
                             {task.followUpOfId && <Badge variant="outline" className="text-purple-700 border-purple-300 text-xs gap-1"><ArrowRight className="w-3 h-3" />Follow-up</Badge>}
                             {task.recurringType && <Badge variant="outline" className="text-orange-600 border-orange-300 text-xs gap-1"><RefreshCw className="w-3 h-3" />{task.recurringType}</Badge>}
                           </div>
-                          <p className="flex-1 text-sm break-words min-w-0">{task.description || '-'}</p>
+                          <p className={`flex-1 text-sm break-words min-w-0 ${complete ? 'line-through text-muted-foreground' : ''}`}>{task.description || '-'}</p>
                         </div>
 
                         {/* Sub-task expand toggle */}
@@ -1086,7 +1099,8 @@ export default function Tasks() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
               </Table>
             )}

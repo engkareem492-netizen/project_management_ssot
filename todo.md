@@ -439,3 +439,8 @@
 - [x] Find all pages showing "Stakeholder XXXXXX" codes instead of actual names
 - [x] Fix stakeholder display to show fullName (with role/position as subtitle) — fixed in SelectWithCreate trigger and db.ts update helpers
 - [x] Ensure fallback to code if stakeholder record not found
+
+## Fix: Completed Task Visual Style + Resources Workload Name (Mar 9, 2026)
+
+- [x] Tasks page: completed tasks (status with isComplete=true) must be visually distinct — dimmed row opacity, strikethrough on description, muted badge color
+- [x] Resources Workload tab: show stakeholder fullName instead of raw ID code ("Stakeholder 390027")
