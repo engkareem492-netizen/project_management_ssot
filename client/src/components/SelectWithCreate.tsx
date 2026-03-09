@@ -188,11 +188,20 @@ export function SelectWithCreate({ type, value, onValueChange, placeholder, cate
                     type === "issueType" ? createIssueTypeMutation.isPending :
                     createClassMutation.isPending;
 
+  // For stakeholder type, resolve the selected ID to a display name
+  const selectedStakeholderName = type === "stakeholder" && value
+    ? (options as any[])?.find((s: any) => s.id.toString() === value)?.fullName
+    : undefined;
+
   return (
     <div className="flex gap-1">
       <Select value={value} onValueChange={onValueChange}>
         <SelectTrigger className="flex-1">
-          <SelectValue placeholder={placeholder || `Select ${type}`} />
+          {type === "stakeholder" && value ? (
+            <span className="truncate">{selectedStakeholderName || placeholder || `Select stakeholder`}</span>
+          ) : (
+            <SelectValue placeholder={placeholder || `Select ${type}`} />
+          )}
         </SelectTrigger>
         <SelectContent>
           {type === "stakeholder" ? (

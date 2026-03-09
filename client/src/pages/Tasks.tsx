@@ -1033,27 +1033,31 @@ export default function Tasks() {
                           </div>
                         </div>
                         {/* Expanded sub-tasks */}
-                        {expandedTasks.has(task.id) && getSubTasks(task.id).map((sub: any) => (
-                          <div key={sub.id} className="ml-6 mt-2 p-3 bg-muted/30 rounded border-l-4 border-green-300">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <GitBranch className="w-3 h-3 text-green-600" />
-                                <span className="font-semibold text-sm text-green-700">{sub.taskId}</span>
-                                <span className="text-sm">{sub.description}</span>
+                        {expandedTasks.has(task.id) && (
+                          <>
+                            {getSubTasks(task.id).map((sub: any) => (
+                              <div key={sub.id} className="ml-6 mt-2 p-3 bg-muted/30 rounded border-l-4 border-green-300">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <GitBranch className="w-3 h-3 text-green-600" />
+                                    <span className="font-semibold text-sm text-green-700">{sub.taskId}</span>
+                                    <span className="text-sm">{sub.description}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <Badge variant="outline" className="text-xs">{sub.status || sub.currentStatus || 'Not Started'}</Badge>
+                                    <span className="text-xs text-muted-foreground">{formatDate(sub.dueDate)}</span>
+                                    <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => handleViewDetails(sub)} title="View sub-task">
+                                      <Eye className="w-3 h-3" />
+                                    </Button>
+                                    <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-destructive" onClick={() => handleDelete(sub.id)} title="Delete sub-task">
+                                      <Trash2 className="w-3 h-3" />
+                                    </Button>
+                                  </div>
+                                </div>
                               </div>
-                              <div className="flex items-center gap-2">
-                                <Badge variant="outline" className="text-xs">{sub.status || sub.currentStatus || 'Not Started'}</Badge>
-                                <span className="text-xs text-muted-foreground">{formatDate(sub.dueDate)}</span>
-                                <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => handleViewDetails(sub)} title="View sub-task">
-                                  <Eye className="w-3 h-3" />
-                                </Button>
-                                <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-destructive" onClick={() => handleDelete(sub.id)} title="Delete sub-task">
-                                  <Trash2 className="w-3 h-3" />
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
+                            ))}
+                          </>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell className="align-top py-4">

@@ -430,7 +430,12 @@
 
 ## Fix: Tasks Full-Width Layout (Mar 9, 2026)
 
-- [ ] Match Requirements page layout: full viewport width table, no card-style rows, all columns fit on screen
-- [ ] Keep compact view toggle (original + compact)
-- [ ] Original view: all columns visible without any horizontal scroll
-- [ ] Compact view: dense single-line rows, fewer columns
+- [x] Match Requirements page layout: full viewport width table, no card-style rows, all columns fit on screen
+- [x] Keep compact view toggle (original + compact)
+- [x] Original view: all columns visible without any horizontal scroll
+- [x] Compact view: dense single-line rows, fewer columns
+
+## Fix: Stakeholder Name Display (Mar 9, 2026)
+- [x] Find all pages showing "Stakeholder XXXXXX" codes instead of actual names
+- [x] Fix stakeholder display to show fullName (with role/position as subtitle) — fixed in SelectWithCreate trigger and db.ts update helpers
+- [x] Ensure fallback to code if stakeholder record not found
