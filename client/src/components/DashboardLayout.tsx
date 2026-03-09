@@ -127,7 +127,7 @@ const menuItems: MenuItem[] = [
   { icon: FlaskConical, label: "Test Cases", path: "/test-cases" },
   { icon: BarChart2, label: "Gantt Chart", path: "/gantt" },
   { icon: Layers, label: "Traceability Matrix", path: "/traceability" },
-  { icon: FileBarChart, label: "Weekly Report", path: "/weekly-report" },
+  { icon: FileBarChart, label: "Periodic Report", path: "/periodic-report" },
   { icon: SettingsIcon, label: "Settings", path: "/settings" },
 ];
 
