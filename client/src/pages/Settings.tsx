@@ -10,13 +10,14 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useState } from "react";
-import { Settings as SettingsIcon, Save, Plus, Edit, Trash2, Hash, AlertCircle, Sun, Moon, Monitor, Lock, Unlock, KeyRound, ShieldOff, ShieldCheck } from "lucide-react";
+import { Settings as SettingsIcon, Save, Plus, Edit, Trash2, Hash, AlertCircle, Sun, Moon, Monitor, Lock, Unlock, KeyRound, ShieldOff, ShieldCheck, AlertTriangle, Copy, CheckSquare, Square } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useProject } from "@/contexts/ProjectContext";
 import { ThemeSelector } from "@/components/ThemeSelector";
 import CollaborationTab from "@/components/CollaborationTab";
+import { useLocation } from "wouter";
 
 interface IdConfigEdit {
   prefix: string;
@@ -66,15 +67,43 @@ function ThemeSelectorInline() {
   );
 }
 
+const COPYABLE_ENTITIES = [
+  { key: "stakeholders", label: "Stakeholders (team members)" },
+  { key: "requirements", label: "Requirements" },
+  { key: "tasks", label: "Tasks" },
+  { key: "issues", label: "Issues" },
+  { key: "dependencies", label: "Dependencies" },
+  { key: "assumptions", label: "Assumptions" },
+  { key: "deliverables", label: "Deliverables" },
+  { key: "taskGroups", label: "Task Groups" },
+  { key: "issueGroups", label: "Issue Groups" },
+];
+
 export default function Settings() {
-  const { currentProjectId } = useProject();
+  const { currentProjectId, setCurrentProjectId } = useProject();
   const { user } = useAuth();
+  const [, navigate] = useLocation();
   const [activeTab, setActiveTab] = useState("id-config");
 
   // Password management state
   const [pwNewPassword, setPwNewPassword] = useState("");
   const [pwConfirmPassword, setPwConfirmPassword] = useState("");
   const [pwShowForm, setPwShowForm] = useState(false);
+
+  // Delete project state
+  const [showDeleteProject, setShowDeleteProject] = useState(false);
+  const [deleteConfirmName, setDeleteConfirmName] = useState("");
+
+  // Copy from project state
+  const [showCopyDialog, setShowCopyDialog] = useState(false);
+  const [sourceProjectId, setSourceProjectId] = useState<number | null>(null);
+  const [sourcePassword, setSourcePassword] = useState("");
+  const [copyEntities, setCopyEntities] = useState<Record<string, boolean>>({
+    stakeholders: true, requirements: false, tasks: false, issues: false,
+    dependencies: false, assumptions: false, deliverables: false,
+    taskGroups: true, issueGroups: true,
+  });
+  const [copyLoading, setCopyLoading] = useState(false);
 
   const projectQuery = trpc.projects.list.useQuery();
   const currentProject = projectQuery.data?.find(p => p.id === currentProjectId);
@@ -94,6 +123,46 @@ export default function Settings() {
     },
     onError: (error) => toast.error(`Failed to update password: ${error.message}`),
   });
+
+  const deleteProjectMutation = trpc.projects.delete.useMutation({
+    onSuccess: () => {
+      toast.success("Project deleted successfully.");
+      setCurrentProjectId(null);
+      setShowDeleteProject(false);
+      navigate("/");
+    },
+    onError: (err) => toast.error(`Failed to delete: ${err.message}`),
+  });
+
+  const exportDataMutation = trpc.projects.exportData.useMutation();
+  const importDataMutation = trpc.projects.importData.useMutation({
+    onSuccess: () => {
+      toast.success("Elements copied successfully!");
+      setShowCopyDialog(false);
+      setSourceProjectId(null);
+      setSourcePassword("");
+      setCopyLoading(false);
+    },
+    onError: (err) => { toast.error(`Copy failed: ${err.message}`); setCopyLoading(false); },
+  });
+
+  const handleCopyFromProject = async () => {
+    if (!sourceProjectId || !currentProjectId) return;
+    setCopyLoading(true);
+    try {
+      const sourceData = await exportDataMutation.mutateAsync({
+        projectId: sourceProjectId,
+        password: sourcePassword || undefined,
+      });
+      await importDataMutation.mutateAsync({
+        targetProjectId: currentProjectId,
+        sourceData,
+        selectedEntities: copyEntities,
+      });
+    } catch {
+      setCopyLoading(false);
+    }
+  };
 
   const handleSetPassword = () => {
     if (!currentProjectId) return;
@@ -1665,8 +1734,176 @@ export default function Settings() {
               )}
             </CardContent>
           </Card>
+
+          {/* ── Copy elements from another project ── */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Copy className="w-5 h-5" />
+                Copy Elements from Another Project
+              </CardTitle>
+              <CardDescription>
+                Import stakeholders, requirements, tasks or other elements from a project you have access to.
+                If the source project is password-protected, you will be asked for the password.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button variant="outline" onClick={() => setShowCopyDialog(true)}>
+                <Copy className="w-4 h-4 mr-2" />
+                Open Copy Wizard
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* ── Danger Zone ── */}
+          {isCreator && (
+            <Card className="border-red-200">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-red-600">
+                  <AlertTriangle className="w-5 h-5" />
+                  Danger Zone
+                </CardTitle>
+                <CardDescription>
+                  Irreversible and destructive actions.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between p-4 border border-red-200 rounded-lg bg-red-50">
+                  <div>
+                    <p className="font-medium text-red-700">Delete This Project</p>
+                    <p className="text-sm text-muted-foreground">
+                      Permanently deletes this project and ALL its data. This cannot be undone.
+                    </p>
+                  </div>
+                  <Button
+                    variant="destructive"
+                    onClick={() => { setDeleteConfirmName(""); setShowDeleteProject(true); }}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete Project
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
+
+      {/* ── Delete Project Dialog ── */}
+      <AlertDialog open={showDeleteProject} onOpenChange={setShowDeleteProject}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertTriangle className="w-5 h-5" /> Delete Project
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete &ldquo;{currentProject?.name}&rdquo; and all its data (tasks, requirements, issues, risks, etc.). This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2 px-1 pb-2">
+            <Label className="text-sm">Type the project name to confirm:</Label>
+            <Input
+              value={deleteConfirmName}
+              onChange={(e) => setDeleteConfirmName(e.target.value)}
+              placeholder={currentProject?.name ?? "Project name"}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleteConfirmName("")}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700 text-white"
+              disabled={deleteConfirmName !== currentProject?.name || deleteProjectMutation.isPending}
+              onClick={() => currentProjectId && deleteProjectMutation.mutate({ projectId: currentProjectId })}
+            >
+              {deleteProjectMutation.isPending ? "Deleting…" : "Delete Permanently"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ── Copy from Project Dialog ── */}
+      <Dialog open={showCopyDialog} onOpenChange={setShowCopyDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Copy className="w-5 h-5" /> Copy Elements from Another Project
+            </DialogTitle>
+            <DialogDescription>
+              Select a source project and choose which elements to copy into the current project.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {/* Source project selector */}
+            <div className="space-y-1">
+              <Label>Source Project</Label>
+              <select
+                className="w-full border rounded-md px-3 py-2 text-sm bg-background"
+                value={sourceProjectId ?? ""}
+                onChange={(e) => setSourceProjectId(e.target.value ? Number(e.target.value) : null)}
+              >
+                <option value="">— Select a project —</option>
+                {projectQuery.data
+                  ?.filter((p) => p.id !== currentProjectId)
+                  .map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}{p.hasPassword ? " 🔒" : ""}
+                    </option>
+                  ))}
+              </select>
+            </div>
+
+            {/* Password field if source project requires one */}
+            {sourceProjectId && projectQuery.data?.find((p) => p.id === sourceProjectId)?.hasPassword && (
+              <div className="space-y-1">
+                <Label className="flex items-center gap-1">
+                  <Lock className="w-3.5 h-3.5" /> Source Project Password
+                </Label>
+                <Input
+                  type="password"
+                  value={sourcePassword}
+                  onChange={(e) => setSourcePassword(e.target.value)}
+                  placeholder="Enter password for source project"
+                />
+              </div>
+            )}
+
+            {/* Entity checkboxes */}
+            <div className="space-y-1">
+              <Label>Elements to Copy</Label>
+              <div className="grid grid-cols-2 gap-2 mt-1">
+                {COPYABLE_ENTITIES.map(({ key, label }) => (
+                  <button
+                    key={key}
+                    type="button"
+                    className={`flex items-center gap-2 px-3 py-2 rounded-md border text-sm transition-colors text-left
+                      ${copyEntities[key] ? "border-violet-500 bg-violet-50 text-violet-700" : "border-border hover:border-violet-300"}`}
+                    onClick={() => setCopyEntities((prev) => ({ ...prev, [key]: !prev[key] }))}
+                  >
+                    {copyEntities[key]
+                      ? <CheckSquare className="w-4 h-4 shrink-0 text-violet-600" />
+                      : <Square className="w-4 h-4 shrink-0 text-muted-foreground" />}
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              Copied elements will be added to the current project with new IDs. Existing data will not be overwritten.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCopyDialog(false)}>Cancel</Button>
+            <Button
+              onClick={handleCopyFromProject}
+              disabled={!sourceProjectId || copyLoading || Object.values(copyEntities).every((v) => !v)}
+              className="bg-violet-600 hover:bg-violet-700 text-white"
+            >
+              {copyLoading ? "Copying…" : "Copy Elements"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit/Create Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>

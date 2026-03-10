@@ -59,6 +59,12 @@ function daysBetween(a: Date, b: Date): number {
   return Math.round((b.getTime() - a.getTime()) / DAY_MS);
 }
 
+function offsetDateStr(dateStr: string, days: number): string {
+  const d = new Date(dateStr);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
 function pctKey(projectId: number) {
   return `gantt-pct-v2-${projectId}`;
 }
@@ -131,6 +137,16 @@ export default function GanttChart() {
     curX: number; curY: number;
   }>(null);
 
+  // Drag-to-move state
+  const [dragBar, setDragBar] = useState<null | {
+    taskId: string;
+    taskDbId: number;
+    origAssignDate: string | null;
+    origDueDate: string | null;
+    startClientX: number;
+    deltaX: number;
+  }>(null);
+
   // % complete stored in localStorage per project
   const [pctMap, setPctMap] = useState<Record<string, number>>(() => {
     try {
@@ -174,6 +190,15 @@ export default function GanttChart() {
       toast.success("Dependency removed");
     },
     onError: (e) => toast.error(e.message),
+  });
+
+  const updateTaskMutation = trpc.tasks.update.useMutation({
+    onSuccess: () => {
+      utils.taskDependencies.ganttData.invalidate();
+      utils.tasks.list.invalidate();
+      toast.success("Task dates updated");
+    },
+    onError: (e) => toast.error(`Failed to update dates: ${e.message}`),
   });
 
   // Merge ganttData tasks with fullTasks to get parentTaskId
@@ -385,14 +410,47 @@ export default function GanttChart() {
     setConnecting({ fromTaskId: taskId, fromSide: side, fromX, fromY, curX, curY });
   }, []);
 
-  const onMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!connecting) return;
-    const rect = timelineRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    setConnecting(c => c ? { ...c, curX: e.clientX - rect.left, curY: e.clientY - rect.top } : null);
+  const startBarDrag = useCallback((e: React.MouseEvent, t: any) => {
+    if (connecting) return;
+    e.stopPropagation();
+    e.preventDefault();
+    setDragBar({
+      taskId: t.taskId,
+      taskDbId: t.id,
+      origAssignDate: t.assignDate ?? null,
+      origDueDate: t.dueDate ?? null,
+      startClientX: e.clientX,
+      deltaX: 0,
+    });
   }, [connecting]);
 
+  const onMouseMove = useCallback((e: React.MouseEvent) => {
+    if (connecting) {
+      const rect = timelineRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      setConnecting(c => c ? { ...c, curX: e.clientX - rect.left, curY: e.clientY - rect.top } : null);
+    } else if (dragBar) {
+      const deltaX = e.clientX - dragBar.startClientX;
+      setDragBar(d => d ? { ...d, deltaX } : null);
+    }
+  }, [connecting, dragBar]);
+
   const onMouseUp = useCallback((e: React.MouseEvent) => {
+    if (dragBar) {
+      const deltaDays = Math.round(dragBar.deltaX / pxPerDay);
+      if (deltaDays !== 0) {
+        const newAssignDate = dragBar.origAssignDate ? offsetDateStr(dragBar.origAssignDate, deltaDays) : undefined;
+        const newDueDate = dragBar.origDueDate ? offsetDateStr(dragBar.origDueDate, deltaDays) : undefined;
+        const dataPayload: any = {};
+        if (newAssignDate) dataPayload.assignDate = newAssignDate;
+        if (newDueDate) dataPayload.dueDate = newDueDate;
+        if (Object.keys(dataPayload).length > 0) {
+          updateTaskMutation.mutate({ id: dragBar.taskDbId, taskId: dragBar.taskId, data: dataPayload });
+        }
+      }
+      setDragBar(null);
+      return;
+    }
     if (!connecting) return;
     const rect = timelineRef.current?.getBoundingClientRect();
     if (!rect) { setConnecting(null); return; }
@@ -421,7 +479,7 @@ export default function GanttChart() {
       });
     }
     setConnecting(null);
-  }, [connecting, visibleRows, pxPerDay, projectId, createDepMutation]);
+  }, [connecting, dragBar, visibleRows, pxPerDay, projectId, createDepMutation, updateTaskMutation]);
 
   const totalTasks = allTasks.length;
   const completedTasks = allTasks.filter((t) => ["completed", "done"].includes((t.status ?? "").toLowerCase())).length;
@@ -578,10 +636,10 @@ export default function GanttChart() {
                 <div className="flex-1 overflow-x-auto">
                   <div
                     ref={timelineRef}
-                    style={{ width: `${Math.max(totalWidth, 500)}px`, position: "relative", userSelect: connecting ? "none" : undefined }}
+                    style={{ width: `${Math.max(totalWidth, 500)}px`, position: "relative", userSelect: (connecting || dragBar) ? "none" : undefined, cursor: dragBar ? "grabbing" : undefined }}
                     onMouseMove={onMouseMove}
                     onMouseUp={onMouseUp}
-                    onMouseLeave={() => setConnecting(null)}
+                    onMouseLeave={() => { setConnecting(null); setDragBar(null); }}
                   >
                     {/* Timeline headers */}
                     <div className="flex border-b bg-violet-50 h-10 relative">
@@ -609,7 +667,10 @@ export default function GanttChart() {
 
                     {/* Grid + task bars */}
                     {visibleRows.map((t, i) => {
-                      const barLeftPx = t.barStart * pxPerDay;
+                      const isDraggingThis = dragBar?.taskId === t.taskId;
+                      const dragDeltaPx = isDraggingThis ? dragBar!.deltaX : 0;
+                      const dragDeltaDays = isDraggingThis ? Math.round(dragBar!.deltaX / pxPerDay) : 0;
+                      const barLeftPx = t.barStart * pxPerDay + dragDeltaPx;
                       const barWidthPx = Math.max(t.isMilestone ? 16 : 8, t.barDuration * pxPerDay);
                       const pct = pctMap[t.taskId] ?? 0;
                       const color = t.isParent ? "#374151" : getStatusColor(t.status);
@@ -633,38 +694,48 @@ export default function GanttChart() {
                             t.isMilestone ? (
                               /* Milestone diamond */
                               <div
-                                className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-4 h-4 rotate-45 bg-yellow-400 border-2 border-yellow-600 cursor-pointer hover:scale-125 transition-transform z-10"
+                                className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-4 h-4 rotate-45 bg-yellow-400 border-2 border-yellow-600 cursor-grab hover:scale-125 transition-transform z-10"
                                 style={{ left: `${barLeftPx}px` }}
                                 title={`${t.taskId}: ${t.description} — Milestone`}
+                                onMouseDown={(e) => startBarDrag(e, t)}
                               />
                             ) : (
                               /* Task bar */
                               <div
-                                className={`absolute top-2 bottom-2 rounded cursor-pointer group overflow-hidden ${t.isCritical ? "border-2 border-red-500" : ""}`}
+                                className={`absolute top-2 bottom-2 rounded group overflow-hidden select-none
+                                  ${t.isCritical ? "border-2 border-red-500" : ""}
+                                  ${isDraggingThis ? "opacity-80 ring-2 ring-violet-400 cursor-grabbing shadow-lg" : "cursor-grab hover:brightness-95"}`}
                                 style={{ left: `${barLeftPx}px`, width: `${barWidthPx}px`, backgroundColor: color }}
-                                title={`${t.taskId}: ${t.description}\n${fmtDate(t.assignDate)} → ${fmtDate(t.dueDate)}\nStatus: ${t.status ?? "—"}\n% Complete: ${pct}%`}
-                                onClick={() => !connecting && openEditPct(t)}
+                                title={`${t.taskId}: ${t.description}\n${fmtDate(t.assignDate)} → ${fmtDate(t.dueDate)}\nStatus: ${t.status ?? "—"}\n% Complete: ${pct}%${isDraggingThis && dragDeltaDays !== 0 ? `\nMoving: ${dragDeltaDays > 0 ? "+" : ""}${dragDeltaDays} days` : ""}`}
+                                onMouseDown={(e) => startBarDrag(e, t)}
+                                onClick={() => !connecting && !dragBar && openEditPct(t)}
                               >
                                 {/* % complete fill */}
                                 {pct > 0 && (
                                   <div className="absolute inset-0 bg-white/25" style={{ width: `${pct}%` }} />
                                 )}
                                 {/* Label */}
-                                <span className="relative z-10 text-white text-[10px] font-medium px-1.5 truncate leading-[28px] inline-block">
-                                  {barWidthPx > 60 ? `${t.taskId}${pct > 0 ? ` (${pct}%)` : ""}` : barWidthPx > 24 ? t.taskId : ""}
+                                <span className="relative z-10 text-white text-[10px] font-medium px-1.5 truncate leading-[28px] inline-block pointer-events-none">
+                                  {isDraggingThis && dragDeltaDays !== 0
+                                    ? `${t.taskId} (${dragDeltaDays > 0 ? "+" : ""}${dragDeltaDays}d)`
+                                    : barWidthPx > 60 ? `${t.taskId}${pct > 0 ? ` (${pct}%)` : ""}` : barWidthPx > 24 ? t.taskId : ""}
                                 </span>
-                                {/* Connection handles — left (start) */}
-                                <div
-                                  className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-white border-2 border-violet-500 opacity-0 group-hover:opacity-100 hover:!opacity-100 z-20 cursor-crosshair transition-opacity"
-                                  title="Drag to connect (Start)"
-                                  onMouseDown={(e) => startConnect(e, t.taskId, "start", barLeftPx, i)}
-                                />
+                                {/* Connection handles — left (start) — only shown when not dragging this bar */}
+                                {!isDraggingThis && (
+                                  <div
+                                    className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-white border-2 border-violet-500 opacity-0 group-hover:opacity-100 hover:!opacity-100 z-20 cursor-crosshair transition-opacity"
+                                    title="Drag to connect (Start)"
+                                    onMouseDown={(e) => startConnect(e, t.taskId, "start", barLeftPx, i)}
+                                  />
+                                )}
                                 {/* Connection handles — right (end) */}
-                                <div
-                                  className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-3 h-3 rounded-full bg-white border-2 border-violet-500 opacity-0 group-hover:opacity-100 hover:!opacity-100 z-20 cursor-crosshair transition-opacity"
-                                  title="Drag to connect (End)"
-                                  onMouseDown={(e) => startConnect(e, t.taskId, "end", barLeftPx + barWidthPx, i)}
-                                />
+                                {!isDraggingThis && (
+                                  <div
+                                    className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-3 h-3 rounded-full bg-white border-2 border-violet-500 opacity-0 group-hover:opacity-100 hover:!opacity-100 z-20 cursor-crosshair transition-opacity"
+                                    title="Drag to connect (End)"
+                                    onMouseDown={(e) => startConnect(e, t.taskId, "end", barLeftPx + barWidthPx, i)}
+                                  />
+                                )}
                               </div>
                             )
                           )}
@@ -733,8 +804,18 @@ export default function GanttChart() {
               {/* Legend row */}
               {connecting && (
                 <div className="px-4 py-1 bg-violet-50 border-t text-xs text-violet-700 font-medium">
-                  Drag to another bar's ● handle to create a dependency. Release on empty space to cancel.
+                  Linking: drag to another bar's ● handle to create a dependency. Release on empty space to cancel.
                   <span className="ml-2 text-muted-foreground">end→start = FS • start→start = SS • end→end = FF • start→end = SF</span>
+                </div>
+              )}
+              {dragBar && (
+                <div className="px-4 py-1 bg-amber-50 border-t text-xs text-amber-700 font-medium">
+                  Moving <strong>{dragBar.taskId}</strong>: drag left/right to shift dates, release to save.
+                  {Math.round(dragBar.deltaX / pxPerDay) !== 0 && (
+                    <span className="ml-2 font-bold">
+                      {Math.round(dragBar.deltaX / pxPerDay) > 0 ? "+" : ""}{Math.round(dragBar.deltaX / pxPerDay)} days
+                    </span>
+                  )}
                 </div>
               )}
               <div className="p-3 border-t bg-gray-50 flex flex-wrap gap-3 items-center">
@@ -745,7 +826,7 @@ export default function GanttChart() {
                   </div>
                 ))}
                 <span className="ml-auto text-xs text-muted-foreground">
-                  Click any task row to edit % complete
+                  Drag bar to move (changes dates) · Hover for ● handles to link tasks · Click to edit %
                 </span>
               </div>
             </div>
