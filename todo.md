@@ -496,3 +496,22 @@
 - [x] Custom fields engine (DB schema: customFieldDefs + customFieldValues, backend router, Settings UI page)
 - [x] Custom workflow statuses per entity type (already fully implemented in Settings)
 - [x] Saved views and filters per module (SavedViews component + quick-filter chips: Overdue, High Priority, Open, My Tasks)
+## Action Items → Tasks Merge (Mar 11, 2026)
+- [x] DB migration: added isActionItem, actionSourceType, actionSourceId, actionNotes fields to tasks table
+- [x] Applied DB migration via SQL (columns added to remote DB)
+- [x] Backend router: tasks.create and tasks.update already handle action item fields
+- [x] Tasks.tsx: added "Action Items" quick-filter chip
+- [x] Tasks.tsx: added action item badge (⚡ AI) in normal view task rows
+- [x] Tasks.tsx: added action item badge in compact view task rows
+- [x] Tasks.tsx: added "Action Item" section in create task dialog with source type/id/notes
+- [x] Tasks.tsx: added action item info panel in task detail view
+- [x] DashboardLayout.tsx: removed standalone "Action Items" sidebar entry
+- [x] App.tsx: /action-items route now redirects to /tasks
+
+## Custom Fields Renderer in Entity Dialogs (Mar 11, 2026)
+- [x] Created reusable CustomFieldsSection component
+- [x] Tasks.tsx: added CustomFieldsSection to task detail/edit view
+- [x] Issues.tsx: added CustomFieldsSection to issue detail/edit view
+- [x] Requirements.tsx: added CustomFieldsSection to requirement detail/edit view
+- [x] RiskRegister.tsx: added CustomFieldsSection to risk edit dialog
+- [x] Stakeholders.tsx: added CustomFieldsSection to stakeholder edit dialog

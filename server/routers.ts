@@ -702,6 +702,10 @@ export const appRouter = router({
         recurringInterval: z.number().optional(),
         recurringEndDate: z.string().optional(),
         manHours: z.number().optional(),
+        isActionItem: z.boolean().optional(),
+        actionSourceType: z.string().optional(),
+        actionSourceId: z.string().optional(),
+        actionNotes: z.string().optional(),
       }))
       .mutation(async ({ input }) => {
         try {
@@ -774,6 +778,10 @@ export const appRouter = router({
           informedId: z.number().nullable().optional(),
           ownerId: z.number().nullable().optional(),
           manHours: z.union([z.number(), z.string()]).nullable().optional(),
+          isActionItem: z.boolean().optional(),
+          actionSourceType: z.string().optional(),
+          actionSourceId: z.string().optional(),
+          actionNotes: z.string().optional(),
         }),
       }))
       .mutation(async ({ input, ctx }) => {

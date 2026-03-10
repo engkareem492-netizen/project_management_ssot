@@ -36,6 +36,7 @@ import { useProject } from "@/contexts/ProjectContext";
 import { ImportExportToolbar } from "@/components/ImportExportToolbar";
 import { formatDate } from "@/lib/dateUtils";
 import { EmptyState } from "@/components/EmptyState";
+import { CustomFieldsSection } from "@/components/CustomFieldsSection";
 
 export default function RiskRegister() {
 
@@ -978,6 +979,14 @@ export default function RiskRegister() {
               </div>
             </div>
 
+            {/* Custom Fields */}
+            {currentProjectId && selectedRisk?.riskId && (
+              <CustomFieldsSection
+                projectId={currentProjectId}
+                entityType="risk"
+                entityId={selectedRisk.riskId}
+              />
+            )}
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
                 Cancel

@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
-import { Route, Switch } from "wouter";
+import { Route, Switch, Redirect } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { ProjectProvider } from "./contexts/ProjectContext";
@@ -41,7 +41,7 @@ import JoinProject from "./pages/JoinProject";
 import ProjectCharter from "./pages/ProjectCharter";
 import Milestones from "./pages/Milestones";
 import RaidLog from "./pages/RaidLog";
-import ActionItems from "./pages/ActionItems";
+// ActionItems merged into Tasks - redirects to /tasks
 import LessonsLearned from "./pages/LessonsLearned";
 import DocumentLibrary from "./pages/DocumentLibrary";
 import CustomFields from "./pages/CustomFields";
@@ -202,9 +202,7 @@ function Router() {
         </DashboardLayout>
       </Route>
       <Route path={"/action-items"}>
-        <DashboardLayout>
-          <ActionItems />
-        </DashboardLayout>
+        <Redirect to="/tasks" />
       </Route>
       <Route path={"/lessons-learned"}>
         <DashboardLayout>

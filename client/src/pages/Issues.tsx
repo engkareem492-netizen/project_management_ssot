@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { ImportExportToolbar } from "@/components/ImportExportToolbar";
 import { formatDate } from "@/lib/dateUtils";
 import { EmptyState } from "@/components/EmptyState";
+import { CustomFieldsSection } from "@/components/CustomFieldsSection";
 
 export default function Issues() {
   const { currentProjectId } = useProject();
@@ -1611,6 +1612,17 @@ export default function Issues() {
               )}
             </div>
           </div>
+          {/* Custom Fields */}
+          {currentProjectId && selectedIssue?.issueId && (
+            <div className="px-1 pb-2">
+              <CustomFieldsSection
+                projectId={currentProjectId}
+                entityType="issue"
+                entityId={selectedIssue.issueId}
+                readOnly={!isEditMode}
+              />
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 

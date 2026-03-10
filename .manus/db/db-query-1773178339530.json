@@ -1,0 +1,9 @@
+{
+  "query": "SELECT id, projectId, actionItemId, description, owner, ownerId, dueDate, status, priority, sourceType, sourceId, meetingId, notes FROM actionItems LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 34DzJoQKEqyc4cp.root --database MtjPfUT7z9e3zhUb3tuetB --execute SELECT id, projectId, actionItemId, description, owner, ownerId, dueDate, status, priority, sourceType, sourceId, meetingId, notes FROM actionItems LIMIT 10;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1496
+}

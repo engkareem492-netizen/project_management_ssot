@@ -26,6 +26,7 @@ import { KanbanBoard, KanbanItem, KanbanColumn } from "@/components/KanbanBoard"
 import { LayoutGrid } from "lucide-react";
 import { SavedViews } from "@/components/SavedViews";
 import { TaskCalendar } from "@/components/TaskCalendar";
+import { CustomFieldsSection } from "@/components/CustomFieldsSection";
 
 export default function Tasks() {
   const { currentProjectId } = useProject();
@@ -156,6 +157,10 @@ export default function Tasks() {
     issueId: '',
     dueDate: '',
     assignDate: new Date().toISOString().split('T')[0],
+    isActionItem: false,
+    actionSourceType: '',
+    actionSourceId: '',
+    actionNotes: '',
   });
 
   const { data: tasks, isLoading, refetch } = trpc.tasks.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
@@ -190,6 +195,7 @@ export default function Tasks() {
     { enabled: viewDialogOpen && !!selectedTask?.taskId }
   );
   const { data: allDecisions } = trpc.meetings.listDecisions.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
+  const { data: allMeetings } = trpc.meetings.listMeetings.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
   const { data: actionLogs } = trpc.actionLogs.getByEntity.useQuery(
     { entityType: "task", entityId: selectedEntityId },
     { enabled: historyDialogOpen && !!selectedEntityId }
@@ -401,6 +407,10 @@ export default function Tasks() {
         requirementId: '',
         dueDate: '',
         assignDate: new Date().toISOString().split('T')[0],
+        isActionItem: false,
+        actionSourceType: '',
+        actionSourceId: '',
+        actionNotes: '',
       });
       refetch();
     },
@@ -539,6 +549,9 @@ export default function Tasks() {
         // Filter by current user name if available
         return true; // fallback: show all
       }
+      if (responsibleFilter === '__action_items__') {
+        return !!(task as any).isActionItem;
+      }
       return (task.responsible || 'Unassigned') === responsibleFilter;
     })();
     return matchesSearch && matchesResponsible;
@@ -671,6 +684,10 @@ export default function Tasks() {
       assignDate: task.assignDate || '',
       newStatusUpdate: '',
       manHours: task.manHours != null ? parseFloat(task.manHours) : undefined,
+      isActionItem: !!(task as any).isActionItem,
+      actionSourceType: (task as any).actionSourceType || '',
+      actionSourceId: (task as any).actionSourceId || '',
+      actionNotes: (task as any).actionNotes || '',
     });
     setViewDialogOpen(true);
   };
@@ -695,6 +712,10 @@ export default function Tasks() {
       assignDate: task.assignDate || '',
       newStatusUpdate: '',
       manHours: task.manHours != null ? parseFloat(task.manHours) : undefined,
+      isActionItem: !!(task as any).isActionItem,
+      actionSourceType: (task as any).actionSourceType || '',
+      actionSourceId: (task as any).actionSourceId || '',
+      actionNotes: (task as any).actionNotes || '',
     });
     setViewDialogOpen(true);
   };
@@ -877,20 +898,21 @@ export default function Tasks() {
 
           {/* Quick filter chips + Saved Views row */}
           <div className="flex items-center gap-2 mb-3 flex-wrap">
-            {(['Overdue', 'High Priority', 'Open', 'My Tasks'] as const).map(chip => {
+            {(['Overdue', 'High Priority', 'Open', 'My Tasks', 'Action Items'] as const).map(chip => {
               const today = new Date();
               const isActive = (() => {
                 if (chip === 'Overdue') return responsibleFilter === '__overdue__';
                 if (chip === 'High Priority') return responsibleFilter === '__high_priority__';
                 if (chip === 'Open') return responsibleFilter === '__open__';
                 if (chip === 'My Tasks') return responsibleFilter === '__my_tasks__';
+                if (chip === 'Action Items') return responsibleFilter === '__action_items__';
                 return false;
               })();
               return (
                 <button
                   key={chip}
                   onClick={() => {
-                    const key = chip === 'Overdue' ? '__overdue__' : chip === 'High Priority' ? '__high_priority__' : chip === 'Open' ? '__open__' : '__my_tasks__';
+                    const key = chip === 'Overdue' ? '__overdue__' : chip === 'High Priority' ? '__high_priority__' : chip === 'Open' ? '__open__' : chip === 'My Tasks' ? '__my_tasks__' : '__action_items__';
                     setResponsibleFilter(isActive ? null : key);
                   }}
                   className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
@@ -917,7 +939,7 @@ export default function Tasks() {
           </div>
 
           {/* Responsible Filter Badge */}
-          {responsibleFilter && !['__overdue__','__high_priority__','__open__','__my_tasks__'].includes(responsibleFilter) && (
+          {responsibleFilter && !['__overdue__','__high_priority__','__open__','__my_tasks__','__action_items__'].includes(responsibleFilter) && (
             <div className="flex items-center gap-2 mb-3">
               <span className="text-sm text-muted-foreground">Filtered by responsible:</span>
               <Badge variant="secondary" className="gap-1 cursor-pointer" onClick={() => setResponsibleFilter(null)}>
@@ -1118,6 +1140,9 @@ export default function Tasks() {
                           {task.parentTaskId && <span title="Sub-task"><GitBranch className="w-3 h-3 text-green-600 flex-shrink-0" /></span>}
                           {task.followUpOfId && <span title="Follow-up"><ArrowRight className="w-3 h-3 text-purple-600 flex-shrink-0" /></span>}
                           {task.recurringType && <span title={`Recurring: ${task.recurringType}`}><RefreshCw className="w-3 h-3 text-orange-500 flex-shrink-0" /></span>}
+                          {(task as any).isActionItem && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 font-semibold flex-shrink-0" title={(task as any).actionSourceType ? `Action Item from ${(task as any).actionSourceType}` : 'Action Item'}>AI</span>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell className="px-3 py-2 overflow-hidden">
@@ -1231,6 +1256,11 @@ export default function Tasks() {
                             {task.parentTaskId && <Badge variant="outline" className="text-green-700 border-green-300 text-xs gap-1"><GitBranch className="w-3 h-3" />Sub-task</Badge>}
                             {task.followUpOfId && <Badge variant="outline" className="text-purple-700 border-purple-300 text-xs gap-1"><ArrowRight className="w-3 h-3" />Follow-up</Badge>}
                             {task.recurringType && <Badge variant="outline" className="text-orange-600 border-orange-300 text-xs gap-1"><RefreshCw className="w-3 h-3" />{task.recurringType}</Badge>}
+                            {(task as any).isActionItem && (
+                              <Badge variant="outline" className="text-amber-700 border-amber-300 text-xs gap-1" title={(task as any).actionSourceType ? `Action Item from ${(task as any).actionSourceType}` : 'Action Item'}>
+                                ⚡ Action Item{(task as any).actionSourceType ? ` · ${(task as any).actionSourceType}` : ''}
+                              </Badge>
+                            )}
                           </div>
                           <p className={`flex-1 text-sm leading-relaxed break-words min-w-0 font-medium ${complete ? 'line-through text-muted-foreground' : 'text-foreground'}`}>{task.description || '-'}</p>
                         </div>
@@ -1669,6 +1699,103 @@ export default function Tasks() {
                 />
               </div>
             </div>
+            {/* Action Item Section */}
+            <div className="space-y-4">
+              <h4 className="text-sm font-semibold border-b pb-2">Action Item</h4>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="isActionItem"
+                  checked={newTask.isActionItem}
+                  onCheckedChange={(checked) => setNewTask({ ...newTask, isActionItem: !!checked })}
+                />
+                <Label htmlFor="isActionItem" className="cursor-pointer">Mark as Action Item</Label>
+              </div>
+              {newTask.isActionItem && (
+                <div className="space-y-3 pl-6 border-l-2 border-primary/20">
+                  <div className="space-y-2">
+                    <Label>Source Type</Label>
+                    <Select
+                      value={newTask.actionSourceType || ''}
+                      onValueChange={(v) => setNewTask({ ...newTask, actionSourceType: v, actionSourceId: '' })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select source..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="meeting">Meeting</SelectItem>
+                        <SelectItem value="decision">Decision</SelectItem>
+                        <SelectItem value="issue">Issue</SelectItem>
+                        <SelectItem value="risk">Risk</SelectItem>
+                        <SelectItem value="general">General</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {newTask.actionSourceType === 'meeting' && (
+                    <div className="space-y-2">
+                      <Label>Meeting</Label>
+                      <Select
+                        value={newTask.actionSourceId || ''}
+                        onValueChange={(v) => setNewTask({ ...newTask, actionSourceId: v })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select meeting..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {allMeetings?.map((m: any) => (
+                            <SelectItem key={m.id} value={String(m.id)}>{m.title}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  {newTask.actionSourceType === 'decision' && (
+                    <div className="space-y-2">
+                      <Label>Decision</Label>
+                      <Select
+                        value={newTask.actionSourceId || ''}
+                        onValueChange={(v) => setNewTask({ ...newTask, actionSourceId: v })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select decision..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {allDecisions?.map((d: any) => (
+                            <SelectItem key={d.id} value={String(d.id)}>{d.title}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  {newTask.actionSourceType === 'issue' && (
+                    <div className="space-y-2">
+                      <Label>Issue</Label>
+                      <Select
+                        value={newTask.actionSourceId || ''}
+                        onValueChange={(v) => setNewTask({ ...newTask, actionSourceId: v })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select issue..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {allIssues?.map((i: any) => (
+                            <SelectItem key={i.id} value={i.issueId}>{i.issueId}: {i.description?.slice(0, 60)}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  <div className="space-y-2">
+                    <Label>Action Notes</Label>
+                    <Textarea
+                      placeholder="Notes about this action item..."
+                      value={newTask.actionNotes || ''}
+                      onChange={(e) => setNewTask({ ...newTask, actionNotes: e.target.value })}
+                      rows={2}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
           <div className="flex justify-end gap-2">
             <Button onClick={handleCreate} disabled={createMutation.isPending}>
@@ -1988,6 +2115,75 @@ export default function Tasks() {
                 )}
               </div>
             </div>
+
+            {/* Custom Fields */}
+            {currentProjectId && selectedTask?.taskId && (
+              <CustomFieldsSection
+                projectId={currentProjectId}
+                entityType="task"
+                entityId={selectedTask.taskId}
+                readOnly={!isEditMode}
+              />
+            )}
+
+            {/* Action Item Info */}
+            {(isEditMode || (selectedTask as any)?.isActionItem) && (
+              <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                <div className="flex items-center gap-2 mb-3">
+                  {isEditMode ? (
+                    <>
+                      <Checkbox
+                        id="editIsActionItem"
+                        checked={editFormData.isActionItem}
+                        onCheckedChange={(checked) => setEditFormData({...editFormData, isActionItem: !!checked})}
+                      />
+                      <Label htmlFor="editIsActionItem" className="cursor-pointer text-sm font-semibold text-amber-700 dark:text-amber-300">⚡ Action Item</Label>
+                    </>
+                  ) : (
+                    <span className="text-amber-700 dark:text-amber-300 font-semibold text-sm">⚡ Action Item</span>
+                  )}
+                  {!isEditMode && (selectedTask as any).actionSourceType && (
+                    <Badge variant="outline" className="text-amber-700 border-amber-300 text-xs capitalize">
+                      From: {(selectedTask as any).actionSourceType}
+                    </Badge>
+                  )}
+                </div>
+                {isEditMode && editFormData.isActionItem && (
+                  <div className="space-y-3 pl-6 border-l-2 border-amber-300/50">
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground uppercase tracking-wide">Source Type</Label>
+                      <Select
+                        value={editFormData.actionSourceType || ''}
+                        onValueChange={(v) => setEditFormData({...editFormData, actionSourceType: v, actionSourceId: ''})}
+                      >
+                        <SelectTrigger className="h-8">
+                          <SelectValue placeholder="Select source..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="meeting">Meeting</SelectItem>
+                          <SelectItem value="decision">Decision</SelectItem>
+                          <SelectItem value="issue">Issue</SelectItem>
+                          <SelectItem value="risk">Risk</SelectItem>
+                          <SelectItem value="general">General</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground uppercase tracking-wide">Action Notes</Label>
+                      <Textarea
+                        value={editFormData.actionNotes || ''}
+                        onChange={(e) => setEditFormData({...editFormData, actionNotes: e.target.value})}
+                        rows={2}
+                        className="text-sm"
+                      />
+                    </div>
+                  </div>
+                )}
+                {!isEditMode && (selectedTask as any).actionNotes && (
+                  <p className="text-sm text-muted-foreground">{(selectedTask as any).actionNotes}</p>
+                )}
+              </div>
+            )}
 
             </TabsContent>
 

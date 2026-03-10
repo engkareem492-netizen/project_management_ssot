@@ -32,6 +32,7 @@ import {
 import { ImportExportToolbar } from "@/components/ImportExportToolbar";
 import { EmptyState } from "@/components/EmptyState";
 import { formatDate } from "@/lib/dateUtils";
+import { CustomFieldsSection } from "@/components/CustomFieldsSection";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type StakeholderFormData = {
@@ -1388,6 +1389,14 @@ export default function Stakeholders() {
             <DialogTitle>Edit Stakeholder — {selectedStakeholder?.fullName}</DialogTitle>
           </DialogHeader>
           {renderFormFields()}
+          {/* Custom Fields */}
+          {currentProjectId && selectedStakeholder?.id && (
+            <CustomFieldsSection
+              projectId={currentProjectId}
+              entityType="stakeholder"
+              entityId={String(selectedStakeholder.id)}
+            />
+          )}
           <DialogFooter className="mt-4">
             <Button variant="outline" onClick={() => { setIsEditOpen(false); setFormData(EMPTY_FORM); }}>Cancel</Button>
             <Button

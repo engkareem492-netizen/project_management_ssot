@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { ImportExportToolbar } from "@/components/ImportExportToolbar";
 import { formatDate as _formatDateUtil } from "@/lib/dateUtils";
 import { EmptyState } from "@/components/EmptyState";
+import { CustomFieldsSection } from "@/components/CustomFieldsSection";
 
 export default function Requirements() {
   const { currentProjectId } = useProject();
@@ -1259,6 +1260,15 @@ export default function Requirements() {
                   </div>
                 )}
               </div>
+              {/* Custom Fields */}
+              {currentProjectId && selectedRequirement?.idCode && (
+                <CustomFieldsSection
+                  projectId={currentProjectId}
+                  entityType="requirement"
+                  entityId={selectedRequirement.idCode}
+                  readOnly={!isEditMode}
+                />
+              )}
             </TabsContent>
             
             <TabsContent value="tasks" className="mt-4">
