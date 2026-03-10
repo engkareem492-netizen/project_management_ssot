@@ -889,64 +889,104 @@ export default function Tasks() {
 
           <div className="rounded-md border border-primary/20 overflow-hidden">
             {viewMode === 'compact' ? (
-              /* ── COMPACT VIEW ── */
-              <Table className="table-fixed w-full">
+              /* ── COMPACT VIEW: dense table with color-coded status, priority, due date ── */
+              <Table className="w-full text-sm">
                 <TableHeader>
-                  <TableRow className="bg-primary/5 hover:bg-primary/10 text-xs">
-                    <TableHead className="w-8 px-2">
+                  <TableRow className="bg-primary/5 hover:bg-primary/10">
+                    <TableHead className="w-10 px-3">
                       <Checkbox
                         checked={filteredTasks && filteredTasks.length > 0 && selectedTaskIds.length === filteredTasks.length}
                         onCheckedChange={handleSelectAllTasks}
                         aria-label="Select all"
                       />
                     </TableHead>
-                    <TableHead className="w-[90px] px-2 font-semibold text-primary">ID</TableHead>
-                    <TableHead className="w-[110px] px-2 font-semibold text-primary">Group</TableHead>
-                    <TableHead className="px-2 font-semibold text-primary">Description</TableHead>
-                    <TableHead className="w-[110px] px-2 font-semibold text-primary">Responsible</TableHead>
-                    <TableHead className="w-[90px] px-2 font-semibold text-primary">Due Date</TableHead>
-                    <TableHead className="w-[110px] px-2 font-semibold text-primary">Status</TableHead>
-                    <TableHead className="w-[130px] px-2 text-right font-semibold text-primary">Actions</TableHead>
+                    <TableHead className="w-[100px] px-3 font-semibold text-primary">Task ID</TableHead>
+                    <TableHead className="w-[130px] px-3 font-semibold text-primary">Group</TableHead>
+                    <TableHead className="px-3 font-semibold text-primary">Description</TableHead>
+                    <TableHead className="w-[130px] px-3 font-semibold text-primary">Responsible</TableHead>
+                    <TableHead className="w-[80px] px-3 font-semibold text-primary">Priority</TableHead>
+                    <TableHead className="w-[100px] px-3 font-semibold text-primary">Due Date</TableHead>
+                    <TableHead className="w-[120px] px-3 font-semibold text-primary">Status</TableHead>
+                    <TableHead className="w-[120px] px-3 text-right font-semibold text-primary">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredTasks?.map((task) => {
                     const complete = isTaskComplete(task);
+                    const isOverdue = task.dueDate && !complete && new Date(task.dueDate) < new Date();
+                    const priorityColor: Record<string, string> = {
+                      Critical: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
+                      High: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300',
+                      Medium: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300',
+                      Low: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
+                    };
                     return (
-                    <TableRow key={task.id} className={`hover:bg-primary/5 text-xs ${selectedTaskIds.includes(task.id) ? 'bg-primary/10' : ''} ${complete ? 'opacity-50' : ''}`}>
-                      <TableCell className="w-8 px-2 py-1" onClick={(e) => e.stopPropagation()}>
+                    <TableRow key={task.id} className={`hover:bg-primary/5 ${selectedTaskIds.includes(task.id) ? 'bg-primary/10' : ''} ${complete ? 'opacity-40' : ''}`}>
+                      <TableCell className="w-10 px-3 py-2" onClick={(e) => e.stopPropagation()}>
                         <Checkbox
                           checked={selectedTaskIds.includes(task.id)}
                           onCheckedChange={() => handleToggleSelectTask(task.id)}
                           aria-label={`Select task ${task.taskId}`}
                         />
                       </TableCell>
-                      <TableCell className="px-2 py-1 font-mono font-bold text-primary">{task.taskId}</TableCell>
-                      <TableCell className="px-2 py-1">
-                        <span className="px-1.5 py-0.5 rounded bg-muted text-xs">{task.taskGroup || '—'}</span>
-                      </TableCell>
-                      <TableCell className="px-2 py-1 overflow-hidden">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          {task.parentTaskId && <GitBranch className="w-3 h-3 text-green-600 flex-shrink-0" />}
-                          {task.followUpOfId && <ArrowRight className="w-3 h-3 text-purple-600 flex-shrink-0" />}
-                          {task.recurringType && <RefreshCw className="w-3 h-3 text-orange-500 flex-shrink-0" />}
-                          <span className={`truncate ${complete ? 'line-through text-muted-foreground' : ''}`} title={task.description ?? undefined}>{task.description}</span>
-                          {task.requirementId && (
-                            <Badge variant="secondary" className="text-[10px] px-1 py-0 flex-shrink-0">{task.requirementId}</Badge>
-                          )}
+                      <TableCell className="px-3 py-2">
+                        <div className="flex items-center gap-1">
+                          <span className="font-mono font-bold text-primary text-sm">{task.taskId}</span>
+                          {task.parentTaskId && <span title="Sub-task"><GitBranch className="w-3 h-3 text-green-600 flex-shrink-0" /></span>}
+                          {task.followUpOfId && <span title="Follow-up"><ArrowRight className="w-3 h-3 text-purple-600 flex-shrink-0" /></span>}
+                          {task.recurringType && <span title={`Recurring: ${task.recurringType}`}><RefreshCw className="w-3 h-3 text-orange-500 flex-shrink-0" /></span>}
                         </div>
                       </TableCell>
-                      <TableCell className="px-2 py-1 truncate" title={task.responsible || ''}>{task.responsible || '—'}</TableCell>
-                      <TableCell className="px-2 py-1 whitespace-nowrap">{formatDate(task.dueDate)}</TableCell>
-                      <TableCell className="px-2 py-1">
-                        <Badge className="text-[10px] px-1.5 py-0">{task.currentStatus || 'No updates'}</Badge>
+                      <TableCell className="px-3 py-2">
+                        {task.taskGroup ? (
+                          <span className="inline-block px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 text-xs font-medium whitespace-nowrap max-w-[120px] truncate" title={task.taskGroup}>
+                            {task.taskGroup}
+                          </span>
+                        ) : <span className="text-muted-foreground">—</span>}
                       </TableCell>
-                      <TableCell className="px-2 py-1 text-right">
+                      <TableCell className="px-3 py-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className={`text-sm leading-snug ${complete ? 'line-through text-muted-foreground' : 'text-foreground'}`} title={task.description ?? undefined}>
+                            {task.description}
+                          </span>
+                          {task.requirementId && (
+                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 flex-shrink-0 font-mono">{task.requirementId}</Badge>
+                          )}
+                        </div>
+                        {task.currentStatus && task.currentStatus !== task.status && (
+                          <p className="text-xs text-muted-foreground mt-0.5 truncate" title={task.currentStatus}>↳ {task.currentStatus}</p>
+                        )}
+                      </TableCell>
+                      <TableCell className="px-3 py-2">
+                        <span className="text-sm" title={task.responsible || ''}>{task.responsible || <span className="text-muted-foreground">—</span>}</span>
+                      </TableCell>
+                      <TableCell className="px-3 py-2">
+                        {task.priority ? (
+                          <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${priorityColor[task.priority] || 'bg-muted text-muted-foreground'}`}>
+                            {task.priority}
+                          </span>
+                        ) : <span className="text-muted-foreground text-xs">—</span>}
+                      </TableCell>
+                      <TableCell className="px-3 py-2 whitespace-nowrap">
+                        <span className={`text-sm font-medium ${isOverdue ? 'text-red-600 dark:text-red-400' : 'text-foreground'}`}>
+                          {formatDate(task.dueDate) || <span className="text-muted-foreground">—</span>}
+                        </span>
+                        {isOverdue && <span className="block text-[10px] text-red-500 font-semibold">OVERDUE</span>}
+                      </TableCell>
+                      <TableCell className="px-3 py-2">
+                        <Badge
+                          className="text-xs px-2 py-0.5 whitespace-nowrap"
+                          style={complete ? { background: '#22c55e22', color: '#16a34a', border: '1px solid #86efac' } : {}}
+                        >
+                          {task.status || 'No Status'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="px-3 py-2 text-right">
                         <div className="flex gap-1 justify-end">
-                          <Button size="sm" variant="outline" className="h-6 w-6 p-0" onClick={() => { setSelectedTaskForStatus(task); setStatusUpdateText(''); setStatusUpdateDialogOpen(true); }} title="Update Status"><CheckSquare className="w-3 h-3" /></Button>
-                          <Button size="sm" variant="outline" className="h-6 w-6 p-0" onClick={() => handleViewDetails(task)} title="View"><Eye className="w-3 h-3" /></Button>
-                          <Button size="sm" variant="outline" className="h-6 w-6 p-0" onClick={() => handleEditDetails(task)} title="Edit"><Edit className="w-3 h-3" /></Button>
-                          <Button size="sm" variant="destructive" className="h-6 w-6 p-0" onClick={() => handleDelete(task.id)} title="Delete"><Trash2 className="w-3 h-3" /></Button>
+                          <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={() => { setSelectedTaskForStatus(task); setStatusUpdateText(''); setStatusUpdateDialogOpen(true); }} title="Update Status"><CheckSquare className="w-3.5 h-3.5" /></Button>
+                          <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={() => handleViewDetails(task)} title="View Details"><Eye className="w-3.5 h-3.5" /></Button>
+                          <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={() => handleEditDetails(task)} title="Edit"><Edit className="w-3.5 h-3.5" /></Button>
+                          <Button size="sm" variant="destructive" className="h-7 w-7 p-0" onClick={() => handleDelete(task.id)} title="Delete"><Trash2 className="w-3.5 h-3.5" /></Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -955,7 +995,7 @@ export default function Tasks() {
                 </TableBody>
               </Table>
             ) : (
-              /* ── NORMAL VIEW — matches Requirements layout: table-fixed w-full, 3 cols ── */
+              /* ── DETAILS VIEW: card-style rows with full field grid ── */
               <Table className="table-fixed w-full">
               <TableHeader>
                 <TableRow className="bg-primary/5 hover:bg-primary/10">
@@ -973,8 +1013,15 @@ export default function Tasks() {
               <TableBody>
                 {filteredTasks?.map((task) => {
                   const complete = isTaskComplete(task);
+                  const isOverdue = task.dueDate && !complete && new Date(task.dueDate) < new Date();
+                  const priorityColor: Record<string, string> = {
+                    Critical: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
+                    High: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300',
+                    Medium: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300',
+                    Low: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
+                  };
                   return (
-                  <TableRow key={task.id} className={`hover:bg-primary/5 ${selectedTaskIds.includes(task.id) ? 'bg-primary/10' : ''} ${complete ? 'opacity-50' : ''}`}>
+                  <TableRow key={task.id} className={`hover:bg-primary/5 ${selectedTaskIds.includes(task.id) ? 'bg-primary/10' : ''} ${complete ? 'opacity-40' : ''}`}>
                     <TableCell className="w-10 align-top pt-5" onClick={(e) => e.stopPropagation()}>
                       <Checkbox
                         checked={selectedTaskIds.includes(task.id)}
@@ -984,20 +1031,25 @@ export default function Tasks() {
                     </TableCell>
                     <TableCell className="py-4 overflow-hidden">
                       <div className="space-y-3">
-                        {/* Line 1: Task ID, Task Group, Description */}
+                        {/* Header row: ID + badges + description */}
                         <div className="flex items-start gap-3 flex-wrap">
                           <span className="font-mono font-bold text-primary text-base whitespace-nowrap">{task.taskId}</span>
-                          <div className="flex items-center gap-2 flex-shrink-0">
+                          <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
                             {task.taskGroup && (
-                              <span className="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 whitespace-nowrap">
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 font-medium whitespace-nowrap">
                                 {task.taskGroup}
+                              </span>
+                            )}
+                            {task.priority && (
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${priorityColor[task.priority] || 'bg-muted text-muted-foreground'}`}>
+                                {task.priority}
                               </span>
                             )}
                             {task.parentTaskId && <Badge variant="outline" className="text-green-700 border-green-300 text-xs gap-1"><GitBranch className="w-3 h-3" />Sub-task</Badge>}
                             {task.followUpOfId && <Badge variant="outline" className="text-purple-700 border-purple-300 text-xs gap-1"><ArrowRight className="w-3 h-3" />Follow-up</Badge>}
                             {task.recurringType && <Badge variant="outline" className="text-orange-600 border-orange-300 text-xs gap-1"><RefreshCw className="w-3 h-3" />{task.recurringType}</Badge>}
                           </div>
-                          <p className={`flex-1 text-sm break-words min-w-0 ${complete ? 'line-through text-muted-foreground' : ''}`}>{task.description || '-'}</p>
+                          <p className={`flex-1 text-sm leading-relaxed break-words min-w-0 font-medium ${complete ? 'line-through text-muted-foreground' : 'text-foreground'}`}>{task.description || '-'}</p>
                         </div>
 
                         {/* Sub-task expand toggle */}
@@ -1010,58 +1062,51 @@ export default function Tasks() {
                           </div>
                         )}
 
-                        {/* Details grid */}
-                        <div className="grid grid-cols-1 gap-1 text-sm text-muted-foreground pl-4 border-l-2 border-muted">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium min-w-[120px]">Requirement:</span>
+                        {/* Details grid: 3 columns */}
+                        <div className="grid grid-cols-3 gap-x-6 gap-y-2 text-sm pl-4 border-l-2 border-muted">
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Requirement</span>
                             {task.requirementId ? (
                               <div className="flex items-center gap-1">
-                                <Badge variant="secondary" className="text-xs">{task.requirementId}</Badge>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-5 w-5 p-0"
-                                  onClick={() => task.requirementId && handleViewRequirementDetails(task.requirementId)}
-                                  title="View requirement details"
-                                >
-                                  <Info className="w-3 h-3" />
-                                </Button>
+                                <Badge variant="secondary" className="text-xs font-mono">{task.requirementId}</Badge>
+                                <Button size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={() => task.requirementId && handleViewRequirementDetails(task.requirementId)} title="View requirement details"><Info className="w-3 h-3" /></Button>
                               </div>
-                            ) : (
-                              <span>-</span>
-                            )}
+                            ) : <span className="text-muted-foreground">—</span>}
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium min-w-[120px]">Deliverable:</span>
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Deliverable</span>
                             {task.deliverableId ? (
                               <div className="flex items-center gap-1">
-                                <Badge variant="secondary" className="text-xs">DL-{String(task.deliverableId).padStart(4, '0')}</Badge>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-5 w-5 p-0"
-                                  onClick={() => task.deliverableId && handleViewDeliverableDetails(task.deliverableId)}
-                                  title="View deliverable details"
-                                >
-                                  <Info className="w-3 h-3" />
-                                </Button>
+                                <Badge variant="secondary" className="text-xs font-mono">DL-{String(task.deliverableId).padStart(4, '0')}</Badge>
+                                <Button size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={() => task.deliverableId && handleViewDeliverableDetails(task.deliverableId)} title="View deliverable details"><Info className="w-3 h-3" /></Button>
                               </div>
-                            ) : (
-                              <span>-</span>
-                            )}
+                            ) : <span className="text-muted-foreground">—</span>}
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium min-w-[120px]">Responsible:</span>
-                            <span>{task.responsible || '-'}</span>
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Responsible</span>
+                            <span className="font-medium text-foreground">{task.responsible || <span className="text-muted-foreground">—</span>}</span>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium min-w-[120px]">Due Date:</span>
-                            <span>{formatDate(task.dueDate)}</span>
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Due Date</span>
+                            <span className={`font-medium ${isOverdue ? 'text-red-600 dark:text-red-400' : 'text-foreground'}`}>
+                              {formatDate(task.dueDate) || <span className="text-muted-foreground">—</span>}
+                              {isOverdue && <span className="ml-1 text-[10px] font-bold text-red-500">OVERDUE</span>}
+                            </span>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium min-w-[120px]">Status:</span>
-                            <Badge>{task.currentStatus || 'No updates'}</Badge>
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Task Status</span>
+                            <Badge className="w-fit text-xs px-2">{task.status || 'No Status'}</Badge>
                           </div>
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Last Status Update</span>
+                            <span className="text-sm text-muted-foreground italic truncate" title={task.currentStatus || ''}>{task.currentStatus || '—'}</span>
+                          </div>
+                          {task.manHours && (
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Man-Hours</span>
+                              <span className="font-medium text-foreground">{task.manHours}h</span>
+                            </div>
+                          )}
                         </div>
                         {/* Expanded sub-tasks */}
                         {expandedTasks.has(task.id) && (
