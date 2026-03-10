@@ -253,6 +253,20 @@
       "when": 1775000001000,
       "tag": "0032_new_modules",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "5",
+      "when": 1773131035250,
+      "tag": "0036_cute_glorian",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "5",
+      "when": 1773131136000,
+      "tag": "0037_lush_absorbing_man",
+      "breakpoints": true
     }
   ]
 }
