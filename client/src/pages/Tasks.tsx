@@ -948,16 +948,16 @@ export default function Tasks() {
                           {task.recurringType && <span title={`Recurring: ${task.recurringType}`}><RefreshCw className="w-3 h-3 text-orange-500 flex-shrink-0" /></span>}
                         </div>
                       </TableCell>
-                      <TableCell className="px-3 py-2">
+                      <TableCell className="px-3 py-2 overflow-hidden">
                         {task.taskGroup ? (
-                          <span className="inline-block px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 text-xs font-medium whitespace-nowrap max-w-[120px] truncate" title={task.taskGroup}>
+                          <span className="inline-block px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 text-xs font-medium truncate max-w-full" title={task.taskGroup}>
                             {task.taskGroup}
                           </span>
                         ) : <span className="text-muted-foreground">—</span>}
                       </TableCell>
-                      <TableCell className="px-3 py-2">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className={`text-sm leading-snug ${complete ? 'line-through text-muted-foreground' : 'text-foreground'}`} title={task.description ?? undefined}>
+                      <TableCell className="px-3 py-2 overflow-hidden">
+                        <div className="flex items-center gap-2 min-w-0 overflow-hidden">
+                          <span className={`text-sm leading-snug truncate block min-w-0 ${complete ? 'line-through text-muted-foreground' : 'text-foreground'}`} title={task.description ?? undefined}>
                             {task.description}
                           </span>
                           {task.requirementId && (
@@ -968,8 +968,8 @@ export default function Tasks() {
                           <p className="text-xs text-muted-foreground mt-0.5 truncate" title={task.currentStatus}>↳ {task.currentStatus}</p>
                         )}
                       </TableCell>
-                      <TableCell className="px-3 py-2">
-                        <span className="text-sm" title={task.responsible || ''}>{task.responsible || <span className="text-muted-foreground">—</span>}</span>
+                      <TableCell className="px-3 py-2 overflow-hidden">
+                        <span className="text-sm truncate block" title={task.responsible || ''}>{task.responsible || <span className="text-muted-foreground">—</span>}</span>
                       </TableCell>
                       <TableCell className="px-3 py-2">
                         {task.priority ? (
@@ -984,9 +984,9 @@ export default function Tasks() {
                         </span>
                         {isOverdue && <span className="block text-[10px] text-red-500 font-semibold">OVERDUE</span>}
                       </TableCell>
-                      <TableCell className="px-3 py-2">
+                      <TableCell className="px-3 py-2 overflow-hidden">
                         <Badge
-                          className="text-xs px-2 py-0.5 whitespace-nowrap"
+                          className="text-xs px-2 py-0.5 whitespace-nowrap max-w-full truncate"
                           style={complete ? { background: '#22c55e22', color: '#16a34a', border: '1px solid #86efac' } : {}}
                         >
                           {task.status || 'No Status'}
