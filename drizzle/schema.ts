@@ -152,6 +152,9 @@ export const stakeholders = mysqlTable("stakeholders", {
   communicationMessage: text("communicationMessage"),
   communicationResponsible: varchar("communicationResponsible", { length: 200 }),
   notes: text("notes"),
+  // Cost / billing rate
+  costPerHour: decimal("costPerHour", { precision: 10, scale: 2 }),
+  costPerDay: decimal("costPerDay", { precision: 10, scale: 2 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -190,6 +193,7 @@ export const requirements = mysqlTable("requirements", {
   ownerId: int("ownerId"),
   source: varchar("source", { length: 20 }),
   knowledgeBaseCode: varchar("knowledgeBaseCode", { length: 50 }),
+  scopeItemId: int("scopeItemId"),
 });
 
 export type Requirement = typeof requirements.$inferSelect;
@@ -235,6 +239,8 @@ export const tasks = mysqlTable("tasks", {
   recurringType: mysqlEnum("recurringType", ["none", "daily", "weekly", "monthly", "custom"]).default("none"),
   recurringInterval: int("recurringInterval").default(1),
   recurringEndDate: varchar("recurringEndDate", { length: 50 }),
+  // Resource effort
+  manHours: decimal("manHours", { precision: 10, scale: 2 }),
   importedAt: timestamp("importedAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -807,6 +813,7 @@ export const changeRequests = mysqlTable("changeRequests", {
   rejectionReason: text("rejectionReason"),
   estimatedEffort: varchar("estimatedEffort", { length: 100 }),
   actualEffort: varchar("actualEffort", { length: 100 }),
+  scopeItemId: int("scopeItemId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -888,6 +895,7 @@ export const testCases = mysqlTable("testCases", {
   executionDate: date("executionDate"),
   defectId: varchar("defectId", { length: 50 }), // link to issue if failed
   notes: text("notes"),
+  scopeItemId: int("scopeItemId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -1043,3 +1051,24 @@ export const resourceCapacity = mysqlTable("resourceCapacity", {
 });
 export type ResourceCapacity = typeof resourceCapacity.$inferSelect;
 export type InsertResourceCapacity = typeof resourceCapacity.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────
+// Scope Items table — SAP Cloud ALM-style project scope management
+// ─────────────────────────────────────────────────────────────
+export const scopeItems = mysqlTable("scopeItems", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  idCode: varchar("idCode", { length: 50 }).notNull(), // e.g. SC-0001
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  phase: varchar("phase", { length: 100 }),          // e.g. Explore / Realize / Deploy
+  processArea: varchar("processArea", { length: 100 }),
+  category: varchar("category", { length: 100 }),
+  status: varchar("status", { length: 50 }).default("Active"),
+  priority: varchar("priority", { length: 50 }),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ScopeItem = typeof scopeItems.$inferSelect;
+export type InsertScopeItem = typeof scopeItems.$inferInsert;

@@ -49,6 +49,54 @@ export const appRouter = router({
   notifications: notificationsRouter,
   budget: budgetRouter,
   resources: resourcesRouter,
+  scopeItems: router({
+    list: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ input }) => db.getAllScopeItems(input.projectId)),
+
+    create: protectedProcedure
+      .input(z.object({
+        projectId: z.number(),
+        name: z.string(),
+        description: z.string().optional(),
+        phase: z.string().optional(),
+        processArea: z.string().optional(),
+        category: z.string().optional(),
+        status: z.string().optional(),
+        priority: z.string().optional(),
+        notes: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const idCode = await db.getNextId('scope', 'SC', input.projectId);
+        return db.createScopeItem({ ...input, idCode });
+      }),
+
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        data: z.object({
+          name: z.string().optional(),
+          description: z.string().optional(),
+          phase: z.string().optional(),
+          processArea: z.string().optional(),
+          category: z.string().optional(),
+          status: z.string().optional(),
+          priority: z.string().optional(),
+          notes: z.string().optional(),
+        }),
+      }))
+      .mutation(async ({ input }) => db.updateScopeItem(input.id, input.data)),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => { await db.deleteScopeItem(input.id); return { success: true }; }),
+  }),
+
+  resourceCost: router({
+    summary: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ input }) => db.getResourceCostSummary(input.projectId)),
+  }),
 
   // Excel import/export
   excel: router({
@@ -407,6 +455,7 @@ export const appRouter = router({
         d2Status: z.string().optional(),
         lastUpdate: z.string().optional(),
         updateDate: z.string().optional(),
+        scopeItemId: z.number().optional().nullable(),
       }))
       .mutation(async ({ input }) => {
         try {
@@ -506,6 +555,7 @@ export const appRouter = router({
           updateDate: z.string().optional(),
           owner: z.string().optional(),
           description: z.string().optional(),
+          scopeItemId: z.number().optional().nullable(),
         }),
       }))
       .mutation(async ({ input, ctx }) => {
@@ -634,6 +684,7 @@ export const appRouter = router({
         recurringType: z.enum(['none', 'daily', 'weekly', 'monthly', 'custom']).optional(),
         recurringInterval: z.number().optional(),
         recurringEndDate: z.string().optional(),
+        manHours: z.number().optional(),
       }))
       .mutation(async ({ input }) => {
         try {
@@ -705,6 +756,7 @@ export const appRouter = router({
           consultedId: z.number().nullable().optional(),
           informedId: z.number().nullable().optional(),
           ownerId: z.number().nullable().optional(),
+          manHours: z.number().nullable().optional(),
         }),
       }))
       .mutation(async ({ input, ctx }) => {
@@ -1274,6 +1326,8 @@ export const appRouter = router({
         communicationMessage: z.string().optional(),
         communicationResponsible: z.string().optional(),
         notes: z.string().optional(),
+        costPerHour: z.string().optional(),
+        costPerDay: z.string().optional(),
       }))
       .mutation(async ({ input }) => {
         const result = await db.createStakeholder(input);
@@ -1299,6 +1353,8 @@ export const appRouter = router({
           communicationMessage: z.string().optional(),
           communicationResponsible: z.string().optional(),
           notes: z.string().optional(),
+          costPerHour: z.string().optional().nullable(),
+          costPerDay: z.string().optional().nullable(),
         }),
       }))
       .mutation(async ({ input }) => {

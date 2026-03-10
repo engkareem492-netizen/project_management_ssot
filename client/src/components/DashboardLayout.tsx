@@ -65,6 +65,7 @@ import {
   FileBarChart,
   DollarSign,
   CalendarRange,
+  Crosshair,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import {
@@ -131,6 +132,7 @@ const menuItems: MenuItem[] = [
   { icon: CalendarRange, label: "Calendar", path: "/calendar" },
   { icon: DollarSign, label: "Budget", path: "/budget" },
   { icon: FlaskConical, label: "Test Cases", path: "/test-cases" },
+  { icon: Crosshair, label: "Scope Items", path: "/scope" },
   { icon: Layers, label: "Traceability Matrix", path: "/traceability" },
   { icon: FileBarChart, label: "Periodic Report", path: "/periodic-report" },
   { icon: SettingsIcon, label: "Settings", path: "/settings" },

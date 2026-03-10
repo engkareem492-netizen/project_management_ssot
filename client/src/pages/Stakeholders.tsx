@@ -50,6 +50,8 @@ type StakeholderFormData = {
   communicationMessage: string;
   communicationResponsible: string;
   notes: string;
+  costPerHour: string;
+  costPerDay: string;
 };
 
 const EMPTY_FORM: StakeholderFormData = {
@@ -57,6 +59,7 @@ const EMPTY_FORM: StakeholderFormData = {
   isInternalTeam: false, powerLevel: 3, interestLevel: 3,
   engagementStrategy: "", communicationFrequency: "", communicationChannel: "",
   communicationMessage: "", communicationResponsible: "", notes: "",
+  costPerHour: "", costPerDay: "",
 };
 
 const ENGAGEMENT_STRATEGIES = [
@@ -712,6 +715,8 @@ export default function Stakeholders() {
       communicationMessage: s.communicationMessage || "",
       communicationResponsible: s.communicationResponsible || "",
       notes: s.notes || "",
+      costPerHour: s.costPerHour != null ? String(s.costPerHour) : "",
+      costPerDay: s.costPerDay != null ? String(s.costPerDay) : "",
     });
     setIsEditOpen(true);
   };
@@ -803,6 +808,35 @@ export default function Stakeholders() {
             onChange={(e) => setFormData({ ...formData, job: e.target.value })}
             placeholder="IT Department"
           />
+        </div>
+      </div>
+
+      {/* Cost fields */}
+      <div className="space-y-3 border-t pt-3">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Cost Rates</p>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <Label>Cost Per Hour ($)</Label>
+            <Input
+              type="number"
+              min="0"
+              step="0.01"
+              value={formData.costPerHour}
+              onChange={(e) => setFormData({ ...formData, costPerHour: e.target.value })}
+              placeholder="0.00"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Cost Per Day ($)</Label>
+            <Input
+              type="number"
+              min="0"
+              step="0.01"
+              value={formData.costPerDay}
+              onChange={(e) => setFormData({ ...formData, costPerDay: e.target.value })}
+              placeholder="0.00"
+            />
+          </div>
         </div>
       </div>
 
@@ -1112,6 +1146,7 @@ export default function Stakeholders() {
               <TableHead>Contact</TableHead>
               <TableHead>Engagement</TableHead>
               <TableHead>Power / Interest</TableHead>
+              <TableHead className="hidden xl:table-cell">Cost Rate</TableHead>
               <TableHead className="w-32">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -1182,6 +1217,19 @@ export default function Stakeholders() {
                       <span>I: {s.interestLevel ?? "—"}/5</span>
                     </div>
                   </TableCell>
+                  <TableCell className="hidden xl:table-cell">
+                    <div className="text-xs space-y-0.5">
+                      {s.costPerHour != null && (
+                        <div className="text-muted-foreground">${Number(s.costPerHour).toFixed(2)}/hr</div>
+                      )}
+                      {s.costPerDay != null && (
+                        <div className="text-muted-foreground">${Number(s.costPerDay).toFixed(2)}/day</div>
+                      )}
+                      {s.costPerHour == null && s.costPerDay == null && (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
                       <Button
@@ -1236,7 +1284,12 @@ export default function Stakeholders() {
               onClick={() => {
                 if (!formData.fullName.trim()) { toast.error("Full name is required"); return; }
                 if (!currentProjectId) { toast.error("No project selected"); return; }
-                createMutation.mutate({ ...formData, projectId: currentProjectId });
+                createMutation.mutate({
+                  ...formData,
+                  projectId: currentProjectId,
+                  costPerHour: formData.costPerHour || undefined,
+                  costPerDay: formData.costPerDay || undefined,
+                });
               }}
               disabled={createMutation.isPending}
             >
@@ -1259,7 +1312,14 @@ export default function Stakeholders() {
               onClick={() => {
                 if (!selectedStakeholder) return;
                 if (!formData.fullName.trim()) { toast.error("Full name is required"); return; }
-                updateMutation.mutate({ id: selectedStakeholder.id, data: formData });
+                updateMutation.mutate({
+                  id: selectedStakeholder.id,
+                  data: {
+                    ...formData,
+                    costPerHour: formData.costPerHour || null,
+                    costPerDay: formData.costPerDay || null,
+                  },
+                });
               }}
               disabled={updateMutation.isPending}
             >

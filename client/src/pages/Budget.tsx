@@ -1,14 +1,15 @@
 import { useState, useMemo } from "react";
 import { useProject } from "@/contexts/ProjectContext";
+import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { DollarSign, Plus, Pencil, Trash2, Settings } from "lucide-react";
+import { DollarSign, Plus, Pencil, Trash2, Settings, Users, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
@@ -54,6 +55,11 @@ function formatCurrency(amount: number, currency = "USD"): string {
 
 export default function Budget() {
   const { currentProjectId } = useProject();
+
+  const { data: resourceCostData, isLoading: resourceCostLoading } = trpc.resourceCost.summary.useQuery(
+    { projectId: currentProjectId! },
+    { enabled: !!currentProjectId }
+  );
 
   // Local state (would be replaced by trpc mutations when endpoints exist)
   const [summary, setSummary] = useState<BudgetSummary>({ totalBudget: 0, currency: "USD" });
@@ -261,6 +267,58 @@ export default function Budget() {
             </span>
           </div>
         )}
+      </Card>
+
+      {/* Resource Costs Section */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Users className="h-4 w-4 text-primary" />
+            Resource Costs (Man-Hours × Stakeholder Rate)
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {resourceCostLoading ? (
+            <div className="flex items-center gap-2 text-muted-foreground py-4">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span className="text-sm">Loading resource costs...</span>
+            </div>
+          ) : !resourceCostData || resourceCostData.entries.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4">
+              No resource costs yet. Assign stakeholder cost rates and task man-hours to see costs here.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Task</TableHead>
+                    <TableHead>Stakeholder</TableHead>
+                    <TableHead className="text-right">Man-Hours</TableHead>
+                    <TableHead className="text-right">Rate ($/hr)</TableHead>
+                    <TableHead className="text-right">Cost</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {resourceCostData.entries.map((entry: any, i: number) => (
+                    <TableRow key={i}>
+                      <TableCell className="font-medium text-sm truncate max-w-xs">{entry.taskDescription}</TableCell>
+                      <TableCell className="text-sm">{entry.stakeholderName}</TableCell>
+                      <TableCell className="text-right text-sm">{Number(entry.manHours).toFixed(1)}</TableCell>
+                      <TableCell className="text-right text-sm">${Number(entry.costPerHour).toFixed(2)}</TableCell>
+                      <TableCell className="text-right text-sm font-semibold">{formatCurrency(Number(entry.cost), summary.currency)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              <div className="flex justify-end border-t pt-3">
+                <span className="font-semibold text-sm">
+                  Total Resource Cost: {formatCurrency(Number(resourceCostData.totalCost), summary.currency)}
+                </span>
+              </div>
+            </div>
+          )}
+        </CardContent>
       </Card>
 
       {/* Set Budget Dialog */}

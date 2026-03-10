@@ -31,6 +31,7 @@ import Decisions from "./pages/Decisions";
 import CalendarPage from "./pages/Calendar";
 import Budget from "./pages/Budget";
 import Resources from "./pages/Resources";
+import ScopeItems from "./pages/ScopeItems";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -171,6 +172,11 @@ function Router() {
       <Route path={"/resources"}>
         <DashboardLayout>
           <Resources />
+        </DashboardLayout>
+      </Route>
+      <Route path={"/scope"}>
+        <DashboardLayout>
+          <ScopeItems />
         </DashboardLayout>
       </Route>
       <Route path={"/404"} component={NotFound} />

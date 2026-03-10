@@ -2557,3 +2557,63 @@ export async function globalSearch(projectId: number, term: string) {
   ]);
   return { requirements: reqs, tasks: tsks, issues: iss, risks: rsks, decisions: decs };
 }
+
+// ─────── Scope Items ─────────────────────────────────────────
+
+export async function getAllScopeItems(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(schema.scopeItems).where(eq(schema.scopeItems.projectId, projectId)).orderBy(schema.scopeItems.idCode);
+}
+
+export async function createScopeItem(data: schema.InsertScopeItem) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(schema.scopeItems).values(data);
+  const created = await db.select().from(schema.scopeItems).where(eq(schema.scopeItems.id, result[0].insertId)).limit(1);
+  return created[0];
+}
+
+export async function updateScopeItem(id: number, data: Partial<schema.ScopeItem>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(schema.scopeItems).set(data).where(eq(schema.scopeItems.id, id));
+  const updated = await db.select().from(schema.scopeItems).where(eq(schema.scopeItems.id, id)).limit(1);
+  return updated[0];
+}
+
+export async function deleteScopeItem(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(schema.scopeItems).where(eq(schema.scopeItems.id, id));
+}
+
+// ─────── Resource Cost (stakeholder rates × task manHours) ───
+
+export async function getResourceCostSummary(projectId: number) {
+  const db = await getDb();
+  if (!db) return { entries: [], totalCost: 0 };
+  const projectTasks = await db.select().from(tasks)
+    .where(and(eq(tasks.projectId, projectId), sql`${tasks.manHours} IS NOT NULL`));
+  const projectStakeholders = await db.select().from(stakeholders).where(eq(stakeholders.projectId, projectId));
+  const shMap = new Map(projectStakeholders.map(s => [s.id, s]));
+  let totalCost = 0;
+  const entries = projectTasks
+    .filter(t => t.manHours && t.responsibleId)
+    .map(t => {
+      const sh = shMap.get(t.responsibleId!);
+      const hours = parseFloat(String(t.manHours ?? 0));
+      const rate = sh ? parseFloat(String(sh.costPerHour ?? 0)) : 0;
+      const cost = hours * rate;
+      totalCost += cost;
+      return {
+        taskId: t.taskId,
+        taskDescription: t.description,
+        responsible: t.responsible,
+        manHours: hours,
+        costPerHour: rate,
+        cost,
+      };
+    });
+  return { entries, totalCost };
+}
