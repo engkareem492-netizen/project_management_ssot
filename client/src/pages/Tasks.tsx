@@ -641,6 +641,7 @@ export default function Tasks() {
       dueDate: task.dueDate || '',
       assignDate: task.assignDate || '',
       newStatusUpdate: '',
+      manHours: task.manHours != null ? parseFloat(task.manHours) : undefined,
     });
     setViewDialogOpen(true);
   };
@@ -664,6 +665,7 @@ export default function Tasks() {
       dueDate: task.dueDate || '',
       assignDate: task.assignDate || '',
       newStatusUpdate: '',
+      manHours: task.manHours != null ? parseFloat(task.manHours) : undefined,
     });
     setViewDialogOpen(true);
   };
@@ -1426,6 +1428,18 @@ export default function Tasks() {
                   />
                 </div>
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="manHours">Active Man-Hours</Label>
+                <Input
+                  id="manHours"
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  placeholder="0.0"
+                  value={newTask.manHours ?? ''}
+                  onChange={(e) => setNewTask({ ...newTask, manHours: e.target.value ? parseFloat(e.target.value) : undefined })}
+                />
+              </div>
             </div>
           </div>
           <div className="flex justify-end gap-2">
@@ -1727,6 +1741,24 @@ export default function Tasks() {
                   <p className="font-medium">{formatDate(selectedTask?.dueDate)}</p>
                 )}
               </div>
+              <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Active Man-Hours</Label>
+                {isEditMode ? (
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    placeholder="0.0"
+                    value={editFormData.manHours ?? ''}
+                    onChange={(e) => setEditFormData({...editFormData, manHours: e.target.value ? parseFloat(e.target.value) : undefined})}
+                    className="h-8"
+                  />
+                ) : (
+                  <p className="font-medium">
+                    {selectedTask?.manHours != null ? `${selectedTask.manHours} hrs` : '—'}
+                  </p>
+                )}
+              </div>
             </div>
 
             </TabsContent>
@@ -1826,21 +1858,19 @@ export default function Tasks() {
                     {raciMap.map(({ label, name, color }) => {
                       const sh = stakeholders?.find(s => s.fullName === name || s.fullName?.toLowerCase() === name?.toLowerCase());
                       return (
-                        <div key={label} className={`rounded-lg border p-3 ${color}`}>
+                        <div key={label} className={`rounded-lg border p-3 min-w-0 overflow-hidden ${color}`}>
                           <div className="text-xs font-semibold text-muted-foreground mb-1">{label}</div>
-                          <div className="font-semibold text-sm">{name}</div>
+                          <div className="font-semibold text-sm truncate">{name}</div>
+                          {sh?.engagementStrategy && (
+                            <span className="inline-block mt-1 px-2 py-0.5 rounded-full bg-white/70 border text-[11px] font-medium truncate max-w-full">{sh.engagementStrategy}</span>
+                          )}
                           {sh && (
                             <div className="mt-2 space-y-1 text-xs text-muted-foreground">
-                              {sh.position && <div>📋 {sh.position}</div>}
-                              {sh.email && <div>✉️ <a href={`mailto:${sh.email}`} className="text-blue-600 underline">{sh.email}</a></div>}
-                              {sh.phone && <div>📞 {sh.phone}</div>}
-                              {sh.engagementStrategy && (
-                                <div className="mt-1">
-                                  <span className="inline-block px-2 py-0.5 rounded-full bg-white/70 border text-[11px] font-medium">{sh.engagementStrategy}</span>
-                                </div>
-                              )}
-                              {sh.communicationFrequency && <div className="text-[11px]">🔁 {sh.communicationFrequency}</div>}
-                              {sh.communicationChannel && <div className="text-[11px]">📡 {sh.communicationChannel}</div>}
+                              {sh.position && <div className="truncate">📋 {sh.position}</div>}
+                              {sh.email && <div className="truncate">✉️ <a href={`mailto:${sh.email}`} className="text-blue-600 underline">{sh.email}</a></div>}
+                              {sh.phone && <div className="truncate">📞 {sh.phone}</div>}
+                              {sh.communicationFrequency && <div className="text-[11px] truncate">🔁 {sh.communicationFrequency}</div>}
+                              {sh.communicationChannel && <div className="text-[11px] truncate">📡 {sh.communicationChannel}</div>}
                             </div>
                           )}
                         </div>
@@ -1940,7 +1970,7 @@ export default function Tasks() {
                                 <span className="font-mono text-xs font-bold text-indigo-700">{d.decisionId}</span>
                                 <Badge className={`text-xs ${DECISION_STATUS_COLORS[d.status ?? 'Open'] ?? ''}`}>{d.status ?? 'Open'}</Badge>
                               </div>
-                              <span className="text-xs text-muted-foreground">{formatDate(d.decisionDate instanceof Date ? d.decisionDate.toISOString() : d.decisionDate)}</span>
+                              <span className="text-xs text-muted-foreground">{formatDate(d.decisionDate ? (d.decisionDate instanceof Date ? d.decisionDate.toISOString() : String(d.decisionDate)) : null)}</span>
                             </div>
                             <div className="font-medium text-sm">{d.title}</div>
                             {d.description && <div className="text-xs text-muted-foreground">{d.description}</div>}

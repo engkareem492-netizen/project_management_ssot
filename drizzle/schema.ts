@@ -153,6 +153,9 @@ export const stakeholders = mysqlTable("stakeholders", {
   communicationResponsible: varchar("communicationResponsible", { length: 200 }),
   communicationResponsibleId: int("communicationResponsibleId"),  // FK to stakeholders.id
   notes: text("notes"),
+  // Cost / billing rate
+  costPerHour: decimal("costPerHour", { precision: 10, scale: 2 }),
+  costPerDay: decimal("costPerDay", { precision: 10, scale: 2 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -191,6 +194,7 @@ export const requirements = mysqlTable("requirements", {
   ownerId: int("ownerId"),
   source: varchar("source", { length: 20 }),
   knowledgeBaseCode: varchar("knowledgeBaseCode", { length: 50 }),
+  scopeItemId: int("scopeItemId"),
 });
 
 export type Requirement = typeof requirements.$inferSelect;
@@ -238,6 +242,8 @@ export const tasks = mysqlTable("tasks", {
   recurringType: mysqlEnum("recurringType", ["none", "daily", "weekly", "monthly", "custom"]).default("none"),
   recurringInterval: int("recurringInterval").default(1),
   recurringEndDate: varchar("recurringEndDate", { length: 50 }),
+  // Resource effort
+  manHours: decimal("manHours", { precision: 10, scale: 2 }),
   importedAt: timestamp("importedAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -810,6 +816,7 @@ export const changeRequests = mysqlTable("changeRequests", {
   rejectionReason: text("rejectionReason"),
   estimatedEffort: varchar("estimatedEffort", { length: 100 }),
   actualEffort: varchar("actualEffort", { length: 100 }),
+  scopeItemId: int("scopeItemId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -891,6 +898,7 @@ export const testCases = mysqlTable("testCases", {
   executionDate: date("executionDate"),
   defectId: varchar("defectId", { length: 50 }), // link to issue if failed
   notes: text("notes"),
+  scopeItemId: int("scopeItemId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -1046,3 +1054,172 @@ export const resourceCapacity = mysqlTable("resourceCapacity", {
 });
 export type ResourceCapacity = typeof resourceCapacity.$inferSelect;
 export type InsertResourceCapacity = typeof resourceCapacity.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────
+// Scope Items table — SAP Cloud ALM-style project scope management
+// ─────────────────────────────────────────────────────────────
+export const scopeItems = mysqlTable("scopeItems", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  idCode: varchar("idCode", { length: 50 }).notNull(), // e.g. SC-0001
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  phase: varchar("phase", { length: 100 }),          // e.g. Explore / Realize / Deploy
+  processArea: varchar("processArea", { length: 100 }),
+  category: varchar("category", { length: 100 }),
+  status: varchar("status", { length: 50 }).default("Active"),
+  priority: varchar("priority", { length: 50 }),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ScopeItem = typeof scopeItems.$inferSelect;
+export type InsertScopeItem = typeof scopeItems.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────
+// Project Charter table — single record per project
+// ─────────────────────────────────────────────────────────────
+export const projectCharter = mysqlTable("projectCharter", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull().unique(),
+  objectives: text("objectives"),
+  scopeStatement: text("scopeStatement"),
+  outOfScope: text("outOfScope"),
+  successCriteria: text("successCriteria"),
+  constraints: text("constraints"),
+  methodology: varchar("methodology", { length: 100 }).default("Waterfall"),
+  projectStartDate: date("projectStartDate"),
+  projectEndDate: date("projectEndDate"),
+  phase: varchar("phase", { length: 100 }),
+  ragStatus: mysqlEnum("ragStatus", ["Green", "Amber", "Red"]).default("Green"),
+  ragJustification: text("ragJustification"),
+  sponsorId: int("sponsorId"),
+  projectManagerId: int("projectManagerId"),
+  budget: decimal("budget", { precision: 15, scale: 2 }),
+  currency: varchar("currency", { length: 10 }).default("USD"),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ProjectCharter = typeof projectCharter.$inferSelect;
+export type InsertProjectCharter = typeof projectCharter.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────
+// Milestones table — formal project milestones
+// ─────────────────────────────────────────────────────────────
+export const milestones = mysqlTable("milestones", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  milestoneId: varchar("milestoneId", { length: 50 }).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  dueDate: date("dueDate"),
+  completedDate: date("completedDate"),
+  ragStatus: mysqlEnum("ragStatus", ["Green", "Amber", "Red"]).default("Green"),
+  status: mysqlEnum("status", ["Upcoming", "In Progress", "Achieved", "Missed", "Deferred"]).default("Upcoming"),
+  phase: varchar("phase", { length: 100 }),
+  ownerId: int("ownerId"),
+  owner: varchar("owner", { length: 255 }),
+  linkedDeliverableIds: json("linkedDeliverableIds").$type<string[]>().default([]),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type Milestone = typeof milestones.$inferSelect;
+export type InsertMilestone = typeof milestones.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────
+// Test Runs table — test execution records per test case
+// ─────────────────────────────────────────────────────────────
+export const testRuns = mysqlTable("testRuns", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  testCaseId: int("testCaseId").notNull(),
+  runId: varchar("runId", { length: 50 }).notNull(),
+  executedBy: varchar("executedBy", { length: 255 }),
+  executedById: int("executedById"),
+  executionDate: date("executionDate"),
+  status: mysqlEnum("status", ["Not Executed", "Passed", "Failed", "Blocked", "Skipped"]).default("Not Executed"),
+  environment: varchar("environment", { length: 100 }),
+  actualResult: text("actualResult"),
+  defectIds: json("defectIds").$type<string[]>().default([]),
+  notes: text("notes"),
+  stepResults: json("stepResults").$type<Array<{ step: string; result: string; status: string }>>().default([]),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type TestRun = typeof testRuns.$inferSelect;
+export type InsertTestRun = typeof testRuns.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────
+// Standalone Action Items table
+// ─────────────────────────────────────────────────────────────
+export const actionItems = mysqlTable("actionItems", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  actionItemId: varchar("actionItemId", { length: 50 }).notNull(),
+  description: text("description").notNull(),
+  ownerId: int("ownerId"),
+  owner: varchar("owner", { length: 255 }),
+  dueDate: date("dueDate"),
+  status: mysqlEnum("status", ["Open", "In Progress", "Done", "Cancelled"]).default("Open"),
+  priority: mysqlEnum("priority", ["Low", "Medium", "High", "Critical"]).default("Medium"),
+  sourceType: varchar("sourceType", { length: 50 }), // meeting / decision / issue / general
+  sourceId: varchar("sourceId", { length: 50 }),
+  meetingId: int("meetingId"),
+  notes: text("notes"),
+  completedDate: date("completedDate"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ActionItem = typeof actionItems.$inferSelect;
+export type InsertActionItem = typeof actionItems.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────
+// Lessons Learned table
+// ─────────────────────────────────────────────────────────────
+export const lessonsLearned = mysqlTable("lessonsLearned", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  lessonId: varchar("lessonId", { length: 50 }).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  category: mysqlEnum("category", ["Technical", "Process", "People", "Commercial", "Risk", "Communication", "Other"]).default("Process"),
+  phase: varchar("phase", { length: 100 }),
+  whatWentWell: text("whatWentWell"),
+  whatToImprove: text("whatToImprove"),
+  recommendation: text("recommendation"),
+  impact: mysqlEnum("impact", ["Low", "Medium", "High"]).default("Medium"),
+  ownerId: int("ownerId"),
+  owner: varchar("owner", { length: 255 }),
+  dateRecorded: date("dateRecorded"),
+  status: mysqlEnum("status", ["Draft", "Reviewed", "Approved", "Archived"]).default("Draft"),
+  tags: json("tags").$type<string[]>().default([]),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type LessonLearned = typeof lessonsLearned.$inferSelect;
+export type InsertLessonLearned = typeof lessonsLearned.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────
+// Documents table — file attachments for any entity
+// ─────────────────────────────────────────────────────────────
+export const documents = mysqlTable("documents", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  documentId: varchar("documentId", { length: 50 }).notNull(),
+  fileName: varchar("fileName", { length: 255 }).notNull(),
+  originalName: varchar("originalName", { length: 255 }).notNull(),
+  fileUrl: text("fileUrl").notNull(),
+  fileSize: int("fileSize"),
+  mimeType: varchar("mimeType", { length: 100 }),
+  description: text("description"),
+  entityType: varchar("entityType", { length: 50 }),  // task / requirement / deliverable / cr / general
+  entityId: varchar("entityId", { length: 50 }),
+  uploadedBy: varchar("uploadedBy", { length: 255 }),
+  uploadedById: int("uploadedById"),
+  tags: json("tags").$type<string[]>().default([]),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type Document = typeof documents.$inferSelect;
+export type InsertDocument = typeof documents.$inferInsert;

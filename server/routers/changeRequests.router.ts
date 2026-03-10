@@ -80,6 +80,7 @@ export const changeRequestsRouter = router({
       issueId: z.string().optional(),
       estimatedEffort: z.string().optional(),
       actualEffort: z.string().optional(),
+      scopeItemId: z.number().optional().nullable(),
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();

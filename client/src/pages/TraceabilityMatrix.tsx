@@ -92,11 +92,15 @@ export default function TraceabilityMatrix() {
 
   const utils = trpc.useUtils();
 
+  const [showGapAnalysis, setShowGapAnalysis] = useState(false);
+
   // Data queries
   const { data: matrix = [], isLoading } = trpc.traceability.matrix.useQuery({ projectId }, { enabled: !!projectId });
   const { data: allTasks = [] } = trpc.tasks.list.useQuery({ projectId }, { enabled: !!projectId });
   const { data: allIssues = [] } = trpc.issues.list.useQuery({ projectId }, { enabled: !!projectId });
   const { data: allTestCases = [] } = trpc.testCases.list.useQuery({ projectId }, { enabled: !!projectId });
+  const { data: allScopeItems = [] } = trpc.scopeItems.list.useQuery({ projectId }, { enabled: !!projectId });
+  const { data: allRequirements = [] } = trpc.requirements.list.useQuery({ projectId }, { enabled: !!projectId });
   const { data: stakeholders = [] } = trpc.stakeholders.list.useQuery({ projectId }, { enabled: !!projectId });
   const { data: taskGroups = [] } = trpc.dropdownOptions.taskGroups.getAll.useQuery({ projectId }, { enabled: !!projectId });
   const { data: issueGroups = [] } = trpc.dropdownOptions.issueGroups.getAll.useQuery({ projectId }, { enabled: !!projectId });
@@ -238,6 +242,16 @@ export default function TraceabilityMatrix() {
   const openIssues = matrix.reduce((s, r) => s + r.summary.openIssues, 0);
   const openTasks = matrix.reduce((s, r) => s + r.summary.openTasks, 0);
 
+  // Gap analysis
+  const gapAnalysis = useMemo(() => {
+    const reqIdsWithTests = new Set(matrix.filter(r => r.summary.testTotal > 0).map(r => r.requirement.idCode));
+    const scopeItemIds = new Set(allRequirements.map((r: any) => r.scopeItemId).filter(Boolean));
+    const scopeItemsWithoutReqs = allScopeItems.filter((s: any) => !scopeItemIds.has(s.id));
+    const reqsWithoutTests = matrix.filter(r => r.summary.testTotal === 0);
+    const reqsWithoutTasks = matrix.filter(r => r.summary.openTasks === 0 && r.summary.taskCount === 0);
+    return { scopeItemsWithoutReqs, reqsWithoutTests, reqsWithoutTasks };
+  }, [matrix, allScopeItems, allRequirements]);
+
   // Unlinked items for assign dialogs
   const unlinkedTasks = useMemo(() => allTasks.filter((t) => !t.requirementId), [allTasks]);
   const unlinkedIssues = useMemo(() => allIssues.filter((i) => !i.requirementId), [allIssues]);
@@ -291,6 +305,77 @@ export default function TraceabilityMatrix() {
           </div>
         )}
       </div>
+
+      {/* Gap Analysis */}
+      {(gapAnalysis.scopeItemsWithoutReqs.length > 0 || gapAnalysis.reqsWithoutTests.length > 0 || gapAnalysis.reqsWithoutTasks.length > 0) && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-amber-800 flex items-center gap-2">
+              <AlertCircle className="w-4 h-4" /> Traceability Gap Analysis
+            </h3>
+            <Button variant="ghost" size="sm" onClick={() => setShowGapAnalysis(!showGapAnalysis)} className="text-amber-700">
+              {showGapAnalysis ? "Hide" : "Show Details"}
+            </Button>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {gapAnalysis.scopeItemsWithoutReqs.length > 0 && (
+              <span className="text-sm text-amber-700 bg-amber-100 px-2 py-1 rounded">
+                ⚠ {gapAnalysis.scopeItemsWithoutReqs.length} scope item{gapAnalysis.scopeItemsWithoutReqs.length > 1 ? "s" : ""} with no requirements
+              </span>
+            )}
+            {gapAnalysis.reqsWithoutTests.length > 0 && (
+              <span className="text-sm text-amber-700 bg-amber-100 px-2 py-1 rounded">
+                ⚠ {gapAnalysis.reqsWithoutTests.length} requirement{gapAnalysis.reqsWithoutTests.length > 1 ? "s" : ""} with no test coverage
+              </span>
+            )}
+            {gapAnalysis.reqsWithoutTasks.length > 0 && (
+              <span className="text-sm text-amber-700 bg-amber-100 px-2 py-1 rounded">
+                ⚠ {gapAnalysis.reqsWithoutTasks.length} requirement{gapAnalysis.reqsWithoutTasks.length > 1 ? "s" : ""} with no tasks
+              </span>
+            )}
+          </div>
+          {showGapAnalysis && (
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+              {gapAnalysis.scopeItemsWithoutReqs.length > 0 && (
+                <div>
+                  <div className="text-xs font-semibold text-amber-700 mb-2">Scope Items → No Requirements</div>
+                  <div className="space-y-1 max-h-40 overflow-y-auto">
+                    {gapAnalysis.scopeItemsWithoutReqs.map((s: any) => (
+                      <div key={s.id} className="text-xs bg-white border border-amber-200 rounded px-2 py-1">
+                        <span className="font-mono text-amber-600">{s.idCode}</span> {s.name}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {gapAnalysis.reqsWithoutTests.length > 0 && (
+                <div>
+                  <div className="text-xs font-semibold text-amber-700 mb-2">Requirements → No Test Cases</div>
+                  <div className="space-y-1 max-h-40 overflow-y-auto">
+                    {gapAnalysis.reqsWithoutTests.map((r: any) => (
+                      <div key={r.requirement.id} className="text-xs bg-white border border-amber-200 rounded px-2 py-1">
+                        <span className="font-mono text-amber-600">{r.requirement.idCode}</span> {r.requirement.description?.substring(0, 40)}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {gapAnalysis.reqsWithoutTasks.length > 0 && (
+                <div>
+                  <div className="text-xs font-semibold text-amber-700 mb-2">Requirements → No Tasks</div>
+                  <div className="space-y-1 max-h-40 overflow-y-auto">
+                    {gapAnalysis.reqsWithoutTasks.map((r: any) => (
+                      <div key={r.requirement.id} className="text-xs bg-white border border-amber-200 rounded px-2 py-1">
+                        <span className="font-mono text-amber-600">{r.requirement.idCode}</span> {r.requirement.description?.substring(0, 40)}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Search & Controls */}
       <div className="flex items-center gap-3">

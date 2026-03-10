@@ -99,6 +99,7 @@ export const testCasesRouter = router({
       executionDate: z.string().optional(),
       defectId: z.string().optional(),
       notes: z.string().optional(),
+      scopeItemId: z.number().optional().nullable(),
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();

@@ -29,6 +29,12 @@ import { decisionsRouter } from "./routers/decisions.router";
 import { notificationsRouter } from "./routers/notifications.router";
 import { budgetRouter } from "./routers/budget.router";
 import { resourcesRouter } from "./routers/resources.router";
+import { charterRouter } from "./routers/charter.router";
+import { milestonesRouter } from "./routers/milestones.router";
+import { testRunsRouter } from "./routers/testRuns.router";
+import { actionItemsRouter } from "./routers/actionItems.router";
+import { lessonsLearnedRouter } from "./routers/lessonsLearned.router";
+import { documentsRouter } from "./routers/documents.router";
 
 export const appRouter = router({
   system: systemRouter,
@@ -52,6 +58,60 @@ export const appRouter = router({
   notifications: notificationsRouter,
   budget: budgetRouter,
   resources: resourcesRouter,
+  charter: charterRouter,
+  milestones: milestonesRouter,
+  testRuns: testRunsRouter,
+  actionItems: actionItemsRouter,
+  lessonsLearned: lessonsLearnedRouter,
+  documents: documentsRouter,
+  scopeItems: router({
+    list: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ input }) => db.getAllScopeItems(input.projectId)),
+
+    create: protectedProcedure
+      .input(z.object({
+        projectId: z.number(),
+        name: z.string(),
+        description: z.string().optional(),
+        phase: z.string().optional(),
+        processArea: z.string().optional(),
+        category: z.string().optional(),
+        status: z.string().optional(),
+        priority: z.string().optional(),
+        notes: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const idCode = await db.getNextId('scope', 'SC', input.projectId);
+        return db.createScopeItem({ ...input, idCode });
+      }),
+
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        data: z.object({
+          name: z.string().optional(),
+          description: z.string().optional(),
+          phase: z.string().optional(),
+          processArea: z.string().optional(),
+          category: z.string().optional(),
+          status: z.string().optional(),
+          priority: z.string().optional(),
+          notes: z.string().optional(),
+        }),
+      }))
+      .mutation(async ({ input }) => db.updateScopeItem(input.id, input.data)),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => { await db.deleteScopeItem(input.id); return { success: true }; }),
+  }),
+
+  resourceCost: router({
+    summary: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ input }) => db.getResourceCostSummary(input.projectId)),
+  }),
 
   // Excel import/export
   excel: router({
@@ -410,6 +470,7 @@ export const appRouter = router({
         d2Status: z.string().optional(),
         lastUpdate: z.string().optional(),
         updateDate: z.string().optional(),
+        scopeItemId: z.number().optional().nullable(),
       }))
       .mutation(async ({ input }) => {
         try {
@@ -509,6 +570,7 @@ export const appRouter = router({
           updateDate: z.string().optional(),
           owner: z.string().optional(),
           description: z.string().optional(),
+          scopeItemId: z.number().optional().nullable(),
         }),
       }))
       .mutation(async ({ input, ctx }) => {
@@ -637,6 +699,7 @@ export const appRouter = router({
         recurringType: z.enum(['none', 'daily', 'weekly', 'monthly', 'custom']).optional(),
         recurringInterval: z.number().optional(),
         recurringEndDate: z.string().optional(),
+        manHours: z.number().optional(),
       }))
       .mutation(async ({ input }) => {
         try {
@@ -708,9 +771,14 @@ export const appRouter = router({
           consultedId: z.number().nullable().optional(),
           informedId: z.number().nullable().optional(),
           ownerId: z.number().nullable().optional(),
+          manHours: z.number().nullable().optional(),
         }),
       }))
       .mutation(async ({ input, ctx }) => {
+        // Convert manHours number to string for decimal DB column
+        if (input.data.manHours !== undefined && input.data.manHours !== null) {
+          (input.data as any).manHours = String(input.data.manHours);
+        }
         const current = await db.getTaskByTaskId(input.taskId);
         if (!current) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Task not found' });
@@ -734,7 +802,7 @@ export const appRouter = router({
           }
         }
 
-        await db.updateTask(input.id, input.data);
+        await db.updateTask(input.id, input.data as any);
 
         if (Object.keys(changedFields).length > 0) {
           await db.createActionLog({
@@ -1278,6 +1346,8 @@ export const appRouter = router({
          communicationResponsible: z.string().optional(),
         communicationResponsibleId: z.number().optional(),
         notes: z.string().optional(),
+        costPerHour: z.string().optional(),
+        costPerDay: z.string().optional(),
       }))
       .mutation(async ({ input }) => {
         // Resolve communicationResponsibleId to name
@@ -1344,6 +1414,8 @@ export const appRouter = router({
           communicationResponsible: z.string().optional(),
           communicationResponsibleId: z.number().optional(),
           notes: z.string().optional(),
+          costPerHour: z.string().optional().nullable(),
+          costPerDay: z.string().optional().nullable(),
         }),
       }))
       .mutation(async ({ input, ctx }) => {

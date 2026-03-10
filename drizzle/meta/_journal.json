@@ -239,6 +239,20 @@
       "when": 1773049422011,
       "tag": "0033_pale_klaw",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1775000000000,
+      "tag": "0031_cost_scope",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1775000001000,
+      "tag": "0032_new_modules",
+      "breakpoints": true
     }
   ]
 }

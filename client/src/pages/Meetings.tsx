@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Eye, Pencil, Trash2, Users, CheckSquare, Link2 } from "lucide-react";
+import { Plus, Eye, Pencil, Trash2, Users, CheckSquare, Link2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDate as _formatDateUtil } from "@/lib/dateUtils";
 
@@ -97,6 +97,12 @@ export default function Meetings() {
   const [decisionForm, setDecisionForm] = useState<DecisionForm>(emptyDecisionForm);
   const [attendeesText, setAttendeesText] = useState("");
 
+  // Inline create task/issue from decision dialog
+  const [showInlineTask, setShowInlineTask] = useState(false);
+  const [showInlineIssue, setShowInlineIssue] = useState(false);
+  const [inlineTask, setInlineTask] = useState({ description: "", status: "Not Started", priority: "Medium" });
+  const [inlineIssue, setInlineIssue] = useState({ description: "", status: "Open", priority: "Medium" });
+
   const utils = trpc.useUtils();
   const { data: meetings = [], isLoading: loadingMeetings } = trpc.meetings.listMeetings.useQuery({ projectId }, { enabled: !!projectId });
   const { data: decisions = [], isLoading: loadingDecisions } = trpc.meetings.listDecisions.useQuery({ projectId }, { enabled: !!projectId });
@@ -123,6 +129,26 @@ export default function Meetings() {
   });
   const deleteDecisionMutation = trpc.meetings.deleteDecision.useMutation({
     onSuccess: () => { utils.meetings.listDecisions.invalidate(); toast.success("Decision deleted"); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const createTaskForDecisionMutation = trpc.tasks.create.useMutation({
+    onSuccess: (data) => {
+      setDecisionForm((f) => ({ ...f, taskId: data.taskId }));
+      setInlineTask({ description: "", status: "Not Started", priority: "Medium" });
+      setShowInlineTask(false);
+      toast.success(`Task ${data.taskId} created and linked`);
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const createIssueForDecisionMutation = trpc.issues.create.useMutation({
+    onSuccess: (data: any) => {
+      setDecisionForm((f) => ({ ...f, issueId: data.issueId }));
+      setInlineIssue({ description: "", status: "Open", priority: "Medium" });
+      setShowInlineIssue(false);
+      toast.success(`Issue ${data.issueId} created and linked`);
+    },
     onError: (e) => toast.error(e.message),
   });
 
@@ -443,11 +469,79 @@ export default function Meetings() {
             </div>
             <div className="space-y-1"><Label>Linked Requirement ID</Label><Input value={decisionForm.requirementId} onChange={(e) => setDecisionForm({ ...decisionForm, requirementId: e.target.value })} placeholder="e.g. REQ-0001" /></div>
             <div className="col-span-2 space-y-1"><Label>Impact</Label><Textarea value={decisionForm.impact} onChange={(e) => setDecisionForm({ ...decisionForm, impact: e.target.value })} rows={2} /></div>
-            <div className="space-y-1"><Label>Linked Task ID</Label><Input value={decisionForm.taskId} onChange={(e) => setDecisionForm({ ...decisionForm, taskId: e.target.value })} /></div>
-            <div className="space-y-1"><Label>Linked Issue ID</Label><Input value={decisionForm.issueId} onChange={(e) => setDecisionForm({ ...decisionForm, issueId: e.target.value })} /></div>
+            {/* Linked Task */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <Label>Linked Task ID</Label>
+                <Button type="button" size="sm" variant="ghost" className="h-6 text-xs gap-1 px-2"
+                  onClick={() => { setShowInlineTask((v) => !v); setShowInlineIssue(false); }}>
+                  <Plus className="w-3 h-3" /> Create Task
+                </Button>
+              </div>
+              <Input value={decisionForm.taskId} onChange={(e) => setDecisionForm({ ...decisionForm, taskId: e.target.value })} placeholder="e.g. TSK-0001" />
+              {showInlineTask && (
+                <div className="rounded-lg border bg-blue-50 p-3 space-y-2 mt-1">
+                  <p className="text-xs font-semibold text-blue-700">New Task — will be linked automatically</p>
+                  <Input placeholder="Task description *" value={inlineTask.description} onChange={(e) => setInlineTask({ ...inlineTask, description: e.target.value })} className="h-8 text-sm" />
+                  <div className="grid grid-cols-2 gap-2">
+                    <Select value={inlineTask.status} onValueChange={(v) => setInlineTask({ ...inlineTask, status: v })}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>{["Not Started","In Progress","Completed","Blocked"].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                    </Select>
+                    <Select value={inlineTask.priority} onValueChange={(v) => setInlineTask({ ...inlineTask, priority: v })}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>{["Low","Medium","High","Critical"].map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setShowInlineTask(false)}>Cancel</Button>
+                    <Button size="sm" className="h-7 text-xs bg-blue-700 hover:bg-blue-800 text-white"
+                      disabled={!inlineTask.description || createTaskForDecisionMutation.isPending}
+                      onClick={() => createTaskForDecisionMutation.mutate({ projectId, description: inlineTask.description, status: inlineTask.status, priority: inlineTask.priority, assignDate: new Date().toISOString().split("T")[0] })}>
+                      {createTaskForDecisionMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "Create & Link"}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+            {/* Linked Issue */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <Label>Linked Issue ID</Label>
+                <Button type="button" size="sm" variant="ghost" className="h-6 text-xs gap-1 px-2"
+                  onClick={() => { setShowInlineIssue((v) => !v); setShowInlineTask(false); }}>
+                  <Plus className="w-3 h-3" /> Create Issue
+                </Button>
+              </div>
+              <Input value={decisionForm.issueId} onChange={(e) => setDecisionForm({ ...decisionForm, issueId: e.target.value })} placeholder="e.g. ISS-0001" />
+              {showInlineIssue && (
+                <div className="rounded-lg border bg-orange-50 p-3 space-y-2 mt-1">
+                  <p className="text-xs font-semibold text-orange-700">New Issue — will be linked automatically</p>
+                  <Input placeholder="Issue description *" value={inlineIssue.description} onChange={(e) => setInlineIssue({ ...inlineIssue, description: e.target.value })} className="h-8 text-sm" />
+                  <div className="grid grid-cols-2 gap-2">
+                    <Select value={inlineIssue.status} onValueChange={(v) => setInlineIssue({ ...inlineIssue, status: v })}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>{["Open","In Progress","Resolved","Closed"].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                    </Select>
+                    <Select value={inlineIssue.priority} onValueChange={(v) => setInlineIssue({ ...inlineIssue, priority: v })}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>{["Low","Medium","High","Critical"].map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setShowInlineIssue(false)}>Cancel</Button>
+                    <Button size="sm" className="h-7 text-xs bg-orange-700 hover:bg-orange-800 text-white"
+                      disabled={!inlineIssue.description || createIssueForDecisionMutation.isPending}
+                      onClick={() => createIssueForDecisionMutation.mutate({ projectId, description: inlineIssue.description, status: inlineIssue.status, priority: inlineIssue.priority })}>
+                      {createIssueForDecisionMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "Create & Link"}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreateDecision(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => { setShowCreateDecision(false); setShowInlineTask(false); setShowInlineIssue(false); }}>Cancel</Button>
             <Button className="bg-gray-900 hover:bg-gray-800 text-white" onClick={() => createDecisionMutation.mutate({ projectId, title: decisionForm.title, description: decisionForm.description, decidedBy: decisionForm.decidedBy, decisionDate: decisionForm.decisionDate, status: decisionForm.status, impact: decisionForm.impact, requirementId: decisionForm.requirementId, taskId: decisionForm.taskId, issueId: decisionForm.issueId, meetingId: decisionForm.meetingId !== "" ? decisionForm.meetingId : undefined })} disabled={!decisionForm.title || createDecisionMutation.isPending}>
               {createDecisionMutation.isPending ? "Saving..." : "Log Decision"}
             </Button>
@@ -481,11 +575,79 @@ export default function Meetings() {
             </div>
             <div className="space-y-1"><Label>Linked Requirement ID</Label><Input value={decisionForm.requirementId} onChange={(e) => setDecisionForm({ ...decisionForm, requirementId: e.target.value })} /></div>
             <div className="col-span-2 space-y-1"><Label>Impact</Label><Textarea value={decisionForm.impact} onChange={(e) => setDecisionForm({ ...decisionForm, impact: e.target.value })} rows={2} /></div>
-            <div className="space-y-1"><Label>Linked Task ID</Label><Input value={decisionForm.taskId} onChange={(e) => setDecisionForm({ ...decisionForm, taskId: e.target.value })} /></div>
-            <div className="space-y-1"><Label>Linked Issue ID</Label><Input value={decisionForm.issueId} onChange={(e) => setDecisionForm({ ...decisionForm, issueId: e.target.value })} /></div>
+            {/* Linked Task */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <Label>Linked Task ID</Label>
+                <Button type="button" size="sm" variant="ghost" className="h-6 text-xs gap-1 px-2"
+                  onClick={() => { setShowInlineTask((v) => !v); setShowInlineIssue(false); }}>
+                  <Plus className="w-3 h-3" /> Create Task
+                </Button>
+              </div>
+              <Input value={decisionForm.taskId} onChange={(e) => setDecisionForm({ ...decisionForm, taskId: e.target.value })} placeholder="e.g. TSK-0001" />
+              {showInlineTask && (
+                <div className="rounded-lg border bg-blue-50 p-3 space-y-2 mt-1">
+                  <p className="text-xs font-semibold text-blue-700">New Task — will be linked automatically</p>
+                  <Input placeholder="Task description *" value={inlineTask.description} onChange={(e) => setInlineTask({ ...inlineTask, description: e.target.value })} className="h-8 text-sm" />
+                  <div className="grid grid-cols-2 gap-2">
+                    <Select value={inlineTask.status} onValueChange={(v) => setInlineTask({ ...inlineTask, status: v })}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>{["Not Started","In Progress","Completed","Blocked"].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                    </Select>
+                    <Select value={inlineTask.priority} onValueChange={(v) => setInlineTask({ ...inlineTask, priority: v })}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>{["Low","Medium","High","Critical"].map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setShowInlineTask(false)}>Cancel</Button>
+                    <Button size="sm" className="h-7 text-xs bg-blue-700 hover:bg-blue-800 text-white"
+                      disabled={!inlineTask.description || createTaskForDecisionMutation.isPending}
+                      onClick={() => createTaskForDecisionMutation.mutate({ projectId, description: inlineTask.description, status: inlineTask.status, priority: inlineTask.priority, assignDate: new Date().toISOString().split("T")[0] })}>
+                      {createTaskForDecisionMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "Create & Link"}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+            {/* Linked Issue */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <Label>Linked Issue ID</Label>
+                <Button type="button" size="sm" variant="ghost" className="h-6 text-xs gap-1 px-2"
+                  onClick={() => { setShowInlineIssue((v) => !v); setShowInlineTask(false); }}>
+                  <Plus className="w-3 h-3" /> Create Issue
+                </Button>
+              </div>
+              <Input value={decisionForm.issueId} onChange={(e) => setDecisionForm({ ...decisionForm, issueId: e.target.value })} placeholder="e.g. ISS-0001" />
+              {showInlineIssue && (
+                <div className="rounded-lg border bg-orange-50 p-3 space-y-2 mt-1">
+                  <p className="text-xs font-semibold text-orange-700">New Issue — will be linked automatically</p>
+                  <Input placeholder="Issue description *" value={inlineIssue.description} onChange={(e) => setInlineIssue({ ...inlineIssue, description: e.target.value })} className="h-8 text-sm" />
+                  <div className="grid grid-cols-2 gap-2">
+                    <Select value={inlineIssue.status} onValueChange={(v) => setInlineIssue({ ...inlineIssue, status: v })}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>{["Open","In Progress","Resolved","Closed"].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                    </Select>
+                    <Select value={inlineIssue.priority} onValueChange={(v) => setInlineIssue({ ...inlineIssue, priority: v })}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>{["Low","Medium","High","Critical"].map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setShowInlineIssue(false)}>Cancel</Button>
+                    <Button size="sm" className="h-7 text-xs bg-orange-700 hover:bg-orange-800 text-white"
+                      disabled={!inlineIssue.description || createIssueForDecisionMutation.isPending}
+                      onClick={() => createIssueForDecisionMutation.mutate({ projectId, description: inlineIssue.description, status: inlineIssue.status, priority: inlineIssue.priority })}>
+                      {createIssueForDecisionMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "Create & Link"}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowEditDecision(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => { setShowEditDecision(false); setShowInlineTask(false); setShowInlineIssue(false); }}>Cancel</Button>
             <Button className="bg-gray-900 hover:bg-gray-800 text-white" onClick={() => selectedDecision && updateDecisionMutation.mutate({ id: selectedDecision, title: decisionForm.title, description: decisionForm.description, decidedBy: decisionForm.decidedBy, decisionDate: decisionForm.decisionDate, status: decisionForm.status, impact: decisionForm.impact, requirementId: decisionForm.requirementId, taskId: decisionForm.taskId, issueId: decisionForm.issueId, meetingId: decisionForm.meetingId !== "" ? decisionForm.meetingId : null })} disabled={!decisionForm.title || updateDecisionMutation.isPending}>
               {updateDecisionMutation.isPending ? "Saving..." : "Save Changes"}
             </Button>

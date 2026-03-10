@@ -51,6 +51,8 @@ type StakeholderFormData = {
   communicationResponsible: string;
   communicationResponsibleId: number | undefined;
   notes: string;
+  costPerHour: string;
+  costPerDay: string;
 };
 
 const EMPTY_FORM: StakeholderFormData = {
@@ -58,6 +60,7 @@ const EMPTY_FORM: StakeholderFormData = {
   isInternalTeam: false, powerLevel: 3, interestLevel: 3,
   engagementStrategy: "", communicationFrequency: "", communicationChannel: "",
   communicationMessage: "", communicationResponsible: "", communicationResponsibleId: undefined, notes: "",
+  costPerHour: "", costPerDay: "",
 };
 
 const ENGAGEMENT_STRATEGIES = [
@@ -656,6 +659,8 @@ export default function Stakeholders() {
   const [kpiDialogOpen, setKpiDialogOpen] = useState(false);
   const [devPlanDialogOpen, setDevPlanDialogOpen] = useState(false);
   const [formData, setFormData] = useState<StakeholderFormData>(EMPTY_FORM);
+  const [viewMode, setViewMode] = useState<"table" | "matrix">("table");
+  const [dragOverQuadrant, setDragOverQuadrant] = useState<string | null>(null);
 
   const utils = trpc.useUtils();
   const { data: stakeholders = [], isLoading } = trpc.stakeholders.list.useQuery(
@@ -712,6 +717,8 @@ export default function Stakeholders() {
       communicationResponsible: s.communicationResponsible || "",
       communicationResponsibleId: s.communicationResponsibleId ?? undefined,
       notes: s.notes || "",
+      costPerHour: s.costPerHour != null ? String(s.costPerHour) : "",
+      costPerDay: s.costPerDay != null ? String(s.costPerDay) : "",
     });
     setIsEditOpen(true);
   };
@@ -803,6 +810,35 @@ export default function Stakeholders() {
             onChange={(e) => setFormData({ ...formData, job: e.target.value })}
             placeholder="IT Department"
           />
+        </div>
+      </div>
+
+      {/* Cost fields */}
+      <div className="space-y-3 border-t pt-3">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Cost Rates</p>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <Label>Cost Per Hour ($)</Label>
+            <Input
+              type="number"
+              min="0"
+              step="0.01"
+              value={formData.costPerHour}
+              onChange={(e) => setFormData({ ...formData, costPerHour: e.target.value })}
+              placeholder="0.00"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Cost Per Day ($)</Label>
+            <Input
+              type="number"
+              min="0"
+              step="0.01"
+              value={formData.costPerDay}
+              onChange={(e) => setFormData({ ...formData, costPerDay: e.target.value })}
+              placeholder="0.00"
+            />
+          </div>
         </div>
       </div>
 
@@ -1037,9 +1073,90 @@ export default function Stakeholders() {
             </button>
           ))}
         </div>
+        {/* View mode toggle */}
+        <div className="flex gap-1 border rounded-lg p-1 ml-auto">
+          <button onClick={() => setViewMode("table")}
+            className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${viewMode === "table" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+            Table
+          </button>
+          <button onClick={() => setViewMode("matrix")}
+            className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${viewMode === "matrix" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+            Engagement Matrix
+          </button>
+        </div>
       </div>
 
+      {/* ── Engagement Matrix View ────────────────────────────────────────────── */}
+      {viewMode === "matrix" && (() => {
+        const QUADRANTS = [
+          { key: "Keep Satisfied",  label: "Keep Satisfied",  sub: "High Power · Low Interest",  color: "bg-orange-50 border-orange-300", badge: "bg-orange-100 text-orange-700", pos: "top-left"     },
+          { key: "Manage Closely",  label: "Manage Closely",  sub: "High Power · High Interest", color: "bg-red-50 border-red-300",    badge: "bg-red-100 text-red-700",    pos: "top-right"    },
+          { key: "Monitor",         label: "Monitor",         sub: "Low Power · Low Interest",   color: "bg-gray-50 border-gray-300",  badge: "bg-gray-100 text-gray-600",  pos: "bottom-left"  },
+          { key: "Keep Informed",   label: "Keep Informed",   sub: "Low Power · High Interest",  color: "bg-blue-50 border-blue-300",  badge: "bg-blue-100 text-blue-700",  pos: "bottom-right" },
+        ];
+        return (
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">Drag stakeholder cards between quadrants to change their engagement strategy.</p>
+            <div className="grid grid-cols-2 gap-3">
+              {QUADRANTS.map(q => (
+                <div
+                  key={q.key}
+                  className={`rounded-xl border-2 p-3 min-h-[160px] transition-all ${q.color} ${dragOverQuadrant === q.key ? "ring-2 ring-primary ring-offset-1 scale-[1.01]" : ""}`}
+                  onDragOver={(e) => { e.preventDefault(); setDragOverQuadrant(q.key); }}
+                  onDragLeave={() => setDragOverQuadrant(null)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setDragOverQuadrant(null);
+                    const id = parseInt(e.dataTransfer.getData("stakeholderId"));
+                    if (!id) return;
+                    updateMutation.mutate({ id, data: { engagementStrategy: q.key } });
+                  }}
+                >
+                  <div className="mb-2">
+                    <div className="font-semibold text-sm">{q.label}</div>
+                    <div className="text-xs text-muted-foreground">{q.sub}</div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {filteredStakeholders
+                      .filter(s => (s.engagementStrategy || "Monitor") === q.key)
+                      .map(s => (
+                        <div
+                          key={s.id}
+                          draggable
+                          onDragStart={(e) => {
+                            e.dataTransfer.setData("stakeholderId", String(s.id));
+                            e.dataTransfer.effectAllowed = "move";
+                          }}
+                          className="flex items-center gap-1.5 bg-white rounded-lg border px-2 py-1 shadow-sm cursor-grab active:cursor-grabbing select-none hover:shadow-md transition-shadow"
+                          title={`${s.fullName}${s.position ? ` — ${s.position}` : ""}\nDrag to change engagement`}
+                        >
+                          <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-[10px] font-bold text-gray-600">
+                            {s.fullName?.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <div className="text-xs font-medium leading-tight">{s.fullName}</div>
+                            {s.position && <div className="text-[10px] text-muted-foreground leading-tight truncate max-w-[100px]">{s.position}</div>}
+                          </div>
+                        </div>
+                      ))}
+                    {filteredStakeholders.filter(s => (s.engagementStrategy || "Monitor") === q.key).length === 0 && (
+                      <div className="text-xs text-muted-foreground/60 italic">Drop stakeholders here</div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* Axis labels */}
+            <div className="flex justify-between text-[11px] text-muted-foreground px-1">
+              <span>← Low Interest</span>
+              <span>High Interest →</span>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Table */}
+      {viewMode === "table" &&
       <div className="border rounded-lg overflow-hidden">
         <Table>
           <TableHeader>
@@ -1050,6 +1167,7 @@ export default function Stakeholders() {
               <TableHead>Contact</TableHead>
               <TableHead>Engagement</TableHead>
               <TableHead>Power / Interest</TableHead>
+              <TableHead className="hidden xl:table-cell">Cost Rate</TableHead>
               <TableHead className="w-32">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -1120,6 +1238,19 @@ export default function Stakeholders() {
                       <span>I: {s.interestLevel ?? "—"}/5</span>
                     </div>
                   </TableCell>
+                  <TableCell className="hidden xl:table-cell">
+                    <div className="text-xs space-y-0.5">
+                      {s.costPerHour != null && (
+                        <div className="text-muted-foreground">${Number(s.costPerHour).toFixed(2)}/hr</div>
+                      )}
+                      {s.costPerDay != null && (
+                        <div className="text-muted-foreground">${Number(s.costPerDay).toFixed(2)}/day</div>
+                      )}
+                      {s.costPerHour == null && s.costPerDay == null && (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
                       <Button
@@ -1159,7 +1290,7 @@ export default function Stakeholders() {
             )}
           </TableBody>
         </Table>
-      </div>
+      </div>}
 
       {/* Create Dialog */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
@@ -1174,7 +1305,12 @@ export default function Stakeholders() {
               onClick={() => {
                 if (!formData.fullName.trim()) { toast.error("Full name is required"); return; }
                 if (!currentProjectId) { toast.error("No project selected"); return; }
-                createMutation.mutate({ ...formData, projectId: currentProjectId });
+                createMutation.mutate({
+                  ...formData,
+                  projectId: currentProjectId,
+                  costPerHour: formData.costPerHour || undefined,
+                  costPerDay: formData.costPerDay || undefined,
+                });
               }}
               disabled={createMutation.isPending}
             >
@@ -1197,7 +1333,14 @@ export default function Stakeholders() {
               onClick={() => {
                 if (!selectedStakeholder) return;
                 if (!formData.fullName.trim()) { toast.error("Full name is required"); return; }
-                updateMutation.mutate({ id: selectedStakeholder.id, data: formData });
+                updateMutation.mutate({
+                  id: selectedStakeholder.id,
+                  data: {
+                    ...formData,
+                    costPerHour: formData.costPerHour || null,
+                    costPerDay: formData.costPerDay || null,
+                  },
+                });
               }}
               disabled={updateMutation.isPending}
             >
