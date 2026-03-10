@@ -8,7 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Search, Edit, History, Loader2, Plus, Trash2, Settings, Eye, Save, X, Info, AlertCircle, List, LayoutGrid } from "lucide-react";
+import { Search, Edit, History, Loader2, Plus, Trash2, Settings, Eye, Save, X, Info, AlertCircle, List, LayoutGrid, AlignJustify } from "lucide-react";
+import { KanbanBoard, KanbanItem, KanbanColumn } from "@/components/KanbanBoard";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -103,7 +104,13 @@ export default function Issues() {
     refSource: '',
     createdAt: new Date().toISOString().split('T')[0],
   });
-  const [viewMode, setViewMode] = useState<'compact' | 'full'>('full');
+  const [viewMode, setViewMode] = useState<'compact' | 'full' | 'kanban'>(() => {
+    return (localStorage.getItem('issues-view-mode') as 'compact' | 'full' | 'kanban') || 'full';
+  });
+  const setAndSaveViewMode = (mode: 'compact' | 'full' | 'kanban') => {
+    setViewMode(mode);
+    localStorage.setItem('issues-view-mode', mode);
+  };
   const [selectedIssueIds, setSelectedIssueIds] = useState<number[]>([]);
   const [bulkStatusDialogOpen, setBulkStatusDialogOpen] = useState(false);
   const [bulkStatus, setBulkStatus] = useState("");
@@ -635,10 +642,13 @@ export default function Issues() {
         <div className="flex items-center gap-2 flex-wrap">
           <Badge variant="outline" className="text-red-700 border-red-300">{issues?.length || 0} Issues</Badge>
           <div className="flex items-center border border-red-300 rounded-md flex-shrink-0">
-            <Button size="sm" variant={viewMode === 'compact' ? 'default' : 'ghost'} onClick={() => setViewMode('compact')} title="Compact View" className="h-8 w-8 p-0 rounded-r-none border-r border-red-300">
+            <Button size="sm" variant={viewMode === 'compact' ? 'default' : 'ghost'} onClick={() => setAndSaveViewMode('compact')} title="Compact View" className="h-8 w-8 p-0 rounded-r-none border-r border-red-300">
+              <AlignJustify className="w-4 h-4" />
+            </Button>
+            <Button size="sm" variant={viewMode === 'full' ? 'default' : 'ghost'} onClick={() => setAndSaveViewMode('full')} title="Full View" className="h-8 w-8 p-0 border-r border-red-300 rounded-none">
               <List className="w-4 h-4" />
             </Button>
-            <Button size="sm" variant={viewMode === 'full' ? 'default' : 'ghost'} onClick={() => setViewMode('full')} title="Full View" className="h-8 w-8 p-0 rounded-l-none">
+            <Button size="sm" variant={viewMode === 'kanban' ? 'default' : 'ghost'} onClick={() => setAndSaveViewMode('kanban')} title="Board View" className="h-8 w-8 p-0 rounded-l-none">
               <LayoutGrid className="w-4 h-4" />
             </Button>
           </div>
@@ -703,8 +713,70 @@ export default function Issues() {
             </div>
           )}
 
-          <div className="rounded-md border overflow-hidden">
-            <Table className="table-fixed w-full">
+          <div className={viewMode === 'kanban' ? '' : 'rounded-md border overflow-hidden'}>
+            {viewMode === 'kanban' ? (
+              (() => {
+                const palette = [
+                  { color: 'bg-slate-200 dark:bg-slate-700', text: 'text-slate-700 dark:text-slate-200' },
+                  { color: 'bg-blue-100 dark:bg-blue-900/50', text: 'text-blue-700 dark:text-blue-300' },
+                  { color: 'bg-amber-100 dark:bg-amber-900/50', text: 'text-amber-700 dark:text-amber-300' },
+                  { color: 'bg-green-100 dark:bg-green-900/50', text: 'text-green-700 dark:text-green-300' },
+                  { color: 'bg-red-100 dark:bg-red-900/50', text: 'text-red-700 dark:text-red-300' },
+                  { color: 'bg-purple-100 dark:bg-purple-900/50', text: 'text-purple-700 dark:text-purple-300' },
+                ];
+                const kanbanColumns: KanbanColumn[] = (statusOptions && statusOptions.length > 0
+                  ? statusOptions.filter((s: any) => s.value)
+                  : [{ value: 'Open' }, { value: 'In Progress' }, { value: 'Resolved' }, { value: 'Closed' }]
+                ).map((s: any, idx: number) => ({
+                  id: s.value, label: s.value,
+                  color: palette[idx % palette.length].color,
+                  textColor: palette[idx % palette.length].text,
+                }));
+                const priorityColor: Record<string, string> = {
+                  Critical: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
+                  High: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300',
+                  Medium: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300',
+                  Low: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
+                };
+                const kanbanItems: KanbanItem[] = (filteredIssues ?? []).map((issue) => ({
+                  ...issue, id: issue.id, columnId: issue.status || kanbanColumns[0]?.id || 'Open',
+                }));
+                return (
+                  <KanbanBoard
+                    columns={kanbanColumns}
+                    items={kanbanItems}
+                    isLoading={!issues}
+                    onMove={(itemId, newColumnId) => {
+                      const issue = issues?.find((i) => i.id === itemId);
+                      if (!issue) return;
+                      updateMutation.mutate({ id: issue.id, issueId: issue.issueId, data: { status: newColumnId } });
+                    }}
+                    renderCard={(item) => {
+                      const issue = item as any;
+                      return (
+                        <div className="bg-card border border-border/60 rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing select-none">
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <span className="text-xs font-mono text-red-600 font-semibold">{issue.issueId}</span>
+                            {issue.priority && (
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0 ${priorityColor[issue.priority] || 'bg-muted text-muted-foreground'}`}>{issue.priority}</span>
+                            )}
+                          </div>
+                          <p className="text-sm text-foreground leading-snug mb-2 line-clamp-2">{issue.description}</p>
+                          <div className="flex items-center justify-between gap-2 mt-1">
+                            {issue.issueGroup && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 font-medium truncate max-w-[100px]">{issue.issueGroup}</span>
+                            )}
+                            {issue.owner && (
+                              <span className="text-[10px] text-muted-foreground truncate max-w-[80px] ml-auto" title={issue.owner}>{issue.owner.split(' ')[0]}</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    }}
+                  />
+                );
+              })()
+            ) : <Table className="table-fixed w-full">
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-10">
@@ -880,10 +952,9 @@ export default function Issues() {
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
+            </Table>}
           </div>
-
-          {filteredIssues?.length === 0 && (
+          {filteredIssues?.length === 0 && viewMode !== 'kanban' && (
             <EmptyState
               icon={AlertCircle}
               title="No issues found"

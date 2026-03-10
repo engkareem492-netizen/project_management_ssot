@@ -44,6 +44,7 @@ import RaidLog from "./pages/RaidLog";
 import ActionItems from "./pages/ActionItems";
 import LessonsLearned from "./pages/LessonsLearned";
 import DocumentLibrary from "./pages/DocumentLibrary";
+import CustomFields from "./pages/CustomFields";
 
 function Router() {
   return (
@@ -208,6 +209,11 @@ function Router() {
       <Route path={"/lessons-learned"}>
         <DashboardLayout>
           <LessonsLearned />
+        </DashboardLayout>
+      </Route>
+      <Route path={"/custom-fields"}>
+        <DashboardLayout>
+          <CustomFields />
         </DashboardLayout>
       </Route>
       <Route path={"/documents"}>

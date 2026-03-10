@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Search, Edit, History, Loader2, Plus, Trash2, Settings, Eye, Save, X, CheckSquare, Info, AlertCircle, Link2, GitBranch, RefreshCw, ArrowRight, ChevronDown, ChevronRight, ListTree, LayoutList, AlignJustify, Users } from "lucide-react";
+import { Search, Edit, History, Loader2, Plus, Trash2, Settings, Eye, Save, X, CheckSquare, Info, AlertCircle, Link2, GitBranch, RefreshCw, ArrowRight, ChevronDown, ChevronRight, ListTree, LayoutList, AlignJustify, Users, CalendarDays } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,6 +22,10 @@ import { toast } from "sonner";
 import { ImportExportToolbar } from "@/components/ImportExportToolbar";
 import { formatDate } from "@/lib/dateUtils";
 import { EmptyState } from "@/components/EmptyState";
+import { KanbanBoard, KanbanItem, KanbanColumn } from "@/components/KanbanBoard";
+import { LayoutGrid } from "lucide-react";
+import { SavedViews } from "@/components/SavedViews";
+import { TaskCalendar } from "@/components/TaskCalendar";
 
 export default function Tasks() {
   const { currentProjectId } = useProject();
@@ -110,17 +114,19 @@ export default function Tasks() {
   const [quickDecisionForm, setQuickDecisionForm] = useState({ title: '', description: '', decidedBy: '', impact: '', status: 'Open' as const });
   const [taskDetailTab, setTaskDetailTab] = useState('details');
 
-  // View mode: 'normal' | 'compact'
-  const [viewMode, setViewMode] = useState<'normal' | 'compact'>(() => {
-    return (localStorage.getItem('tasks-view-mode') as 'normal' | 'compact') || 'normal';
+  // View mode: 'normal' | 'compact' | 'kanban' | 'calendar'
+  const [viewMode, setViewMode] = useState<'normal' | 'compact' | 'kanban' | 'calendar'>(() => {
+    return (localStorage.getItem('tasks-view-mode') as 'normal' | 'compact' | 'kanban' | 'calendar') || 'normal';
   });
-  const toggleViewMode = () => {
+  const cycleViewMode = () => {
     setViewMode((prev) => {
-      const next = prev === 'normal' ? 'compact' : 'normal';
+      const order: Array<'normal' | 'compact' | 'kanban' | 'calendar'> = ['normal', 'compact', 'kanban', 'calendar'];
+      const next = order[(order.indexOf(prev) + 1) % order.length];
       localStorage.setItem('tasks-view-mode', next);
       return next;
     });
   };
+  const toggleViewMode = cycleViewMode;
 
   // Recurring task state
   const [recurringDialogOpen, setRecurringDialogOpen] = useState(false);
@@ -509,9 +515,32 @@ export default function Tasks() {
       task.taskId.toLowerCase().includes(searchTerm.toLowerCase()) ||
       task.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       task.responsible?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesResponsible = responsibleFilter
-      ? (task.responsible || 'Unassigned') === responsibleFilter
-      : true;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const matchesResponsible = (() => {
+      if (!responsibleFilter) return true;
+      if (responsibleFilter === '__overdue__') {
+        if (!task.dueDate) return false;
+        const due = new Date(task.dueDate);
+        due.setHours(0, 0, 0, 0);
+        const statusVal = (task.currentStatus || task.status || '').toLowerCase();
+        const isComplete = statusOptions?.find((s: any) => (s.value || '').toLowerCase() === statusVal)?.isComplete;
+        return due < today && !isComplete;
+      }
+      if (responsibleFilter === '__high_priority__') {
+        return ['high', 'critical'].includes((task.priority || '').toLowerCase());
+      }
+      if (responsibleFilter === '__open__') {
+        const statusVal = (task.currentStatus || task.status || '').toLowerCase();
+        const isComplete = statusOptions?.find((s: any) => (s.value || '').toLowerCase() === statusVal)?.isComplete;
+        return !isComplete;
+      }
+      if (responsibleFilter === '__my_tasks__') {
+        // Filter by current user name if available
+        return true; // fallback: show all
+      }
+      return (task.responsible || 'Unassigned') === responsibleFilter;
+    })();
     return matchesSearch && matchesResponsible;
   });
 
@@ -832,18 +861,63 @@ export default function Tasks() {
               size="sm"
               variant="outline"
               onClick={toggleViewMode}
-              title={viewMode === 'normal' ? 'Switch to Compact View' : 'Switch to Normal View'}
+              title={`Switch to ${viewMode === 'normal' ? 'Compact' : viewMode === 'compact' ? 'Board' : viewMode === 'kanban' ? 'Calendar' : 'Normal'} View`}
             >
               {viewMode === 'normal' ? (
                 <><AlignJustify className="w-4 h-4 mr-1" />Compact</>
+              ) : viewMode === 'compact' ? (
+                <><LayoutGrid className="w-4 h-4 mr-1" />Board</>
+              ) : viewMode === 'kanban' ? (
+                <><CalendarDays className="w-4 h-4 mr-1" />Calendar</>
               ) : (
                 <><LayoutList className="w-4 h-4 mr-1" />Normal</>
               )}
             </Button>
           </div>
 
+          {/* Quick filter chips + Saved Views row */}
+          <div className="flex items-center gap-2 mb-3 flex-wrap">
+            {(['Overdue', 'High Priority', 'Open', 'My Tasks'] as const).map(chip => {
+              const today = new Date();
+              const isActive = (() => {
+                if (chip === 'Overdue') return responsibleFilter === '__overdue__';
+                if (chip === 'High Priority') return responsibleFilter === '__high_priority__';
+                if (chip === 'Open') return responsibleFilter === '__open__';
+                if (chip === 'My Tasks') return responsibleFilter === '__my_tasks__';
+                return false;
+              })();
+              return (
+                <button
+                  key={chip}
+                  onClick={() => {
+                    const key = chip === 'Overdue' ? '__overdue__' : chip === 'High Priority' ? '__high_priority__' : chip === 'Open' ? '__open__' : '__my_tasks__';
+                    setResponsibleFilter(isActive ? null : key);
+                  }}
+                  className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                    isActive
+                      ? 'bg-red-600 text-white border-red-600'
+                      : 'bg-white text-gray-600 border-gray-200 hover:border-red-300 hover:text-red-600'
+                  }`}
+                >
+                  {chip}
+                </button>
+              );
+            })}
+            <div className="ml-auto">
+              <SavedViews
+                storageKey={`tasks-saved-views-${currentProjectId}`}
+                currentFilters={{ search: searchTerm, responsible: responsibleFilter, viewMode }}
+                onApply={(f: any) => {
+                  if (f.search !== undefined) setSearchTerm(f.search);
+                  if (f.responsible !== undefined) setResponsibleFilter(f.responsible);
+                  if (f.viewMode !== undefined) setViewMode(f.viewMode);
+                }}
+              />
+            </div>
+          </div>
+
           {/* Responsible Filter Badge */}
-          {responsibleFilter && (
+          {responsibleFilter && !['__overdue__','__high_priority__','__open__','__my_tasks__'].includes(responsibleFilter) && (
             <div className="flex items-center gap-2 mb-3">
               <span className="text-sm text-muted-foreground">Filtered by responsible:</span>
               <Badge variant="secondary" className="gap-1 cursor-pointer" onClick={() => setResponsibleFilter(null)}>
@@ -887,8 +961,106 @@ export default function Tasks() {
             </div>
           )}
 
-          <div className="rounded-md border border-primary/20 overflow-hidden">
-            {viewMode === 'compact' ? (
+          <div className={viewMode === 'kanban' || viewMode === 'calendar' ? '' : 'rounded-md border border-primary/20 overflow-hidden'}>
+            {viewMode === 'calendar' ? (
+              /* ── CALENDAR VIEW ── */
+              <TaskCalendar
+                tasks={(filteredTasks ?? []) as any}
+                onTaskClick={(t) => {
+                  const task = tasks?.find((x: any) => x.id === t.id);
+                  if (task) handleViewDetails(task);
+                }}
+              />
+            ) : viewMode === 'kanban' ? (
+              /* ── KANBAN BOARD VIEW ── */
+              (() => {
+                const kanbanColumns: KanbanColumn[] = (statusOptions && statusOptions.length > 0
+                  ? statusOptions.filter((s: any) => s.value)
+                  : [
+                      { value: 'Not Started' }, { value: 'In Progress' },
+                      { value: 'On Hold' }, { value: 'Completed' }, { value: 'Closed' },
+                    ]
+                ).map((s: any, idx: number) => {
+                  const palette = [
+                    { color: 'bg-slate-200 dark:bg-slate-700', text: 'text-slate-700 dark:text-slate-200' },
+                    { color: 'bg-blue-100 dark:bg-blue-900/50', text: 'text-blue-700 dark:text-blue-300' },
+                    { color: 'bg-amber-100 dark:bg-amber-900/50', text: 'text-amber-700 dark:text-amber-300' },
+                    { color: 'bg-green-100 dark:bg-green-900/50', text: 'text-green-700 dark:text-green-300' },
+                    { color: 'bg-red-100 dark:bg-red-900/50', text: 'text-red-700 dark:text-red-300' },
+                    { color: 'bg-purple-100 dark:bg-purple-900/50', text: 'text-purple-700 dark:text-purple-300' },
+                  ];
+                  const p = palette[idx % palette.length];
+                  return { id: s.value, label: s.value, color: p.color, textColor: p.text };
+                });
+                const kanbanItems: KanbanItem[] = (filteredTasks ?? []).map((t) => ({
+                  ...t,
+                  id: t.id,
+                  columnId: t.status || kanbanColumns[0]?.id || 'Not Started',
+                }));
+                const priorityColor: Record<string, string> = {
+                  Critical: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
+                  High: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300',
+                  Medium: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300',
+                  Low: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
+                  Normal: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
+                };
+                return (
+                  <KanbanBoard
+                    columns={kanbanColumns}
+                    items={kanbanItems}
+                    isLoading={!tasks}
+                    onMove={(itemId, newColumnId) => {
+                      const task = tasks?.find((t) => t.id === itemId);
+                      if (!task) return;
+                      updateMutation.mutate({
+                        id: task.id,
+                        taskId: task.taskId,
+                        data: { status: newColumnId },
+                      });
+                    }}
+                    renderCard={(item) => {
+                      const task = item as any;
+                      const isOverdue = task.dueDate && !isTaskComplete(task) && new Date(task.dueDate) < new Date();
+                      return (
+                        <div
+                          className="bg-card border border-border/60 rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing select-none"
+                          onClick={() => handleViewDetails(task)}
+                        >
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <span className="text-xs font-mono text-primary font-semibold">{task.taskId}</span>
+                            {task.priority && (
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0 ${priorityColor[task.priority] || 'bg-muted text-muted-foreground'}`}>
+                                {task.priority}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-foreground leading-snug mb-2 line-clamp-2">{task.description}</p>
+                          <div className="flex items-center justify-between gap-2 mt-1">
+                            {task.taskGroup && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 font-medium truncate max-w-[100px]">
+                                {task.taskGroup}
+                              </span>
+                            )}
+                            <div className="flex items-center gap-1 ml-auto">
+                              {task.responsible && (
+                                <span className="text-[10px] text-muted-foreground truncate max-w-[80px]" title={task.responsible}>
+                                  {task.responsible.split(' ')[0]}
+                                </span>
+                              )}
+                              {task.dueDate && (
+                                <span className={`text-[10px] font-medium ${isOverdue ? 'text-red-500' : 'text-muted-foreground'}`}>
+                                  {isOverdue ? '⚠ ' : ''}{formatDate(task.dueDate)}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }}
+                  />
+                );
+              })()
+            ) : viewMode === 'compact' ? (
               /* ── COMPACT VIEW: dense table with color-coded status, priority, due date ── */
               <Table className="w-full table-fixed text-sm">
                 <colgroup>

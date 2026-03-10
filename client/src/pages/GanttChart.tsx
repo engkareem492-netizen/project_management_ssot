@@ -146,6 +146,18 @@ export default function GanttChart() {
     startClientX: number;
     deltaX: number;
   }>(null);
+  // Resize state (left = change start date, right = change end date)
+  const [resizeBar, setResizeBar] = useState<null | {
+    taskId: string;
+    taskDbId: number;
+    side: "left" | "right";
+    origAssignDate: string | null;
+    origDueDate: string | null;
+    startClientX: number;
+    deltaX: number;
+  }>(null);
+  // Baseline overlay toggle
+  const [showBaseline, setShowBaseline] = useState(false);
 
   // % complete stored in localStorage per project
   const [pctMap, setPctMap] = useState<Record<string, number>>(() => {
@@ -424,6 +436,21 @@ export default function GanttChart() {
     });
   }, [connecting]);
 
+  const startBarResize = useCallback((e: React.MouseEvent, t: any, side: "left" | "right") => {
+    if (connecting) return;
+    e.stopPropagation();
+    e.preventDefault();
+    setResizeBar({
+      taskId: t.taskId,
+      taskDbId: t.id,
+      side,
+      origAssignDate: t.assignDate ?? null,
+      origDueDate: t.dueDate ?? null,
+      startClientX: e.clientX,
+      deltaX: 0,
+    });
+  }, [connecting]);
+
   const onMouseMove = useCallback((e: React.MouseEvent) => {
     if (connecting) {
       const rect = timelineRef.current?.getBoundingClientRect();
@@ -432,10 +459,29 @@ export default function GanttChart() {
     } else if (dragBar) {
       const deltaX = e.clientX - dragBar.startClientX;
       setDragBar(d => d ? { ...d, deltaX } : null);
+    } else if (resizeBar) {
+      const deltaX = e.clientX - resizeBar.startClientX;
+      setResizeBar(r => r ? { ...r, deltaX } : null);
     }
-  }, [connecting, dragBar]);
+  }, [connecting, dragBar, resizeBar]);
 
   const onMouseUp = useCallback((e: React.MouseEvent) => {
+    if (resizeBar) {
+      const deltaDays = Math.round(resizeBar.deltaX / pxPerDay);
+      if (deltaDays !== 0) {
+        const dataPayload: any = {};
+        if (resizeBar.side === "left" && resizeBar.origAssignDate) {
+          dataPayload.assignDate = offsetDateStr(resizeBar.origAssignDate, deltaDays);
+        } else if (resizeBar.side === "right" && resizeBar.origDueDate) {
+          dataPayload.dueDate = offsetDateStr(resizeBar.origDueDate, deltaDays);
+        }
+        if (Object.keys(dataPayload).length > 0) {
+          updateTaskMutation.mutate({ id: resizeBar.taskDbId, taskId: resizeBar.taskId, data: dataPayload });
+        }
+      }
+      setResizeBar(null);
+      return;
+    }
     if (dragBar) {
       const deltaDays = Math.round(dragBar.deltaX / pxPerDay);
       if (deltaDays !== 0) {
@@ -528,7 +574,14 @@ export default function GanttChart() {
         <div className="flex items-center gap-1.5"><div className="w-3 h-3 rotate-45 bg-yellow-500 rounded-sm" />Milestone</div>
         <div className="flex items-center gap-1.5"><div className="w-8 h-3 rounded border-2 border-red-500 bg-red-100" />Critical Path</div>
         <div className="flex items-center gap-1.5"><div className="w-0.5 h-4 bg-red-500" />Today</div>
+        <div className="flex items-center gap-1.5"><div className="w-8 h-3 rounded border-2 border-dashed border-gray-400 bg-gray-100/50" />Baseline</div>
         <div className="ml-auto flex items-center gap-2">
+          <button
+            onClick={() => setShowBaseline(b => !b)}
+            className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${showBaseline ? "bg-gray-700 text-white" : "bg-muted hover:bg-muted/80"}`}
+          >
+            {showBaseline ? "Hide Baseline" : "Show Baseline"}
+          </button>
           <span>Zoom:</span>
           {(["days", "weeks", "months"] as ZoomLevel[]).map((z) => (
             <button
@@ -668,10 +721,22 @@ export default function GanttChart() {
                     {/* Grid + task bars */}
                     {visibleRows.map((t, i) => {
                       const isDraggingThis = dragBar?.taskId === t.taskId;
+                      const isResizingThis = resizeBar?.taskId === t.taskId;
                       const dragDeltaPx = isDraggingThis ? dragBar!.deltaX : 0;
                       const dragDeltaDays = isDraggingThis ? Math.round(dragBar!.deltaX / pxPerDay) : 0;
-                      const barLeftPx = t.barStart * pxPerDay + dragDeltaPx;
-                      const barWidthPx = Math.max(t.isMilestone ? 16 : 8, t.barDuration * pxPerDay);
+                      const resizeDeltaPx = isResizingThis ? resizeBar!.deltaX : 0;
+                      const resizeDeltaDays = isResizingThis ? Math.round(resizeBar!.deltaX / pxPerDay) : 0;
+                      // Compute bar position accounting for both drag and resize
+                      let barLeftPx = t.barStart * pxPerDay + dragDeltaPx;
+                      let barWidthPx = Math.max(t.isMilestone ? 16 : 8, t.barDuration * pxPerDay);
+                      if (isResizingThis) {
+                        if (resizeBar!.side === "left") {
+                          barLeftPx += resizeDeltaPx;
+                          barWidthPx = Math.max(8, barWidthPx - resizeDeltaPx);
+                        } else {
+                          barWidthPx = Math.max(8, barWidthPx + resizeDeltaPx);
+                        }
+                      }
                       const pct = pctMap[t.taskId] ?? 0;
                       const color = t.isParent ? "#374151" : getStatusColor(t.status);
 
@@ -689,6 +754,19 @@ export default function GanttChart() {
                             />
                           ))}
 
+                          {/* Baseline ghost bar (shown when showBaseline is on) */}
+                          {showBaseline && (t.startParsed || t.endParsed) && !t.isMilestone && (() => {
+                            const baseLeft = t.barStart * pxPerDay;
+                            const baseWidth = Math.max(8, t.barDuration * pxPerDay);
+                            return (
+                              <div
+                                className="absolute top-3 bottom-3 rounded border-2 border-dashed border-gray-400 bg-gray-100/40 pointer-events-none z-5"
+                                style={{ left: `${baseLeft}px`, width: `${baseWidth}px` }}
+                                title={`Baseline: ${fmtDate(t.assignDate)} → ${fmtDate(t.dueDate)}`}
+                              />
+                            );
+                          })()}
+
                           {/* Bar or milestone */}
                           {(t.startParsed || t.endParsed) && (
                             t.isMilestone ? (
@@ -702,13 +780,13 @@ export default function GanttChart() {
                             ) : (
                               /* Task bar */
                               <div
-                                className={`absolute top-2 bottom-2 rounded group overflow-hidden select-none
+                                className={`absolute top-2 bottom-2 rounded group overflow-visible select-none
                                   ${t.isCritical ? "border-2 border-red-500" : ""}
-                                  ${isDraggingThis ? "opacity-80 ring-2 ring-violet-400 cursor-grabbing shadow-lg" : "cursor-grab hover:brightness-95"}`}
-                                style={{ left: `${barLeftPx}px`, width: `${barWidthPx}px`, backgroundColor: color }}
-                                title={`${t.taskId}: ${t.description}\n${fmtDate(t.assignDate)} → ${fmtDate(t.dueDate)}\nStatus: ${t.status ?? "—"}\n% Complete: ${pct}%${isDraggingThis && dragDeltaDays !== 0 ? `\nMoving: ${dragDeltaDays > 0 ? "+" : ""}${dragDeltaDays} days` : ""}`}
+                                  ${isDraggingThis ? "opacity-80 ring-2 ring-violet-400 cursor-grabbing shadow-lg" : isResizingThis ? "opacity-80 ring-2 ring-blue-400 shadow-lg" : "cursor-grab hover:brightness-95"}`}
+                                style={{ left: `${barLeftPx}px`, width: `${barWidthPx}px`, backgroundColor: color, overflow: "hidden" }}
+                                title={`${t.taskId}: ${t.description}\n${fmtDate(t.assignDate)} → ${fmtDate(t.dueDate)}\nStatus: ${t.status ?? "—"}\n% Complete: ${pct}%${isDraggingThis && dragDeltaDays !== 0 ? `\nMoving: ${dragDeltaDays > 0 ? "+" : ""}${dragDeltaDays} days` : ""}${isResizingThis && resizeDeltaDays !== 0 ? `\nResizing: ${resizeDeltaDays > 0 ? "+" : ""}${resizeDeltaDays} days` : ""}`}
                                 onMouseDown={(e) => startBarDrag(e, t)}
-                                onClick={() => !connecting && !dragBar && openEditPct(t)}
+                                onClick={() => !connecting && !dragBar && !resizeBar && openEditPct(t)}
                               >
                                 {/* % complete fill */}
                                 {pct > 0 && (
@@ -718,10 +796,32 @@ export default function GanttChart() {
                                 <span className="relative z-10 text-white text-[10px] font-medium px-1.5 truncate leading-[28px] inline-block pointer-events-none">
                                   {isDraggingThis && dragDeltaDays !== 0
                                     ? `${t.taskId} (${dragDeltaDays > 0 ? "+" : ""}${dragDeltaDays}d)`
+                                    : isResizingThis && resizeDeltaDays !== 0
+                                    ? `${t.taskId} (${resizeDeltaDays > 0 ? "+" : ""}${resizeDeltaDays}d)`
                                     : barWidthPx > 60 ? `${t.taskId}${pct > 0 ? ` (${pct}%)` : ""}` : barWidthPx > 24 ? t.taskId : ""}
                                 </span>
-                                {/* Connection handles — left (start) — only shown when not dragging this bar */}
-                                {!isDraggingThis && (
+                                {/* Left resize handle */}
+                                {!isDraggingThis && !connecting && (
+                                  <div
+                                    className="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize opacity-0 group-hover:opacity-100 z-25 flex items-center justify-center"
+                                    title="Drag to resize start date"
+                                    onMouseDown={(e) => { e.stopPropagation(); startBarResize(e, t, "left"); }}
+                                  >
+                                    <div className="w-0.5 h-4 bg-white/70 rounded-full" />
+                                  </div>
+                                )}
+                                {/* Right resize handle */}
+                                {!isDraggingThis && !connecting && (
+                                  <div
+                                    className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize opacity-0 group-hover:opacity-100 z-25 flex items-center justify-center"
+                                    title="Drag to resize end date"
+                                    onMouseDown={(e) => { e.stopPropagation(); startBarResize(e, t, "right"); }}
+                                  >
+                                    <div className="w-0.5 h-4 bg-white/70 rounded-full" />
+                                  </div>
+                                )}
+                                {/* Connection handles — left (start) — only shown when not dragging/resizing this bar */}
+                                {!isDraggingThis && !isResizingThis && (
                                   <div
                                     className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-white border-2 border-violet-500 opacity-0 group-hover:opacity-100 hover:!opacity-100 z-20 cursor-crosshair transition-opacity"
                                     title="Drag to connect (Start)"
@@ -729,7 +829,7 @@ export default function GanttChart() {
                                   />
                                 )}
                                 {/* Connection handles — right (end) */}
-                                {!isDraggingThis && (
+                                {!isDraggingThis && !isResizingThis && (
                                   <div
                                     className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-3 h-3 rounded-full bg-white border-2 border-violet-500 opacity-0 group-hover:opacity-100 hover:!opacity-100 z-20 cursor-crosshair transition-opacity"
                                     title="Drag to connect (End)"

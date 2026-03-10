@@ -1223,3 +1223,44 @@ export const documents = mysqlTable("documents", {
 });
 export type Document = typeof documents.$inferSelect;
 export type InsertDocument = typeof documents.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────
+// Custom Fields — definitions per project + entity type
+// ─────────────────────────────────────────────────────────────
+export const customFieldDefs = mysqlTable("customFieldDefs", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  entityType: mysqlEnum("entityType", [
+    "task", "issue", "risk", "requirement", "stakeholder",
+    "deliverable", "milestone", "action_item", "change_request",
+  ]).notNull(),
+  fieldKey: varchar("fieldKey", { length: 100 }).notNull(),   // machine key, e.g. "budget_code"
+  label: varchar("label", { length: 150 }).notNull(),         // display label
+  fieldType: mysqlEnum("fieldType", [
+    "text", "number", "date", "select", "multi_select",
+    "checkbox", "url", "email", "textarea", "rating",
+  ]).notNull().default("text"),
+  options: json("options").$type<string[]>(),                 // for select / multi_select
+  required: boolean("required").default(false),
+  sortOrder: int("sortOrder").default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type CustomFieldDef = typeof customFieldDefs.$inferSelect;
+export type InsertCustomFieldDef = typeof customFieldDefs.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────
+// Custom Fields — values per entity instance
+// ─────────────────────────────────────────────────────────────
+export const customFieldValues = mysqlTable("customFieldValues", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  fieldDefId: int("fieldDefId").notNull(),                    // FK → customFieldDefs.id
+  entityType: varchar("entityType", { length: 50 }).notNull(),
+  entityId: varchar("entityId", { length: 100 }).notNull(),   // e.g. taskId "T-0001"
+  value: text("value"),                                       // stored as string; parsed by fieldType
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type CustomFieldValue = typeof customFieldValues.$inferSelect;
+export type InsertCustomFieldValue = typeof customFieldValues.$inferInsert;

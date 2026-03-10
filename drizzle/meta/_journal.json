@@ -267,6 +267,13 @@
       "when": 1773131136000,
       "tag": "0037_lush_absorbing_man",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "5",
+      "when": 1773174654970,
+      "tag": "0038_wet_magik",
+      "breakpoints": true
     }
   ]
 }

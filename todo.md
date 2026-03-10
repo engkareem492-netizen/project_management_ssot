@@ -481,3 +481,18 @@
 - [x] Tasks: link tasks to decisions, RACI contact cards on hover
 - [x] Nav updates in App.tsx and DashboardLayout.tsx
 - [x] Fix: Tasks.tsx decisionDate Date→string type error after merge
+
+## Pillar 1 — Universal Graphical Interaction (Mar 2026)
+- [x] Kanban Board view for Tasks (drag cards between status columns)
+- [x] Kanban Board view for Issues
+- [x] Kanban Board view for Risks
+- [x] Stakeholder drag-and-drop engagement matrix (pool → quadrant) — upgraded with richer cards, power/interest bars, unassigned pool
+- [x] Gantt resize handles (left/right edge drag to change start/end dates)
+- [x] Gantt dependency arrow drawing (already existed)
+- [x] Gantt baseline overlay (toggle button + ghost bars)
+- [x] Calendar view for Tasks (month/week, priority color coding, click to open detail)
+
+## Pillar 2 — Deep Customization Engine (Mar 2026)
+- [x] Custom fields engine (DB schema: customFieldDefs + customFieldValues, backend router, Settings UI page)
+- [x] Custom workflow statuses per entity type (already fully implemented in Settings)
+- [x] Saved views and filters per module (SavedViews component + quick-filter chips: Overdue, High Priority, Open, My Tasks)

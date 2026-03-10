@@ -72,6 +72,7 @@ import {
   BookMarked,
   FolderOpen,
   Scroll,
+  Sliders,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import {
@@ -147,6 +148,7 @@ const menuItems: MenuItem[] = [
   { icon: Layers, label: "Traceability Matrix", path: "/traceability" },
   { icon: FolderOpen, label: "Document Library", path: "/documents" },
   { icon: BookMarked, label: "Lessons Learned", path: "/lessons-learned" },
+  { icon: Sliders, label: "Custom Fields", path: "/custom-fields" },
   { icon: FileBarChart, label: "Periodic Report", path: "/periodic-report" },
   { icon: SettingsIcon, label: "Settings", path: "/settings" },
 ];

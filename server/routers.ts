@@ -35,6 +35,7 @@ import { testRunsRouter } from "./routers/testRuns.router";
 import { actionItemsRouter } from "./routers/actionItems.router";
 import { lessonsLearnedRouter } from "./routers/lessonsLearned.router";
 import { documentsRouter } from "./routers/documents.router";
+import { customFieldsRouter } from "./routers/customFields";
 
 export const appRouter = router({
   system: systemRouter,
@@ -64,6 +65,7 @@ export const appRouter = router({
   actionItems: actionItemsRouter,
   lessonsLearned: lessonsLearnedRouter,
   documents: documentsRouter,
+  customFields: customFieldsRouter,
   scopeItems: router({
     list: protectedProcedure
       .input(z.object({ projectId: z.number() }))
@@ -771,11 +773,11 @@ export const appRouter = router({
           consultedId: z.number().nullable().optional(),
           informedId: z.number().nullable().optional(),
           ownerId: z.number().nullable().optional(),
-          manHours: z.number().nullable().optional(),
+          manHours: z.union([z.number(), z.string()]).nullable().optional(),
         }),
       }))
       .mutation(async ({ input, ctx }) => {
-        // Convert manHours number to string for decimal DB column
+        // Convert manHours to string for decimal DB column
         if (input.data.manHours !== undefined && input.data.manHours !== null) {
           (input.data as any).manHours = String(input.data.manHours);
         }

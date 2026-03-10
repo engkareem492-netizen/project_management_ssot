@@ -1089,21 +1089,66 @@ export default function Stakeholders() {
       {/* ── Engagement Matrix View ────────────────────────────────────────────── */}
       {viewMode === "matrix" && (() => {
         const QUADRANTS = [
-          { key: "Keep Satisfied",  label: "Keep Satisfied",  sub: "High Power · Low Interest",  color: "bg-orange-50 border-orange-300", badge: "bg-orange-100 text-orange-700", pos: "top-left"     },
-          { key: "Manage Closely",  label: "Manage Closely",  sub: "High Power · High Interest", color: "bg-red-50 border-red-300",    badge: "bg-red-100 text-red-700",    pos: "top-right"    },
-          { key: "Monitor",         label: "Monitor",         sub: "Low Power · Low Interest",   color: "bg-gray-50 border-gray-300",  badge: "bg-gray-100 text-gray-600",  pos: "bottom-left"  },
-          { key: "Keep Informed",   label: "Keep Informed",   sub: "Low Power · High Interest",  color: "bg-blue-50 border-blue-300",  badge: "bg-blue-100 text-blue-700",  pos: "bottom-right" },
+          { key: "Keep Satisfied",  label: "Keep Satisfied",  sub: "High Power · Low Interest",  color: "bg-orange-50 border-orange-300",  headerColor: "text-orange-700", dotColor: "bg-orange-400" },
+          { key: "Manage Closely",  label: "Manage Closely",  sub: "High Power · High Interest", color: "bg-red-50 border-red-300",         headerColor: "text-red-700",    dotColor: "bg-red-500"    },
+          { key: "Monitor",         label: "Monitor",         sub: "Low Power · Low Interest",   color: "bg-gray-50 border-gray-300",       headerColor: "text-gray-600",   dotColor: "bg-gray-400"   },
+          { key: "Keep Informed",   label: "Keep Informed",   sub: "Low Power · High Interest",  color: "bg-blue-50 border-blue-300",       headerColor: "text-blue-700",   dotColor: "bg-blue-400"   },
         ];
+        const UNASSIGNED_KEY = "__unassigned__";
+        const assignedKeys = new Set(QUADRANTS.map(q => q.key));
+        const unassigned = filteredStakeholders.filter(s => !s.engagementStrategy || !assignedKeys.has(s.engagementStrategy));
+        const StakeholderCard = ({ s }: { s: any }) => (
+          <div
+            draggable
+            onDragStart={(e) => {
+              e.dataTransfer.setData("stakeholderId", String(s.id));
+              e.dataTransfer.effectAllowed = "move";
+            }}
+            className="bg-white dark:bg-card border border-border rounded-xl p-2.5 shadow-sm cursor-grab active:cursor-grabbing select-none hover:shadow-md transition-all hover:-translate-y-0.5 w-full"
+            title={`${s.fullName}${s.position ? ` — ${s.position}` : ""}\nDrag to change engagement strategy`}
+          >
+            <div className="flex items-center gap-2 mb-1.5">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-red-400 to-red-600 flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
+                {s.fullName?.charAt(0).toUpperCase()}
+              </div>
+              <div className="min-w-0">
+                <div className="text-xs font-semibold text-foreground truncate">{s.fullName}</div>
+                {s.position && <div className="text-[10px] text-muted-foreground truncate">{s.position}</div>}
+              </div>
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[9px] text-muted-foreground w-10 flex-shrink-0">Power</span>
+                <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                  <div className="h-full bg-orange-400 rounded-full" style={{ width: `${((s.powerLevel ?? 3) / 5) * 100}%` }} />
+                </div>
+                <span className="text-[9px] text-muted-foreground w-3">{s.powerLevel ?? 3}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[9px] text-muted-foreground w-10 flex-shrink-0">Interest</span>
+                <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                  <div className="h-full bg-blue-400 rounded-full" style={{ width: `${((s.interestLevel ?? 3) / 5) * 100}%` }} />
+                </div>
+                <span className="text-[9px] text-muted-foreground w-3">{s.interestLevel ?? 3}</span>
+              </div>
+            </div>
+          </div>
+        );
         return (
-          <div className="space-y-2">
-            <p className="text-xs text-muted-foreground">Drag stakeholder cards between quadrants to change their engagement strategy.</p>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">Drag stakeholder cards between quadrants to change their engagement strategy.</p>
+              {unassigned.length > 0 && (
+                <span className="text-[10px] bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-medium">{unassigned.length} unassigned</span>
+              )}
+            </div>
             <div className="grid grid-cols-2 gap-3">
               {QUADRANTS.map(q => (
                 <div
                   key={q.key}
-                  className={`rounded-xl border-2 p-3 min-h-[160px] transition-all ${q.color} ${dragOverQuadrant === q.key ? "ring-2 ring-primary ring-offset-1 scale-[1.01]" : ""}`}
+                  className={`rounded-xl border-2 p-3 min-h-[200px] transition-all ${q.color} ${dragOverQuadrant === q.key ? "ring-2 ring-primary ring-offset-1 scale-[1.01] shadow-lg" : ""}`}
                   onDragOver={(e) => { e.preventDefault(); setDragOverQuadrant(q.key); }}
-                  onDragLeave={() => setDragOverQuadrant(null)}
+                  onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverQuadrant(null); }}
                   onDrop={(e) => {
                     e.preventDefault();
                     setDragOverQuadrant(null);
@@ -1112,35 +1157,21 @@ export default function Stakeholders() {
                     updateMutation.mutate({ id, data: { engagementStrategy: q.key } });
                   }}
                 >
-                  <div className="mb-2">
-                    <div className="font-semibold text-sm">{q.label}</div>
-                    <div className="text-xs text-muted-foreground">{q.sub}</div>
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <div className={`font-bold text-sm ${q.headerColor}`}>{q.label}</div>
+                      <div className="text-[10px] text-muted-foreground">{q.sub}</div>
+                    </div>
+                    <div className={`w-2.5 h-2.5 rounded-full ${q.dotColor}`} />
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="space-y-2">
                     {filteredStakeholders
-                      .filter(s => (s.engagementStrategy || "Monitor") === q.key)
-                      .map(s => (
-                        <div
-                          key={s.id}
-                          draggable
-                          onDragStart={(e) => {
-                            e.dataTransfer.setData("stakeholderId", String(s.id));
-                            e.dataTransfer.effectAllowed = "move";
-                          }}
-                          className="flex items-center gap-1.5 bg-white rounded-lg border px-2 py-1 shadow-sm cursor-grab active:cursor-grabbing select-none hover:shadow-md transition-shadow"
-                          title={`${s.fullName}${s.position ? ` — ${s.position}` : ""}\nDrag to change engagement`}
-                        >
-                          <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-[10px] font-bold text-gray-600">
-                            {s.fullName?.charAt(0).toUpperCase()}
-                          </div>
-                          <div>
-                            <div className="text-xs font-medium leading-tight">{s.fullName}</div>
-                            {s.position && <div className="text-[10px] text-muted-foreground leading-tight truncate max-w-[100px]">{s.position}</div>}
-                          </div>
-                        </div>
-                      ))}
-                    {filteredStakeholders.filter(s => (s.engagementStrategy || "Monitor") === q.key).length === 0 && (
-                      <div className="text-xs text-muted-foreground/60 italic">Drop stakeholders here</div>
+                      .filter(s => s.engagementStrategy === q.key)
+                      .map(s => <StakeholderCard key={s.id} s={s} />)}
+                    {filteredStakeholders.filter(s => s.engagementStrategy === q.key).length === 0 && (
+                      <div className={`border-2 border-dashed rounded-lg p-3 text-center text-[11px] text-muted-foreground/50 transition-colors ${dragOverQuadrant === q.key ? 'border-primary/50 bg-primary/5' : 'border-muted'}`}>
+                        Drop here
+                      </div>
                     )}
                   </div>
                 </div>
@@ -1150,6 +1181,36 @@ export default function Stakeholders() {
             <div className="flex justify-between text-[11px] text-muted-foreground px-1">
               <span>← Low Interest</span>
               <span>High Interest →</span>
+            </div>
+            {/* Unassigned Pool */}
+            <div
+              className={`rounded-xl border-2 border-dashed p-3 transition-all ${
+                dragOverQuadrant === UNASSIGNED_KEY
+                  ? "border-primary bg-primary/5 ring-2 ring-primary ring-offset-1"
+                  : "border-gray-300 bg-gray-50/50 dark:bg-muted/20"
+              }`}
+              onDragOver={(e) => { e.preventDefault(); setDragOverQuadrant(UNASSIGNED_KEY); }}
+              onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverQuadrant(null); }}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragOverQuadrant(null);
+                const id = parseInt(e.dataTransfer.getData("stakeholderId"));
+                if (!id) return;
+                updateMutation.mutate({ id, data: { engagementStrategy: "" } });
+              }}
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <div className="font-semibold text-sm text-muted-foreground">Unassigned Pool</div>
+                <span className="text-[10px] bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded-full">{unassigned.length}</span>
+                <span className="text-[10px] text-muted-foreground/60 ml-auto">Drag here to remove from matrix</span>
+              </div>
+              {unassigned.length === 0 ? (
+                <div className="text-[11px] text-muted-foreground/50 italic text-center py-2">All stakeholders are assigned to a quadrant</div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                  {unassigned.map(s => <StakeholderCard key={s.id} s={s} />)}
+                </div>
+              )}
             </div>
           </div>
         );
