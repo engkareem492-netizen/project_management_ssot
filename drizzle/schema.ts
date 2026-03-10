@@ -1120,7 +1120,7 @@ export const milestones = mysqlTable("milestones", {
   phase: varchar("phase", { length: 100 }),
   ownerId: int("ownerId"),
   owner: varchar("owner", { length: 255 }),
-  linkedDeliverableIds: json("linkedDeliverableIds").$type<string[]>().default([]),
+  linkedDeliverableIds: json("linkedDeliverableIds").$type<string[]>(),
   notes: text("notes"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -1142,9 +1142,9 @@ export const testRuns = mysqlTable("testRuns", {
   status: mysqlEnum("status", ["Not Executed", "Passed", "Failed", "Blocked", "Skipped"]).default("Not Executed"),
   environment: varchar("environment", { length: 100 }),
   actualResult: text("actualResult"),
-  defectIds: json("defectIds").$type<string[]>().default([]),
+  defectIds: json("defectIds").$type<string[]>(),
   notes: text("notes"),
-  stepResults: json("stepResults").$type<Array<{ step: string; result: string; status: string }>>().default([]),
+  stepResults: json("stepResults").$type<Array<{ step: string; result: string; status: string }>>(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -1193,7 +1193,7 @@ export const lessonsLearned = mysqlTable("lessonsLearned", {
   owner: varchar("owner", { length: 255 }),
   dateRecorded: date("dateRecorded"),
   status: mysqlEnum("status", ["Draft", "Reviewed", "Approved", "Archived"]).default("Draft"),
-  tags: json("tags").$type<string[]>().default([]),
+  tags: json("tags").$type<string[]>(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -1217,7 +1217,7 @@ export const documents = mysqlTable("documents", {
   entityId: varchar("entityId", { length: 50 }),
   uploadedBy: varchar("uploadedBy", { length: 255 }),
   uploadedById: int("uploadedById"),
-  tags: json("tags").$type<string[]>().default([]),
+  tags: json("tags").$type<string[]>(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

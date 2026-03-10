@@ -36,7 +36,7 @@ CREATE TABLE `milestones` (
 	`phase` varchar(100),
 	`ownerId` int,
 	`owner` varchar(255),
-	`linkedDeliverableIds` json DEFAULT ('[]'),
+	`linkedDeliverableIds` json,
 	`notes` text,
 	`createdAt` timestamp NOT NULL DEFAULT (now()),
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
@@ -54,9 +54,9 @@ CREATE TABLE `testRuns` (
 	`status` enum('Not Executed','Passed','Failed','Blocked','Skipped') DEFAULT 'Not Executed',
 	`environment` varchar(100),
 	`actualResult` text,
-	`defectIds` json DEFAULT ('[]'),
+	`defectIds` json,
 	`notes` text,
-	`stepResults` json DEFAULT ('[]'),
+	`stepResults` json,
 	`createdAt` timestamp NOT NULL DEFAULT (now()),
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `testRuns_id` PRIMARY KEY(`id`)
@@ -97,7 +97,7 @@ CREATE TABLE `lessonsLearned` (
 	`owner` varchar(255),
 	`dateRecorded` date,
 	`status` enum('Draft','Reviewed','Approved','Archived') DEFAULT 'Draft',
-	`tags` json DEFAULT ('[]'),
+	`tags` json,
 	`createdAt` timestamp NOT NULL DEFAULT (now()),
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `lessonsLearned_id` PRIMARY KEY(`id`)
@@ -117,7 +117,7 @@ CREATE TABLE `documents` (
 	`entityId` varchar(50),
 	`uploadedBy` varchar(255),
 	`uploadedById` int,
-	`tags` json DEFAULT ('[]'),
+	`tags` json,
 	`createdAt` timestamp NOT NULL DEFAULT (now()),
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `documents_id` PRIMARY KEY(`id`)
