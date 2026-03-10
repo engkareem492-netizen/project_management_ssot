@@ -515,3 +515,14 @@
 - [x] Requirements.tsx: added CustomFieldsSection to requirement detail/edit view
 - [x] RiskRegister.tsx: added CustomFieldsSection to risk edit dialog
 - [x] Stakeholders.tsx: added CustomFieldsSection to stakeholder edit dialog
+
+## Gantt & Stakeholder Matrix Enhancements (Mar 11, 2026)
+- [x] Gantt: rectangular bars with prominent resize grips
+- [x] Gantt: drag-to-move bars (shifts dates, persisted on drop)
+- [x] Gantt: resize start/end by dragging left/right grip
+- [x] Gantt: orthogonal MS-Project style dependency arrows
+- [x] Gantt: purple connection handles on hover to drag-create dependencies
+- [x] Gantt: critical path deps shown in red arrows
+- [x] Stakeholders: redesigned 2x2 Power/Interest matrix with axis labels
+- [x] Stakeholders: improved card design with avatar, power/interest bars, P/I badge
+- [x] Stakeholders: drag-and-drop cards update engagementStrategy in DB immediately

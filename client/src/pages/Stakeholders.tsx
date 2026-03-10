@@ -1089,126 +1089,174 @@ export default function Stakeholders() {
 
       {/* ── Engagement Matrix View ────────────────────────────────────────────── */}
       {viewMode === "matrix" && (() => {
+        // ── Power/Interest quadrant layout (top-left=Keep Satisfied, top-right=Manage Closely, bottom-left=Monitor, bottom-right=Keep Informed)
         const QUADRANTS = [
-          { key: "Keep Satisfied",  label: "Keep Satisfied",  sub: "High Power · Low Interest",  color: "bg-orange-50 border-orange-300",  headerColor: "text-orange-700", dotColor: "bg-orange-400" },
-          { key: "Manage Closely",  label: "Manage Closely",  sub: "High Power · High Interest", color: "bg-red-50 border-red-300",         headerColor: "text-red-700",    dotColor: "bg-red-500"    },
-          { key: "Monitor",         label: "Monitor",         sub: "Low Power · Low Interest",   color: "bg-gray-50 border-gray-300",       headerColor: "text-gray-600",   dotColor: "bg-gray-400"   },
-          { key: "Keep Informed",   label: "Keep Informed",   sub: "Low Power · High Interest",  color: "bg-blue-50 border-blue-300",       headerColor: "text-blue-700",   dotColor: "bg-blue-400"   },
+          { key: "Keep Satisfied",  label: "Keep Satisfied",  emoji: "😐", sub: "High Power · Low Interest",  bg: "#fff7ed", border: "#fb923c", headerColor: "#c2410c", badgeBg: "#ffedd5", badgeText: "#c2410c" },
+          { key: "Manage Closely",  label: "Manage Closely",  emoji: "🎯", sub: "High Power · High Interest", bg: "#fef2f2", border: "#f87171", headerColor: "#b91c1c", badgeBg: "#fee2e2", badgeText: "#b91c1c" },
+          { key: "Monitor",         label: "Monitor",         emoji: "👁",  sub: "Low Power · Low Interest",   bg: "#f9fafb", border: "#d1d5db", headerColor: "#4b5563", badgeBg: "#f3f4f6", badgeText: "#4b5563" },
+          { key: "Keep Informed",   label: "Keep Informed",   emoji: "📢", sub: "Low Power · High Interest",  bg: "#eff6ff", border: "#60a5fa", headerColor: "#1d4ed8", badgeBg: "#dbeafe", badgeText: "#1d4ed8" },
         ];
         const UNASSIGNED_KEY = "__unassigned__";
         const assignedKeys = new Set(QUADRANTS.map(q => q.key));
         const unassigned = filteredStakeholders.filter(s => !s.engagementStrategy || !assignedKeys.has(s.engagementStrategy));
-        const StakeholderCard = ({ s }: { s: any }) => (
-          <div
-            draggable
-            onDragStart={(e) => {
-              e.dataTransfer.setData("stakeholderId", String(s.id));
-              e.dataTransfer.effectAllowed = "move";
-            }}
-            className="bg-white dark:bg-card border border-border rounded-xl p-2.5 shadow-sm cursor-grab active:cursor-grabbing select-none hover:shadow-md transition-all hover:-translate-y-0.5 w-full"
-            title={`${s.fullName}${s.position ? ` — ${s.position}` : ""}\nDrag to change engagement strategy`}
-          >
-            <div className="flex items-center gap-2 mb-1.5">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-red-400 to-red-600 flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
-                {s.fullName?.charAt(0).toUpperCase()}
+        // Avatar color palette
+        const AVATAR_COLORS = [
+          ["#f87171","#b91c1c"],["#fb923c","#c2410c"],["#fbbf24","#92400e"],
+          ["#34d399","#065f46"],["#60a5fa","#1d4ed8"],["#a78bfa","#5b21b6"],
+          ["#f472b6","#9d174d"],["#94a3b8","#334155"],
+        ];
+        const avatarColor = (id: number) => AVATAR_COLORS[id % AVATAR_COLORS.length];
+        const StakeholderCard = ({ s, quadrantBg }: { s: any; quadrantBg?: string }) => {
+          const [from, to] = avatarColor(s.id);
+          return (
+            <div
+              draggable
+              onDragStart={(e) => {
+                e.dataTransfer.setData("stakeholderId", String(s.id));
+                e.dataTransfer.effectAllowed = "move";
+              }}
+              style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: '10px', padding: '10px', cursor: 'grab', userSelect: 'none', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', transition: 'box-shadow 0.15s, transform 0.15s' }}
+              className="hover:shadow-lg hover:-translate-y-0.5 active:cursor-grabbing w-full"
+              title={`${s.fullName}${s.position ? ` — ${s.position}` : ""}\nDrag to change engagement strategy`}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: `linear-gradient(135deg, ${from}, ${to})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700, color: 'white', flexShrink: 0 }}>
+                  {s.fullName?.charAt(0).toUpperCase()}
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: '12px', fontWeight: 600, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.fullName}</div>
+                  {s.position && <div style={{ fontSize: '10px', color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.position}</div>}
+                </div>
+                <div style={{ marginLeft: 'auto', flexShrink: 0, fontSize: '9px', fontWeight: 700, padding: '1px 5px', borderRadius: '4px', background: '#f3f4f6', color: '#374151' }}>
+                  P{s.powerLevel ?? 3}/I{s.interestLevel ?? 3}
+                </div>
               </div>
-              <div className="min-w-0">
-                <div className="text-xs font-semibold text-foreground truncate">{s.fullName}</div>
-                {s.position && <div className="text-[10px] text-muted-foreground truncate">{s.position}</div>}
+              {/* Mini power/interest bars */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <span style={{ fontSize: '9px', color: '#9ca3af', width: '36px', flexShrink: 0 }}>Power</span>
+                  <div style={{ flex: 1, height: '4px', background: '#f3f4f6', borderRadius: '2px', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', background: '#f97316', borderRadius: '2px', width: `${((s.powerLevel ?? 3) / 5) * 100}%` }} />
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <span style={{ fontSize: '9px', color: '#9ca3af', width: '36px', flexShrink: 0 }}>Interest</span>
+                  <div style={{ flex: 1, height: '4px', background: '#f3f4f6', borderRadius: '2px', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', background: '#3b82f6', borderRadius: '2px', width: `${((s.interestLevel ?? 3) / 5) * 100}%` }} />
+                  </div>
+                </div>
               </div>
             </div>
-            <div className="space-y-1">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[9px] text-muted-foreground w-10 flex-shrink-0">Power</span>
-                <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                  <div className="h-full bg-orange-400 rounded-full" style={{ width: `${((s.powerLevel ?? 3) / 5) * 100}%` }} />
-                </div>
-                <span className="text-[9px] text-muted-foreground w-3">{s.powerLevel ?? 3}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[9px] text-muted-foreground w-10 flex-shrink-0">Interest</span>
-                <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                  <div className="h-full bg-blue-400 rounded-full" style={{ width: `${((s.interestLevel ?? 3) / 5) * 100}%` }} />
-                </div>
-                <span className="text-[9px] text-muted-foreground w-3">{s.interestLevel ?? 3}</span>
-              </div>
-            </div>
-          </div>
-        );
+          );
+        };
         return (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-muted-foreground">Drag stakeholder cards between quadrants to change their engagement strategy.</p>
+          <div className="space-y-4">
+            {/* Instructions */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+              <p style={{ fontSize: '12px', color: '#6b7280' }}>Drag stakeholder cards between quadrants to change their engagement strategy. Drop on the <strong>Unassigned</strong> pool to clear.</p>
               {unassigned.length > 0 && (
-                <span className="text-[10px] bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-medium">{unassigned.length} unassigned</span>
+                <span style={{ fontSize: '10px', background: '#fef9c3', color: '#854d0e', padding: '2px 8px', borderRadius: '999px', fontWeight: 600 }}>{unassigned.length} unassigned</span>
               )}
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              {QUADRANTS.map(q => (
-                <div
-                  key={q.key}
-                  className={`rounded-xl border-2 p-3 min-h-[200px] transition-all ${q.color} ${dragOverQuadrant === q.key ? "ring-2 ring-primary ring-offset-1 scale-[1.01] shadow-lg" : ""}`}
-                  onDragOver={(e) => { e.preventDefault(); setDragOverQuadrant(q.key); }}
-                  onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverQuadrant(null); }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    setDragOverQuadrant(null);
-                    const id = parseInt(e.dataTransfer.getData("stakeholderId"));
-                    if (!id) return;
-                    updateMutation.mutate({ id, data: { engagementStrategy: q.key } });
-                  }}
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <div className={`font-bold text-sm ${q.headerColor}`}>{q.label}</div>
-                      <div className="text-[10px] text-muted-foreground">{q.sub}</div>
-                    </div>
-                    <div className={`w-2.5 h-2.5 rounded-full ${q.dotColor}`} />
-                  </div>
-                  <div className="space-y-2">
-                    {filteredStakeholders
-                      .filter(s => s.engagementStrategy === q.key)
-                      .map(s => <StakeholderCard key={s.id} s={s} />)}
-                    {filteredStakeholders.filter(s => s.engagementStrategy === q.key).length === 0 && (
-                      <div className={`border-2 border-dashed rounded-lg p-3 text-center text-[11px] text-muted-foreground/50 transition-colors ${dragOverQuadrant === q.key ? 'border-primary/50 bg-primary/5' : 'border-muted'}`}>
-                        Drop here
+
+            {/* The 2×2 Power/Interest Matrix */}
+            <div style={{ display: 'flex', gap: '0' }}>
+              {/* Y-axis label */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '24px', flexShrink: 0, gap: '4px' }}>
+                <span style={{ fontSize: '10px', color: '#6b7280', writingMode: 'vertical-rl', transform: 'rotate(180deg)', letterSpacing: '0.05em', fontWeight: 600 }}>POWER ↑</span>
+              </div>
+              <div style={{ flex: 1 }}>
+                {/* Top row: High Power */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3px', marginBottom: '3px' }}>
+                  {/* Top-left: Keep Satisfied (High Power, Low Interest) */}
+                  {[QUADRANTS[0], QUADRANTS[1]].map(q => (
+                    <div
+                      key={q.key}
+                      style={{ background: q.bg, border: `2px solid ${dragOverQuadrant === q.key ? '#6d28d9' : q.border}`, borderRadius: '12px', padding: '12px', minHeight: '180px', transition: 'all 0.15s', boxShadow: dragOverQuadrant === q.key ? '0 0 0 3px rgba(109,40,217,0.2), 0 4px 12px rgba(0,0,0,0.1)' : 'none', transform: dragOverQuadrant === q.key ? 'scale(1.01)' : 'scale(1)' }}
+                      onDragOver={(e) => { e.preventDefault(); setDragOverQuadrant(q.key); }}
+                      onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverQuadrant(null); }}
+                      onDrop={(e) => { e.preventDefault(); setDragOverQuadrant(null); const id = parseInt(e.dataTransfer.getData("stakeholderId")); if (!id) return; updateMutation.mutate({ id, data: { engagementStrategy: q.key } }); }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '10px' }}>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '2px' }}>
+                            <span style={{ fontSize: '14px' }}>{q.emoji}</span>
+                            <span style={{ fontSize: '13px', fontWeight: 700, color: q.headerColor }}>{q.label}</span>
+                          </div>
+                          <div style={{ fontSize: '10px', color: '#6b7280' }}>{q.sub}</div>
+                        </div>
+                        <span style={{ fontSize: '11px', fontWeight: 700, background: q.badgeBg, color: q.badgeText, padding: '1px 6px', borderRadius: '6px' }}>
+                          {filteredStakeholders.filter(s => s.engagementStrategy === q.key).length}
+                        </span>
                       </div>
-                    )}
-                  </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {filteredStakeholders.filter(s => s.engagementStrategy === q.key).map(s => <StakeholderCard key={s.id} s={s} />)}
+                        {filteredStakeholders.filter(s => s.engagementStrategy === q.key).length === 0 && (
+                          <div style={{ border: `2px dashed ${dragOverQuadrant === q.key ? '#6d28d9' : '#d1d5db'}`, borderRadius: '8px', padding: '16px', textAlign: 'center', fontSize: '11px', color: '#9ca3af', background: dragOverQuadrant === q.key ? 'rgba(109,40,217,0.04)' : 'transparent', transition: 'all 0.15s' }}>
+                            Drop here
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
+                {/* Bottom row: Low Power */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3px' }}>
+                  {[QUADRANTS[2], QUADRANTS[3]].map(q => (
+                    <div
+                      key={q.key}
+                      style={{ background: q.bg, border: `2px solid ${dragOverQuadrant === q.key ? '#6d28d9' : q.border}`, borderRadius: '12px', padding: '12px', minHeight: '180px', transition: 'all 0.15s', boxShadow: dragOverQuadrant === q.key ? '0 0 0 3px rgba(109,40,217,0.2), 0 4px 12px rgba(0,0,0,0.1)' : 'none', transform: dragOverQuadrant === q.key ? 'scale(1.01)' : 'scale(1)' }}
+                      onDragOver={(e) => { e.preventDefault(); setDragOverQuadrant(q.key); }}
+                      onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverQuadrant(null); }}
+                      onDrop={(e) => { e.preventDefault(); setDragOverQuadrant(null); const id = parseInt(e.dataTransfer.getData("stakeholderId")); if (!id) return; updateMutation.mutate({ id, data: { engagementStrategy: q.key } }); }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '10px' }}>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '2px' }}>
+                            <span style={{ fontSize: '14px' }}>{q.emoji}</span>
+                            <span style={{ fontSize: '13px', fontWeight: 700, color: q.headerColor }}>{q.label}</span>
+                          </div>
+                          <div style={{ fontSize: '10px', color: '#6b7280' }}>{q.sub}</div>
+                        </div>
+                        <span style={{ fontSize: '11px', fontWeight: 700, background: q.badgeBg, color: q.badgeText, padding: '1px 6px', borderRadius: '6px' }}>
+                          {filteredStakeholders.filter(s => s.engagementStrategy === q.key).length}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {filteredStakeholders.filter(s => s.engagementStrategy === q.key).map(s => <StakeholderCard key={s.id} s={s} />)}
+                        {filteredStakeholders.filter(s => s.engagementStrategy === q.key).length === 0 && (
+                          <div style={{ border: `2px dashed ${dragOverQuadrant === q.key ? '#6d28d9' : '#d1d5db'}`, borderRadius: '8px', padding: '16px', textAlign: 'center', fontSize: '11px', color: '#9ca3af', background: dragOverQuadrant === q.key ? 'rgba(109,40,217,0.04)' : 'transparent', transition: 'all 0.15s' }}>
+                            Drop here
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {/* X-axis label */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 8px 0', fontSize: '10px', color: '#6b7280', fontWeight: 600, letterSpacing: '0.05em' }}>
+                  <span>← LOW INTEREST</span>
+                  <span>HIGH INTEREST →</span>
+                </div>
+              </div>
             </div>
-            {/* Axis labels */}
-            <div className="flex justify-between text-[11px] text-muted-foreground px-1">
-              <span>← Low Interest</span>
-              <span>High Interest →</span>
-            </div>
+
             {/* Unassigned Pool */}
             <div
-              className={`rounded-xl border-2 border-dashed p-3 transition-all ${
-                dragOverQuadrant === UNASSIGNED_KEY
-                  ? "border-primary bg-primary/5 ring-2 ring-primary ring-offset-1"
-                  : "border-gray-300 bg-gray-50/50 dark:bg-muted/20"
-              }`}
+              style={{ border: `2px dashed ${dragOverQuadrant === UNASSIGNED_KEY ? '#6d28d9' : '#d1d5db'}`, borderRadius: '12px', padding: '12px', background: dragOverQuadrant === UNASSIGNED_KEY ? 'rgba(109,40,217,0.04)' : '#f9fafb', transition: 'all 0.15s', boxShadow: dragOverQuadrant === UNASSIGNED_KEY ? '0 0 0 3px rgba(109,40,217,0.15)' : 'none' }}
               onDragOver={(e) => { e.preventDefault(); setDragOverQuadrant(UNASSIGNED_KEY); }}
               onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverQuadrant(null); }}
-              onDrop={(e) => {
-                e.preventDefault();
-                setDragOverQuadrant(null);
-                const id = parseInt(e.dataTransfer.getData("stakeholderId"));
-                if (!id) return;
-                updateMutation.mutate({ id, data: { engagementStrategy: "" } });
-              }}
+              onDrop={(e) => { e.preventDefault(); setDragOverQuadrant(null); const id = parseInt(e.dataTransfer.getData("stakeholderId")); if (!id) return; updateMutation.mutate({ id, data: { engagementStrategy: "" } }); }}
             >
-              <div className="flex items-center gap-2 mb-2">
-                <div className="font-semibold text-sm text-muted-foreground">Unassigned Pool</div>
-                <span className="text-[10px] bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded-full">{unassigned.length}</span>
-                <span className="text-[10px] text-muted-foreground/60 ml-auto">Drag here to remove from matrix</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                <span style={{ fontSize: '13px', fontWeight: 600, color: '#6b7280' }}>Unassigned Pool</span>
+                <span style={{ fontSize: '10px', background: '#e5e7eb', color: '#374151', padding: '1px 6px', borderRadius: '999px', fontWeight: 600 }}>{unassigned.length}</span>
+                <span style={{ fontSize: '10px', color: '#9ca3af', marginLeft: 'auto' }}>Drag here to remove from matrix</span>
               </div>
               {unassigned.length === 0 ? (
-                <div className="text-[11px] text-muted-foreground/50 italic text-center py-2">All stakeholders are assigned to a quadrant</div>
+                <div style={{ fontSize: '11px', color: '#9ca3af', textAlign: 'center', padding: '8px', fontStyle: 'italic' }}>All stakeholders are assigned to a quadrant</div>
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '8px' }}>
                   {unassigned.map(s => <StakeholderCard key={s.id} s={s} />)}
                 </div>
               )}

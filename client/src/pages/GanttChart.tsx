@@ -778,62 +778,87 @@ export default function GanttChart() {
                                 onMouseDown={(e) => startBarDrag(e, t)}
                               />
                             ) : (
-                              /* Task bar */
+                              /* Task bar — rectangular with prominent handles */
                               <div
-                                className={`absolute top-2 bottom-2 rounded group overflow-visible select-none
-                                  ${t.isCritical ? "border-2 border-red-500" : ""}
-                                  ${isDraggingThis ? "opacity-80 ring-2 ring-violet-400 cursor-grabbing shadow-lg" : isResizingThis ? "opacity-80 ring-2 ring-blue-400 shadow-lg" : "cursor-grab hover:brightness-95"}`}
-                                style={{ left: `${barLeftPx}px`, width: `${barWidthPx}px`, backgroundColor: color, overflow: "hidden" }}
+                                className={`absolute group select-none overflow-visible
+                                  ${t.isCritical ? "ring-2 ring-red-500 ring-offset-0" : ""}
+                                  ${isDraggingThis ? "opacity-75 cursor-grabbing z-50" : isResizingThis ? "opacity-75 z-50" : "cursor-grab z-10"}`}
+                                style={{
+                                  left: `${barLeftPx}px`,
+                                  width: `${barWidthPx}px`,
+                                  top: '4px',
+                                  bottom: '4px',
+                                  borderRadius: '3px',
+                                  backgroundColor: color,
+                                  boxShadow: isDraggingThis
+                                    ? '0 8px 24px rgba(0,0,0,0.25), 0 0 0 2px #7c3aed'
+                                    : isResizingThis
+                                    ? '0 4px 12px rgba(0,0,0,0.2), 0 0 0 2px #3b82f6'
+                                    : '0 1px 3px rgba(0,0,0,0.2)',
+                                  transition: isDraggingThis || isResizingThis ? 'none' : 'box-shadow 0.15s',
+                                  overflow: 'hidden',
+                                }}
                                 title={`${t.taskId}: ${t.description}\n${fmtDate(t.assignDate)} → ${fmtDate(t.dueDate)}\nStatus: ${t.status ?? "—"}\n% Complete: ${pct}%${isDraggingThis && dragDeltaDays !== 0 ? `\nMoving: ${dragDeltaDays > 0 ? "+" : ""}${dragDeltaDays} days` : ""}${isResizingThis && resizeDeltaDays !== 0 ? `\nResizing: ${resizeDeltaDays > 0 ? "+" : ""}${resizeDeltaDays} days` : ""}`}
                                 onMouseDown={(e) => startBarDrag(e, t)}
                                 onClick={() => !connecting && !dragBar && !resizeBar && openEditPct(t)}
                               >
-                                {/* % complete fill */}
+                                {/* % complete fill — lighter stripe */}
                                 {pct > 0 && (
-                                  <div className="absolute inset-0 bg-white/25" style={{ width: `${pct}%` }} />
+                                  <div className="absolute inset-0 bg-black/20" style={{ width: `${pct}%`, borderRadius: '3px 0 0 3px' }} />
                                 )}
                                 {/* Label */}
-                                <span className="relative z-10 text-white text-[10px] font-medium px-1.5 truncate leading-[28px] inline-block pointer-events-none">
+                                <span className="relative z-10 text-white text-[10px] font-semibold px-2 truncate pointer-events-none"
+                                  style={{ lineHeight: '100%', position: 'absolute', top: '50%', transform: 'translateY(-50%)', left: 0, right: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                   {isDraggingThis && dragDeltaDays !== 0
                                     ? `${t.taskId} (${dragDeltaDays > 0 ? "+" : ""}${dragDeltaDays}d)`
                                     : isResizingThis && resizeDeltaDays !== 0
                                     ? `${t.taskId} (${resizeDeltaDays > 0 ? "+" : ""}${resizeDeltaDays}d)`
-                                    : barWidthPx > 60 ? `${t.taskId}${pct > 0 ? ` (${pct}%)` : ""}` : barWidthPx > 24 ? t.taskId : ""}
+                                    : barWidthPx > 60 ? `${t.taskId}${pct > 0 ? ` · ${pct}%` : ""}` : barWidthPx > 24 ? t.taskId : ""}
                                 </span>
-                                {/* Left resize handle */}
+                                {/* ── Left resize grip ── always visible, prominent */}
                                 {!isDraggingThis && !connecting && (
                                   <div
-                                    className="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize opacity-0 group-hover:opacity-100 z-25 flex items-center justify-center"
-                                    title="Drag to resize start date"
+                                    className="absolute left-0 top-0 bottom-0 flex items-center justify-center cursor-ew-resize z-30"
+                                    style={{ width: '10px', background: 'rgba(0,0,0,0.25)', borderRadius: '3px 0 0 3px' }}
+                                    title="Drag to change start date"
                                     onMouseDown={(e) => { e.stopPropagation(); startBarResize(e, t, "left"); }}
                                   >
-                                    <div className="w-0.5 h-4 bg-white/70 rounded-full" />
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                      <div style={{ width: '2px', height: '6px', background: 'rgba(255,255,255,0.8)', borderRadius: '1px' }} />
+                                      <div style={{ width: '2px', height: '6px', background: 'rgba(255,255,255,0.8)', borderRadius: '1px' }} />
+                                    </div>
                                   </div>
                                 )}
-                                {/* Right resize handle */}
+                                {/* ── Right resize grip ── always visible, prominent */}
                                 {!isDraggingThis && !connecting && (
                                   <div
-                                    className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize opacity-0 group-hover:opacity-100 z-25 flex items-center justify-center"
-                                    title="Drag to resize end date"
+                                    className="absolute right-0 top-0 bottom-0 flex items-center justify-center cursor-ew-resize z-30"
+                                    style={{ width: '10px', background: 'rgba(0,0,0,0.25)', borderRadius: '0 3px 3px 0' }}
+                                    title="Drag to change end date"
                                     onMouseDown={(e) => { e.stopPropagation(); startBarResize(e, t, "right"); }}
                                   >
-                                    <div className="w-0.5 h-4 bg-white/70 rounded-full" />
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                      <div style={{ width: '2px', height: '6px', background: 'rgba(255,255,255,0.8)', borderRadius: '1px' }} />
+                                      <div style={{ width: '2px', height: '6px', background: 'rgba(255,255,255,0.8)', borderRadius: '1px' }} />
+                                    </div>
                                   </div>
                                 )}
-                                {/* Connection handles — left (start) — only shown when not dragging/resizing this bar */}
+                                {/* ── Connection handle — left (start) ── */}
                                 {!isDraggingThis && !isResizingThis && (
                                   <div
-                                    className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-white border-2 border-violet-500 opacity-0 group-hover:opacity-100 hover:!opacity-100 z-20 cursor-crosshair transition-opacity"
-                                    title="Drag to connect (Start)"
-                                    onMouseDown={(e) => startConnect(e, t.taskId, "start", barLeftPx, i)}
+                                    className="absolute top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 hover:!opacity-100 z-40 cursor-crosshair transition-all hover:scale-125"
+                                    style={{ left: '-7px', width: '14px', height: '14px', borderRadius: '50%', background: 'white', border: '2.5px solid #7c3aed', boxShadow: '0 0 0 2px rgba(124,58,237,0.3)' }}
+                                    title="Drag to create dependency (from Start)"
+                                    onMouseDown={(e) => { e.stopPropagation(); startConnect(e, t.taskId, "start", barLeftPx, i); }}
                                   />
                                 )}
-                                {/* Connection handles — right (end) */}
+                                {/* ── Connection handle — right (end) ── */}
                                 {!isDraggingThis && !isResizingThis && (
                                   <div
-                                    className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-3 h-3 rounded-full bg-white border-2 border-violet-500 opacity-0 group-hover:opacity-100 hover:!opacity-100 z-20 cursor-crosshair transition-opacity"
-                                    title="Drag to connect (End)"
-                                    onMouseDown={(e) => startConnect(e, t.taskId, "end", barLeftPx + barWidthPx, i)}
+                                    className="absolute top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 hover:!opacity-100 z-40 cursor-crosshair transition-all hover:scale-125"
+                                    style={{ right: '-7px', width: '14px', height: '14px', borderRadius: '50%', background: 'white', border: '2.5px solid #7c3aed', boxShadow: '0 0 0 2px rgba(124,58,237,0.3)' }}
+                                    title="Drag to create dependency (from End)"
+                                    onMouseDown={(e) => { e.stopPropagation(); startConnect(e, t.taskId, "end", barLeftPx + barWidthPx, i); }}
                                   />
                                 )}
                               </div>
@@ -856,11 +881,14 @@ export default function GanttChart() {
                           style={{ overflow: "visible" }}
                         >
                           <defs>
-                            <marker id="arrowhead" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
-                              <path d="M0,0 L0,6 L6,3 z" fill="#7c3aed" />
+                            <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+                              <path d="M1,1 L7,4 L1,7 Z" fill="#7c3aed" />
+                            </marker>
+                            <marker id="arrowhead-red" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+                              <path d="M1,1 L7,4 L1,7 Z" fill="#ef4444" />
                             </marker>
                           </defs>
-                          {/* Existing dependency arrows */}
+                          {/* Existing dependency arrows — orthogonal MS-Project style */}
                           {dependencies.map(d => {
                             const predRow = rowIdxMap[d.predecessorTaskId];
                             const succRow = rowIdxMap[d.successorTaskId];
@@ -876,13 +904,29 @@ export default function GanttChart() {
                             const x2 = depType.endsWith("Start") ? succBarStart : succBarEnd;
                             const y1 = HEADER_H + predRow * ROW_H + ROW_H / 2;
                             const y2 = HEADER_H + succRow * ROW_H + ROW_H / 2;
-                            const cx = (x1 + x2) / 2;
+                            // Orthogonal routing: horizontal segment → vertical segment → horizontal to target
+                            const gap = 8; // gap before turning
+                            const isCriticalDep = predTask.isCritical && succTask.isCritical;
+                            const stroke = isCriticalDep ? "#ef4444" : "#7c3aed";
+                            const marker = isCriticalDep ? "url(#arrowhead-red)" : "url(#arrowhead)";
+                            let pathD: string;
+                            if (Math.abs(y1 - y2) < 2) {
+                              // Same row — straight horizontal
+                              pathD = `M${x1},${y1} L${x2},${y2}`;
+                            } else {
+                              // Elbow: go right gap, drop/rise, go to target
+                              const midX = x1 + gap;
+                              pathD = `M${x1},${y1} L${midX},${y1} L${midX},${y2} L${x2},${y2}`;
+                            }
                             return (
-                              <path key={d.id}
-                                d={`M${x1},${y1} C${cx},${y1} ${cx},${y2} ${x2},${y2}`}
-                                fill="none" stroke="#7c3aed" strokeWidth="1.5" strokeDasharray="4 2"
-                                markerEnd="url(#arrowhead)" opacity="0.7"
-                              />
+                              <g key={d.id}>
+                                {/* Shadow for readability */}
+                                <path d={pathD} fill="none" stroke="white" strokeWidth="3" opacity="0.5" />
+                                <path d={pathD}
+                                  fill="none" stroke={stroke} strokeWidth="1.5"
+                                  markerEnd={marker} opacity="0.85"
+                                />
+                              </g>
                             );
                           })}
                           {/* Rubber-band line while dragging */}
