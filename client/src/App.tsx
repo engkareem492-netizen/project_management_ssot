@@ -38,6 +38,12 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import AcceptInvitation from "./pages/AcceptInvitation";
 import JoinProject from "./pages/JoinProject";
+import ProjectCharter from "./pages/ProjectCharter";
+import Milestones from "./pages/Milestones";
+import RaidLog from "./pages/RaidLog";
+import ActionItems from "./pages/ActionItems";
+import LessonsLearned from "./pages/LessonsLearned";
+import DocumentLibrary from "./pages/DocumentLibrary";
 
 function Router() {
   return (
@@ -177,6 +183,36 @@ function Router() {
       <Route path={"/scope"}>
         <DashboardLayout>
           <ScopeItems />
+        </DashboardLayout>
+      </Route>
+      <Route path={"/charter"}>
+        <DashboardLayout>
+          <ProjectCharter />
+        </DashboardLayout>
+      </Route>
+      <Route path={"/milestones"}>
+        <DashboardLayout>
+          <Milestones />
+        </DashboardLayout>
+      </Route>
+      <Route path={"/raid-log"}>
+        <DashboardLayout>
+          <RaidLog />
+        </DashboardLayout>
+      </Route>
+      <Route path={"/action-items"}>
+        <DashboardLayout>
+          <ActionItems />
+        </DashboardLayout>
+      </Route>
+      <Route path={"/lessons-learned"}>
+        <DashboardLayout>
+          <LessonsLearned />
+        </DashboardLayout>
+      </Route>
+      <Route path={"/documents"}>
+        <DashboardLayout>
+          <DocumentLibrary />
         </DashboardLayout>
       </Route>
       <Route path={"/404"} component={NotFound} />

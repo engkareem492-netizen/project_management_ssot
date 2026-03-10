@@ -35,15 +35,15 @@ import {
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
 import { 
-  LayoutDashboard, 
-  LogOut, 
-  PanelLeft, 
-  Users, 
-  FileText, 
-  CheckSquare, 
-  AlertCircle, 
-  Link2, 
-  History, 
+  LayoutDashboard,
+  LogOut,
+  PanelLeft,
+  Users,
+  FileText,
+  CheckSquare,
+  AlertCircle,
+  Link2,
+  History,
   Map,
   Package,
   FileCheck,
@@ -66,6 +66,12 @@ import {
   DollarSign,
   CalendarRange,
   Crosshair,
+  Flag,
+  ShieldAlert,
+  ListChecks,
+  BookMarked,
+  FolderOpen,
+  Scroll,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import {
@@ -100,6 +106,8 @@ type MenuItem = { icon: React.ElementType; label: string; path: string; children
 
 const menuItems: MenuItem[] = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
+  { icon: Scroll, label: "Project Charter", path: "/charter" },
+  { icon: Flag, label: "Milestones", path: "/milestones" },
   { icon: FileText, label: "Requirements", path: "/requirements" },
   {
     icon: CheckSquare,
@@ -111,9 +119,11 @@ const menuItems: MenuItem[] = [
       { icon: BarChart2, label: "Gantt Chart", path: "/gantt" },
     ],
   },
+  { icon: ListChecks, label: "Action Items", path: "/action-items" },
   { icon: AlertCircle, label: "Issues", path: "/issues" },
   { icon: Link2, label: "Dependencies", path: "/dependencies" },
   { icon: FileCheck, label: "Assumptions", path: "/assumptions" },
+  { icon: ShieldAlert, label: "RAID Log", path: "/raid-log" },
   {
     icon: Users,
     label: "Team",
@@ -134,6 +144,8 @@ const menuItems: MenuItem[] = [
   { icon: FlaskConical, label: "Test Cases", path: "/test-cases" },
   { icon: Crosshair, label: "Scope Items", path: "/scope" },
   { icon: Layers, label: "Traceability Matrix", path: "/traceability" },
+  { icon: FolderOpen, label: "Document Library", path: "/documents" },
+  { icon: BookMarked, label: "Lessons Learned", path: "/lessons-learned" },
   { icon: FileBarChart, label: "Periodic Report", path: "/periodic-report" },
   { icon: SettingsIcon, label: "Settings", path: "/settings" },
 ];

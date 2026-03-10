@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Label } from "@/components/ui/label";
-import { Plus, Eye, Pencil, Trash2, FlaskConical, CheckCircle, XCircle, AlertCircle, Clock } from "lucide-react";
+import { Plus, Eye, Pencil, Trash2, FlaskConical, CheckCircle, XCircle, AlertCircle, Clock, PlayCircle } from "lucide-react";
 import { toast } from "sonner";
 import { formatDate as _formatDate } from "@/lib/dateUtils";
 
@@ -79,10 +79,20 @@ export default function TestCases() {
   const [showView, setShowView] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [form, setForm] = useState<TestForm>(emptyForm);
+  const [showRunDialog, setShowRunDialog] = useState(false);
+  const [runForm, setRunForm] = useState({ executedBy: "", executionDate: "", status: "Not Executed" as const, environment: "", actualResult: "", notes: "" });
 
   const utils = trpc.useUtils();
   const { data: testCases = [], isLoading } = trpc.testCases.list.useQuery({ projectId }, { enabled: !!projectId });
   const { data: requirements = [] } = trpc.requirements.list.useQuery({ projectId }, { enabled: !!projectId });
+  const { data: testRuns = [], refetch: refetchRuns } = trpc.testRuns.listByTestCase.useQuery(
+    { projectId, testCaseId: selectedId ?? 0 },
+    { enabled: !!projectId && !!selectedId && showView }
+  );
+  const createRunMutation = trpc.testRuns.create.useMutation({
+    onSuccess: () => { refetchRuns(); setShowRunDialog(false); toast.success("Test run logged"); },
+    onError: (e) => toast.error(e.message),
+  });
 
   const createMutation = trpc.testCases.create.useMutation({
     onSuccess: () => { utils.testCases.list.invalidate(); setShowCreate(false); setForm(emptyForm); toast.success("Test case created"); },
@@ -367,8 +377,86 @@ export default function TestCases() {
               )}
               {selectedData.expectedResult && <div><span className="font-medium text-sm">Expected Result:</span><p className="text-sm text-muted-foreground mt-1">{selectedData.expectedResult}</p></div>}
               {selectedData.notes && <div><span className="font-medium text-sm">Notes:</span><p className="text-sm text-muted-foreground mt-1">{selectedData.notes}</p></div>}
+              {/* Test Runs Section */}
+              <div className="border-t pt-4">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="font-medium text-sm flex items-center gap-2"><PlayCircle className="w-4 h-4 text-emerald-600" /> Test Runs ({testRuns.length})</span>
+                  <Button size="sm" onClick={() => { setRunForm({ executedBy: "", executionDate: new Date().toISOString().split("T")[0], status: "Not Executed", environment: "", actualResult: "", notes: "" }); setShowRunDialog(true); }}>
+                    <Plus className="w-3 h-3 mr-1" /> Log Run
+                  </Button>
+                </div>
+                {testRuns.length === 0 ? (
+                  <p className="text-sm text-muted-foreground italic">No test runs logged yet.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {testRuns.map((run: any) => (
+                      <div key={run.id} className="border rounded-lg p-3 bg-gray-50 text-sm">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-mono text-xs text-muted-foreground">{run.runId}</span>
+                          <Badge className={STATUS_COLORS[(run.status as TestStatus) ?? "Not Executed"]}>{run.status}</Badge>
+                        </div>
+                        <div className="grid grid-cols-2 gap-1 text-xs text-muted-foreground">
+                          <div>Executed by: {run.executedBy ?? "—"}</div>
+                          <div>Date: {run.executionDate ? new Date(run.executionDate).toLocaleDateString() : "—"}</div>
+                          <div>Environment: {run.environment ?? "—"}</div>
+                        </div>
+                        {run.actualResult && <p className="text-xs mt-1 text-gray-700">{run.actualResult}</p>}
+                        {run.notes && <p className="text-xs mt-1 text-muted-foreground">{run.notes}</p>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Log Test Run Dialog */}
+      <Dialog open={showRunDialog} onOpenChange={setShowRunDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Log Test Run</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Executed By</Label>
+                <Input value={runForm.executedBy} onChange={e => setRunForm(p => ({ ...p, executedBy: e.target.value }))} />
+              </div>
+              <div>
+                <Label>Execution Date</Label>
+                <Input type="date" value={runForm.executionDate} onChange={e => setRunForm(p => ({ ...p, executionDate: e.target.value }))} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Status</Label>
+                <Select value={runForm.status} onValueChange={v => setRunForm(p => ({ ...p, status: v as any }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {["Not Executed", "Passed", "Failed", "Blocked", "Skipped"].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Environment</Label>
+                <Input value={runForm.environment} onChange={e => setRunForm(p => ({ ...p, environment: e.target.value }))} placeholder="DEV / QA / UAT" />
+              </div>
+            </div>
+            <div>
+              <Label>Actual Result</Label>
+              <Textarea rows={2} value={runForm.actualResult} onChange={e => setRunForm(p => ({ ...p, actualResult: e.target.value }))} />
+            </div>
+            <div>
+              <Label>Notes</Label>
+              <Textarea rows={2} value={runForm.notes} onChange={e => setRunForm(p => ({ ...p, notes: e.target.value }))} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRunDialog(false)}>Cancel</Button>
+            <Button onClick={() => createRunMutation.mutate({ projectId, testCaseId: selectedId!, ...runForm, executionDate: runForm.executionDate || undefined })} disabled={createRunMutation.isPending}>
+              {createRunMutation.isPending ? "Saving..." : "Log Run"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

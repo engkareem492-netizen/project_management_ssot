@@ -26,6 +26,12 @@ import { decisionsRouter } from "./routers/decisions.router";
 import { notificationsRouter } from "./routers/notifications.router";
 import { budgetRouter } from "./routers/budget.router";
 import { resourcesRouter } from "./routers/resources.router";
+import { charterRouter } from "./routers/charter.router";
+import { milestonesRouter } from "./routers/milestones.router";
+import { testRunsRouter } from "./routers/testRuns.router";
+import { actionItemsRouter } from "./routers/actionItems.router";
+import { lessonsLearnedRouter } from "./routers/lessonsLearned.router";
+import { documentsRouter } from "./routers/documents.router";
 
 export const appRouter = router({
   system: systemRouter,
@@ -49,6 +55,12 @@ export const appRouter = router({
   notifications: notificationsRouter,
   budget: budgetRouter,
   resources: resourcesRouter,
+  charter: charterRouter,
+  milestones: milestonesRouter,
+  testRuns: testRunsRouter,
+  actionItems: actionItemsRouter,
+  lessonsLearned: lessonsLearnedRouter,
+  documents: documentsRouter,
   scopeItems: router({
     list: protectedProcedure
       .input(z.object({ projectId: z.number() }))
