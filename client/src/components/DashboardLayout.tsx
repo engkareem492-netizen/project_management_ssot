@@ -609,7 +609,7 @@ function DashboardLayoutContent({
             </div>
           </div>
         )}
-        <main className="flex-1 p-4">{children}</main>
+        <main className="flex-1 p-4 min-w-0 max-w-full overflow-x-hidden">{children}</main>
       </SidebarInset>
 
       <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />

@@ -437,7 +437,7 @@ export default function Assumptions() {
             </div>
           </div>
 
-          <div className="rounded-md border overflow-x-auto">
+          <div className="rounded-md border overflow-hidden">
             <Table>
               <TableHeader>
                 <TableRow>

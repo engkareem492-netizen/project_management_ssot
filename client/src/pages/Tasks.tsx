@@ -890,24 +890,35 @@ export default function Tasks() {
           <div className="rounded-md border border-primary/20 overflow-hidden">
             {viewMode === 'compact' ? (
               /* ── COMPACT VIEW: dense table with color-coded status, priority, due date ── */
-              <Table className="w-full text-sm">
+              <Table className="w-full table-fixed text-sm">
+                <colgroup>
+                  <col className="w-10" />
+                  <col style={{ width: '9%' }} />
+                  <col style={{ width: '13%' }} />
+                  <col />
+                  <col style={{ width: '12%' }} />
+                  <col style={{ width: '8%' }} />
+                  <col style={{ width: '9%' }} />
+                  <col style={{ width: '11%' }} />
+                  <col style={{ width: '11%' }} />
+                </colgroup>
                 <TableHeader>
                   <TableRow className="bg-primary/5 hover:bg-primary/10">
-                    <TableHead className="w-10 px-3">
+                    <TableHead className="px-3">
                       <Checkbox
                         checked={filteredTasks && filteredTasks.length > 0 && selectedTaskIds.length === filteredTasks.length}
                         onCheckedChange={handleSelectAllTasks}
                         aria-label="Select all"
                       />
                     </TableHead>
-                    <TableHead className="w-[100px] px-3 font-semibold text-primary">Task ID</TableHead>
-                    <TableHead className="w-[130px] px-3 font-semibold text-primary">Group</TableHead>
+                    <TableHead className="px-3 font-semibold text-primary">Task ID</TableHead>
+                    <TableHead className="px-3 font-semibold text-primary">Group</TableHead>
                     <TableHead className="px-3 font-semibold text-primary">Description</TableHead>
-                    <TableHead className="w-[130px] px-3 font-semibold text-primary">Responsible</TableHead>
-                    <TableHead className="w-[80px] px-3 font-semibold text-primary">Priority</TableHead>
-                    <TableHead className="w-[100px] px-3 font-semibold text-primary">Due Date</TableHead>
-                    <TableHead className="w-[120px] px-3 font-semibold text-primary">Status</TableHead>
-                    <TableHead className="w-[120px] px-3 text-right font-semibold text-primary">Actions</TableHead>
+                    <TableHead className="px-3 font-semibold text-primary">Responsible</TableHead>
+                    <TableHead className="px-3 font-semibold text-primary">Priority</TableHead>
+                    <TableHead className="px-3 font-semibold text-primary">Due Date</TableHead>
+                    <TableHead className="px-3 font-semibold text-primary">Status</TableHead>
+                    <TableHead className="px-3 text-right font-semibold text-primary">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
