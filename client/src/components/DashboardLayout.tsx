@@ -76,6 +76,7 @@ import {
   Zap,
   Target,
   Clock,
+  Ticket,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import {
@@ -114,6 +115,7 @@ const menuItems: MenuItem[] = [
   { icon: Zap, label: "Sprints", path: "/sprints" },
   { icon: Target, label: "Goals & OKRs", path: "/goals" },
   { icon: Clock, label: "Time Tracking", path: "/time-tracking" },
+  { icon: Ticket, label: "SLA Tickets", path: "/sla-tickets" },
   { icon: Scroll, label: "Project Charter", path: "/charter" },
   { icon: Flag, label: "Milestones", path: "/milestones" },
   { icon: FileText, label: "Requirements", path: "/requirements" },

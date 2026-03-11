@@ -48,6 +48,7 @@ import Portfolio from "./pages/Portfolio";
 import Sprints from "./pages/Sprints";
 import Goals from "./pages/Goals";
 import TimeTracking from "./pages/TimeTracking";
+import SlaTickets from "./pages/SlaTickets";
 
 function Router() {
   return (
@@ -237,6 +238,11 @@ function Router() {
       <Route path={"/time-tracking"}>
         <DashboardLayout>
           <TimeTracking />
+        </DashboardLayout>
+      </Route>
+      <Route path={"/sla-tickets"}>
+        <DashboardLayout>
+          <SlaTickets />
         </DashboardLayout>
       </Route>
       <Route path={"/404"} component={NotFound} />
