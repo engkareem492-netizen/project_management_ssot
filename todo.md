@@ -561,3 +561,8 @@
 - [x] Improve activity feed with entity icons and timestamps
 - [x] Add Tasks by Person bar chart and Completion by Dimension radar chart
 - [x] Add Budget utilization bar and Due This Week widget
+
+## Bug Fix: Dashboard Text Visibility (Mar 11, 2026)
+- [x] Fix "Project Dashboard" header text invisible in dark mode (RAG banner bg-green-50 had no dark variant)
+- [x] Add dark:bg-green/amber/red-950/30 variants to RAG_BG color map for proper dark mode contrast
+- [x] Add explicit text-foreground class to dashboard h1 heading

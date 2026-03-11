@@ -27,7 +27,9 @@ const RAG_TEXT: Record<string, string> = {
   Green: "text-green-700", Amber: "text-yellow-700", Red: "text-red-700",
 };
 const RAG_BG: Record<string, string> = {
-  Green: "bg-green-50 border-green-200", Amber: "bg-yellow-50 border-yellow-200", Red: "bg-red-50 border-red-200",
+  Green: "bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800",
+  Amber: "bg-yellow-50 dark:bg-yellow-950/30 border-yellow-200 dark:border-yellow-800",
+  Red: "bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800",
 };
 
 /* ─── Reusable sub-components ──────────────────────────────────────────── */
@@ -140,12 +142,14 @@ export default function Dashboard() {
   const { data: stakeholders = [] } = trpc.stakeholders.list.useQuery({ projectId }, { enabled });
   const { data: assumptions = [] } = trpc.assumptions.list.useQuery({ projectId }, { enabled });
   const { data: dependencies = [] } = trpc.dependencies.list.useQuery({ projectId }, { enabled });
+  const { data: riskStatuses = [] } = trpc.risks.status.list.useQuery({ projectId }, { enabled });
 
   const today = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
   const nextWeek = useMemo(() => { const d = new Date(today); d.setDate(d.getDate() + 7); return d; }, [today]);
 
   /* KPIs */
   const kpis = useMemo(() => {
+    const closedStatusIds = new Set(riskStatuses.filter((s: any) => /closed|mitigated|resolved/i.test(s.name)).map((s: any) => s.id));
     const openIssues = issues.filter((i: any) => i.status !== "Closed" && i.status !== "Resolved").length;
     const overdueTasks = tasks.filter((t: any) => {
       if (!t.dueDate) return false;
@@ -153,21 +157,21 @@ export default function Dashboard() {
       return due < today && t.status !== "Done" && t.status !== "Completed" && t.status !== "Closed";
     }).length;
     const pendingCRs = changeRequests.filter((c: any) => c.status === "Submitted" || c.status === "Under Review").length;
-    const activeRisks = risks.filter((r: any) => r.status !== "Closed" && r.status !== "Mitigated").length;
+    const activeRisks = risks.filter((r: any) => !closedStatusIds.has(r.riskStatusId)).length;
     const passedTests = testCases.filter((t: any) => t.status === "Passed").length;
     const testPassRate = testCases.length > 0 ? Math.round((passedTests / testCases.length) * 100) : 0;
     const doneTasks = tasks.filter((t: any) => t.status === "Done" || t.status === "Completed" || t.status === "Closed").length;
     const taskCompletion = tasks.length > 0 ? Math.round((doneTasks / tasks.length) * 100) : 0;
     const openAssumptions = assumptions.filter((a: any) => a.status !== "Closed" && a.status !== "Rejected").length;
-    const blockedDeps = dependencies.filter((d: any) => d.status === "Blocked" || d.status === "At Risk").length;
+    const blockedDeps = dependencies.filter((d: any) => /blocked|at risk/i.test(d.currentStatus ?? "")).length;
     const actionItemTasks = tasks.filter((t: any) => t.isActionItem && t.status !== "Done" && t.status !== "Completed").length;
-    return { openIssues, overdueTasks, pendingCRs, activeRisks, testPassRate, taskCompletion, openAssumptions, blockedDeps, actionItemTasks };
-  }, [issues, tasks, changeRequests, risks, testCases, assumptions, dependencies, today]);
+    return { openIssues, overdueTasks, pendingCRs, activeRisks, testPassRate, taskCompletion, openAssumptions, blockedDeps, actionItemTasks, closedStatusIds };
+  }, [issues, tasks, changeRequests, risks, testCases, assumptions, dependencies, riskStatuses, today]);
 
   /* Health score */
   const healthScore = useMemo(() => {
     let score = 100;
-    const criticalRisks = risks.filter((r: any) => r.impact >= 4 && r.status !== "Closed" && r.status !== "Mitigated").length;
+    const criticalRisks = risks.filter((r: any) => r.impact >= 4 && !kpis.closedStatusIds.has(r.riskStatusId)).length;
     score -= criticalRisks * 10;
     score -= Math.min(kpis.overdueTasks * 5, 30);
     const crPendingRate = changeRequests.length > 0 ? kpis.pendingCRs / changeRequests.length : 0;
@@ -245,7 +249,7 @@ export default function Dashboard() {
   /* Risk matrix data */
   const riskMatrix = useMemo(() => {
     const matrix: Record<string, number> = {};
-    risks.filter((r: any) => r.status !== "Closed" && r.status !== "Mitigated").forEach((r: any) => {
+    risks.filter((r: any) => !kpis.closedStatusIds.has(r.riskStatusId)).forEach((r: any) => {
       const p = Math.min(5, Math.max(1, r.probability ?? 1));
       const i = Math.min(5, Math.max(1, r.impact ?? 1));
       const key = `${p}-${i}`;
@@ -284,7 +288,7 @@ export default function Dashboard() {
       <div className={`border rounded-xl p-5 ${RAG_BG[ragStatus]}`}>
         <div className="flex items-start justify-between flex-wrap gap-4">
           <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
+            <h1 className="text-2xl font-bold flex items-center gap-2 text-foreground">
               <BarChart2 className="w-6 h-6 text-muted-foreground" /> Project Dashboard
             </h1>
             {currentProject && (
@@ -351,8 +355,8 @@ export default function Dashboard() {
               <div className="text-sm font-semibold">
                 {healthScore >= 80 ? "On Track" : healthScore >= 60 ? "Needs Attention" : "Action Required"}
               </div>
-              {risks.filter((r: any) => r.impact >= 4 && r.status !== "Closed").length > 0 && (
-                <div className="text-xs text-red-600">⚠ {risks.filter((r: any) => r.impact >= 4 && r.status !== "Closed").length} critical risk(s)</div>
+              {risks.filter((r: any) => r.impact >= 4 && !kpis.closedStatusIds.has(r.riskStatusId)).length > 0 && (
+                <div className="text-xs text-red-600">⚠ {risks.filter((r: any) => r.impact >= 4 && !kpis.closedStatusIds.has(r.riskStatusId)).length} critical risk(s)</div>
               )}
               {kpis.overdueTasks > 0 && (
                 <div className="text-xs text-red-600">⚠ {kpis.overdueTasks} overdue task(s)</div>
@@ -493,7 +497,7 @@ export default function Dashboard() {
                 </div>
               </div>
               <div className="flex-1 min-w-[200px] space-y-1.5">
-                {risks.filter((r: any) => r.status !== "Closed" && r.status !== "Mitigated" && (r.impact ?? 1) * (r.probability ?? 1) >= 9)
+                {risks.filter((r: any) => !kpis.closedStatusIds.has(r.riskStatusId) && (r.impact ?? 1) * (r.probability ?? 1) >= 9)
                   .slice(0, 5).map((r: any) => (
                   <div key={r.id} className="flex items-center gap-2 text-sm py-1 border-b last:border-0">
                     <span className={`w-2 h-2 rounded-full shrink-0 ${(r.impact??1)*(r.probability??1) >= 15 ? "bg-red-500" : "bg-yellow-400"}`} />
@@ -503,7 +507,7 @@ export default function Dashboard() {
                     </Badge>
                   </div>
                 ))}
-                {risks.filter((r: any) => r.status !== "Closed" && r.status !== "Mitigated" && (r.impact ?? 1) * (r.probability ?? 1) >= 9).length === 0 && (
+                {risks.filter((r: any) => !kpis.closedStatusIds.has(r.riskStatusId) && (r.impact ?? 1) * (r.probability ?? 1) >= 9).length === 0 && (
                   <div className="text-xs text-muted-foreground py-4 text-center">No high/medium risks</div>
                 )}
                 <Button variant="ghost" size="sm" className="w-full text-xs mt-1" onClick={() => navigate("/risk-register")}>
@@ -519,9 +523,9 @@ export default function Dashboard() {
           <div className="space-y-1.5">
             {issues.filter((i: any) => i.status !== "Closed" && i.status !== "Resolved").slice(0, 6).map((issue: any) => (
               <div key={issue.id} className="flex items-center gap-2 py-1.5 border-b last:border-0 text-sm">
-                <span className={`w-2 h-2 rounded-full shrink-0 ${issue.severity === "Critical" ? "bg-red-500" : issue.severity === "High" ? "bg-orange-400" : "bg-yellow-400"}`} />
-                <span className="flex-1 truncate text-xs">{issue.title}</span>
-                <Badge className="bg-red-100 text-red-700 border-0 text-[10px]">{issue.severity ?? "—"}</Badge>
+                <span className={`w-2 h-2 rounded-full shrink-0 ${issue.priority === "Critical" || issue.priority === "High" ? "bg-red-500" : issue.priority === "Medium" ? "bg-orange-400" : "bg-yellow-400"}`} />
+                <span className="flex-1 truncate text-xs">{issue.description ?? issue.issueId ?? "—"}</span>
+                <Badge className="bg-red-100 text-red-700 border-0 text-[10px]">{issue.priority ?? "—"}</Badge>
                 <Badge variant="outline" className="text-[10px]">{issue.status}</Badge>
               </div>
             ))}
@@ -552,14 +556,14 @@ export default function Dashboard() {
         {/* Dependencies tab */}
         {activeRaidTab === "dependencies" && (
           <div className="space-y-1.5">
-            {dependencies.filter((d: any) => d.status === "Blocked" || d.status === "At Risk" || d.status === "Pending").slice(0, 6).map((d: any) => (
+            {dependencies.filter((d: any) => /blocked|at risk|pending/i.test(d.currentStatus ?? "")).slice(0, 6).map((d: any) => (
               <div key={d.id} className="flex items-center gap-2 py-1.5 border-b last:border-0 text-sm">
-                <span className={`w-2 h-2 rounded-full shrink-0 ${d.status === "Blocked" ? "bg-red-500" : d.status === "At Risk" ? "bg-orange-400" : "bg-yellow-400"}`} />
-                <span className="flex-1 truncate text-xs">{d.description ?? d.title ?? "—"}</span>
-                <Badge className={`border-0 text-[10px] ${d.status === "Blocked" ? "bg-red-100 text-red-700" : "bg-yellow-100 text-yellow-700"}`}>{d.status}</Badge>
+                <span className={`w-2 h-2 rounded-full shrink-0 ${/blocked/i.test(d.currentStatus ?? "") ? "bg-red-500" : /at risk/i.test(d.currentStatus ?? "") ? "bg-orange-400" : "bg-yellow-400"}`} />
+                <span className="flex-1 truncate text-xs">{d.description ?? d.dependencyId ?? "—"}</span>
+                <Badge className={`border-0 text-[10px] ${/blocked/i.test(d.currentStatus ?? "") ? "bg-red-100 text-red-700" : "bg-yellow-100 text-yellow-700"}`}>{d.currentStatus ?? "—"}</Badge>
               </div>
             ))}
-            {dependencies.filter((d: any) => d.status === "Blocked" || d.status === "At Risk" || d.status === "Pending").length === 0 && (
+            {dependencies.filter((d: any) => /blocked|at risk|pending/i.test(d.currentStatus ?? "")).length === 0 && (
               <div className="text-xs text-muted-foreground py-4 text-center">No blocked or at-risk dependencies</div>
             )}
             <Button variant="ghost" size="sm" className="w-full text-xs mt-1" onClick={() => navigate("/dependencies")}>
