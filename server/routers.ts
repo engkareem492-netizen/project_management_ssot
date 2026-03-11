@@ -33,6 +33,7 @@ import { charterRouter } from "./routers/charter.router";
 import { pmPlanRouter } from "./routers/pmPlan.router";
 import { wbsRouter } from "./routers/wbs.router";
 import { eefRouter } from "./routers/eef.router";
+import { currenciesRouter } from "./routers/currencies.router";
 import { milestonesRouter } from "./routers/milestones.router";
 import { testRunsRouter } from "./routers/testRuns.router";
 import { actionItemsRouter } from "./routers/actionItems.router";
@@ -66,6 +67,7 @@ export const appRouter = router({
   pmPlan: pmPlanRouter,
   wbs: wbsRouter,
   eef: eefRouter,
+  currencies: currenciesRouter,
   milestones: milestonesRouter,
   testRuns: testRunsRouter,
   actionItems: actionItemsRouter,

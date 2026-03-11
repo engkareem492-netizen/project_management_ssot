@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `projectCurrencies` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `projectId` int NOT NULL,\n  `currencyCode` varchar(10) NOT NULL,\n  `currencyName` varchar(80) NOT NULL,\n  `symbol` varchar(10) NOT NULL DEFAULT '',\n  `isBase` tinyint(1) NOT NULL DEFAULT 0,\n  `sortOrder` int NOT NULL DEFAULT 0,\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`)\n)",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 34DzJoQKEqyc4cp.root --database MtjPfUT7z9e3zhUb3tuetB --execute CREATE TABLE IF NOT EXISTS `projectCurrencies` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `projectId` int NOT NULL,\n  `currencyCode` varchar(10) NOT NULL,\n  `currencyName` varchar(80) NOT NULL,\n  `symbol` varchar(10) NOT NULL DEFAULT '',\n  `isBase` tinyint(1) NOT NULL DEFAULT 0,\n  `sortOrder` int NOT NULL DEFAULT 0,\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`)\n)",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1871
+}

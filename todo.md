@@ -605,3 +605,14 @@
 - [x] Add eefFactors table to schema and push migration (also created directly in remote DB)
 - [x] Add EEF router (list, create, update, delete)
 - [x] Register /eef route in App.tsx
+
+## Multi-Currency Budget Configuration (Mar 12, 2026)
+- [x] Add projectCurrencies table (projectId, currencyCode, currencyName, symbol, isBase, sortOrder)
+- [x] Add exchangeRates table (projectId, fromCurrency, toCurrency, baselineRate, currentRate, predictedRate, effectiveDate, notes)
+- [x] Create remote DB tables directly (webdev_execute_sql)
+- [x] Build currencies router (list, setBase, addCurrency, removeCurrency, upsertExchangeRate, deleteRate)
+- [x] Build Currency Settings page with: base currency selector, additional currencies list, exchange rate table (Baseline / Current / Predicted columns with variance indicators)
+- [x] Add Budget group to sidebar (Budget Overview + Currency Settings)
+- [x] Register /currency-settings route in App.tsx
+- [x] Redesign EEF page to match app visual style (consistent with Risks/Issues/Tasks pages)
+- [x] Kill stale tsc watcher process (PID 1787, running since Mar 2) — tsc now compiles with 0 errors

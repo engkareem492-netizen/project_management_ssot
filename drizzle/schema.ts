@@ -1330,3 +1330,30 @@ export const eefFactors = mysqlTable("eefFactors", {
 });
 export type EefFactor = typeof eefFactors.$inferSelect;
 export type InsertEefFactor = typeof eefFactors.$inferInsert;
+
+// ─── Multi-Currency Configuration ─────────────────────────────────────────────
+export const projectCurrencies = mysqlTable("projectCurrencies", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  currencyCode: varchar("currencyCode", { length: 10 }).notNull(), // e.g. "USD", "SAR"
+  currencyName: varchar("currencyName", { length: 80 }).notNull(), // e.g. "US Dollar"
+  symbol: varchar("symbol", { length: 10 }).notNull().default(""), // e.g. "$"
+  isBase: boolean("isBase").notNull().default(false), // true = base/main currency
+  sortOrder: int("sortOrder").notNull().default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const exchangeRates = mysqlTable("exchangeRates", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  fromCurrencyCode: varchar("fromCurrencyCode", { length: 10 }).notNull(),
+  toCurrencyCode: varchar("toCurrencyCode", { length: 10 }).notNull(),
+  baselineRate: decimal("baselineRate", { precision: 18, scale: 6 }).notNull().default("1"),
+  currentRate: decimal("currentRate", { precision: 18, scale: 6 }).notNull().default("1"),
+  predictedRate: decimal("predictedRate", { precision: 18, scale: 6 }).notNull().default("1"),
+  effectiveDate: varchar("effectiveDate", { length: 20 }),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});

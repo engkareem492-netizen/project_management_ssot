@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useProject } from "@/contexts/ProjectContext";
-import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -29,13 +28,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -46,7 +39,18 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Pencil, Trash2, Building2, Globe, AlertTriangle, TrendingUp, Minus } from "lucide-react";
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  Building2,
+  Globe,
+  Search,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  Info,
+} from "lucide-react";
 import { toast } from "sonner";
 
 type EefFactor = {
@@ -64,15 +68,15 @@ type EefFactor = {
   updatedAt: string | Date;
 };
 
-const IMPACT_COLORS: Record<string, string> = {
-  High: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
-  Medium: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300",
-  Low: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
+const IMPACT_BADGE: Record<string, string> = {
+  High: "bg-red-100 text-red-700 border-red-300",
+  Medium: "bg-yellow-100 text-yellow-700 border-yellow-300",
+  Low: "bg-green-100 text-green-700 border-green-300",
 };
 
-const INFLUENCE_ICONS: Record<string, React.ReactNode> = {
-  Positive: <TrendingUp className="h-3.5 w-3.5 text-green-500" />,
-  Negative: <AlertTriangle className="h-3.5 w-3.5 text-red-500" />,
+const INFLUENCE_ICON: Record<string, React.ReactNode> = {
+  Positive: <TrendingUp className="h-3.5 w-3.5 text-green-600" />,
+  Negative: <TrendingDown className="h-3.5 w-3.5 text-red-600" />,
   Neutral: <Minus className="h-3.5 w-3.5 text-gray-400" />,
 };
 
@@ -113,8 +117,8 @@ const EMPTY_FORM = {
 };
 
 export default function EEFPage() {
-  const { currentProject } = useProject();
-  const projectId = currentProject?.id ?? 0;
+  const { currentProjectId } = useProject();
+  const projectId = currentProjectId ?? 0;
 
   const { data: factors = [], isLoading, refetch } = trpc.eef.list.useQuery(
     { projectId },
@@ -122,17 +126,32 @@ export default function EEFPage() {
   );
 
   const createMutation = trpc.eef.create.useMutation({
-    onSuccess: () => { refetch(); toast.success("EEF factor added"); setDialogOpen(false); setForm(EMPTY_FORM); },
+    onSuccess: () => {
+      refetch();
+      toast.success("EEF factor added");
+      setDialogOpen(false);
+      setForm(EMPTY_FORM);
+    },
     onError: (e) => toast.error(e.message),
   });
 
   const updateMutation = trpc.eef.update.useMutation({
-    onSuccess: () => { refetch(); toast.success("EEF factor updated"); setDialogOpen(false); setEditingId(null); setForm(EMPTY_FORM); },
+    onSuccess: () => {
+      refetch();
+      toast.success("EEF factor updated");
+      setDialogOpen(false);
+      setEditingId(null);
+      setForm(EMPTY_FORM);
+    },
     onError: (e) => toast.error(e.message),
   });
 
   const deleteMutation = trpc.eef.delete.useMutation({
-    onSuccess: () => { refetch(); toast.success("EEF factor deleted"); setDeleteId(null); },
+    onSuccess: () => {
+      refetch();
+      toast.success("EEF factor deleted");
+      setDeleteId(null);
+    },
     onError: (e) => toast.error(e.message),
   });
 
@@ -140,9 +159,11 @@ export default function EEFPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
-  const [activeTab, setActiveTab] = useState<"Internal" | "External">("Internal");
+  const [activeType, setActiveType] = useState<"All" | "Internal" | "External">("All");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [infoOpen, setInfoOpen] = useState(false);
 
-  const openAdd = (type: "Internal" | "External") => {
+  const openAdd = (type: "Internal" | "External" = "Internal") => {
     setEditingId(null);
     setForm({ ...EMPTY_FORM, type });
     setDialogOpen(true);
@@ -175,213 +196,268 @@ export default function EEFPage() {
     }
   };
 
-  const internalFactors = factors.filter((f) => f.type === "Internal");
-  const externalFactors = factors.filter((f) => f.type === "External");
+  const filtered = factors.filter((f) => {
+    const matchType = activeType === "All" || f.type === activeType;
+    const matchSearch =
+      !searchTerm ||
+      f.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      f.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (f.description ?? "").toLowerCase().includes(searchTerm.toLowerCase());
+    return matchType && matchSearch;
+  });
+
+  const internalCount = factors.filter((f) => f.type === "Internal").length;
+  const externalCount = factors.filter((f) => f.type === "External").length;
+  const highImpactCount = factors.filter((f) => f.impact === "High").length;
 
   const categories = form.type === "Internal" ? INTERNAL_CATEGORIES : EXTERNAL_CATEGORIES;
 
-  const FactorTable = ({ items, type }: { items: EefFactor[]; type: "Internal" | "External" }) => (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          {type === "Internal" ? <Building2 className="h-4 w-4" /> : <Globe className="h-4 w-4" />}
-          <span>{items.length} factor{items.length !== 1 ? "s" : ""}</span>
-        </div>
-        <Button size="sm" onClick={() => openAdd(type)}>
-          <Plus className="h-4 w-4 mr-1" /> Add {type} Factor
-        </Button>
+  if (isLoading) {
+    return (
+      <div className="container mx-auto py-8">
+        <div className="text-center text-muted-foreground py-20">Loading...</div>
       </div>
-
-      {items.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
-          <div className="flex justify-center mb-3">
-            {type === "Internal" ? <Building2 className="h-10 w-10 opacity-30" /> : <Globe className="h-10 w-10 opacity-30" />}
-          </div>
-          <p className="font-medium">No {type} factors recorded</p>
-          <p className="text-sm mt-1">
-            {type === "Internal"
-              ? "Document internal factors like culture, governance, infrastructure, and IT systems."
-              : "Document external factors like market conditions, regulations, and economic trends."}
-          </p>
-          <Button variant="outline" size="sm" className="mt-4" onClick={() => openAdd(type)}>
-            <Plus className="h-4 w-4 mr-1" /> Add First {type} Factor
-          </Button>
-        </div>
-      ) : (
-        <div className="rounded-md border overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Category</TableHead>
-                <TableHead>Factor Name</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Impact</TableHead>
-                <TableHead>Influence</TableHead>
-                <TableHead>Source</TableHead>
-                <TableHead className="w-20">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {items.map((f) => (
-                <TableRow key={f.id}>
-                  <TableCell>
-                    <Badge variant="outline" className="text-xs font-normal">{f.category}</Badge>
-                  </TableCell>
-                  <TableCell className="font-medium">{f.name}</TableCell>
-                  <TableCell className="max-w-xs">
-                    <span className="text-sm text-muted-foreground line-clamp-2">
-                      {f.description || "—"}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    {f.impact && (
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${IMPACT_COLORS[f.impact]}`}>
-                        {f.impact}
-                      </span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1.5">
-                      {f.influence && INFLUENCE_ICONS[f.influence]}
-                      <span className="text-sm">{f.influence}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{f.source || "—"}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(f)}>
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-destructive hover:text-destructive"
-                        onClick={() => setDeleteId(f.id)}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      )}
-    </div>
-  );
+    );
+  }
 
   return (
-    <DashboardLayout>
-      <div className="p-6 space-y-6">
-        {/* Header */}
+    <div className="container mx-auto py-8 space-y-6">
+      {/* Page Header — matches Issues/RiskRegister style */}
+      <div className="bg-white border border-gray-200 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Enterprise Environmental Factors</h1>
-          <p className="text-muted-foreground mt-1">
-            Conditions not under the project team's control that influence, constrain, or direct the project.
-            Defined in PMBOK 7th Edition as key inputs to project planning.
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <Globe className="h-6 w-6 text-blue-600" />
+            Enterprise Environmental Factors
+          </h1>
+          <p className="text-sm text-gray-500 mt-0.5">
+            Conditions outside the team's control that influence, constrain, or direct the project (PMBOK 7)
           </p>
         </div>
-
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Building2 className="h-4 w-4" /> Internal Factors
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{internalFactors.length}</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {internalFactors.filter(f => f.impact === "High").length} high-impact
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Globe className="h-4 w-4" /> External Factors
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{externalFactors.length}</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {externalFactors.filter(f => f.impact === "High").length} high-impact
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4" /> High-Impact Total
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-red-500">
-                {factors.filter(f => f.impact === "High").length}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {factors.filter(f => f.influence === "Negative" && f.impact === "High").length} negative high-impact
-              </p>
-            </CardContent>
-          </Card>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Badge variant="outline" className="text-blue-700 border-blue-300">
+            {factors.length} Factor{factors.length !== 1 ? "s" : ""}
+          </Badge>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setInfoOpen(true)}
+            className="text-gray-600"
+          >
+            <Info className="h-4 w-4 mr-1" /> PMBOK Context
+          </Button>
+          <Button size="sm" onClick={() => openAdd("Internal")}>
+            <Plus className="h-4 w-4 mr-1" /> Add Factor
+          </Button>
         </div>
-
-        {/* PMBOK Context Card */}
-        <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-blue-700 dark:text-blue-300">PMBOK 7 Context</CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
-            <p><strong>Internal EEFs</strong> include: organizational culture, governance frameworks, infrastructure, existing human resources, IT software, resource availability, and employee capability.</p>
-            <p><strong>External EEFs</strong> include: marketplace conditions, social and cultural influences, regulatory environment, commercial databases, academic research, industry standards, financial considerations, and physical environmental elements.</p>
-          </CardContent>
-        </Card>
-
-        {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "Internal" | "External")}>
-          <TabsList>
-            <TabsTrigger value="Internal" className="flex items-center gap-2">
-              <Building2 className="h-4 w-4" />
-              Internal ({internalFactors.length})
-            </TabsTrigger>
-            <TabsTrigger value="External" className="flex items-center gap-2">
-              <Globe className="h-4 w-4" />
-              External ({externalFactors.length})
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="Internal" className="mt-4">
-            {isLoading ? (
-              <div className="text-center py-12 text-muted-foreground">Loading...</div>
-            ) : (
-              <FactorTable items={internalFactors} type="Internal" />
-            )}
-          </TabsContent>
-
-          <TabsContent value="External" className="mt-4">
-            {isLoading ? (
-              <div className="text-center py-12 text-muted-foreground">Loading...</div>
-            ) : (
-              <FactorTable items={externalFactors} type="External" />
-            )}
-          </TabsContent>
-        </Tabs>
       </div>
 
+      {/* KPI Strip */}
+      <div className="grid grid-cols-3 gap-4">
+        <Card className="border border-gray-200">
+          <CardHeader className="pb-1 pt-4 px-5">
+            <CardTitle className="text-xs font-medium text-gray-500 uppercase tracking-wide flex items-center gap-1.5">
+              <Building2 className="h-3.5 w-3.5" /> Internal
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-5 pb-4">
+            <div className="text-3xl font-bold text-gray-900">{internalCount}</div>
+          </CardContent>
+        </Card>
+        <Card className="border border-gray-200">
+          <CardHeader className="pb-1 pt-4 px-5">
+            <CardTitle className="text-xs font-medium text-gray-500 uppercase tracking-wide flex items-center gap-1.5">
+              <Globe className="h-3.5 w-3.5" /> External
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-5 pb-4">
+            <div className="text-3xl font-bold text-gray-900">{externalCount}</div>
+          </CardContent>
+        </Card>
+        <Card className="border border-red-200 bg-red-50/40">
+          <CardHeader className="pb-1 pt-4 px-5">
+            <CardTitle className="text-xs font-medium text-red-600 uppercase tracking-wide">
+              High Impact
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-5 pb-4">
+            <div className="text-3xl font-bold text-red-600">{highImpactCount}</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filter + Search Bar */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center border border-gray-200 rounded-md overflow-hidden">
+          {(["All", "Internal", "External"] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => setActiveType(t)}
+              className={`px-4 py-1.5 text-sm font-medium transition-colors ${
+                activeType === t
+                  ? "bg-blue-600 text-white"
+                  : "text-gray-600 hover:bg-gray-100"
+              }`}
+            >
+              {t === "All" ? `All (${factors.length})` : t === "Internal" ? `Internal (${internalCount})` : `External (${externalCount})`}
+            </button>
+          ))}
+        </div>
+        <div className="relative flex-1 min-w-[200px] max-w-xs">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input
+            placeholder="Search factors..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9 h-9"
+          />
+        </div>
+        <div className="flex gap-2 ml-auto">
+          <Button size="sm" variant="outline" onClick={() => openAdd("Internal")}>
+            <Building2 className="h-4 w-4 mr-1" /> Internal
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => openAdd("External")}>
+            <Globe className="h-4 w-4 mr-1" /> External
+          </Button>
+        </div>
+      </div>
+
+      {/* Data Table */}
+      <Card className="border border-gray-200">
+        <CardContent className="p-0">
+          {filtered.length === 0 ? (
+            <div className="text-center py-16 text-gray-500">
+              <Globe className="h-10 w-10 mx-auto mb-3 opacity-20" />
+              <p className="font-medium text-gray-700">No factors found</p>
+              <p className="text-sm mt-1">
+                {factors.length === 0
+                  ? "Start by adding Internal or External environmental factors."
+                  : "Try adjusting your search or filter."}
+              </p>
+              {factors.length === 0 && (
+                <Button size="sm" className="mt-4" onClick={() => openAdd("Internal")}>
+                  <Plus className="h-4 w-4 mr-1" /> Add First Factor
+                </Button>
+              )}
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-gray-50">
+                  <TableHead className="w-24">Type</TableHead>
+                  <TableHead className="w-44">Category</TableHead>
+                  <TableHead>Factor Name</TableHead>
+                  <TableHead className="max-w-xs">Description</TableHead>
+                  <TableHead className="w-24">Impact</TableHead>
+                  <TableHead className="w-28">Influence</TableHead>
+                  <TableHead className="w-36">Source</TableHead>
+                  <TableHead className="w-20 text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((f) => (
+                  <TableRow key={f.id} className="hover:bg-gray-50/50">
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className={
+                          f.type === "Internal"
+                            ? "text-purple-700 border-purple-300 bg-purple-50"
+                            : "text-blue-700 border-blue-300 bg-blue-50"
+                        }
+                      >
+                        {f.type === "Internal" ? (
+                          <Building2 className="h-3 w-3 mr-1 inline" />
+                        ) : (
+                          <Globe className="h-3 w-3 mr-1 inline" />
+                        )}
+                        {f.type}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm text-gray-600">{f.category}</span>
+                    </TableCell>
+                    <TableCell className="font-medium text-gray-900">{f.name}</TableCell>
+                    <TableCell>
+                      <span className="text-sm text-gray-500 line-clamp-2">
+                        {f.description || "—"}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      {f.impact && (
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${IMPACT_BADGE[f.impact]}`}
+                        >
+                          {f.impact}
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1.5 text-sm text-gray-700">
+                        {f.influence && INFLUENCE_ICON[f.influence]}
+                        {f.influence}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-sm text-gray-500 truncate max-w-[140px]">
+                      {f.source || "—"}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-gray-500 hover:text-gray-900"
+                          onClick={() => openEdit(f)}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-gray-400 hover:text-red-600"
+                          onClick={() => setDeleteId(f.id)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Add/Edit Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) { setEditingId(null); setForm(EMPTY_FORM); } }}>
+      <Dialog
+        open={dialogOpen}
+        onOpenChange={(o) => {
+          setDialogOpen(o);
+          if (!o) {
+            setEditingId(null);
+            setForm(EMPTY_FORM);
+          }
+        }}
+      >
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{editingId ? "Edit EEF Factor" : `Add ${form.type} Factor`}</DialogTitle>
+            <DialogTitle>
+              {editingId ? "Edit EEF Factor" : `Add ${form.type} EEF Factor`}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>Type</Label>
-                <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v as "Internal" | "External", category: "" })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select
+                  value={form.type}
+                  onValueChange={(v) =>
+                    setForm({ ...form, type: v as "Internal" | "External", category: "" })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Internal">Internal</SelectItem>
                     <SelectItem value="External">External</SelectItem>
@@ -389,12 +465,21 @@ export default function EEFPage() {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>Category <span className="text-destructive">*</span></Label>
-                <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
-                  <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
+                <Label>
+                  Category <span className="text-red-500">*</span>
+                </Label>
+                <Select
+                  value={form.category}
+                  onValueChange={(v) => setForm({ ...form, category: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
                   <SelectContent>
                     {categories.map((c) => (
-                      <SelectItem key={c} value={c}>{c}</SelectItem>
+                      <SelectItem key={c} value={c}>
+                        {c}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -402,7 +487,9 @@ export default function EEFPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label>Factor Name <span className="text-destructive">*</span></Label>
+              <Label>
+                Factor Name <span className="text-red-500">*</span>
+              </Label>
               <Input
                 placeholder="e.g. PMO Governance Policy"
                 value={form.name}
@@ -423,8 +510,15 @@ export default function EEFPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>Impact Level</Label>
-                <Select value={form.impact} onValueChange={(v) => setForm({ ...form, impact: v as "High" | "Medium" | "Low" })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select
+                  value={form.impact}
+                  onValueChange={(v) =>
+                    setForm({ ...form, impact: v as "High" | "Medium" | "Low" })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="High">High</SelectItem>
                     <SelectItem value="Medium">Medium</SelectItem>
@@ -434,8 +528,18 @@ export default function EEFPage() {
               </div>
               <div className="space-y-1.5">
                 <Label>Influence</Label>
-                <Select value={form.influence} onValueChange={(v) => setForm({ ...form, influence: v as "Positive" | "Negative" | "Neutral" })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select
+                  value={form.influence}
+                  onValueChange={(v) =>
+                    setForm({
+                      ...form,
+                      influence: v as "Positive" | "Negative" | "Neutral",
+                    })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Positive">Positive</SelectItem>
                     <SelectItem value="Negative">Negative</SelectItem>
@@ -448,7 +552,7 @@ export default function EEFPage() {
             <div className="space-y-1.5">
               <Label>Source / Reference</Label>
               <Input
-                placeholder="e.g. Government Regulation No. 123, PMO Policy v2"
+                placeholder="e.g. Government Regulation No. 123"
                 value={form.source}
                 onChange={(e) => setForm({ ...form, source: e.target.value })}
               />
@@ -465,34 +569,83 @@ export default function EEFPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSubmit} disabled={createMutation.isPending || updateMutation.isPending}>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              disabled={createMutation.isPending || updateMutation.isPending}
+            >
               {editingId ? "Save Changes" : "Add Factor"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
+      {/* PMBOK Context Info Dialog */}
+      <Dialog open={infoOpen} onOpenChange={setInfoOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>PMBOK 7 — Enterprise Environmental Factors</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 text-sm text-gray-700 py-2">
+            <div>
+              <p className="font-semibold text-purple-700 mb-1 flex items-center gap-1.5">
+                <Building2 className="h-4 w-4" /> Internal EEFs
+              </p>
+              <p>
+                Organizational culture, governance frameworks, infrastructure, existing human
+                resources, IT software, resource availability, and employee capability.
+              </p>
+            </div>
+            <div>
+              <p className="font-semibold text-blue-700 mb-1 flex items-center gap-1.5">
+                <Globe className="h-4 w-4" /> External EEFs
+              </p>
+              <p>
+                Marketplace conditions, social and cultural influences, regulatory environment,
+                commercial databases, academic research, industry standards, financial
+                considerations, and physical environmental elements.
+              </p>
+            </div>
+            <p className="text-xs text-gray-400 border-t pt-3">
+              Source: PMBOK® Guide — Seventh Edition, Section 2.2
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setInfoOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Delete Confirmation */}
-      <AlertDialog open={deleteId !== null} onOpenChange={(o) => !o && setDeleteId(null)}>
+      <AlertDialog
+        open={deleteId !== null}
+        onOpenChange={(o) => !o && setDeleteId(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete EEF Factor</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete this environmental factor. This action cannot be undone.
+              This will permanently delete this environmental factor. This action cannot be
+              undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => deleteId && deleteMutation.mutate({ id: deleteId, projectId })}
+              onClick={() =>
+                deleteId && deleteMutation.mutate({ id: deleteId, projectId })
+              }
             >
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </DashboardLayout>
+    </div>
   );
 }

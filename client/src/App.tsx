@@ -42,6 +42,7 @@ import ProjectCharter from "./pages/ProjectCharter";
 import PMPlan from "./pages/PMPlan";
 import WBSBuilder from "./pages/WBSBuilder";
 import EEFPage from "./pages/EEF";
+import CurrencySettings from "./pages/CurrencySettings";
 import Milestones from "./pages/Milestones";
 import RaidLog from "./pages/RaidLog";
 // ActionItems merged into Tasks - redirects to /tasks
@@ -207,6 +208,11 @@ function Router() {
       <Route path="/eef">
         <DashboardLayout>
           <EEFPage />
+        </DashboardLayout>
+      </Route>
+      <Route path="/currency-settings">
+        <DashboardLayout>
+          <CurrencySettings />
         </DashboardLayout>
       </Route>
       <Route path={"/milestones"}>

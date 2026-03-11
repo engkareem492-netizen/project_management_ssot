@@ -74,6 +74,7 @@ import {
   Sliders,
   Layers2,
   ClipboardList,
+  RefreshCw,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import {
@@ -154,12 +155,19 @@ const menuItems: MenuItem[] = [
     ],
   },
   { icon: Package, label: "Deliverables", path: "/deliverables" },
-  { icon: BookOpen, label: "Knowledge Base", path: "/knowledge-base" },
   { icon: AlertTriangle, label: "Risk Register", path: "/risk-register" },
   { icon: GitPullRequest, label: "Change Requests", path: "/change-requests" },
   { icon: MessageSquare, label: "Meetings & Decisions", path: "/meetings" },
   { icon: CalendarRange, label: "Calendar", path: "/calendar" },
-  { icon: DollarSign, label: "Budget", path: "/budget" },
+  {
+    icon: DollarSign,
+    label: "Budget",
+    path: "__budget__",
+    children: [
+      { icon: DollarSign, label: "Budget Overview", path: "/budget" },
+      { icon: RefreshCw, label: "Currency Settings", path: "/currency-settings" },
+    ],
+  },
   { icon: FlaskConical, label: "Test Cases", path: "/test-cases" },
   { icon: Layers, label: "Traceability Matrix", path: "/traceability" },
   {
