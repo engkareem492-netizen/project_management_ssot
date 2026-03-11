@@ -570,3 +570,9 @@
 ## Bug Fixes (Mar 11, 2026 - Batch 23)
 - [x] Fix date formatting bug on Today/Dashboard page — "Due Today" subtitle shows "112026/3/" instead of "11/03/2026"
 - [x] Fix Relationship Map — nodes render off-screen (only one node visible far right); need to fit all nodes within viewport on load
+
+## Bug Fix: All Dropdowns Must Use Editable Settings (Mar 11, 2026)
+- [x] Audit all hardcoded dropdown arrays across all pages (requirement types, task statuses, priorities, risk levels, etc.)
+- [x] Fix Requirements page: type dropdown reads from settings DB (already did)
+- [x] Fix cascade: updateTypeOption, updateCategoryOption, updateStatusOption, updatePriorityOption now update both value+label columns and cascade rename to requirements, tasks, issues, deliverables
+- [x] Ensure Settings page edits take effect immediately everywhere (cascade confirmed working)

@@ -1109,7 +1109,22 @@ export async function createStatusOption(data: { value: string; label: string; c
 export async function updateStatusOption(id: number, data: Partial<{ label: string; value: string; category: string; color: string; isDefault: boolean; isComplete: boolean }>) {
   const db = await getDb();
   if (!db) throw new Error('Database not available');
-  await db.update(statusOptions).set(data).where(eq(statusOptions.id, id));
+  // Fetch old value before update for cascade
+  const [old] = await db.select().from(statusOptions).where(eq(statusOptions.id, id)).limit(1);
+  const oldValue = old?.value;
+  // Always sync value = label when label changes
+  const updatePayload: Record<string, unknown> = { ...data };
+  if (data.value !== undefined) updatePayload.value = data.value;
+  else if (data.label !== undefined) updatePayload.value = data.label;
+  await db.update(statusOptions).set(updatePayload).where(eq(statusOptions.id, id));
+  // Cascade rename to all tables that store status as a plain string
+  const newValue = (updatePayload.value as string) ?? oldValue;
+  if (oldValue && newValue && oldValue !== newValue) {
+    await db.update(requirements).set({ status: newValue }).where(eq(requirements.status, oldValue));
+    await db.update(tasks).set({ status: newValue }).where(eq(tasks.status, oldValue));
+    await db.update(issues).set({ status: newValue }).where(eq(issues.status, oldValue));
+    await db.update(deliverables).set({ status: newValue }).where(eq(deliverables.status, oldValue));
+  }
   return await db.select().from(statusOptions).where(eq(statusOptions.id, id)).limit(1);
 }
 
@@ -1153,10 +1168,21 @@ export async function createPriorityOption(data: { value: string; label: string;
   return created;
 }
 
-export async function updatePriorityOption(id: number, data: Partial<{ label: string; category: string; level: number; color: string; isDefault: boolean }>) {
+export async function updatePriorityOption(id: number, data: Partial<{ label: string; value?: string; category: string; level: number; color: string; isDefault: boolean }>) {
   const db = await getDb();
   if (!db) throw new Error('Database not available');
-  await db.update(priorityOptions).set(data).where(eq(priorityOptions.id, id));
+  const [old] = await db.select().from(priorityOptions).where(eq(priorityOptions.id, id)).limit(1);
+  const oldValue = old?.value;
+  const updatePayload: Record<string, unknown> = { ...data };
+  if (data.value !== undefined) updatePayload.value = data.value;
+  else if (data.label !== undefined) updatePayload.value = data.label;
+  await db.update(priorityOptions).set(updatePayload).where(eq(priorityOptions.id, id));
+  const newValue = (updatePayload.value as string) ?? oldValue;
+  if (oldValue && newValue && oldValue !== newValue) {
+    await db.update(requirements).set({ priority: newValue }).where(eq(requirements.priority, oldValue));
+    await db.update(tasks).set({ priority: newValue }).where(eq(tasks.priority, oldValue));
+    await db.update(issues).set({ priority: newValue }).where(eq(issues.priority, oldValue));
+  }
   return await db.select().from(priorityOptions).where(eq(priorityOptions.id, id)).limit(1);
 }
 
@@ -1195,10 +1221,21 @@ export async function createTypeOption(data: { value: string; label: string; des
   return created;
 }
 
-export async function updateTypeOption(id: number, data: Partial<{ label: string; description: string; isDefault: boolean }>) {
+export async function updateTypeOption(id: number, data: Partial<{ label: string; value?: string; description: string; isDefault: boolean }>) {
   const db = await getDb();
   if (!db) throw new Error('Database not available');
-  await db.update(typeOptions).set(data).where(eq(typeOptions.id, id));
+  const [old] = await db.select().from(typeOptions).where(eq(typeOptions.id, id)).limit(1);
+  const oldValue = old?.value;
+  const updatePayload: Record<string, unknown> = { ...data };
+  if (data.value !== undefined) updatePayload.value = data.value;
+  else if (data.label !== undefined) updatePayload.value = data.label;
+  await db.update(typeOptions).set(updatePayload).where(eq(typeOptions.id, id));
+  const newValue = (updatePayload.value as string) ?? oldValue;
+  if (oldValue && newValue && oldValue !== newValue) {
+    // Cascade to requirements.type and issues.type
+    await db.update(requirements).set({ type: newValue }).where(eq(requirements.type, oldValue));
+    await db.update(issues).set({ type: newValue }).where(eq(issues.type, oldValue));
+  }
   return await db.select().from(typeOptions).where(eq(typeOptions.id, id)).limit(1);
 }
 
@@ -1237,10 +1274,20 @@ export async function createCategoryOption(data: { value: string; label: string;
   return created;
 }
 
-export async function updateCategoryOption(id: number, data: Partial<{ label: string; description: string; isDefault: boolean }>) {
+export async function updateCategoryOption(id: number, data: Partial<{ label: string; value?: string; description: string; isDefault: boolean }>) {
   const db = await getDb();
   if (!db) throw new Error('Database not available');
-  await db.update(categoryOptions).set(data).where(eq(categoryOptions.id, id));
+  const [old] = await db.select().from(categoryOptions).where(eq(categoryOptions.id, id)).limit(1);
+  const oldValue = old?.value;
+  const updatePayload: Record<string, unknown> = { ...data };
+  if (data.value !== undefined) updatePayload.value = data.value;
+  else if (data.label !== undefined) updatePayload.value = data.label;
+  await db.update(categoryOptions).set(updatePayload).where(eq(categoryOptions.id, id));
+  const newValue = (updatePayload.value as string) ?? oldValue;
+  if (oldValue && newValue && oldValue !== newValue) {
+    // Cascade to requirements.category
+    await db.update(requirements).set({ category: newValue }).where(eq(requirements.category, oldValue));
+  }
   return await db.select().from(categoryOptions).where(eq(categoryOptions.id, id)).limit(1);
 }
 

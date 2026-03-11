@@ -2083,7 +2083,7 @@ export const appRouter = router({
           value: z.string(),
         }))
         .mutation(async ({ input }) => {
-          return await db.updatePriorityOption(input.id, { label: input.value });
+          return await db.updatePriorityOption(input.id, { label: input.value, value: input.value });
         }),
       delete: protectedProcedure
         .input(z.object({ id: z.number() }))
@@ -2115,7 +2115,7 @@ export const appRouter = router({
           value: z.string(),
         }))
         .mutation(async ({ input }) => {
-          return await db.updateTypeOption(input.id, { label: input.value });
+          return await db.updateTypeOption(input.id, { label: input.value, value: input.value });
         }),
       delete: protectedProcedure
         .input(z.object({ id: z.number() }))
@@ -2147,7 +2147,7 @@ export const appRouter = router({
           value: z.string(),
         }))
         .mutation(async ({ input }) => {
-          return await db.updateCategoryOption(input.id, { label: input.value });
+          return await db.updateCategoryOption(input.id, { label: input.value, value: input.value });
         }),
       delete: protectedProcedure
         .input(z.object({ id: z.number() }))
