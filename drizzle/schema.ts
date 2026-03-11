@@ -1312,3 +1312,21 @@ export const wbsElements = mysqlTable("wbsElements", {
 });
 export type WbsElement = typeof wbsElements.$inferSelect;
 export type InsertWbsElement = typeof wbsElements.$inferInsert;
+
+// ─── Enterprise Environmental Factors (EEF) ──────────────────────────────────
+export const eefFactors = mysqlTable("eefFactors", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  type: mysqlEnum("type", ["Internal", "External"]).notNull().default("Internal"),
+  category: varchar("category", { length: 100 }).notNull(),   // e.g. "Culture", "Market", "Regulatory"
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  impact: mysqlEnum("impact", ["High", "Medium", "Low"]).default("Medium"),
+  influence: mysqlEnum("influence", ["Positive", "Negative", "Neutral"]).default("Neutral"),
+  source: varchar("source", { length: 255 }),                 // e.g. "PMO Policy", "Government Regulation"
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type EefFactor = typeof eefFactors.$inferSelect;
+export type InsertEefFactor = typeof eefFactors.$inferInsert;

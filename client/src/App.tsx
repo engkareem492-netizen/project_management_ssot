@@ -41,6 +41,7 @@ import JoinProject from "./pages/JoinProject";
 import ProjectCharter from "./pages/ProjectCharter";
 import PMPlan from "./pages/PMPlan";
 import WBSBuilder from "./pages/WBSBuilder";
+import EEFPage from "./pages/EEF";
 import Milestones from "./pages/Milestones";
 import RaidLog from "./pages/RaidLog";
 // ActionItems merged into Tasks - redirects to /tasks
@@ -198,9 +199,14 @@ function Router() {
           <PMPlan />
         </DashboardLayout>
       </Route>
-      <Route path={"/wbs"}>
+      <Route path="/wbs">
         <DashboardLayout>
           <WBSBuilder />
+        </DashboardLayout>
+      </Route>
+      <Route path="/eef">
+        <DashboardLayout>
+          <EEFPage />
         </DashboardLayout>
       </Route>
       <Route path={"/milestones"}>

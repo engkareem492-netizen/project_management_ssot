@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `wbsElements` (`id` int AUTO_INCREMENT NOT NULL, `projectId` int NOT NULL, `parentId` int, `code` varchar(50) NOT NULL, `title` varchar(255) NOT NULL, `description` text, `level` int NOT NULL DEFAULT 1, `responsible` varchar(255), `estimatedCost` decimal(15,2), `actualCost` decimal(15,2), `status` enum('Not Started','In Progress','Complete','On Hold') DEFAULT 'Not Started', `deliverableId` int, `milestoneId` int, `sortOrder` int DEFAULT 0, `createdAt` timestamp NOT NULL DEFAULT (now()), `updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT `wbsElements_id` PRIMARY KEY(`id`))",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 34DzJoQKEqyc4cp.root --database MtjPfUT7z9e3zhUb3tuetB --execute CREATE TABLE IF NOT EXISTS `wbsElements` (`id` int AUTO_INCREMENT NOT NULL, `projectId` int NOT NULL, `parentId` int, `code` varchar(50) NOT NULL, `title` varchar(255) NOT NULL, `description` text, `level` int NOT NULL DEFAULT 1, `responsible` varchar(255), `estimatedCost` decimal(15,2), `actualCost` decimal(15,2), `status` enum('Not Started','In Progress','Complete','On Hold') DEFAULT 'Not Started', `deliverableId` int, `milestoneId` int, `sortOrder` int DEFAULT 0, `createdAt` timestamp NOT NULL DEFAULT (now()), `updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT `wbsElements_id` PRIMARY KEY(`id`))",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1622
+}

@@ -595,3 +595,13 @@
 - [x] WBS Builder page with tree table (expand/collapse, add child, edit, delete, cost summary, WBS code auto-generation)
 - [x] Wire all three pages in sidebar under new "Planning" group
 - [x] Add vitest tests for PM Plan section keys and WBS tree/code logic (6/6 passing)
+
+## Sidebar Restructure & EEF Page (Mar 12, 2026)
+- [x] Fix DB migration: force-create wbsElements and pmPlanSections tables in remote DB (used webdev_execute_sql directly)
+- [x] Move Scope Items into Planning sidebar group (Charter, PM Plan, WBS, Scope Items)
+- [x] Create OPA sidebar group: Document Library, Knowledge Base, Lessons Learned
+- [x] Add EEF (Enterprise Environmental Factors) as new section under OPA group
+- [x] Build EEF page: list Internal and External factors with category, description, impact level, source, PMBOK context card, summary stats
+- [x] Add eefFactors table to schema and push migration (also created directly in remote DB)
+- [x] Add EEF router (list, create, update, delete)
+- [x] Register /eef route in App.tsx
