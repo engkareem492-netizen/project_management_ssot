@@ -109,7 +109,6 @@ const menuItems: MenuItem[] = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
   { icon: Scroll, label: "Project Charter", path: "/charter" },
   { icon: Flag, label: "Milestones", path: "/milestones" },
-  { icon: FileText, label: "Requirements", path: "/requirements" },
   {
     icon: CheckSquare,
     label: "Tasks",
@@ -120,10 +119,18 @@ const menuItems: MenuItem[] = [
       { icon: BarChart2, label: "Gantt Chart", path: "/gantt" },
     ],
   },
-  { icon: AlertCircle, label: "Issues", path: "/issues" },
-  { icon: Link2, label: "Dependencies", path: "/dependencies" },
-  { icon: FileCheck, label: "Assumptions", path: "/assumptions" },
-  { icon: ShieldAlert, label: "RAID Log", path: "/raid-log" },
+  {
+    icon: ShieldAlert,
+    label: "RAID",
+    path: "__raid__",
+    children: [
+      { icon: FileText, label: "Requirements", path: "/requirements" },
+      { icon: AlertCircle, label: "Issues", path: "/issues" },
+      { icon: FileCheck, label: "Assumptions", path: "/assumptions" },
+      { icon: Link2, label: "Dependencies", path: "/dependencies" },
+      { icon: ShieldAlert, label: "RAID Log", path: "/raid-log" },
+    ],
+  },
   {
     icon: Users,
     label: "Team",

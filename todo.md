@@ -551,3 +551,13 @@
 - [x] When dropping a card into a quadrant in the Engagement Matrix, also update powerLevel and interestLevel to match the quadrant's range
 - [x] Manage Closely → P=5, I=5 | Keep Satisfied → P=5, I=2 | Keep Informed → P=2, I=5 | Monitor → P=2, I=2
 - [x] Unassigned drop → only clear strategy, leave scores unchanged
+
+## Dashboard Enhancement & RAID Sidebar Group (Mar 11, 2026)
+- [x] Group Requirements, Issues, Assumptions, Dependencies, RAID Log under RAID tree in sidebar
+- [x] Enhance dashboard: project health ring, RAID summary panel (tabbed: risks/issues/assumptions/dependencies), deliverables status, stakeholder count
+- [x] Add tasks by status donut chart
+- [x] Add 5x5 risk matrix heatmap widget
+- [x] Add upcoming milestones summary widget
+- [x] Improve activity feed with entity icons and timestamps
+- [x] Add Tasks by Person bar chart and Completion by Dimension radar chart
+- [x] Add Budget utilization bar and Due This Week widget
