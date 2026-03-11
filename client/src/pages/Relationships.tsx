@@ -1,12 +1,14 @@
 /**
  * Stakeholder Engagement Map
- * Repurposed from the old "Relationships" page.
- * Shows:
- *  1. Power/Interest Grid — 2×2 quadrant with stakeholder cards
+ * Distinct from the Stakeholders → "Engagement Matrix" tab (which is a manual drag-and-drop board).
+ * This page shows:
+ *  1. Bubble Map — SVG scatter-plot with each stakeholder plotted at their exact (Interest, Power)
+ *     coordinates. Bubble size reflects influence (avg of power+interest). Quadrant shading shows
+ *     the four strategy zones. Hover tooltip shows full details.
  *  2. Communication Plan — table of all stakeholders with comms details
  *  3. Engagement Summary — distribution analytics
  */
-import { useMemo } from "react";
+import { useMemo, useRef, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useProject } from "@/contexts/ProjectContext";
 import { Badge } from "@/components/ui/badge";
@@ -17,12 +19,10 @@ import {
 } from "@/components/ui/table";
 import {
   Users, Map, MessageSquare, BarChart2,
-  AlertTriangle, TrendingUp, Info, Eye,
 } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
 function getEngagementColors(strategy: string | null | undefined) {
   const map: Record<string, string> = {
     "Manage Closely": "bg-red-100 text-red-700 border-red-200",
@@ -33,118 +33,243 @@ function getEngagementColors(strategy: string | null | undefined) {
   return map[strategy || ""] || "bg-muted text-muted-foreground border-border";
 }
 
-const QUADRANT_CONFIG = [
-  {
-    key: "manage-closely",
-    label: "Manage Closely",
-    subtitle: "High Power · High Interest",
-    color: "border-red-200 bg-red-50/40",
-    headerColor: "text-red-700",
-    Icon: AlertTriangle,
-  },
-  {
-    key: "keep-satisfied",
-    label: "Keep Satisfied",
-    subtitle: "High Power · Low Interest",
-    color: "border-orange-200 bg-orange-50/40",
-    headerColor: "text-orange-700",
-    Icon: TrendingUp,
-  },
-  {
-    key: "keep-informed",
-    label: "Keep Informed",
-    subtitle: "Low Power · High Interest",
-    color: "border-blue-200 bg-blue-50/40",
-    headerColor: "text-blue-700",
-    Icon: Info,
-  },
-  {
-    key: "monitor",
-    label: "Monitor",
-    subtitle: "Low Power · Low Interest",
-    color: "border-gray-200 bg-gray-50/40",
-    headerColor: "text-gray-600",
-    Icon: Eye,
-  },
+// Strategy color for bubble fill
+const STRATEGY_COLORS: Record<string, { fill: string; stroke: string; text: string }> = {
+  "Manage Closely": { fill: "#fee2e2", stroke: "#ef4444", text: "#b91c1c" },
+  "Keep Satisfied": { fill: "#ffedd5", stroke: "#f97316", text: "#c2410c" },
+  "Keep Informed":  { fill: "#dbeafe", stroke: "#3b82f6", text: "#1d4ed8" },
+  "Monitor":        { fill: "#f3f4f6", stroke: "#9ca3af", text: "#4b5563" },
+};
+const DEFAULT_COLOR = { fill: "#e9d5ff", stroke: "#8b5cf6", text: "#5b21b6" };
+
+// Avatar palette (for bubble initials fallback)
+const AVATAR_COLORS = [
+  "#ef4444","#f97316","#eab308","#22c55e","#3b82f6","#8b5cf6","#ec4899","#14b8a6",
 ];
+const avatarColor = (id: number) => AVATAR_COLORS[id % AVATAR_COLORS.length];
 
-function getQuadrant(s: any): string {
-  const power = s.powerLevel ?? 3;
-  const interest = s.interestLevel ?? 3;
-  if (power >= 3 && interest >= 3) return "manage-closely";
-  if (power >= 3 && interest < 3) return "keep-satisfied";
-  if (power < 3 && interest >= 3) return "keep-informed";
-  return "monitor";
-}
+// ─── Bubble Map (SVG Scatter-plot) ────────────────────────────────────────────
+function BubbleMap({ stakeholders }: { stakeholders: any[] }) {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [tooltip, setTooltip] = useState<{ s: any; x: number; y: number } | null>(null);
 
-// ─── Power/Interest Grid ──────────────────────────────────────────────────────
-function PowerInterestGrid({ stakeholders }: { stakeholders: any[] }) {
-  const grouped = useMemo(() => {
-    const map: Record<string, any[]> = {
-      "manage-closely": [],
-      "keep-satisfied": [],
-      "keep-informed": [],
-      "monitor": [],
-    };
-    stakeholders.forEach((s) => {
-      map[getQuadrant(s)].push(s);
-    });
-    return map;
-  }, [stakeholders]);
+  // Canvas dimensions
+  const W = 700;
+  const H = 480;
+  const PAD = { top: 40, right: 40, bottom: 60, left: 60 };
+  const plotW = W - PAD.left - PAD.right;
+  const plotH = H - PAD.top - PAD.bottom;
+
+  // Scale: interest on X (1–5), power on Y (1–5)
+  const scaleX = (v: number) => PAD.left + ((v - 1) / 4) * plotW;
+  const scaleY = (v: number) => PAD.top + ((5 - v) / 4) * plotH; // invert Y
+
+  // Bubble radius: proportional to (power+interest)/2, range 14–30
+  const bubbleR = (s: any) => {
+    const avg = ((s.powerLevel ?? 3) + (s.interestLevel ?? 3)) / 2;
+    return 14 + ((avg - 1) / 4) * 16;
+  };
+
+  // Quadrant midpoints for labels
+  const qMidX1 = PAD.left + plotW * 0.25;
+  const qMidX2 = PAD.left + plotW * 0.75;
+  const qMidY1 = PAD.top + plotH * 0.25;
+  const qMidY2 = PAD.top + plotH * 0.75;
+  const midX = PAD.left + plotW / 2;
+  const midY = PAD.top + plotH / 2;
+
+  // Jitter to avoid perfect overlaps (deterministic by id)
+  const jitter = (id: number, axis: "x" | "y") => {
+    const seed = axis === "x" ? id * 7 : id * 13;
+    return ((seed % 11) - 5) * 1.2;
+  };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <p className="text-sm text-muted-foreground">
-        Each stakeholder is placed based on their <strong>Power</strong> (1–5) and <strong>Interest</strong> (1–5) levels. Set these values in the Stakeholder Register.
+        Each bubble is plotted at the stakeholder's exact <strong>Interest (X)</strong> and <strong>Power (Y)</strong> scores (1–5).
+        Bubble size reflects overall influence. Color matches the engagement strategy set in the Stakeholder Register.
+        Hover a bubble for details.
       </p>
+      <div className="border rounded-xl overflow-hidden bg-white dark:bg-card" style={{ maxWidth: W }}>
+        <svg
+          ref={svgRef}
+          viewBox={`0 0 ${W} ${H}`}
+          width="100%"
+          style={{ display: "block", fontFamily: "inherit" }}
+          onMouseLeave={() => setTooltip(null)}
+        >
+          {/* ── Quadrant background fills ── */}
+          {/* Top-left: Keep Satisfied (High Power, Low Interest) */}
+          <rect x={PAD.left} y={PAD.top} width={plotW / 2} height={plotH / 2}
+            fill="#fff7ed" opacity="0.7" />
+          {/* Top-right: Manage Closely (High Power, High Interest) */}
+          <rect x={midX} y={PAD.top} width={plotW / 2} height={plotH / 2}
+            fill="#fef2f2" opacity="0.7" />
+          {/* Bottom-left: Monitor (Low Power, Low Interest) */}
+          <rect x={PAD.left} y={midY} width={plotW / 2} height={plotH / 2}
+            fill="#f9fafb" opacity="0.7" />
+          {/* Bottom-right: Keep Informed (Low Power, High Interest) */}
+          <rect x={midX} y={midY} width={plotW / 2} height={plotH / 2}
+            fill="#eff6ff" opacity="0.7" />
 
-      {/* 2×2 grid */}
-      <div className="grid grid-cols-2 gap-3">
-        {QUADRANT_CONFIG.map((q) => {
-          const items = grouped[q.key] || [];
+          {/* ── Quadrant divider lines ── */}
+          <line x1={midX} y1={PAD.top} x2={midX} y2={PAD.top + plotH}
+            stroke="#d1d5db" strokeWidth="1.5" strokeDasharray="6 3" />
+          <line x1={PAD.left} y1={midY} x2={PAD.left + plotW} y2={midY}
+            stroke="#d1d5db" strokeWidth="1.5" strokeDasharray="6 3" />
+
+          {/* ── Quadrant labels ── */}
+          <text x={qMidX1} y={qMidY1} textAnchor="middle" fontSize="11" fontWeight="700"
+            fill="#c2410c" opacity="0.5">Keep Satisfied</text>
+          <text x={qMidX2} y={qMidY1} textAnchor="middle" fontSize="11" fontWeight="700"
+            fill="#b91c1c" opacity="0.5">Manage Closely</text>
+          <text x={qMidX1} y={qMidY2} textAnchor="middle" fontSize="11" fontWeight="700"
+            fill="#4b5563" opacity="0.5">Monitor</text>
+          <text x={qMidX2} y={qMidY2} textAnchor="middle" fontSize="11" fontWeight="700"
+            fill="#1d4ed8" opacity="0.5">Keep Informed</text>
+
+          {/* ── Grid lines (minor) ── */}
+          {[2, 3, 4].map(v => (
+            <g key={v}>
+              <line x1={scaleX(v)} y1={PAD.top} x2={scaleX(v)} y2={PAD.top + plotH}
+                stroke="#e5e7eb" strokeWidth="1" />
+              <line x1={PAD.left} y1={scaleY(v)} x2={PAD.left + plotW} y2={scaleY(v)}
+                stroke="#e5e7eb" strokeWidth="1" />
+            </g>
+          ))}
+
+          {/* ── Axes ── */}
+          <line x1={PAD.left} y1={PAD.top + plotH} x2={PAD.left + plotW} y2={PAD.top + plotH}
+            stroke="#6b7280" strokeWidth="1.5" />
+          <line x1={PAD.left} y1={PAD.top} x2={PAD.left} y2={PAD.top + plotH}
+            stroke="#6b7280" strokeWidth="1.5" />
+
+          {/* ── Axis tick labels ── */}
+          {[1, 2, 3, 4, 5].map(v => (
+            <g key={v}>
+              {/* X ticks */}
+              <text x={scaleX(v)} y={PAD.top + plotH + 16} textAnchor="middle"
+                fontSize="11" fill="#6b7280">{v}</text>
+              {/* Y ticks */}
+              <text x={PAD.left - 10} y={scaleY(v) + 4} textAnchor="end"
+                fontSize="11" fill="#6b7280">{v}</text>
+            </g>
+          ))}
+
+          {/* ── Axis titles ── */}
+          <text x={PAD.left + plotW / 2} y={H - 8} textAnchor="middle"
+            fontSize="12" fontWeight="600" fill="#374151">INTEREST →</text>
+          <text
+            x={14} y={PAD.top + plotH / 2}
+            textAnchor="middle" fontSize="12" fontWeight="600" fill="#374151"
+            transform={`rotate(-90, 14, ${PAD.top + plotH / 2})`}
+          >POWER ↑</text>
+
+          {/* ── Bubbles ── */}
+          {stakeholders.map((s) => {
+            const cx = scaleX(s.interestLevel ?? 3) + jitter(s.id, "x");
+            const cy = scaleY(s.powerLevel ?? 3) + jitter(s.id, "y");
+            const r = bubbleR(s);
+            const col = STRATEGY_COLORS[s.engagementStrategy || ""] || DEFAULT_COLOR;
+            const initials = (s.fullName || "?").split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
+            return (
+              <g
+                key={s.id}
+                style={{ cursor: "pointer" }}
+                onMouseEnter={(e) => {
+                  const svgEl = svgRef.current;
+                  if (!svgEl) return;
+                  const rect = svgEl.getBoundingClientRect();
+                  const scaleRatio = rect.width / W;
+                  setTooltip({ s, x: cx * scaleRatio, y: cy * scaleRatio });
+                }}
+                onMouseLeave={() => setTooltip(null)}
+              >
+                {/* Shadow */}
+                <circle cx={cx + 1} cy={cy + 2} r={r} fill="rgba(0,0,0,0.08)" />
+                {/* Bubble */}
+                <circle cx={cx} cy={cy} r={r}
+                  fill={col.fill} stroke={col.stroke} strokeWidth="2" />
+                {/* Initials */}
+                <text x={cx} y={cy + 4} textAnchor="middle"
+                  fontSize={r > 20 ? "10" : "8"} fontWeight="700" fill={col.text}
+                  style={{ pointerEvents: "none" }}>
+                  {initials}
+                </text>
+              </g>
+            );
+          })}
+
+          {/* ── Legend ── */}
+          {Object.entries(STRATEGY_COLORS).map(([label, col], i) => (
+            <g key={label} transform={`translate(${PAD.left + i * 155}, ${H - 24})`}>
+              <circle cx={6} cy={0} r={6} fill={col.fill} stroke={col.stroke} strokeWidth="1.5" />
+              <text x={16} y={4} fontSize="10" fill="#374151">{label}</text>
+            </g>
+          ))}
+        </svg>
+
+        {/* Tooltip (positioned relative to the container) */}
+        {tooltip && (
+          <div
+            style={{
+              position: "absolute",
+              left: tooltip.x + 12,
+              top: tooltip.y - 10,
+              pointerEvents: "none",
+              zIndex: 50,
+              background: "white",
+              border: "1px solid #e5e7eb",
+              borderRadius: "10px",
+              padding: "10px 14px",
+              boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
+              minWidth: "180px",
+            }}
+          >
+            <div style={{ fontWeight: 700, fontSize: "13px", color: "#111827", marginBottom: "4px" }}>
+              {tooltip.s.fullName}
+            </div>
+            {tooltip.s.position && (
+              <div style={{ fontSize: "11px", color: "#6b7280", marginBottom: "6px" }}>{tooltip.s.position}</div>
+            )}
+            <div style={{ display: "flex", gap: "8px", marginBottom: "4px" }}>
+              <span style={{ fontSize: "11px", background: "#f3f4f6", padding: "1px 6px", borderRadius: "4px" }}>
+                Power: <strong>{tooltip.s.powerLevel ?? 3}</strong>
+              </span>
+              <span style={{ fontSize: "11px", background: "#f3f4f6", padding: "1px 6px", borderRadius: "4px" }}>
+                Interest: <strong>{tooltip.s.interestLevel ?? 3}</strong>
+              </span>
+            </div>
+            {tooltip.s.engagementStrategy && (
+              <div style={{ fontSize: "11px", color: STRATEGY_COLORS[tooltip.s.engagementStrategy]?.text || "#374151", fontWeight: 600 }}>
+                {tooltip.s.engagementStrategy}
+              </div>
+            )}
+            {tooltip.s.organization && (
+              <div style={{ fontSize: "10px", color: "#9ca3af", marginTop: "2px" }}>{tooltip.s.organization}</div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Stakeholder list below the chart */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 mt-2">
+        {stakeholders.map((s) => {
+          const col = STRATEGY_COLORS[s.engagementStrategy || ""] || DEFAULT_COLOR;
           return (
-            <div key={q.key} className={`border-2 rounded-xl p-4 ${q.color} min-h-[180px]`}>
-              <div className="flex items-center gap-2 mb-3">
-                <q.Icon className={`h-4 w-4 ${q.headerColor}`} />
-                <div>
-                  <p className={`font-semibold text-sm ${q.headerColor}`}>{q.label}</p>
-                  <p className="text-xs text-muted-foreground">{q.subtitle}</p>
-                </div>
-                <Badge variant="outline" className="ml-auto text-xs">{items.length}</Badge>
+            <div key={s.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "6px 10px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "white" }}>
+              <div style={{ width: "24px", height: "24px", borderRadius: "50%", background: avatarColor(s.id), display: "flex", alignItems: "center", justifyContent: "center", fontSize: "10px", fontWeight: 700, color: "white", flexShrink: 0 }}>
+                {(s.fullName || "?")[0].toUpperCase()}
               </div>
-              <div className="flex flex-wrap gap-2">
-                {items.length === 0 ? (
-                  <p className="text-xs text-muted-foreground italic">No stakeholders in this quadrant</p>
-                ) : (
-                  items.map((s) => (
-                    <div
-                      key={s.id}
-                      className="bg-white border rounded-lg px-2.5 py-1.5 shadow-sm hover:shadow-md transition-shadow"
-                    >
-                      <p className="text-xs font-medium leading-tight">{s.fullName}</p>
-                      {s.position && <p className="text-[10px] text-muted-foreground">{s.position}</p>}
-                      <div className="flex gap-1 mt-1">
-                        <span className="text-[10px] bg-muted px-1 rounded">P:{s.powerLevel ?? "?"}</span>
-                        <span className="text-[10px] bg-muted px-1 rounded">I:{s.interestLevel ?? "?"}</span>
-                        {s.isInternalTeam && (
-                          <span className="text-[10px] bg-blue-100 text-blue-700 px-1 rounded">Int</span>
-                        )}
-                      </div>
-                    </div>
-                  ))
-                )}
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: "11px", fontWeight: 600, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.fullName}</div>
+                <div style={{ fontSize: "9px", color: col.text, fontWeight: 600 }}>{s.engagementStrategy || "Unset"}</div>
               </div>
+              <div style={{ marginLeft: "auto", fontSize: "9px", color: "#9ca3af", flexShrink: 0 }}>P{s.powerLevel ?? 3}/I{s.interestLevel ?? 3}</div>
             </div>
           );
         })}
-      </div>
-
-      {/* Legend */}
-      <div className="flex flex-wrap gap-4 text-xs text-muted-foreground border-t pt-3">
-        <span><strong>P</strong> = Power Level (1–5)</span>
-        <span><strong>I</strong> = Interest Level (1–5)</span>
-        <span><strong>Int</strong> = Internal Team Member</span>
-        <span>Threshold: ≥3 = High, &lt;3 = Low</span>
       </div>
     </div>
   );
@@ -379,7 +504,8 @@ export default function Relationships() {
             Stakeholder Engagement Map
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Power/Interest grid, communication plan, and engagement analytics for all stakeholders
+            Visual bubble map of stakeholder positions, communication plan, and engagement analytics.
+            To reassign strategies by drag-and-drop, use the <strong>Engagement Matrix</strong> tab in the Stakeholder Register.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -397,10 +523,10 @@ export default function Relationships() {
           description="Add stakeholders in the Stakeholder Register first, then set their Power and Interest levels to see the engagement map."
         />
       ) : (
-        <Tabs defaultValue="grid">
+        <Tabs defaultValue="bubble">
           <TabsList>
-            <TabsTrigger value="grid" className="gap-2">
-              <Map className="h-4 w-4" /> Power/Interest Grid
+            <TabsTrigger value="bubble" className="gap-2">
+              <Map className="h-4 w-4" /> Bubble Map
             </TabsTrigger>
             <TabsTrigger value="comms" className="gap-2">
               <MessageSquare className="h-4 w-4" /> Communication Plan
@@ -410,8 +536,10 @@ export default function Relationships() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="grid" className="mt-4">
-            <PowerInterestGrid stakeholders={stakeholders} />
+          <TabsContent value="bubble" className="mt-4">
+            <div className="relative">
+              <BubbleMap stakeholders={stakeholders} />
+            </div>
           </TabsContent>
 
           <TabsContent value="comms" className="mt-4">

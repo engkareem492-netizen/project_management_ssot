@@ -526,3 +526,10 @@
 - [x] Stakeholders: redesigned 2x2 Power/Interest matrix with axis labels
 - [x] Stakeholders: improved card design with avatar, power/interest bars, P/I badge
 - [x] Stakeholders: drag-and-drop cards update engagementStrategy in DB immediately
+
+## Engagement Map Differentiation (Mar 11, 2026)
+- [x] Replace Power/Interest Grid tab in Relationships.tsx with a true SVG scatter-plot bubble chart (X=Interest 1-5, Y=Power 1-5, bubble size=influence, color=strategy)
+- [x] Add quadrant background shading and axis labels on the scatter plot
+- [x] Add tooltip on hover showing stakeholder details
+- [x] Keep Communication Plan tab (already distinct from Stakeholders page)
+- [x] Keep Engagement Summary analytics tab
