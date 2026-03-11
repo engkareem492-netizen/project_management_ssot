@@ -1417,7 +1417,7 @@ export const appRouter = router({
           isInternalTeam: z.boolean().optional(),
           powerLevel: z.number().min(1).max(5).optional(),
           interestLevel: z.number().min(1).max(5).optional(),
-          engagementStrategy: z.string().optional(),
+          engagementStrategy: z.string().nullable().optional(),
           communicationFrequency: z.string().optional(),
           communicationChannel: z.string().optional(),
           communicationMessage: z.string().optional(),

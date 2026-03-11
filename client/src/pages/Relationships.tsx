@@ -666,11 +666,26 @@ export default function Relationships() {
   );
 
   const updateMutation = trpc.stakeholders.update.useMutation({
+    onMutate: async ({ id, data }) => {
+      // Optimistic update — immediately reflect the change in the local cache
+      await utils.stakeholders.list.cancel();
+      const prev = utils.stakeholders.list.getData({ projectId: currentProjectId! });
+      utils.stakeholders.list.setData(
+        { projectId: currentProjectId! },
+        (old) => old?.map((s) => s.id === id ? { ...s, engagementStrategy: data.engagementStrategy ?? null } : s)
+      );
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) utils.stakeholders.list.setData({ projectId: currentProjectId! }, ctx.prev);
+      toast.error("Failed to update strategy");
+    },
+    onSettled: () => {
+      utils.stakeholders.list.invalidate();
+    },
     onSuccess: () => {
-      utils.stakeholders.list.invalidate({ projectId: currentProjectId! });
       toast.success("Engagement strategy updated");
     },
-    onError: () => toast.error("Failed to update strategy"),
   });
 
   const handleStrategyChange = (id: number, strategy: string) => {

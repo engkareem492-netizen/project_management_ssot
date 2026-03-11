@@ -535,3 +535,7 @@
 - [x] Keep Engagement Summary analytics tab
 - [x] Move Engagement Map into Team sidebar group (under Stakeholders)
 - [x] Add Engagement Matrix (drag-and-drop board) as first tab in Engagement Map page
+
+## Bug Fixes (Mar 11, 2026 - Batch 22)
+- [x] Fix Engagement Matrix: strategy changes now use optimistic updates + full invalidate so Bubble Map and Stakeholder Register reflect updates immediately
+- [x] Gantt Chart: clicking a task bar opens a full edit dialog (description, dates, status, priority, group, notes, % complete, dependencies)

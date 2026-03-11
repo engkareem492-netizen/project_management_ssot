@@ -4,6 +4,7 @@ import { useProject } from "@/contexts/ProjectContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -121,6 +122,19 @@ export default function GanttChart() {
   const [showEditTask, setShowEditTask] = useState(false);
   const [editingTask, setEditingTask] = useState<any>(null);
   const [editPct, setEditPct] = useState(0);
+  const [editFields, setEditFields] = useState<{
+    description: string;
+    currentStatus: string;
+    status: string;
+    priority: string;
+    assignDate: string;
+    dueDate: string;
+    responsible: string;
+    taskGroup: string;
+  }>({
+    description: "", currentStatus: "", status: "", priority: "",
+    assignDate: "", dueDate: "", responsible: "", taskGroup: "",
+  });
   const [depForm, setDepForm] = useState({
     predecessorTaskId: "",
     successorTaskId: "",
@@ -393,16 +407,43 @@ export default function GanttChart() {
     });
   }
 
-  function openEditPct(task: any) {
-    setEditingTask(task);
+   function openEditPct(task: any) {
+    // Merge with fullTasks to get all editable fields
+    const fullMap = new Map(fullTasks.map((t: any) => [t.taskId, t]));
+    const full = fullMap.get(task.taskId) as any ?? task;
+    setEditingTask({ ...task, ...full });
     setEditPct(pctMap[task.taskId] ?? 0);
+    setEditFields({
+      description: full.description ?? task.description ?? "",
+      currentStatus: full.currentStatus ?? task.currentStatus ?? "",
+      status: full.status ?? task.status ?? "",
+      priority: full.priority ?? task.priority ?? "",
+      assignDate: full.assignDate ?? task.assignDate ?? "",
+      dueDate: full.dueDate ?? task.dueDate ?? "",
+      responsible: full.responsible ?? task.responsible ?? "",
+      taskGroup: full.taskGroup ?? task.taskGroup ?? "",
+    });
     setShowEditTask(true);
   }
-
   function savePct() {
     if (!editingTask) return;
+    // Save % complete locally
     setPctMap((prev) => ({ ...prev, [editingTask.taskId]: editPct }));
-    toast.success(`% Complete updated for ${editingTask.taskId}`);
+    // Save editable fields to DB
+    updateTaskMutation.mutate({
+      id: editingTask.id ?? editingTask.taskDbId,
+      taskId: editingTask.taskId,
+      data: {
+        description: editFields.description || undefined,
+        currentStatus: editFields.currentStatus || undefined,
+        status: editFields.status || undefined,
+        priority: editFields.priority || undefined,
+        assignDate: editFields.assignDate || undefined,
+        dueDate: editFields.dueDate || undefined,
+        taskGroup: editFields.taskGroup || undefined,
+      },
+    });
+    toast.success(`Task ${editingTask.taskId} saved`);
     setShowEditTask(false);
   }
 
@@ -1101,23 +1142,82 @@ export default function GanttChart() {
 
       {/* Edit Task Dialog — progress + dependencies */}
       <Dialog open={showEditTask} onOpenChange={setShowEditTask}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Edit Task</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="w-4 h-4 text-violet-600" />
+              Edit Task
+              {editingTask && <span className="font-mono text-violet-700 text-base">{editingTask.taskId}</span>}
+            </DialogTitle>
           </DialogHeader>
           {editingTask && (
             <div className="space-y-4 py-2">
-              <div>
-                <div className="font-mono font-bold text-violet-700">{editingTask.taskId}</div>
-                <div className="text-sm text-muted-foreground mt-0.5">{editingTask.description}</div>
+              {/* Description */}
+              <div className="space-y-1.5">
+                <Label htmlFor="gantt-desc">Description</Label>
+                <Textarea id="gantt-desc" rows={2} value={editFields.description}
+                  onChange={(e) => setEditFields(f => ({ ...f, description: e.target.value }))}
+                  placeholder="Task description…" className="resize-none" />
               </div>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div><span className="text-muted-foreground">Start:</span> {fmtDate(editingTask.assignDate)}</div>
-                <div><span className="text-muted-foreground">Finish:</span> {fmtDate(editingTask.dueDate)}</div>
-                <div><span className="text-muted-foreground">Duration:</span> {editingTask.isMilestone ? "Milestone" : `${editingTask.duration} days`}</div>
-                <div><span className="text-muted-foreground">Status:</span> {editingTask.status ?? "—"}</div>
+
+              {/* Dates */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="gantt-start">Start Date</Label>
+                  <Input id="gantt-start" type="date" value={editFields.assignDate?.split("T")[0] ?? ""}
+                    onChange={(e) => setEditFields(f => ({ ...f, assignDate: e.target.value }))} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="gantt-end">Due Date</Label>
+                  <Input id="gantt-end" type="date" value={editFields.dueDate?.split("T")[0] ?? ""}
+                    onChange={(e) => setEditFields(f => ({ ...f, dueDate: e.target.value }))} />
+                </div>
               </div>
-              <div className="space-y-2">
+
+              {/* Status / Priority / Group */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Status</Label>
+                  <Select value={editFields.status || "__none__"}
+                    onValueChange={(v) => setEditFields(f => ({ ...f, status: v === "__none__" ? "" : v }))}>
+                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Status…" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">— none —</SelectItem>
+                      {["Open","In Progress","Completed","Blocked","Overdue","Not Started"].map(s =>
+                        <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Priority</Label>
+                  <Select value={editFields.priority || "__none__"}
+                    onValueChange={(v) => setEditFields(f => ({ ...f, priority: v === "__none__" ? "" : v }))}>
+                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Priority…" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">— none —</SelectItem>
+                      {["Critical","High","Medium","Low"].map(p =>
+                        <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="gantt-group">Task Group</Label>
+                  <Input id="gantt-group" value={editFields.taskGroup}
+                    onChange={(e) => setEditFields(f => ({ ...f, taskGroup: e.target.value }))}
+                    placeholder="Group name…" className="h-9 text-sm" />
+                </div>
+              </div>
+
+              {/* Current Status (free text) */}
+              <div className="space-y-1.5">
+                <Label htmlFor="gantt-cstatus">Current Status / Notes</Label>
+                <Textarea id="gantt-cstatus" rows={2} value={editFields.currentStatus}
+                  onChange={(e) => setEditFields(f => ({ ...f, currentStatus: e.target.value }))}
+                  placeholder="Latest status update…" className="resize-none" />
+              </div>
+
+              {/* % Complete */}
+              <div className="space-y-2 border rounded-lg p-3 bg-violet-50/50">
                 <Label>% Complete: <span className="font-bold text-violet-700">{editPct}%</span></Label>
                 <input type="range" min={0} max={100} step={5} value={editPct}
                   onChange={(e) => setEditPct(Number(e.target.value))} className="w-full accent-violet-600" />
@@ -1198,8 +1298,11 @@ export default function GanttChart() {
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowEditTask(false)}>Close</Button>
-            <Button className="bg-violet-600 hover:bg-violet-700 text-white" onClick={savePct}>Save Progress</Button>
+            <Button variant="outline" onClick={() => setShowEditTask(false)}>Cancel</Button>
+            <Button className="bg-violet-600 hover:bg-violet-700 text-white" onClick={savePct}
+              disabled={updateTaskMutation.isPending}>
+              {updateTaskMutation.isPending ? "Saving…" : "Save Changes"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
