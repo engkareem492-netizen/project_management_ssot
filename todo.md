@@ -619,3 +619,6 @@
 
 ## Bug Fix: Currencies Router (Mar 12, 2026)
 - [x] Fix currencies router — getDb() is async, all 7 procedures were missing `await` before getDb() call; fixed to `await getDb()`
+
+## Bug Fix: Budget Page Currency Symbol (Mar 12, 2026)
+- [x] Budget page shows hardcoded "USD" / "$" — replaced with dynamic base currency from projectCurrencies table (auto-syncs on load via useEffect)

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useProject } from "@/contexts/ProjectContext";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -50,7 +50,12 @@ const emptyEntry = (): BudgetEntry => ({
 });
 
 function formatCurrency(amount: number, currency = "USD"): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency, minimumFractionDigits: 0 }).format(amount);
+  try {
+    return new Intl.NumberFormat("en-US", { style: "currency", currency, minimumFractionDigits: 0 }).format(amount);
+  } catch {
+    // Non-standard currency code — just prefix with code
+    return `${currency} ${amount.toLocaleString("en-US", { minimumFractionDigits: 0 })}`;
+  }
 }
 
 export default function Budget() {
@@ -61,6 +66,17 @@ export default function Budget() {
     { enabled: !!currentProjectId }
   );
 
+  // Load project currencies to get the base currency
+  const { data: projectCurrenciesList } = trpc.currencies.list.useQuery(
+    { projectId: currentProjectId! },
+    { enabled: !!currentProjectId }
+  );
+  const baseCurrencyCode = useMemo(() => {
+    if (!projectCurrenciesList || projectCurrenciesList.length === 0) return "USD";
+    const base = projectCurrenciesList.find((c) => c.isBase);
+    return (base ?? projectCurrenciesList[0]).currencyCode;
+  }, [projectCurrenciesList]);
+
   // Local state (would be replaced by trpc mutations when endpoints exist)
   const [summary, setSummary] = useState<BudgetSummary>({ totalBudget: 0, currency: "USD" });
   const [entries, setEntries] = useState<BudgetEntry[]>([]);
@@ -69,6 +85,12 @@ export default function Budget() {
   const [editingEntry, setEditingEntry] = useState<BudgetEntry | null>(null);
   const [budgetForm, setBudgetForm] = useState({ totalBudget: 0, currency: "USD" });
   const [entryForm, setEntryForm] = useState<BudgetEntry>(emptyEntry());
+
+  // Sync base currency into summary/form when it loads
+  useEffect(() => {
+    setSummary((prev) => ({ ...prev, currency: baseCurrencyCode }));
+    setBudgetForm((prev) => ({ ...prev, currency: baseCurrencyCode }));
+  }, [baseCurrencyCode]);
 
   // Totals
   const totals = useMemo(() => {
@@ -341,7 +363,10 @@ export default function Budget() {
               <Select value={budgetForm.currency} onValueChange={(v) => setBudgetForm((prev) => ({ ...prev, currency: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {["USD", "EUR", "GBP", "CAD", "AUD", "JPY", "CHF"].map((c) => (
+                  {(projectCurrenciesList && projectCurrenciesList.length > 0
+                    ? projectCurrenciesList.map((c) => c.currencyCode)
+                    : ["USD", "EUR", "GBP", "CAD", "AUD", "JPY", "CHF"]
+                  ).map((c) => (
                     <SelectItem key={c} value={c}>{c}</SelectItem>
                   ))}
                 </SelectContent>
