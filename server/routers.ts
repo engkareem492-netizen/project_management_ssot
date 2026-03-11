@@ -38,6 +38,11 @@ import { commentsRouter } from "./routers/comments.router";
 import { goalsRouter } from "./routers/goals.router";
 import { ticketTypesRouter } from "./routers/ticketTypes.router";
 import { ticketsRouter } from "./routers/tickets.router";
+import { projectTemplatesRouter } from "./routers/projectTemplates.router";
+import { reportBuilderRouter } from "./routers/reportBuilder.router";
+import { capacityPlanningRouter } from "./routers/capacityPlanning.router";
+import { budgetVarianceRouter } from "./routers/budgetVariance.router";
+import { stakeholderPortalRouter } from "./routers/stakeholderPortal.router";
 
 export const appRouter = router({
   system: systemRouter,
@@ -73,6 +78,11 @@ export const appRouter = router({
   goals: goalsRouter,
   ticketTypes: ticketTypesRouter,
   tickets: ticketsRouter,
+  projectTemplates: projectTemplatesRouter,
+  reportBuilder: reportBuilderRouter,
+  capacityPlanning: capacityPlanningRouter,
+  budgetVariance: budgetVarianceRouter,
+  stakeholderPortal: stakeholderPortalRouter,
   scopeItems: router({
     list: protectedProcedure
       .input(z.object({ projectId: z.number() }))

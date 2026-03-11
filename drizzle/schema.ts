@@ -1338,3 +1338,29 @@ export const tickets = mysqlTable("tickets", {
 });
 export type Ticket = typeof tickets.$inferSelect;
 export type InsertTicket = typeof tickets.$inferInsert;
+
+// ─── Project Templates ────────────────────────────────────────────────────────
+export const projectTemplates = mysqlTable("projectTemplates", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 200 }).notNull(),
+  description: text("description"),
+  createdBy: int("createdBy").notNull(),
+  snapshot: json("snapshot").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ProjectTemplate = typeof projectTemplates.$inferSelect;
+export type InsertProjectTemplate = typeof projectTemplates.$inferInsert;
+
+// ─── Stakeholder Portal Tokens ────────────────────────────────────────────────
+export const stakeholderPortalTokens = mysqlTable("stakeholderPortalTokens", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  stakeholderId: int("stakeholderId").notNull(),
+  token: varchar("token", { length: 64 }).notNull().unique(),
+  label: varchar("label", { length: 200 }),
+  expiresAt: timestamp("expiresAt").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type StakeholderPortalToken = typeof stakeholderPortalTokens.$inferSelect;
+export type InsertStakeholderPortalToken = typeof stakeholderPortalTokens.$inferInsert;
