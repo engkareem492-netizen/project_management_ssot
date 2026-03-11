@@ -9,7 +9,7 @@ export const currenciesRouter = router({
   list: protectedProcedure
     .input(z.object({ projectId: z.number() }))
     .query(async ({ input }) => {
-      const db = getDb();
+      const db = await getDb();
       if (!db) throw new Error("DB not available");
       return db
         .select()
@@ -30,7 +30,7 @@ export const currenciesRouter = router({
       })
     )
     .mutation(async ({ input }) => {
-      const db = getDb();
+      const db = await getDb();
       if (!db) throw new Error("DB not available");
 
       // If setting as base, unset all others first
@@ -71,7 +71,7 @@ export const currenciesRouter = router({
       })
     )
     .mutation(async ({ input }) => {
-      const db = getDb();
+      const db = await getDb();
       if (!db) throw new Error("DB not available");
 
       if (input.isBase) {
@@ -98,7 +98,7 @@ export const currenciesRouter = router({
   remove: protectedProcedure
     .input(z.object({ id: z.number(), projectId: z.number() }))
     .mutation(async ({ input }) => {
-      const db = getDb();
+      const db = await getDb();
       if (!db) throw new Error("DB not available");
       return db
         .delete(projectCurrencies)
@@ -109,7 +109,7 @@ export const currenciesRouter = router({
   ratesList: protectedProcedure
     .input(z.object({ projectId: z.number() }))
     .query(async ({ input }) => {
-      const db = getDb();
+      const db = await getDb();
       if (!db) throw new Error("DB not available");
       return db
         .select()
@@ -132,7 +132,7 @@ export const currenciesRouter = router({
       })
     )
     .mutation(async ({ input }) => {
-      const db = getDb();
+      const db = await getDb();
       if (!db) throw new Error("DB not available");
 
       // Check if rate pair already exists
@@ -176,7 +176,7 @@ export const currenciesRouter = router({
   deleteRate: protectedProcedure
     .input(z.object({ id: z.number(), projectId: z.number() }))
     .mutation(async ({ input }) => {
-      const db = getDb();
+      const db = await getDb();
       if (!db) throw new Error("DB not available");
       return db
         .delete(exchangeRates)

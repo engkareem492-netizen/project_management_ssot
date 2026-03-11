@@ -616,3 +616,6 @@
 - [x] Register /currency-settings route in App.tsx
 - [x] Redesign EEF page to match app visual style (consistent with Risks/Issues/Tasks pages)
 - [x] Kill stale tsc watcher process (PID 1787, running since Mar 2) — tsc now compiles with 0 errors
+
+## Bug Fix: Currencies Router (Mar 12, 2026)
+- [x] Fix currencies router — getDb() is async, all 7 procedures were missing `await` before getDb() call; fixed to `await getDb()`
