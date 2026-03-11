@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Search, Edit, History, Loader2, Plus, Trash2, Settings, Eye, Save, X, CheckSquare, Info, AlertCircle, Link2, GitBranch, RefreshCw, ArrowRight, ChevronDown, ChevronRight, ListTree, LayoutList, AlignJustify, Users } from "lucide-react";
+import { Search, Edit, History, Loader2, Plus, Trash2, Settings, Eye, Save, X, CheckSquare, Info, AlertCircle, Link2, GitBranch, RefreshCw, ArrowRight, ChevronDown, ChevronRight, ListTree, LayoutList, AlignJustify, Users, Kanban } from "lucide-react";
+import KanbanBoard from "@/components/KanbanBoard";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -110,13 +111,13 @@ export default function Tasks() {
   const [quickDecisionForm, setQuickDecisionForm] = useState({ title: '', description: '', decidedBy: '', impact: '', status: 'Open' as const });
   const [taskDetailTab, setTaskDetailTab] = useState('details');
 
-  // View mode: 'normal' | 'compact'
-  const [viewMode, setViewMode] = useState<'normal' | 'compact'>(() => {
-    return (localStorage.getItem('tasks-view-mode') as 'normal' | 'compact') || 'normal';
+  // View mode: 'normal' | 'compact' | 'kanban'
+  const [viewMode, setViewMode] = useState<'normal' | 'compact' | 'kanban'>(() => {
+    return (localStorage.getItem('tasks-view-mode') as 'normal' | 'compact' | 'kanban') || 'normal';
   });
   const toggleViewMode = () => {
     setViewMode((prev) => {
-      const next = prev === 'normal' ? 'compact' : 'normal';
+      const next = prev === 'normal' ? 'compact' : prev === 'compact' ? 'kanban' : 'normal';
       localStorage.setItem('tasks-view-mode', next);
       return next;
     });
@@ -824,10 +825,12 @@ export default function Tasks() {
               size="sm"
               variant="outline"
               onClick={toggleViewMode}
-              title={viewMode === 'normal' ? 'Switch to Compact View' : 'Switch to Normal View'}
+              title={viewMode === 'normal' ? 'Switch to Compact View' : viewMode === 'compact' ? 'Switch to Kanban View' : 'Switch to Normal View'}
             >
               {viewMode === 'normal' ? (
                 <><AlignJustify className="w-4 h-4 mr-1" />Compact</>
+              ) : viewMode === 'compact' ? (
+                <><Kanban className="w-4 h-4 mr-1" />Kanban</>
               ) : (
                 <><LayoutList className="w-4 h-4 mr-1" />Normal</>
               )}
@@ -879,7 +882,45 @@ export default function Tasks() {
             </div>
           )}
 
-          <div className="rounded-md border w-full">
+          {viewMode === 'kanban' && (() => {
+            // Build unique statuses from tasks as kanban columns
+            const statusColors: Record<string, string> = {
+              'Not Started': '#94a3b8',
+              'In Progress': '#3b82f6',
+              'On Hold': '#f59e0b',
+              'Done': '#22c55e',
+              'Completed': '#22c55e',
+              'Cancelled': '#ef4444',
+            };
+            const uniqueStatuses = Array.from(new Set((tasks ?? []).map((t: any) => t.status || 'Not Started')));
+            const columns = uniqueStatuses.map((s) => ({
+              id: s,
+              label: s,
+              color: statusColors[s] ?? '#94a3b8',
+            }));
+            if (!columns.length) columns.push({ id: 'Not Started', label: 'Not Started', color: '#94a3b8' });
+            const kanbanItems = (filteredTasks ?? []).map((t: any) => ({
+              id: t.id,
+              columnId: t.status || 'Not Started',
+              title: t.taskId ? `${t.taskId}` : `Task #${t.id}`,
+              subtitle: t.description,
+              priority: t.priority,
+              dueDate: t.dueDate,
+              assignee: t.responsible,
+            }));
+            return (
+              <KanbanBoard
+                columns={columns}
+                items={kanbanItems}
+                isLoading={isLoading}
+                onItemMove={(itemId, newStatus) => {
+                  updateMutation.mutate({ id: itemId, status: newStatus });
+                }}
+              />
+            );
+          })()}
+
+          <div className="rounded-md border w-full" style={{ display: viewMode === 'kanban' ? 'none' : undefined }}>
             {viewMode === 'compact' ? (
               /* ── COMPACT VIEW ── */
               <Table>

@@ -27,7 +27,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Edit, Trash2, FileText, AlertTriangle, ShieldAlert, Grid3X3 } from "lucide-react";
+import { Plus, Edit, Trash2, FileText, AlertTriangle, ShieldAlert, Grid3X3, Search, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
@@ -39,6 +39,8 @@ import { EmptyState } from "@/components/EmptyState";
 export default function RiskRegister() {
 
   const { currentProjectId } = useProject();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isAnalysisDialogOpen, setIsAnalysisDialogOpen] = useState(false);
@@ -595,6 +597,38 @@ export default function RiskRegister() {
         </TabsContent>
 
         <TabsContent value="table">
+          <div className="flex items-center gap-2 mb-4 flex-wrap">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
+              <Input
+                placeholder="Search by ID, title, or owner..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 h-9"
+              />
+            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-36 h-9">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                {riskStatuses.map((s) => (
+                  <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {(searchTerm || statusFilter !== "all") && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-9 text-muted-foreground"
+                onClick={() => { setSearchTerm(""); setStatusFilter("all"); }}
+              >
+                <X className="w-3.5 h-3.5 mr-1" />Clear
+              </Button>
+            )}
+          </div>
       {isLoading ? (
         <Card>
           <CardContent className="pt-6">
@@ -635,7 +669,16 @@ export default function RiskRegister() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {risks.map((risk) => {
+                {risks.filter((risk) => {
+                  const riskOwner = stakeholders.find((s) => s.id === risk.riskOwnerId);
+                  const riskStatus = riskStatuses.find((s) => s.id === risk.riskStatusId);
+                  const matchesSearch = !searchTerm ||
+                    risk.riskId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    risk.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    riskOwner?.fullName?.toLowerCase().includes(searchTerm.toLowerCase());
+                  const matchesStatus = statusFilter === "all" || riskStatus?.name === statusFilter;
+                  return matchesSearch && matchesStatus;
+                }).map((risk) => {
                   const riskType = riskTypes.find((t) => t.id === risk.riskTypeId);
                   const riskOwner = stakeholders.find((s) => s.id === risk.riskOwnerId);
                   const riskStatus = riskStatuses.find((s) => s.id === risk.riskStatusId);

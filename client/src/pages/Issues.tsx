@@ -24,6 +24,8 @@ import { EmptyState } from "@/components/EmptyState";
 export default function Issues() {
   const { currentProjectId } = useProject();
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [priorityFilter, setPriorityFilter] = useState<string>("all");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editData, setEditData] = useState<any>({});
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
@@ -355,11 +357,15 @@ export default function Issues() {
     },
   });
 
-  const filteredIssues = issues?.filter(issue =>
-    issue.issueId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    issue.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    issue.owner?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredIssues = issues?.filter(issue => {
+    const matchesSearch =
+      issue.issueId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      issue.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      issue.owner?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === "all" || issue.status === statusFilter;
+    const matchesPriority = priorityFilter === "all" || issue.priority === priorityFilter;
+    return matchesSearch && matchesStatus && matchesPriority;
+  });
 
   const getRequirementStatus = (requirementId: string | null) => {
     if (!requirementId || !requirements) return null;
@@ -659,8 +665,8 @@ export default function Issues() {
       </div>
       <Card className="border-red-100">
         <CardContent>
-          <div className="flex items-center gap-4 mb-4">
-            <div className="relative flex-1">
+          <div className="flex items-center gap-2 mb-4 flex-wrap">
+            <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
               <Input
                 placeholder="Search by Issue ID, description, or owner..."
@@ -669,6 +675,41 @@ export default function Issues() {
                 className="pl-10"
               />
             </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-36 h-9">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="Open">Open</SelectItem>
+                <SelectItem value="In Progress">In Progress</SelectItem>
+                <SelectItem value="On Hold">On Hold</SelectItem>
+                <SelectItem value="Resolved">Resolved</SelectItem>
+                <SelectItem value="Closed">Closed</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+              <SelectTrigger className="w-36 h-9">
+                <SelectValue placeholder="Priority" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Priorities</SelectItem>
+                <SelectItem value="Critical">Critical</SelectItem>
+                <SelectItem value="High">High</SelectItem>
+                <SelectItem value="Medium">Medium</SelectItem>
+                <SelectItem value="Low">Low</SelectItem>
+              </SelectContent>
+            </Select>
+            {(statusFilter !== "all" || priorityFilter !== "all") && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-9 text-muted-foreground"
+                onClick={() => { setStatusFilter("all"); setPriorityFilter("all"); }}
+              >
+                <X className="w-3.5 h-3.5 mr-1" />Clear
+              </Button>
+            )}
             <Button onClick={() => setCreateDialogOpen(true)}>
               <Plus className="w-4 h-4 mr-2" />
               Create New

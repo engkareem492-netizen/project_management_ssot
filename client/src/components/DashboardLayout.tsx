@@ -72,6 +72,7 @@ import {
   BookMarked,
   FolderOpen,
   Scroll,
+  LayoutGrid,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import {
@@ -106,6 +107,7 @@ type MenuItem = { icon: React.ElementType; label: string; path: string; children
 
 const menuItems: MenuItem[] = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
+  { icon: LayoutGrid, label: "Portfolio", path: "/portfolio" },
   { icon: Scroll, label: "Project Charter", path: "/charter" },
   { icon: Flag, label: "Milestones", path: "/milestones" },
   { icon: FileText, label: "Requirements", path: "/requirements" },

@@ -44,6 +44,7 @@ import RaidLog from "./pages/RaidLog";
 import ActionItems from "./pages/ActionItems";
 import LessonsLearned from "./pages/LessonsLearned";
 import DocumentLibrary from "./pages/DocumentLibrary";
+import Portfolio from "./pages/Portfolio";
 
 function Router() {
   return (
@@ -213,6 +214,11 @@ function Router() {
       <Route path={"/documents"}>
         <DashboardLayout>
           <DocumentLibrary />
+        </DashboardLayout>
+      </Route>
+      <Route path={"/portfolio"}>
+        <DashboardLayout>
+          <Portfolio />
         </DashboardLayout>
       </Route>
       <Route path={"/404"} component={NotFound} />

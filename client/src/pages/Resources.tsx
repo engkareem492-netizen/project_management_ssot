@@ -7,9 +7,10 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Users, Loader2, Settings, BarChart2, Mail, Briefcase, UserCheck, UserX } from "lucide-react";
+import { Users, Loader2, Settings, BarChart2, Mail, Briefcase, UserCheck, UserX, LayoutGrid } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
+import WorkloadHeatmap from "@/components/WorkloadHeatmap";
 
 const DEFAULT_CAPACITY = 5; // tasks/week
 
@@ -173,6 +174,7 @@ export default function Resources() {
       <Tabs defaultValue="workload">
         <TabsList className="mb-2">
           <TabsTrigger value="workload"><BarChart2 className="w-3.5 h-3.5 mr-1.5" />Workload</TabsTrigger>
+          <TabsTrigger value="heatmap"><LayoutGrid className="w-3.5 h-3.5 mr-1.5" />Heatmap</TabsTrigger>
           <TabsTrigger value="team"><Users className="w-3.5 h-3.5 mr-1.5" />Team Overview</TabsTrigger>
         </TabsList>
 
@@ -305,6 +307,36 @@ export default function Resources() {
         </div>
       </div>
 
+        </TabsContent>
+
+        <TabsContent value="heatmap" className="mt-0">
+          <Card className="p-4">
+            <div className="mb-3">
+              <h3 className="font-semibold text-sm">Workload Heatmap</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Utilization per team member across the next 12 weeks (based on due dates)</p>
+            </div>
+            <WorkloadHeatmap
+              resources={workloadData.map((w) => {
+                // Build weekly utilization from task due dates
+                const weeklyData = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((weekOffset) => {
+                  const start = new Date();
+                  start.setHours(0, 0, 0, 0);
+                  const day = start.getDay();
+                  start.setDate(start.getDate() - (day === 0 ? 6 : day - 1) + weekOffset * 7);
+                  const weekStart = start.toISOString().split("T")[0];
+                  const tasksInWeek = weekOffset === 0 ? w.thisWeek
+                    : weekOffset === 1 ? w.nextWeek
+                    : weekOffset === 2 ? w.next2
+                    : weekOffset === 3 ? w.next3
+                    : weekOffset === 4 ? w.next4
+                    : 0;
+                  const utilization = w.capacity > 0 ? Math.round((tasksInWeek / w.capacity) * 100) : 0;
+                  return { weekStart, utilization };
+                });
+                return { id: w.id, name: w.name, weeklyData };
+              })}
+            />
+          </Card>
         </TabsContent>
 
         <TabsContent value="team" className="mt-0 space-y-6">

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useProject } from "@/contexts/ProjectContext";
 import { Card } from "@/components/ui/card";
@@ -8,8 +8,12 @@ import { useLocation } from "wouter";
 import {
   Loader2, AlertTriangle, CheckCircle2, Clock, FileText, BarChart2,
   Activity, Flag, DollarSign, TrendingUp, TrendingDown, Minus,
-  ShieldAlert, Target,
+  ShieldAlert, Target, LayoutGrid,
 } from "lucide-react";
+import { WidgetGrid, type Widget } from "@/components/widgets/WidgetGrid";
+import { KpiWidget } from "@/components/widgets/KpiWidget";
+import { BarChartWidget } from "@/components/widgets/BarChartWidget";
+import { StatusRingWidget } from "@/components/widgets/StatusRingWidget";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, LineChart, Line,
@@ -169,6 +173,48 @@ export default function Dashboard() {
   const recentLogs = useMemo(() => [...actionLogs].slice(0, 8), [actionLogs]);
 
   const isLoading = reqLoading || issuesLoading || tasksLoading || crLoading || risksLoading || testLoading;
+
+  const WIDGET_STORAGE_KEY = "dashboard-widgets";
+  const DEFAULT_WIDGETS: Widget[] = [
+    { id: "task-completion", type: "kpi", title: "Task Completion", size: "sm" },
+    { id: "open-issues", type: "kpi", title: "Open Issues", size: "sm" },
+    { id: "active-risks", type: "kpi", title: "Active Risks", size: "sm" },
+    { id: "test-pass-rate", type: "kpi", title: "Test Pass Rate", size: "sm" },
+    { id: "tasks-by-person", type: "bar", title: "Tasks by Responsible", size: "md" },
+    { id: "task-done-ring", type: "ring", title: "Tasks Done", size: "sm" },
+  ];
+  const [widgets, setWidgets] = useState<Widget[]>(() => {
+    try {
+      const saved = localStorage.getItem(WIDGET_STORAGE_KEY);
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return DEFAULT_WIDGETS;
+  });
+  const [widgetEditMode, setWidgetEditMode] = useState(false);
+
+  function saveWidgets(next: Widget[]) {
+    setWidgets(next);
+    localStorage.setItem(WIDGET_STORAGE_KEY, JSON.stringify(next));
+  }
+
+  function renderWidget(widget: Widget) {
+    switch (widget.id) {
+      case "task-completion":
+        return <KpiWidget label="Task Completion" value={`${kpis.taskCompletion}%`} subtitle="of all tasks done" color={kpis.taskCompletion >= 75 ? "text-green-600" : "text-yellow-600"} />;
+      case "open-issues":
+        return <KpiWidget label="Open Issues" value={`${kpis.openIssues}/${issues.length}`} subtitle="not closed" color={kpis.openIssues > 5 ? "text-red-600" : "text-foreground"} />;
+      case "active-risks":
+        return <KpiWidget label="Active Risks" value={kpis.activeRisks} subtitle="not mitigated" color={kpis.activeRisks > 5 ? "text-red-600" : "text-foreground"} />;
+      case "test-pass-rate":
+        return <KpiWidget label="Test Pass Rate" value={`${kpis.testPassRate}%`} subtitle={`${testCases.filter((t: any) => t.status === "Passed").length}/${testCases.length} passed`} color={kpis.testPassRate >= 80 ? "text-green-600" : "text-yellow-600"} />;
+      case "tasks-by-person":
+        return <BarChartWidget data={tasksByPerson.map((d: any) => ({ name: d.name, value: d.count }))} />;
+      case "task-done-ring":
+        return <StatusRingWidget label="Tasks Done" value={tasks.filter((t: any) => ["Done","Completed","Closed"].includes(t.status)).length} max={tasks.length} color="#22c55e" />;
+      default:
+        return <div className="text-sm text-muted-foreground p-4">Unknown widget</div>;
+    }
+  }
 
   if (!currentProjectId) {
     return <div className="p-6 flex items-center justify-center h-64 text-muted-foreground">Select a project to view the dashboard.</div>;
@@ -427,6 +473,42 @@ export default function Dashboard() {
             </ResponsiveContainer>
           )}
         </Card>
+      </div>
+
+      {/* Customizable Widget Panel */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-base font-semibold flex items-center gap-2">
+            <LayoutGrid className="w-4 h-4 text-muted-foreground" /> Quick Widgets
+          </h3>
+          <div className="flex items-center gap-2">
+            {widgetEditMode && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-xs text-muted-foreground"
+                onClick={() => saveWidgets(DEFAULT_WIDGETS)}
+              >
+                Reset
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant={widgetEditMode ? "default" : "outline"}
+              onClick={() => setWidgetEditMode((v) => !v)}
+            >
+              {widgetEditMode ? "Done" : "Customize"}
+            </Button>
+          </div>
+        </div>
+        <WidgetGrid
+          widgets={widgets}
+          editMode={widgetEditMode}
+          onReorder={saveWidgets}
+          onRemove={(id) => saveWidgets(widgets.filter((w) => w.id !== id))}
+          onConfigure={() => {}}
+          renderWidget={renderWidget}
+        />
       </div>
 
       {/* Recent Activity */}
