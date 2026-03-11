@@ -27,8 +27,12 @@ import { toast } from "sonner";
 import {
   Plus, Trash2, Pencil, Search, Users, Mail, Phone, Briefcase,
   Target, ClipboardList, Star, TrendingUp, UserCheck, Link2, Unlink,
-  BarChart2, ChevronRight, Award, Activity,
+  BarChart2, ChevronRight, Award, Activity, Wand2, ArrowLeftRight,
+  MoreVertical, UserCog, MessageSquare, ListChecks, MoveRight,
 } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ImportExportToolbar } from "@/components/ImportExportToolbar";
 import { EmptyState } from "@/components/EmptyState";
 import { formatDate } from "@/lib/dateUtils";
@@ -1068,67 +1072,197 @@ export default function Stakeholders() {
       {/* ── Engagement Matrix View ────────────────────────────────────────────── */}
       {viewMode === "matrix" && (() => {
         const QUADRANTS = [
-          { key: "Keep Satisfied",  label: "Keep Satisfied",  sub: "High Power · Low Interest",  color: "bg-orange-50 border-orange-300", badge: "bg-orange-100 text-orange-700", pos: "top-left"     },
-          { key: "Manage Closely",  label: "Manage Closely",  sub: "High Power · High Interest", color: "bg-red-50 border-red-300",    badge: "bg-red-100 text-red-700",    pos: "top-right"    },
-          { key: "Monitor",         label: "Monitor",         sub: "Low Power · Low Interest",   color: "bg-gray-50 border-gray-300",  badge: "bg-gray-100 text-gray-600",  pos: "bottom-left"  },
-          { key: "Keep Informed",   label: "Keep Informed",   sub: "Low Power · High Interest",  color: "bg-blue-50 border-blue-300",  badge: "bg-blue-100 text-blue-700",  pos: "bottom-right" },
+          { key: "Keep Satisfied",  label: "Keep Satisfied",  sub: "High Power · Low Interest",  color: "bg-orange-50 border-orange-300",  headerColor: "text-orange-700",  countColor: "bg-orange-100 text-orange-700" },
+          { key: "Manage Closely",  label: "Manage Closely",  sub: "High Power · High Interest", color: "bg-red-50 border-red-300",        headerColor: "text-red-700",     countColor: "bg-red-100 text-red-700"     },
+          { key: "Monitor",         label: "Monitor",         sub: "Low Power · Low Interest",   color: "bg-gray-50 border-gray-300",      headerColor: "text-gray-600",    countColor: "bg-gray-100 text-gray-600"   },
+          { key: "Keep Informed",   label: "Keep Informed",   sub: "Low Power · High Interest",  color: "bg-blue-50 border-blue-300",      headerColor: "text-blue-700",    countColor: "bg-blue-100 text-blue-700"   },
         ];
-        return (
-          <div className="space-y-2">
-            <p className="text-xs text-muted-foreground">Drag stakeholder cards between quadrants to change their engagement strategy.</p>
-            <div className="grid grid-cols-2 gap-3">
-              {QUADRANTS.map(q => (
-                <div
-                  key={q.key}
-                  className={`rounded-xl border-2 p-3 min-h-[160px] transition-all ${q.color} ${dragOverQuadrant === q.key ? "ring-2 ring-primary ring-offset-1 scale-[1.01]" : ""}`}
-                  onDragOver={(e) => { e.preventDefault(); setDragOverQuadrant(q.key); }}
-                  onDragLeave={() => setDragOverQuadrant(null)}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    setDragOverQuadrant(null);
-                    const id = parseInt(e.dataTransfer.getData("stakeholderId"));
-                    if (!id) return;
-                    updateMutation.mutate({ id, data: { engagementStrategy: q.key } });
-                  }}
-                >
-                  <div className="mb-2">
-                    <div className="font-semibold text-sm">{q.label}</div>
-                    <div className="text-xs text-muted-foreground">{q.sub}</div>
+
+        // Avatar color palette — consistent per stakeholder id
+        const AVATAR_COLORS = [
+          "bg-violet-500","bg-blue-500","bg-emerald-500","bg-amber-500",
+          "bg-rose-500","bg-indigo-500","bg-teal-500","bg-pink-500",
+        ];
+        function avatarColor(id: number) { return AVATAR_COLORS[id % AVATAR_COLORS.length]; }
+        function initials(name: string) {
+          const parts = name.trim().split(" ");
+          return parts.length >= 2 ? parts[0][0] + parts[parts.length - 1][0] : parts[0].slice(0, 2);
+        }
+
+        // Auto-suggest quadrant from power/interest levels
+        function suggestedQuadrant(s: any): string {
+          const p = s.powerLevel ?? 3;
+          const i = s.interestLevel ?? 3;
+          if (p >= 3 && i >= 3) return "Manage Closely";
+          if (p >= 3 && i < 3)  return "Keep Satisfied";
+          if (p < 3  && i >= 3) return "Keep Informed";
+          return "Monitor";
+        }
+
+        const placed = filteredStakeholders.filter(s => s.engagementStrategy && QUADRANTS.some(q => q.key === s.engagementStrategy));
+        const unplaced = filteredStakeholders.filter(s => !s.engagementStrategy || !QUADRANTS.some(q => q.key === s.engagementStrategy));
+
+        function StakeholderCard({ s, quadrantKey }: { s: any; quadrantKey?: string }) {
+          const influence = ((s.powerLevel ?? 3) * (s.interestLevel ?? 3));
+          return (
+            <div
+              draggable
+              onDragStart={(e) => {
+                e.dataTransfer.setData("stakeholderId", String(s.id));
+                e.dataTransfer.effectAllowed = "move";
+              }}
+              className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all cursor-grab active:cursor-grabbing select-none w-full"
+            >
+              <div className="flex items-start gap-2.5 p-2.5">
+                {/* Avatar */}
+                <div className={`w-8 h-8 rounded-full ${avatarColor(s.id)} flex items-center justify-center text-white text-xs font-bold flex-shrink-0`}>
+                  {initials(s.fullName ?? "?")}
+                </div>
+                {/* Info */}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-1">
+                    <p className="text-xs font-semibold text-gray-900 leading-tight truncate">{s.fullName}</p>
+                    {/* Context menu */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="p-0.5 rounded hover:bg-gray-100 flex-shrink-0" onMouseDown={e => e.stopPropagation()}>
+                          <MoreVertical className="w-3 h-3 text-gray-400" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48 text-xs">
+                        <DropdownMenuItem className="gap-2 text-xs" onClick={() => { setSelectedStakeholder(s); setFormData({ ...EMPTY_FORM, fullName: s.fullName ?? "", email: s.email ?? "", position: s.position ?? "", role: s.role ?? "", job: s.job ?? "", phone: s.phone ?? "", isInternalTeam: !!s.isInternalTeam, powerLevel: s.powerLevel ?? 3, interestLevel: s.interestLevel ?? 3, engagementStrategy: s.engagementStrategy ?? "", costPerHour: s.costPerHour ?? "", costPerDay: s.costPerDay ?? "", communicationFrequency: s.communicationFrequency ?? "", communicationChannel: s.communicationChannel ?? "", communicationMessage: s.communicationMessage ?? "", communicationResponsible: s.communicationResponsible ?? "", notes: s.notes ?? "" }); setIsCreateOpen(true); }}>
+                          <UserCog className="w-3.5 h-3.5" />Edit Profile
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        {QUADRANTS.filter(q => q.key !== quadrantKey).map(q => (
+                          <DropdownMenuItem key={q.key} className="gap-2 text-xs" onClick={() => updateMutation.mutate({ id: s.id, data: { engagementStrategy: q.key } })}>
+                            <MoveRight className="w-3.5 h-3.5" />Move to {q.label}
+                          </DropdownMenuItem>
+                        ))}
+                        {quadrantKey && (
+                          <DropdownMenuItem className="gap-2 text-xs text-gray-500" onClick={() => updateMutation.mutate({ id: s.id, data: { engagementStrategy: "" } })}>
+                            <ArrowLeftRight className="w-3.5 h-3.5" />Move to Pool
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {filteredStakeholders
-                      .filter(s => (s.engagementStrategy || "Monitor") === q.key)
-                      .map(s => (
-                        <div
-                          key={s.id}
-                          draggable
-                          onDragStart={(e) => {
-                            e.dataTransfer.setData("stakeholderId", String(s.id));
-                            e.dataTransfer.effectAllowed = "move";
-                          }}
-                          className="flex items-center gap-1.5 bg-white rounded-lg border px-2 py-1 shadow-sm cursor-grab active:cursor-grabbing select-none hover:shadow-md transition-shadow"
-                          title={`${s.fullName}${s.position ? ` — ${s.position}` : ""}\nDrag to change engagement`}
-                        >
-                          <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-[10px] font-bold text-gray-600">
-                            {s.fullName?.charAt(0).toUpperCase()}
-                          </div>
-                          <div>
-                            <div className="text-xs font-medium leading-tight">{s.fullName}</div>
-                            {s.position && <div className="text-[10px] text-muted-foreground leading-tight truncate max-w-[100px]">{s.position}</div>}
-                          </div>
-                        </div>
-                      ))}
-                    {filteredStakeholders.filter(s => (s.engagementStrategy || "Monitor") === q.key).length === 0 && (
-                      <div className="text-xs text-muted-foreground/60 italic">Drop stakeholders here</div>
-                    )}
+                  {s.position && <p className="text-[10px] text-gray-500 truncate">{s.position}</p>}
+                  {/* Power × Interest chips */}
+                  <div className="flex items-center gap-1.5 mt-1.5">
+                    <span className="text-[9px] bg-gray-100 text-gray-600 rounded px-1 py-0.5">P {s.powerLevel ?? "—"}/5</span>
+                    <span className="text-[9px] bg-gray-100 text-gray-600 rounded px-1 py-0.5">I {s.interestLevel ?? "—"}/5</span>
+                    <span className="text-[9px] bg-blue-50 text-blue-600 rounded px-1 py-0.5 font-medium">⚡ {influence}</span>
                   </div>
                 </div>
-              ))}
+              </div>
             </div>
-            {/* Axis labels */}
-            <div className="flex justify-between text-[11px] text-muted-foreground px-1">
-              <span>← Low Interest</span>
-              <span>High Interest →</span>
+          );
+        }
+
+        return (
+          <div className="space-y-3">
+            {/* Toolbar row */}
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs text-muted-foreground">
+                Drag stakeholder cards between quadrants or use the context menu (⋮) to move, edit, or send to pool.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs gap-1.5 flex-shrink-0"
+                onClick={() => {
+                  unplaced.forEach(s => {
+                    const suggested = suggestedQuadrant(s);
+                    updateMutation.mutate({ id: s.id, data: { engagementStrategy: suggested } });
+                  });
+                  if (unplaced.length > 0) toast.success(`Auto-placed ${unplaced.length} stakeholder(s) based on Power × Interest`);
+                  else toast.info("All stakeholders are already placed");
+                }}
+              >
+                <Wand2 className="w-3.5 h-3.5" />Auto-Place from Scores
+              </Button>
+            </div>
+
+            <div className="flex gap-4">
+              {/* Left: Pool sidebar */}
+              <div
+                className={`w-44 flex-shrink-0 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 p-3 transition-all ${dragOverQuadrant === "__pool__" ? "ring-2 ring-primary bg-gray-100" : ""}`}
+                onDragOver={(e) => { e.preventDefault(); setDragOverQuadrant("__pool__"); }}
+                onDragLeave={() => setDragOverQuadrant(null)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setDragOverQuadrant(null);
+                  const id = parseInt(e.dataTransfer.getData("stakeholderId"));
+                  if (!id) return;
+                  updateMutation.mutate({ id, data: { engagementStrategy: "" } });
+                }}
+              >
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-xs font-semibold text-gray-600">Unplaced Pool</span>
+                  <span className="text-[10px] bg-gray-200 text-gray-600 rounded-full px-1.5 py-0.5 font-medium">{unplaced.length}</span>
+                </div>
+                <div className="space-y-2">
+                  {unplaced.map(s => (
+                    <StakeholderCard key={s.id} s={s} />
+                  ))}
+                  {unplaced.length === 0 && (
+                    <p className="text-[10px] text-gray-400 italic text-center py-4">All placed ✓</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Right: 2×2 matrix */}
+              <div className="flex-1 space-y-1">
+                {/* Power axis label */}
+                <div className="flex items-center gap-1 text-[10px] text-muted-foreground mb-1">
+                  <TrendingUp className="w-3 h-3" /><span>Power ↕ (High at top)</span>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {QUADRANTS.map(q => {
+                    const members = placed.filter(s => s.engagementStrategy === q.key);
+                    return (
+                      <div
+                        key={q.key}
+                        className={`rounded-xl border-2 p-3 min-h-[180px] transition-all flex flex-col ${q.color} ${dragOverQuadrant === q.key ? "ring-2 ring-primary ring-offset-1 scale-[1.005]" : ""}`}
+                        onDragOver={(e) => { e.preventDefault(); setDragOverQuadrant(q.key); }}
+                        onDragLeave={() => setDragOverQuadrant(null)}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          setDragOverQuadrant(null);
+                          const id = parseInt(e.dataTransfer.getData("stakeholderId"));
+                          if (!id) return;
+                          updateMutation.mutate({ id, data: { engagementStrategy: q.key } });
+                          toast.success(`Moved to ${q.label}`);
+                        }}
+                      >
+                        <div className="flex items-start justify-between mb-2.5">
+                          <div>
+                            <div className={`font-bold text-sm ${q.headerColor}`}>{q.label}</div>
+                            <div className="text-[10px] text-muted-foreground">{q.sub}</div>
+                          </div>
+                          <span className={`text-[10px] rounded-full px-1.5 py-0.5 font-semibold ${q.countColor}`}>{members.length}</span>
+                        </div>
+                        <div className="flex-1 space-y-2 overflow-y-auto">
+                          {members.map(s => (
+                            <StakeholderCard key={s.id} s={s} quadrantKey={q.key} />
+                          ))}
+                          {members.length === 0 && (
+                            <div className="text-[10px] text-muted-foreground/50 italic text-center py-6 border border-dashed border-current/20 rounded-lg">
+                              Drop here
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* Interest axis label */}
+                <div className="flex justify-between text-[10px] text-muted-foreground px-1 mt-1">
+                  <span className="flex items-center gap-0.5"><ArrowLeftRight className="w-3 h-3" />Low Interest</span>
+                  <span className="flex items-center gap-0.5">High Interest<ArrowLeftRight className="w-3 h-3" /></span>
+                </div>
+              </div>
             </div>
           </div>
         );
