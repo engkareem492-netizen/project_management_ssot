@@ -45,6 +45,9 @@ import ActionItems from "./pages/ActionItems";
 import LessonsLearned from "./pages/LessonsLearned";
 import DocumentLibrary from "./pages/DocumentLibrary";
 import Portfolio from "./pages/Portfolio";
+import Sprints from "./pages/Sprints";
+import Goals from "./pages/Goals";
+import TimeTracking from "./pages/TimeTracking";
 
 function Router() {
   return (
@@ -219,6 +222,21 @@ function Router() {
       <Route path={"/portfolio"}>
         <DashboardLayout>
           <Portfolio />
+        </DashboardLayout>
+      </Route>
+      <Route path={"/sprints"}>
+        <DashboardLayout>
+          <Sprints />
+        </DashboardLayout>
+      </Route>
+      <Route path={"/goals"}>
+        <DashboardLayout>
+          <Goals />
+        </DashboardLayout>
+      </Route>
+      <Route path={"/time-tracking"}>
+        <DashboardLayout>
+          <TimeTracking />
         </DashboardLayout>
       </Route>
       <Route path={"/404"} component={NotFound} />

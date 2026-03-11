@@ -32,6 +32,10 @@ import { testRunsRouter } from "./routers/testRuns.router";
 import { actionItemsRouter } from "./routers/actionItems.router";
 import { lessonsLearnedRouter } from "./routers/lessonsLearned.router";
 import { documentsRouter } from "./routers/documents.router";
+import { sprintsRouter } from "./routers/sprints.router";
+import { timeLogsRouter } from "./routers/timeLogs.router";
+import { commentsRouter } from "./routers/comments.router";
+import { goalsRouter } from "./routers/goals.router";
 
 export const appRouter = router({
   system: systemRouter,
@@ -61,6 +65,10 @@ export const appRouter = router({
   actionItems: actionItemsRouter,
   lessonsLearned: lessonsLearnedRouter,
   documents: documentsRouter,
+  sprints: sprintsRouter,
+  timeLogs: timeLogsRouter,
+  comments: commentsRouter,
+  goals: goalsRouter,
   scopeItems: router({
     list: protectedProcedure
       .input(z.object({ projectId: z.number() }))

@@ -7,8 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Search, Edit, History, Loader2, Plus, Trash2, Settings, Eye, Save, X, CheckSquare, Info, AlertCircle, Link2, GitBranch, RefreshCw, ArrowRight, ChevronDown, ChevronRight, ListTree, LayoutList, AlignJustify, Users, Kanban } from "lucide-react";
+import { Search, Edit, History, Loader2, Plus, Trash2, Settings, Eye, Save, X, CheckSquare, Info, AlertCircle, Link2, GitBranch, RefreshCw, ArrowRight, ChevronDown, ChevronRight, ListTree, LayoutList, AlignJustify, Users, Kanban, MessageSquare, Clock } from "lucide-react";
 import KanbanBoard from "@/components/KanbanBoard";
+import { CommentThread } from "@/components/CommentThread";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -1617,6 +1618,7 @@ export default function Tasks() {
               <TabsTrigger value="team">Team & Contacts</TabsTrigger>
               <TabsTrigger value="decisions">Decisions {allDecisions?.filter(d => d.taskId === selectedTask?.taskId).length ? `(${allDecisions.filter(d => d.taskId === selectedTask?.taskId).length})` : ""}</TabsTrigger>
               <TabsTrigger value="issues">Issues & Updates</TabsTrigger>
+              <TabsTrigger value="comments"><MessageSquare className="w-3.5 h-3.5 mr-1.5 inline" />Comments</TabsTrigger>
             </TabsList>
 
             <TabsContent value="details" className="flex-1 overflow-y-auto space-y-4 pr-1">
@@ -2198,6 +2200,16 @@ export default function Tasks() {
                 )}
               </div>
             </div>
+            </TabsContent>
+
+            {/* ── Comments Tab ── */}
+            <TabsContent value="comments" className="flex-1 overflow-y-auto pr-1">
+              <div className="max-w-2xl">
+                <CommentThread
+                  entityType="task"
+                  entityId={selectedTask?.taskId || ""}
+                />
+              </div>
             </TabsContent>
           </Tabs>
         </DialogContent>

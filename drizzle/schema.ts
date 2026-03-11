@@ -241,6 +241,8 @@ export const tasks = mysqlTable("tasks", {
   recurringEndDate: varchar("recurringEndDate", { length: 50 }),
   // Resource effort
   manHours: decimal("manHours", { precision: 10, scale: 2 }),
+  // Sprint association
+  sprintId: int("sprintId"),
   importedAt: timestamp("importedAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -1220,3 +1222,82 @@ export const documents = mysqlTable("documents", {
 });
 export type Document = typeof documents.$inferSelect;
 export type InsertDocument = typeof documents.$inferInsert;
+
+// ─── Sprints ────────────────────────────────────────────────────────────────
+export const sprints = mysqlTable("sprints", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  name: varchar("name", { length: 200 }).notNull(),
+  goal: text("goal"),
+  status: mysqlEnum("status", ["Planning", "Active", "Completed", "Cancelled"]).default("Planning").notNull(),
+  startDate: date("startDate"),
+  endDate: date("endDate"),
+  capacity: int("capacity"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type Sprint = typeof sprints.$inferSelect;
+export type InsertSprint = typeof sprints.$inferInsert;
+
+// ─── Time Logs ───────────────────────────────────────────────────────────────
+export const timeLogs = mysqlTable("timeLogs", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  taskId: int("taskId"),
+  taskDescription: varchar("taskDescription", { length: 300 }),
+  loggedBy: varchar("loggedBy", { length: 200 }),
+  logDate: date("logDate").notNull(),
+  hoursLogged: decimal("hoursLogged", { precision: 5, scale: 2 }).notNull(),
+  description: text("description"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type TimeLog = typeof timeLogs.$inferSelect;
+export type InsertTimeLog = typeof timeLogs.$inferInsert;
+
+// ─── Comments ────────────────────────────────────────────────────────────────
+export const comments = mysqlTable("comments", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  entityType: varchar("entityType", { length: 50 }).notNull(),
+  entityId: varchar("entityId", { length: 100 }).notNull(),
+  authorName: varchar("authorName", { length: 200 }),
+  content: text("content").notNull(),
+  parentId: int("parentId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type Comment = typeof comments.$inferSelect;
+export type InsertComment = typeof comments.$inferInsert;
+
+// ─── Goals / OKRs ────────────────────────────────────────────────────────────
+export const goals = mysqlTable("goals", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  title: varchar("title", { length: 300 }).notNull(),
+  description: text("description"),
+  owner: varchar("owner", { length: 200 }),
+  status: mysqlEnum("status", ["Not Started", "In Progress", "At Risk", "Achieved", "Cancelled"]).default("Not Started").notNull(),
+  startDate: date("startDate"),
+  endDate: date("endDate"),
+  progress: int("progress").default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type Goal = typeof goals.$inferSelect;
+export type InsertGoal = typeof goals.$inferInsert;
+
+export const keyResults = mysqlTable("keyResults", {
+  id: int("id").autoincrement().primaryKey(),
+  goalId: int("goalId").notNull(),
+  projectId: int("projectId").notNull(),
+  title: varchar("title", { length: 300 }).notNull(),
+  targetValue: decimal("targetValue", { precision: 10, scale: 2 }),
+  currentValue: decimal("currentValue", { precision: 10, scale: 2 }).default("0"),
+  unit: varchar("unit", { length: 50 }),
+  status: mysqlEnum("status", ["Not Started", "In Progress", "At Risk", "Achieved"]).default("Not Started").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type KeyResult = typeof keyResults.$inferSelect;
+export type InsertKeyResult = typeof keyResults.$inferInsert;
