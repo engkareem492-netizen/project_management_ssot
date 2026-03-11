@@ -1301,3 +1301,40 @@ export const keyResults = mysqlTable("keyResults", {
 });
 export type KeyResult = typeof keyResults.$inferSelect;
 export type InsertKeyResult = typeof keyResults.$inferInsert;
+
+// ─── SLA Ticket Types ─────────────────────────────────────────────────────────
+export const ticketTypes = mysqlTable("ticketTypes", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  name: varchar("name", { length: 200 }).notNull(),
+  description: text("description"),
+  responseTimeHours: int("responseTimeHours").notNull(),
+  resolutionTimeHours: int("resolutionTimeHours").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type TicketType = typeof ticketTypes.$inferSelect;
+export type InsertTicketType = typeof ticketTypes.$inferInsert;
+
+// ─── SLA Tickets ──────────────────────────────────────────────────────────────
+export const tickets = mysqlTable("tickets", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  ticketTypeId: int("ticketTypeId").notNull(),
+  idCode: varchar("idCode", { length: 20 }),
+  title: varchar("title", { length: 300 }).notNull(),
+  description: text("description"),
+  priority: mysqlEnum("priority", ["Low", "Medium", "High", "Critical"]).default("Medium").notNull(),
+  status: mysqlEnum("status", ["Open", "In Progress", "Waiting", "Resolved", "Closed"]).default("Open").notNull(),
+  assigneeId: int("assigneeId"),
+  assigneeName: varchar("assigneeName", { length: 200 }),
+  reporterName: varchar("reporterName", { length: 200 }),
+  respondedAt: timestamp("respondedAt"),
+  resolvedAt: timestamp("resolvedAt"),
+  slaResponseBreached: boolean("slaResponseBreached").default(false),
+  slaResolutionBreached: boolean("slaResolutionBreached").default(false),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type Ticket = typeof tickets.$inferSelect;
+export type InsertTicket = typeof tickets.$inferInsert;

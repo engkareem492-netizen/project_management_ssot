@@ -36,6 +36,8 @@ import { sprintsRouter } from "./routers/sprints.router";
 import { timeLogsRouter } from "./routers/timeLogs.router";
 import { commentsRouter } from "./routers/comments.router";
 import { goalsRouter } from "./routers/goals.router";
+import { ticketTypesRouter } from "./routers/ticketTypes.router";
+import { ticketsRouter } from "./routers/tickets.router";
 
 export const appRouter = router({
   system: systemRouter,
@@ -69,6 +71,8 @@ export const appRouter = router({
   timeLogs: timeLogsRouter,
   comments: commentsRouter,
   goals: goalsRouter,
+  ticketTypes: ticketTypesRouter,
+  tickets: ticketsRouter,
   scopeItems: router({
     list: protectedProcedure
       .input(z.object({ projectId: z.number() }))
