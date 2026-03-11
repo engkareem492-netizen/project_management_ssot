@@ -620,7 +620,7 @@ export default function Today() {
             Due Today
           </CardTitle>
           <CardDescription>
-            Items scheduled for {today.toLocaleDateString()}
+            Items scheduled for {formatDate(today.toISOString())}
           </CardDescription>
         </CardHeader>
         <CardContent>

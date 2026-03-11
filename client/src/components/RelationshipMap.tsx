@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ReactFlow,
   Node,
@@ -9,12 +9,11 @@ import {
   useEdgesState,
   MarkerType,
   BackgroundVariant,
+  useReactFlow,
+  ReactFlowProvider,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
 
 export interface EntityNode {
   id: string;
@@ -37,15 +36,15 @@ interface RelationshipMapProps {
   onNodeClick?: (node: EntityNode) => void;
 }
 
-const nodeColors = {
-  task: '#60a5fa',        // blue
-  requirement: '#34d399', // green
-  issue: '#f87171',       // red
-  risk: '#fbbf24',        // yellow
-  deliverable: '#a78bfa', // purple
+const nodeColors: Record<string, string> = {
+  task: '#3b82f6',
+  requirement: '#10b981',
+  issue: '#ef4444',
+  risk: '#f59e0b',
+  deliverable: '#8b5cf6',
 };
 
-const nodeLabels = {
+const nodeLabels: Record<string, string> = {
   task: 'Tasks',
   requirement: 'Requirements',
   issue: 'Issues',
@@ -53,41 +52,68 @@ const nodeLabels = {
   deliverable: 'Deliverables',
 };
 
-export function RelationshipMap({ nodes, edges, onNodeClick }: RelationshipMapProps) {
-  const [filters, setFilters] = useState({
-    task: true,
-    requirement: true,
-    issue: true,
-    risk: true,
-    deliverable: true,
+/* ── Layout helper ─────────────────────────────────────────────────────────── */
+function buildLayout(nodes: EntityNode[]): Record<string, { x: number; y: number }> {
+  const positions: Record<string, { x: number; y: number }> = {};
+  const groups: Record<string, EntityNode[]> = {
+    requirement: [], task: [], issue: [], risk: [], deliverable: [],
+  };
+  nodes.forEach((n) => { (groups[n.type] ??= []).push(n); });
+  let col = 0;
+  const COL_W = 260, ROW_H = 130, START_X = 60, START_Y = 60;
+  Object.entries(groups).forEach(([, grpNodes]) => {
+    if (grpNodes.length === 0) return;
+    grpNodes.forEach((n, row) => {
+      positions[n.id] = { x: START_X + col * COL_W, y: START_Y + row * ROW_H };
+    });
+    col++;
+  });
+  return positions;
+}
+
+/* ── Inner component (needs ReactFlowProvider context) ─────────────────────── */
+function RelationshipMapInner({ nodes, edges, onNodeClick }: RelationshipMapProps) {
+  const { fitView } = useReactFlow();
+  const [filters, setFilters] = useState<Record<string, boolean>>({
+    task: true, requirement: true, issue: true, risk: true, deliverable: true,
   });
 
-  // Convert entity nodes to React Flow nodes
   const flowNodes: Node[] = useMemo(() => {
     const filtered = nodes.filter((n) => filters[n.type]);
-    
-    // Calculate positions using a force-directed layout simulation
-    const nodePositions = calculateNodePositions(filtered);
-    
-    return filtered.map((node, index) => ({
+    const positions = buildLayout(filtered);
+    return filtered.map((node) => ({
       id: node.id,
       type: 'default',
-      position: nodePositions[node.id] || { x: (index % 5) * 200, y: Math.floor(index / 5) * 150 },
+      position: positions[node.id] ?? { x: 0, y: 0 },
       data: {
         label: (
-          <div
-            className="px-4 py-2 rounded-lg shadow-md cursor-pointer hover:shadow-lg transition-shadow"
-            style={{
-              backgroundColor: nodeColors[node.type],
-              color: 'white',
-              minWidth: '140px',
-              maxWidth: '220px',
-              textAlign: 'center',
-            }}
-          >
-            <div className="font-bold text-xs opacity-80">{node.title}</div>
-            {node.description && <div className="font-semibold text-sm mt-0.5 leading-tight">{node.description}</div>}
-            {node.status && <div className="text-xs mt-1 opacity-80">{node.status}</div>}
+          <div style={{
+            background: nodeColors[node.type] ?? '#64748b',
+            color: 'white',
+            borderRadius: '8px',
+            padding: '8px 12px',
+            minWidth: '140px',
+            maxWidth: '210px',
+            textAlign: 'center',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.18)',
+            cursor: 'pointer',
+          }}>
+            <div style={{ fontSize: '10px', fontWeight: 700, opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              {node.type}
+            </div>
+            <div style={{ fontSize: '13px', fontWeight: 700, marginTop: '2px', lineHeight: 1.3 }}>
+              {node.title}
+            </div>
+            {node.description && (
+              <div style={{ fontSize: '10px', marginTop: '3px', opacity: 0.85, lineHeight: 1.3 }}>
+                {node.description.length > 60 ? node.description.slice(0, 60) + '\u2026' : node.description}
+              </div>
+            )}
+            {node.status && (
+              <div style={{ fontSize: '9px', marginTop: '4px', background: 'rgba(255,255,255,0.2)', borderRadius: '4px', padding: '1px 5px', display: 'inline-block' }}>
+                {node.status}
+              </div>
+            )}
           </div>
         ),
       },
@@ -95,143 +121,104 @@ export function RelationshipMap({ nodes, edges, onNodeClick }: RelationshipMapPr
     }));
   }, [nodes, filters]);
 
-  // Convert entity edges to React Flow edges
   const flowEdges: Edge[] = useMemo(() => {
-    const filtered = edges.filter(
-      (e) =>
-        flowNodes.some((n) => n.id === e.from) &&
-        flowNodes.some((n) => n.id === e.to)
-    );
-
-    return filtered.map((edge, index) => ({
-      id: `edge-${index}`,
-      source: edge.from,
-      target: edge.to,
-      label: edge.label,
-      type: 'smoothstep',
-      animated: false,
-      markerEnd: {
-        type: MarkerType.ArrowClosed,
-        width: 20,
-        height: 20,
-      },
-      style: {
-        strokeWidth: 2,
-        stroke: '#94a3b8',
-      },
-      labelStyle: {
-        fontSize: 10,
-        fill: '#64748b',
-      },
-    }));
+    const nodeIds = new Set(flowNodes.map((n) => n.id));
+    return edges
+      .filter((e) => nodeIds.has(e.from) && nodeIds.has(e.to))
+      .map((edge, i) => ({
+        id: `edge-${i}`,
+        source: edge.from,
+        target: edge.to,
+        label: edge.label,
+        type: 'smoothstep',
+        animated: false,
+        markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 18 },
+        style: { strokeWidth: 2, stroke: '#94a3b8' },
+        labelStyle: { fontSize: 10, fill: '#64748b' },
+      }));
   }, [edges, flowNodes]);
 
-  const [reactFlowNodes, setNodes, onNodesChange] = useNodesState(flowNodes);
-  const [reactFlowEdges, setEdges, onEdgesChange] = useEdgesState(flowEdges);
+  const [rfNodes, setRfNodes, onNodesChange] = useNodesState(flowNodes);
+  const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState(flowEdges);
 
-  // Update nodes and edges when filters change
-  useMemo(() => {
-    setNodes(flowNodes);
-    setEdges(flowEdges);
-  }, [flowNodes, flowEdges, setNodes, setEdges]);
+  const fitScheduled = useRef(false);
+  useEffect(() => {
+    setRfNodes(flowNodes);
+    setRfEdges(flowEdges);
+    if (!fitScheduled.current) {
+      fitScheduled.current = true;
+      setTimeout(() => {
+        fitView({ padding: 0.15, duration: 300 });
+        fitScheduled.current = false;
+      }, 80);
+    }
+  }, [flowNodes, flowEdges, setRfNodes, setRfEdges, fitView]);
 
   const handleNodeClick = useCallback(
-    (_event: React.MouseEvent, node: Node) => {
-      const entityNode = nodes.find((n) => n.id === node.id);
-      if (entityNode && onNodeClick) {
-        onNodeClick(entityNode);
-      }
+    (_: React.MouseEvent, node: Node) => {
+      const entity = nodes.find((n) => n.id === node.id);
+      if (entity && onNodeClick) onNodeClick(entity);
     },
     [nodes, onNodeClick]
   );
 
-  const toggleFilter = (type: keyof typeof filters) => {
+  const toggleFilter = (type: string) =>
     setFilters((prev) => ({ ...prev, [type]: !prev[type] }));
-  };
+
+  const isEmpty = rfNodes.length === 0;
 
   return (
-    <div className="w-full h-full flex flex-col gap-4">
-      {/* Filter Controls */}
-      <Card className="p-4">
-        <div className="flex items-center gap-6 flex-wrap">
-          <Label className="font-semibold">Show:</Label>
-          {Object.entries(nodeLabels).map(([type, label]) => (
-            <div key={type} className="flex items-center gap-2">
-              <Checkbox
-                id={`filter-${type}`}
-                checked={filters[type as keyof typeof filters]}
-                onCheckedChange={() => toggleFilter(type as keyof typeof filters)}
-              />
-              <Label
-                htmlFor={`filter-${type}`}
-                className="cursor-pointer flex items-center gap-2"
-              >
-                <div
-                  className="w-4 h-4 rounded"
-                  style={{ backgroundColor: nodeColors[type as keyof typeof nodeColors] }}
-                />
-                {label}
-              </Label>
-            </div>
-          ))}
-        </div>
-      </Card>
+    <div className="w-full h-full flex flex-col gap-3">
+      {/* Filter bar */}
+      <div className="flex items-center gap-5 flex-wrap px-1">
+        <span className="text-sm font-semibold text-muted-foreground">Show:</span>
+        {Object.entries(nodeLabels).map(([type, label]) => (
+          <label key={type} className="flex items-center gap-1.5 cursor-pointer select-none">
+            <Checkbox
+              id={`filter-${type}`}
+              checked={!!filters[type]}
+              onCheckedChange={() => toggleFilter(type)}
+            />
+            <div className="w-3 h-3 rounded-sm" style={{ background: nodeColors[type] }} />
+            <span className="text-sm">{label}</span>
+          </label>
+        ))}
+      </div>
 
-      {/* React Flow Graph */}
-      <Card className="flex-1 overflow-hidden">
-        <div className="w-full h-full" style={{ minHeight: '500px' }}>
+      {/* Graph canvas */}
+      <div className="flex-1 rounded-xl border overflow-hidden" style={{ minHeight: '460px' }}>
+        {isEmpty ? (
+          <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+            No connected entities to display. Add tasks with linked requirements, issues, or deliverables.
+          </div>
+        ) : (
           <ReactFlow
-            nodes={reactFlowNodes}
-            edges={reactFlowEdges}
+            nodes={rfNodes}
+            edges={rfEdges}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onNodeClick={handleNodeClick}
             fitView
+            fitViewOptions={{ padding: 0.15 }}
             attributionPosition="bottom-left"
+            minZoom={0.2}
+            maxZoom={2}
           >
-            <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
+            <Background variant={BackgroundVariant.Dots} gap={16} size={1} color="#cbd5e1" />
             <Controls />
           </ReactFlow>
-        </div>
-      </Card>
+        )}
+      </div>
     </div>
   );
 }
 
-// Simple force-directed layout calculation
-function calculateNodePositions(nodes: EntityNode[]): Record<string, { x: number; y: number }> {
-  const positions: Record<string, { x: number; y: number }> = {};
-  
-  // Group nodes by type
-  const nodesByType: Record<string, EntityNode[]> = {
-    task: [],
-    requirement: [],
-    issue: [],
-    risk: [],
-    deliverable: [],
-  };
-  
-  nodes.forEach((node) => {
-    nodesByType[node.type].push(node);
-  });
-  
-  // Position nodes in columns by type
-  let xOffset = 100;
-  const columnWidth = 250;
-  const rowHeight = 120;
-  
-  Object.entries(nodesByType).forEach(([type, typeNodes]) => {
-    if (typeNodes.length === 0) return;
-    
-    typeNodes.forEach((node, index) => {
-      positions[node.id] = {
-        x: xOffset,
-        y: 100 + index * rowHeight,
-      };
-    });
-    
-    xOffset += columnWidth;
-  });
-  
-  return positions;
+/* ── Public export (wraps with provider) ───────────────────────────────────── */
+export function RelationshipMap(props: RelationshipMapProps) {
+  return (
+    <ReactFlowProvider>
+      <RelationshipMapInner {...props} />
+    </ReactFlowProvider>
+  );
 }
+

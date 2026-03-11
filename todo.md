@@ -566,3 +566,7 @@
 - [x] Fix "Project Dashboard" header text invisible in dark mode (RAG banner bg-green-50 had no dark variant)
 - [x] Add dark:bg-green/amber/red-950/30 variants to RAG_BG color map for proper dark mode contrast
 - [x] Add explicit text-foreground class to dashboard h1 heading
+
+## Bug Fixes (Mar 11, 2026 - Batch 23)
+- [x] Fix date formatting bug on Today/Dashboard page — "Due Today" subtitle shows "112026/3/" instead of "11/03/2026"
+- [x] Fix Relationship Map — nodes render off-screen (only one node visible far right); need to fit all nodes within viewport on load
