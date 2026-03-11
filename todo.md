@@ -533,3 +533,5 @@
 - [x] Add tooltip on hover showing stakeholder details
 - [x] Keep Communication Plan tab (already distinct from Stakeholders page)
 - [x] Keep Engagement Summary analytics tab
+- [x] Move Engagement Map into Team sidebar group (under Stakeholders)
+- [x] Add Engagement Matrix (drag-and-drop board) as first tab in Engagement Map page

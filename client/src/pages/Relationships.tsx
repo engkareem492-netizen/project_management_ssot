@@ -18,9 +18,10 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  Users, Map, MessageSquare, BarChart2,
+  Users, Map, MessageSquare, BarChart2, LayoutGrid,
 } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
+import { toast } from "sonner";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function getEngagementColors(strategy: string | null | undefined) {
@@ -477,14 +478,204 @@ function EngagementSummary({ stakeholders }: { stakeholders: any[] }) {
   );
 }
 
+// ─── Engagement Matrix (Drag-and-Drop Board) ─────────────────────────────────
+const QUADRANTS_DEF = [
+  { key: "Keep Satisfied",  label: "Keep Satisfied",  emoji: "😐", sub: "High Power · Low Interest",  bg: "#fff7ed", border: "#fb923c", headerColor: "#c2410c", badgeBg: "#ffedd5", badgeText: "#c2410c" },
+  { key: "Manage Closely",  label: "Manage Closely",  emoji: "🎯", sub: "High Power · High Interest", bg: "#fef2f2", border: "#f87171", headerColor: "#b91c1c", badgeBg: "#fee2e2", badgeText: "#b91c1c" },
+  { key: "Monitor",         label: "Monitor",         emoji: "👁",  sub: "Low Power · Low Interest",   bg: "#f9fafb", border: "#d1d5db", headerColor: "#4b5563", badgeBg: "#f3f4f6", badgeText: "#4b5563" },
+  { key: "Keep Informed",   label: "Keep Informed",   emoji: "📢", sub: "Low Power · High Interest",  bg: "#eff6ff", border: "#60a5fa", headerColor: "#1d4ed8", badgeBg: "#dbeafe", badgeText: "#1d4ed8" },
+];
+const UNASSIGNED_KEY = "__unassigned__";
+const MATRIX_AVATAR_COLORS: [string, string][] = [
+  ["#f87171","#b91c1c"],["#fb923c","#c2410c"],["#fbbf24","#92400e"],
+  ["#34d399","#065f46"],["#60a5fa","#1d4ed8"],["#a78bfa","#5b21b6"],
+  ["#f472b6","#9d174d"],["#94a3b8","#334155"],
+];
+const matrixAvatarColor = (id: number) => MATRIX_AVATAR_COLORS[id % MATRIX_AVATAR_COLORS.length];
+
+function MatrixCard({ s, onDrop }: { s: any; onDrop?: (id: number, strategy: string) => void }) {
+  const [from, to] = matrixAvatarColor(s.id);
+  return (
+    <div
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData("stakeholderId", String(s.id));
+        e.dataTransfer.effectAllowed = "move";
+      }}
+      style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: "10px", padding: "10px", cursor: "grab", userSelect: "none", boxShadow: "0 1px 4px rgba(0,0,0,0.08)", transition: "box-shadow 0.15s, transform 0.15s" }}
+      className="hover:shadow-lg hover:-translate-y-0.5 active:cursor-grabbing w-full"
+      title={`${s.fullName}${s.position ? ` — ${s.position}` : ""}\nDrag to change engagement strategy`}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+        <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: `linear-gradient(135deg, ${from}, ${to})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px", fontWeight: 700, color: "white", flexShrink: 0 }}>
+          {s.fullName?.charAt(0).toUpperCase()}
+        </div>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: "12px", fontWeight: 600, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.fullName}</div>
+          {s.position && <div style={{ fontSize: "10px", color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.position}</div>}
+        </div>
+        <div style={{ marginLeft: "auto", flexShrink: 0, fontSize: "9px", fontWeight: 700, padding: "1px 5px", borderRadius: "4px", background: "#f3f4f6", color: "#374151" }}>
+          P{s.powerLevel ?? 3}/I{s.interestLevel ?? 3}
+        </div>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+          <span style={{ fontSize: "9px", color: "#9ca3af", width: "36px", flexShrink: 0 }}>Power</span>
+          <div style={{ flex: 1, height: "4px", background: "#f3f4f6", borderRadius: "2px", overflow: "hidden" }}>
+            <div style={{ height: "100%", background: "#f97316", borderRadius: "2px", width: `${((s.powerLevel ?? 3) / 5) * 100}%` }} />
+          </div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+          <span style={{ fontSize: "9px", color: "#9ca3af", width: "36px", flexShrink: 0 }}>Interest</span>
+          <div style={{ flex: 1, height: "4px", background: "#f3f4f6", borderRadius: "2px", overflow: "hidden" }}>
+            <div style={{ height: "100%", background: "#3b82f6", borderRadius: "2px", width: `${((s.interestLevel ?? 3) / 5) * 100}%` }} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EngagementMatrix({ stakeholders, onStrategyChange }: { stakeholders: any[]; onStrategyChange: (id: number, strategy: string) => void }) {
+  const [dragOverQuadrant, setDragOverQuadrant] = useState<string | null>(null);
+  const assignedKeys = new Set(QUADRANTS_DEF.map(q => q.key));
+  const unassigned = stakeholders.filter(s => !s.engagementStrategy || !assignedKeys.has(s.engagementStrategy));
+
+  const handleDrop = (e: React.DragEvent, strategy: string) => {
+    e.preventDefault();
+    setDragOverQuadrant(null);
+    const id = parseInt(e.dataTransfer.getData("stakeholderId"));
+    if (!id) return;
+    onStrategyChange(id, strategy);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "8px" }}>
+        <p style={{ fontSize: "12px", color: "#6b7280" }}>Drag stakeholder cards between quadrants to change their engagement strategy. Drop on the <strong>Unassigned</strong> pool to clear.</p>
+        {unassigned.length > 0 && (
+          <span style={{ fontSize: "10px", background: "#fef9c3", color: "#854d0e", padding: "2px 8px", borderRadius: "999px", fontWeight: 600 }}>{unassigned.length} unassigned</span>
+        )}
+      </div>
+
+      {/* 2×2 Grid */}
+      <div style={{ display: "flex", gap: "0" }}>
+        {/* Y-axis label */}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", width: "24px", flexShrink: 0, gap: "4px" }}>
+          <span style={{ fontSize: "9px", fontWeight: 700, color: "#6b7280", letterSpacing: "0.08em", writingMode: "vertical-rl", transform: "rotate(180deg)", textTransform: "uppercase" }}>POWER ↑</span>
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "4px" }}>
+            {[QUADRANTS_DEF[0], QUADRANTS_DEF[1]].map(q => (
+              <div key={q.key}
+                style={{ background: q.bg, border: `2px solid ${dragOverQuadrant === q.key ? "#6d28d9" : q.border}`, borderRadius: "12px", padding: "12px", minHeight: "180px", transition: "all 0.15s", boxShadow: dragOverQuadrant === q.key ? "0 0 0 3px rgba(109,40,217,0.2), 0 4px 12px rgba(0,0,0,0.1)" : "none", transform: dragOverQuadrant === q.key ? "scale(1.01)" : "scale(1)" }}
+                onDragOver={(e) => { e.preventDefault(); setDragOverQuadrant(q.key); }}
+                onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverQuadrant(null); }}
+                onDrop={(e) => handleDrop(e, q.key)}
+              >
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "10px" }}>
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "5px", marginBottom: "2px" }}>
+                      <span style={{ fontSize: "14px" }}>{q.emoji}</span>
+                      <span style={{ fontSize: "13px", fontWeight: 700, color: q.headerColor }}>{q.label}</span>
+                    </div>
+                    <div style={{ fontSize: "10px", color: "#6b7280" }}>{q.sub}</div>
+                  </div>
+                  <span style={{ fontSize: "11px", fontWeight: 700, background: q.badgeBg, color: q.badgeText, padding: "1px 6px", borderRadius: "6px" }}>
+                    {stakeholders.filter(s => s.engagementStrategy === q.key).length}
+                  </span>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  {stakeholders.filter(s => s.engagementStrategy === q.key).map(s => <MatrixCard key={s.id} s={s} />)}
+                  {stakeholders.filter(s => s.engagementStrategy === q.key).length === 0 && (
+                    <div style={{ border: `2px dashed ${dragOverQuadrant === q.key ? "#6d28d9" : "#d1d5db"}`, borderRadius: "8px", padding: "16px", textAlign: "center", fontSize: "11px", color: "#9ca3af", background: dragOverQuadrant === q.key ? "rgba(109,40,217,0.04)" : "transparent", transition: "all 0.15s" }}>Drop here</div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+            {[QUADRANTS_DEF[2], QUADRANTS_DEF[3]].map(q => (
+              <div key={q.key}
+                style={{ background: q.bg, border: `2px solid ${dragOverQuadrant === q.key ? "#6d28d9" : q.border}`, borderRadius: "12px", padding: "12px", minHeight: "180px", transition: "all 0.15s", boxShadow: dragOverQuadrant === q.key ? "0 0 0 3px rgba(109,40,217,0.2), 0 4px 12px rgba(0,0,0,0.1)" : "none", transform: dragOverQuadrant === q.key ? "scale(1.01)" : "scale(1)" }}
+                onDragOver={(e) => { e.preventDefault(); setDragOverQuadrant(q.key); }}
+                onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverQuadrant(null); }}
+                onDrop={(e) => handleDrop(e, q.key)}
+              >
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "10px" }}>
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "5px", marginBottom: "2px" }}>
+                      <span style={{ fontSize: "14px" }}>{q.emoji}</span>
+                      <span style={{ fontSize: "13px", fontWeight: 700, color: q.headerColor }}>{q.label}</span>
+                    </div>
+                    <div style={{ fontSize: "10px", color: "#6b7280" }}>{q.sub}</div>
+                  </div>
+                  <span style={{ fontSize: "11px", fontWeight: 700, background: q.badgeBg, color: q.badgeText, padding: "1px 6px", borderRadius: "6px" }}>
+                    {stakeholders.filter(s => s.engagementStrategy === q.key).length}
+                  </span>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  {stakeholders.filter(s => s.engagementStrategy === q.key).map(s => <MatrixCard key={s.id} s={s} />)}
+                  {stakeholders.filter(s => s.engagementStrategy === q.key).length === 0 && (
+                    <div style={{ border: `2px dashed ${dragOverQuadrant === q.key ? "#6d28d9" : "#d1d5db"}`, borderRadius: "8px", padding: "16px", textAlign: "center", fontSize: "11px", color: "#9ca3af", background: dragOverQuadrant === q.key ? "rgba(109,40,217,0.04)" : "transparent", transition: "all 0.15s" }}>Drop here</div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+          {/* X-axis label */}
+          <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 8px 0", fontSize: "10px", color: "#6b7280", fontWeight: 600, letterSpacing: "0.05em" }}>
+            <span>← LOW INTEREST</span>
+            <span>HIGH INTEREST →</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Unassigned Pool */}
+      <div
+        style={{ border: `2px dashed ${dragOverQuadrant === UNASSIGNED_KEY ? "#6d28d9" : "#d1d5db"}`, borderRadius: "12px", padding: "12px", background: dragOverQuadrant === UNASSIGNED_KEY ? "rgba(109,40,217,0.04)" : "#f9fafb", transition: "all 0.15s", boxShadow: dragOverQuadrant === UNASSIGNED_KEY ? "0 0 0 3px rgba(109,40,217,0.15)" : "none" }}
+        onDragOver={(e) => { e.preventDefault(); setDragOverQuadrant(UNASSIGNED_KEY); }}
+        onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverQuadrant(null); }}
+        onDrop={(e) => { e.preventDefault(); setDragOverQuadrant(null); const id = parseInt(e.dataTransfer.getData("stakeholderId")); if (!id) return; onStrategyChange(id, ""); }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+          <span style={{ fontSize: "13px", fontWeight: 600, color: "#6b7280" }}>Unassigned Pool</span>
+          <span style={{ fontSize: "10px", background: "#e5e7eb", color: "#374151", padding: "1px 6px", borderRadius: "999px", fontWeight: 600 }}>{unassigned.length}</span>
+          <span style={{ fontSize: "10px", color: "#9ca3af", marginLeft: "auto" }}>Drag here to remove from matrix</span>
+        </div>
+        {unassigned.length === 0 ? (
+          <div style={{ fontSize: "11px", color: "#9ca3af", textAlign: "center", padding: "8px", fontStyle: "italic" }}>All stakeholders are assigned to a quadrant</div>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: "8px" }}>
+            {unassigned.map(s => <MatrixCard key={s.id} s={s} />)}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function Relationships() {
   const { currentProjectId } = useProject();
+  const utils = trpc.useUtils();
 
   const { data: stakeholders = [], isLoading } = trpc.stakeholders.list.useQuery(
     { projectId: currentProjectId! },
     { enabled: !!currentProjectId }
   );
+
+  const updateMutation = trpc.stakeholders.update.useMutation({
+    onSuccess: () => {
+      utils.stakeholders.list.invalidate({ projectId: currentProjectId! });
+      toast.success("Engagement strategy updated");
+    },
+    onError: () => toast.error("Failed to update strategy"),
+  });
+
+  const handleStrategyChange = (id: number, strategy: string) => {
+    updateMutation.mutate({ id, data: { engagementStrategy: strategy || null } });
+  };
 
   if (isLoading) {
     return (
@@ -505,7 +696,7 @@ export default function Relationships() {
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
             Visual bubble map of stakeholder positions, communication plan, and engagement analytics.
-            To reassign strategies by drag-and-drop, use the <strong>Engagement Matrix</strong> tab in the Stakeholder Register.
+            Drag-and-drop matrix, bubble map, communication plan, and engagement analytics for all stakeholders.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -525,6 +716,9 @@ export default function Relationships() {
       ) : (
         <Tabs defaultValue="bubble">
           <TabsList>
+            <TabsTrigger value="matrix" className="gap-2">
+              <LayoutGrid className="h-4 w-4" /> Engagement Matrix
+            </TabsTrigger>
             <TabsTrigger value="bubble" className="gap-2">
               <Map className="h-4 w-4" /> Bubble Map
             </TabsTrigger>
@@ -535,6 +729,10 @@ export default function Relationships() {
               <BarChart2 className="h-4 w-4" /> Engagement Summary
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="matrix" className="mt-4">
+            <EngagementMatrix stakeholders={stakeholders} onStrategyChange={handleStrategyChange} />
+          </TabsContent>
 
           <TabsContent value="bubble" className="mt-4">
             <div className="relative">
