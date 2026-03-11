@@ -539,3 +539,10 @@
 ## Bug Fixes (Mar 11, 2026 - Batch 22)
 - [x] Fix Engagement Matrix: strategy changes now use optimistic updates + full invalidate so Bubble Map and Stakeholder Register reflect updates immediately
 - [x] Gantt Chart: clicking a task bar opens a full edit dialog (description, dates, status, priority, group, notes, % complete, dependencies)
+
+## Bubble Map Interactive Drag (Mar 11, 2026)
+- [x] Make SVG bubbles draggable on the scatter plot
+- [x] On drag, show live coordinate tooltip with new Power/Interest values
+- [x] On drop, save new powerLevel and interestLevel to DB via stakeholders.update
+- [x] Auto-derive engagementStrategy from quadrant (High P + High I = Manage Closely, etc.)
+- [x] Update Engagement Matrix board to reflect new strategy after bubble drop

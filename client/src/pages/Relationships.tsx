@@ -49,9 +49,27 @@ const AVATAR_COLORS = [
 ];
 const avatarColor = (id: number) => AVATAR_COLORS[id % AVATAR_COLORS.length];
 
-// ─── Bubble Map (SVG Scatter-plot) ────────────────────────────────────────────
-function BubbleMap({ stakeholders }: { stakeholders: any[] }) {
+// ─── Derive strategy from power/interest quadrant ────────────────────────────
+function deriveStrategy(power: number, interest: number): string {
+  const highPower = power >= 3;
+  const highInterest = interest >= 3;
+  if (highPower && highInterest) return "Manage Closely";
+  if (highPower && !highInterest) return "Keep Satisfied";
+  if (!highPower && highInterest) return "Keep Informed";
+  return "Monitor";
+}
+
+// ─── Bubble Map (SVG Scatter-plot, fully draggable) ───────────────────────────
+function BubbleMap({ stakeholders, onUpdate }: {
+  stakeholders: any[];
+  onUpdate: (id: number, powerLevel: number, interestLevel: number, engagementStrategy: string) => void;
+}) {
   const svgRef = useRef<SVGSVGElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Local overrides while dragging (so the bubble moves live)
+  const [localPos, setLocalPos] = useState<Record<number, { interest: number; power: number }>>({});
+  const [dragging, setDragging] = useState<null | { id: number; startSvgX: number; startSvgY: number; origInterest: number; origPower: number }>(null);
   const [tooltip, setTooltip] = useState<{ s: any; x: number; y: number } | null>(null);
 
   // Canvas dimensions
@@ -65,9 +83,13 @@ function BubbleMap({ stakeholders }: { stakeholders: any[] }) {
   const scaleX = (v: number) => PAD.left + ((v - 1) / 4) * plotW;
   const scaleY = (v: number) => PAD.top + ((5 - v) / 4) * plotH; // invert Y
 
+  // Inverse scale: SVG coords → score (clamped 1–5, rounded to 0.5)
+  const invX = (px: number) => Math.min(5, Math.max(1, Math.round(((px - PAD.left) / plotW) * 4 + 1) * 2) / 2);
+  const invY = (py: number) => Math.min(5, Math.max(1, Math.round((1 - (py - PAD.top) / plotH) * 4 + 1) * 2) / 2);
+
   // Bubble radius: proportional to (power+interest)/2, range 14–30
-  const bubbleR = (s: any) => {
-    const avg = ((s.powerLevel ?? 3) + (s.interestLevel ?? 3)) / 2;
+  const bubbleR = (power: number, interest: number) => {
+    const avg = (power + interest) / 2;
     return 14 + ((avg - 1) / 4) * 16;
   };
 
@@ -79,125 +101,169 @@ function BubbleMap({ stakeholders }: { stakeholders: any[] }) {
   const midX = PAD.left + plotW / 2;
   const midY = PAD.top + plotH / 2;
 
-  // Jitter to avoid perfect overlaps (deterministic by id)
+  // Jitter to avoid perfect overlaps (deterministic by id, only applied when not dragging)
   const jitter = (id: number, axis: "x" | "y") => {
+    if (dragging?.id === id) return 0;
     const seed = axis === "x" ? id * 7 : id * 13;
     return ((seed % 11) - 5) * 1.2;
   };
 
+  // Convert a mouse event to SVG coordinates
+  function clientToSvg(clientX: number, clientY: number) {
+    const svgEl = svgRef.current;
+    if (!svgEl) return { x: 0, y: 0 };
+    const rect = svgEl.getBoundingClientRect();
+    const scaleRatio = W / rect.width;
+    return {
+      x: (clientX - rect.left) * scaleRatio,
+      y: (clientY - rect.top) * scaleRatio,
+    };
+  }
+
+  function onBubbleMouseDown(e: React.MouseEvent, s: any) {
+    e.preventDefault();
+    e.stopPropagation();
+    setTooltip(null);
+    const { x, y } = clientToSvg(e.clientX, e.clientY);
+    setDragging({
+      id: s.id,
+      startSvgX: x,
+      startSvgY: y,
+      origInterest: localPos[s.id]?.interest ?? s.interestLevel ?? 3,
+      origPower: localPos[s.id]?.power ?? s.powerLevel ?? 3,
+    });
+  }
+
+  function onSvgMouseMove(e: React.MouseEvent) {
+    if (!dragging) return;
+    const { x, y } = clientToSvg(e.clientX, e.clientY);
+    const newInterest = Math.min(5, Math.max(1, Math.round(invX(x) * 2) / 2));
+    const newPower = Math.min(5, Math.max(1, Math.round(invY(y) * 2) / 2));
+    setLocalPos(prev => ({ ...prev, [dragging.id]: { interest: newInterest, power: newPower } }));
+  }
+
+  function onSvgMouseUp(e: React.MouseEvent) {
+    if (!dragging) return;
+    const pos = localPos[dragging.id];
+    if (pos) {
+      const newPower = Math.round(pos.power);
+      const newInterest = Math.round(pos.interest);
+      const strategy = deriveStrategy(newPower, newInterest);
+      onUpdate(dragging.id, newPower, newInterest, strategy);
+    }
+    setDragging(null);
+  }
+
   return (
     <div className="space-y-3">
       <p className="text-sm text-muted-foreground">
-        Each bubble is plotted at the stakeholder's exact <strong>Interest (X)</strong> and <strong>Power (Y)</strong> scores (1–5).
-        Bubble size reflects overall influence. Color matches the engagement strategy set in the Stakeholder Register.
-        Hover a bubble for details.
+        <strong>Drag any bubble</strong> to reposition it — the Power (Y) and Interest (X) scores update automatically on drop,
+        and the engagement strategy is recalculated from the quadrant.
+        Bubble size reflects overall influence.
       </p>
-      <div className="border rounded-xl overflow-hidden bg-white dark:bg-card" style={{ maxWidth: W }}>
+      <div ref={containerRef} className="border rounded-xl overflow-hidden bg-white dark:bg-card relative" style={{ maxWidth: W }}>
         <svg
           ref={svgRef}
           viewBox={`0 0 ${W} ${H}`}
           width="100%"
-          style={{ display: "block", fontFamily: "inherit" }}
-          onMouseLeave={() => setTooltip(null)}
+          style={{ display: "block", fontFamily: "inherit", cursor: dragging ? "grabbing" : "default", userSelect: "none" }}
+          onMouseMove={onSvgMouseMove}
+          onMouseUp={onSvgMouseUp}
+          onMouseLeave={(e) => { onSvgMouseUp(e); setTooltip(null); }}
         >
           {/* ── Quadrant background fills ── */}
-          {/* Top-left: Keep Satisfied (High Power, Low Interest) */}
-          <rect x={PAD.left} y={PAD.top} width={plotW / 2} height={plotH / 2}
-            fill="#fff7ed" opacity="0.7" />
-          {/* Top-right: Manage Closely (High Power, High Interest) */}
-          <rect x={midX} y={PAD.top} width={plotW / 2} height={plotH / 2}
-            fill="#fef2f2" opacity="0.7" />
-          {/* Bottom-left: Monitor (Low Power, Low Interest) */}
-          <rect x={PAD.left} y={midY} width={plotW / 2} height={plotH / 2}
-            fill="#f9fafb" opacity="0.7" />
-          {/* Bottom-right: Keep Informed (Low Power, High Interest) */}
-          <rect x={midX} y={midY} width={plotW / 2} height={plotH / 2}
-            fill="#eff6ff" opacity="0.7" />
+          <rect x={PAD.left} y={PAD.top} width={plotW / 2} height={plotH / 2} fill="#fff7ed" opacity="0.7" />
+          <rect x={midX} y={PAD.top} width={plotW / 2} height={plotH / 2} fill="#fef2f2" opacity="0.7" />
+          <rect x={PAD.left} y={midY} width={plotW / 2} height={plotH / 2} fill="#f9fafb" opacity="0.7" />
+          <rect x={midX} y={midY} width={plotW / 2} height={plotH / 2} fill="#eff6ff" opacity="0.7" />
 
           {/* ── Quadrant divider lines ── */}
-          <line x1={midX} y1={PAD.top} x2={midX} y2={PAD.top + plotH}
-            stroke="#d1d5db" strokeWidth="1.5" strokeDasharray="6 3" />
-          <line x1={PAD.left} y1={midY} x2={PAD.left + plotW} y2={midY}
-            stroke="#d1d5db" strokeWidth="1.5" strokeDasharray="6 3" />
+          <line x1={midX} y1={PAD.top} x2={midX} y2={PAD.top + plotH} stroke="#d1d5db" strokeWidth="1.5" strokeDasharray="6 3" />
+          <line x1={PAD.left} y1={midY} x2={PAD.left + plotW} y2={midY} stroke="#d1d5db" strokeWidth="1.5" strokeDasharray="6 3" />
 
           {/* ── Quadrant labels ── */}
-          <text x={qMidX1} y={qMidY1} textAnchor="middle" fontSize="11" fontWeight="700"
-            fill="#c2410c" opacity="0.5">Keep Satisfied</text>
-          <text x={qMidX2} y={qMidY1} textAnchor="middle" fontSize="11" fontWeight="700"
-            fill="#b91c1c" opacity="0.5">Manage Closely</text>
-          <text x={qMidX1} y={qMidY2} textAnchor="middle" fontSize="11" fontWeight="700"
-            fill="#4b5563" opacity="0.5">Monitor</text>
-          <text x={qMidX2} y={qMidY2} textAnchor="middle" fontSize="11" fontWeight="700"
-            fill="#1d4ed8" opacity="0.5">Keep Informed</text>
+          <text x={qMidX1} y={qMidY1} textAnchor="middle" fontSize="11" fontWeight="700" fill="#c2410c" opacity="0.5">Keep Satisfied</text>
+          <text x={qMidX2} y={qMidY1} textAnchor="middle" fontSize="11" fontWeight="700" fill="#b91c1c" opacity="0.5">Manage Closely</text>
+          <text x={qMidX1} y={qMidY2} textAnchor="middle" fontSize="11" fontWeight="700" fill="#4b5563" opacity="0.5">Monitor</text>
+          <text x={qMidX2} y={qMidY2} textAnchor="middle" fontSize="11" fontWeight="700" fill="#1d4ed8" opacity="0.5">Keep Informed</text>
 
           {/* ── Grid lines (minor) ── */}
           {[2, 3, 4].map(v => (
             <g key={v}>
-              <line x1={scaleX(v)} y1={PAD.top} x2={scaleX(v)} y2={PAD.top + plotH}
-                stroke="#e5e7eb" strokeWidth="1" />
-              <line x1={PAD.left} y1={scaleY(v)} x2={PAD.left + plotW} y2={scaleY(v)}
-                stroke="#e5e7eb" strokeWidth="1" />
+              <line x1={scaleX(v)} y1={PAD.top} x2={scaleX(v)} y2={PAD.top + plotH} stroke="#e5e7eb" strokeWidth="1" />
+              <line x1={PAD.left} y1={scaleY(v)} x2={PAD.left + plotW} y2={scaleY(v)} stroke="#e5e7eb" strokeWidth="1" />
             </g>
           ))}
 
           {/* ── Axes ── */}
-          <line x1={PAD.left} y1={PAD.top + plotH} x2={PAD.left + plotW} y2={PAD.top + plotH}
-            stroke="#6b7280" strokeWidth="1.5" />
-          <line x1={PAD.left} y1={PAD.top} x2={PAD.left} y2={PAD.top + plotH}
-            stroke="#6b7280" strokeWidth="1.5" />
+          <line x1={PAD.left} y1={PAD.top + plotH} x2={PAD.left + plotW} y2={PAD.top + plotH} stroke="#6b7280" strokeWidth="1.5" />
+          <line x1={PAD.left} y1={PAD.top} x2={PAD.left} y2={PAD.top + plotH} stroke="#6b7280" strokeWidth="1.5" />
 
           {/* ── Axis tick labels ── */}
           {[1, 2, 3, 4, 5].map(v => (
             <g key={v}>
-              {/* X ticks */}
-              <text x={scaleX(v)} y={PAD.top + plotH + 16} textAnchor="middle"
-                fontSize="11" fill="#6b7280">{v}</text>
-              {/* Y ticks */}
-              <text x={PAD.left - 10} y={scaleY(v) + 4} textAnchor="end"
-                fontSize="11" fill="#6b7280">{v}</text>
+              <text x={scaleX(v)} y={PAD.top + plotH + 16} textAnchor="middle" fontSize="11" fill="#6b7280">{v}</text>
+              <text x={PAD.left - 10} y={scaleY(v) + 4} textAnchor="end" fontSize="11" fill="#6b7280">{v}</text>
             </g>
           ))}
 
           {/* ── Axis titles ── */}
-          <text x={PAD.left + plotW / 2} y={H - 8} textAnchor="middle"
-            fontSize="12" fontWeight="600" fill="#374151">INTEREST →</text>
-          <text
-            x={14} y={PAD.top + plotH / 2}
-            textAnchor="middle" fontSize="12" fontWeight="600" fill="#374151"
-            transform={`rotate(-90, 14, ${PAD.top + plotH / 2})`}
-          >POWER ↑</text>
+          <text x={PAD.left + plotW / 2} y={H - 8} textAnchor="middle" fontSize="12" fontWeight="600" fill="#374151">INTEREST →</text>
+          <text x={14} y={PAD.top + plotH / 2} textAnchor="middle" fontSize="12" fontWeight="600" fill="#374151"
+            transform={`rotate(-90, 14, ${PAD.top + plotH / 2})`}>POWER ↑</text>
 
           {/* ── Bubbles ── */}
           {stakeholders.map((s) => {
-            const cx = scaleX(s.interestLevel ?? 3) + jitter(s.id, "x");
-            const cy = scaleY(s.powerLevel ?? 3) + jitter(s.id, "y");
-            const r = bubbleR(s);
-            const col = STRATEGY_COLORS[s.engagementStrategy || ""] || DEFAULT_COLOR;
+            const interest = localPos[s.id]?.interest ?? s.interestLevel ?? 3;
+            const power = localPos[s.id]?.power ?? s.powerLevel ?? 3;
+            const cx = scaleX(interest) + jitter(s.id, "x");
+            const cy = scaleY(power) + jitter(s.id, "y");
+            const r = bubbleR(power, interest);
+            // Derive live strategy color from current position
+            const liveStrategy = dragging?.id === s.id
+              ? deriveStrategy(Math.round(power), Math.round(interest))
+              : (s.engagementStrategy || "");
+            const col = STRATEGY_COLORS[liveStrategy] || DEFAULT_COLOR;
             const initials = (s.fullName || "?").split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
+            const isDraggingThis = dragging?.id === s.id;
             return (
               <g
                 key={s.id}
-                style={{ cursor: "pointer" }}
+                style={{ cursor: isDraggingThis ? "grabbing" : "grab" }}
+                onMouseDown={(e) => onBubbleMouseDown(e, s)}
                 onMouseEnter={(e) => {
+                  if (dragging) return;
                   const svgEl = svgRef.current;
                   if (!svgEl) return;
                   const rect = svgEl.getBoundingClientRect();
                   const scaleRatio = rect.width / W;
-                  setTooltip({ s, x: cx * scaleRatio, y: cy * scaleRatio });
+                  setTooltip({ s: { ...s, powerLevel: power, interestLevel: interest, engagementStrategy: liveStrategy }, x: cx * scaleRatio, y: cy * scaleRatio });
                 }}
-                onMouseLeave={() => setTooltip(null)}
+                onMouseLeave={() => { if (!dragging) setTooltip(null); }}
               >
-                {/* Shadow */}
-                <circle cx={cx + 1} cy={cy + 2} r={r} fill="rgba(0,0,0,0.08)" />
+                {/* Drop shadow */}
+                <circle cx={cx + 1} cy={cy + 2} r={r} fill="rgba(0,0,0,0.08)" style={{ pointerEvents: "none" }} />
+                {/* Bubble ring (highlight when dragging) */}
+                {isDraggingThis && (
+                  <circle cx={cx} cy={cy} r={r + 5} fill="none" stroke={col.stroke} strokeWidth="2" opacity="0.4" strokeDasharray="4 3" />
+                )}
                 {/* Bubble */}
-                <circle cx={cx} cy={cy} r={r}
-                  fill={col.fill} stroke={col.stroke} strokeWidth="2" />
+                <circle cx={cx} cy={cy} r={r} fill={col.fill} stroke={col.stroke}
+                  strokeWidth={isDraggingThis ? 3 : 2} opacity={isDraggingThis ? 1 : 0.9} />
                 {/* Initials */}
                 <text x={cx} y={cy + 4} textAnchor="middle"
                   fontSize={r > 20 ? "10" : "8"} fontWeight="700" fill={col.text}
                   style={{ pointerEvents: "none" }}>
                   {initials}
                 </text>
+                {/* Live score tooltip while dragging */}
+                {isDraggingThis && (
+                  <g style={{ pointerEvents: "none" }}>
+                    <rect x={cx + r + 4} y={cy - 20} width={80} height={36} rx={5} fill="white" stroke={col.stroke} strokeWidth="1.5" />
+                    <text x={cx + r + 44} y={cy - 6} textAnchor="middle" fontSize="9" fontWeight="700" fill={col.text}>{liveStrategy}</text>
+                    <text x={cx + r + 44} y={cy + 8} textAnchor="middle" fontSize="9" fill="#374151">P{Math.round(power)} / I{Math.round(interest)}</text>
+                  </g>
+                )}
               </g>
             );
           })}
@@ -211,8 +277,8 @@ function BubbleMap({ stakeholders }: { stakeholders: any[] }) {
           ))}
         </svg>
 
-        {/* Tooltip (positioned relative to the container) */}
-        {tooltip && (
+        {/* Hover tooltip (positioned relative to the container) */}
+        {tooltip && !dragging && (
           <div
             style={{
               position: "absolute",
@@ -257,7 +323,10 @@ function BubbleMap({ stakeholders }: { stakeholders: any[] }) {
       {/* Stakeholder list below the chart */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 mt-2">
         {stakeholders.map((s) => {
-          const col = STRATEGY_COLORS[s.engagementStrategy || ""] || DEFAULT_COLOR;
+          const interest = localPos[s.id]?.interest ?? s.interestLevel ?? 3;
+          const power = localPos[s.id]?.power ?? s.powerLevel ?? 3;
+          const liveStrategy = deriveStrategy(Math.round(power), Math.round(interest));
+          const col = STRATEGY_COLORS[liveStrategy] || DEFAULT_COLOR;
           return (
             <div key={s.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "6px 10px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "white" }}>
               <div style={{ width: "24px", height: "24px", borderRadius: "50%", background: avatarColor(s.id), display: "flex", alignItems: "center", justifyContent: "center", fontSize: "10px", fontWeight: 700, color: "white", flexShrink: 0 }}>
@@ -265,9 +334,9 @@ function BubbleMap({ stakeholders }: { stakeholders: any[] }) {
               </div>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontSize: "11px", fontWeight: 600, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.fullName}</div>
-                <div style={{ fontSize: "9px", color: col.text, fontWeight: 600 }}>{s.engagementStrategy || "Unset"}</div>
+                <div style={{ fontSize: "9px", color: col.text, fontWeight: 600 }}>{liveStrategy}</div>
               </div>
-              <div style={{ marginLeft: "auto", fontSize: "9px", color: "#9ca3af", flexShrink: 0 }}>P{s.powerLevel ?? 3}/I{s.interestLevel ?? 3}</div>
+              <div style={{ marginLeft: "auto", fontSize: "9px", color: "#9ca3af", flexShrink: 0 }}>P{Math.round(power)}/I{Math.round(interest)}</div>
             </div>
           );
         })}
@@ -692,6 +761,28 @@ export default function Relationships() {
     updateMutation.mutate({ id, data: { engagementStrategy: strategy || null } });
   };
 
+  const handleBubbleUpdate = (id: number, powerLevel: number, interestLevel: number, engagementStrategy: string) => {
+    // Optimistic update for power/interest/strategy
+    utils.stakeholders.list.setData(
+      { projectId: currentProjectId! },
+      (old) => old?.map((s) => s.id === id
+        ? { ...s, powerLevel, interestLevel, engagementStrategy }
+        : s
+      )
+    );
+    updateMutation.mutate(
+      { id, data: { powerLevel, interestLevel, engagementStrategy } },
+      {
+        onSuccess: () => toast.success(`Updated: P${powerLevel} / I${interestLevel} → ${engagementStrategy}`),
+        onError: () => {
+          utils.stakeholders.list.invalidate();
+          toast.error("Failed to save position");
+        },
+        onSettled: () => utils.stakeholders.list.invalidate(),
+      }
+    );
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -751,7 +842,7 @@ export default function Relationships() {
 
           <TabsContent value="bubble" className="mt-4">
             <div className="relative">
-              <BubbleMap stakeholders={stakeholders} />
+              <BubbleMap stakeholders={stakeholders} onUpdate={handleBubbleUpdate} />
             </div>
           </TabsContent>
 
