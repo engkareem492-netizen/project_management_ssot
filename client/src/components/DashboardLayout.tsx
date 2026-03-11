@@ -72,6 +72,8 @@ import {
   FolderOpen,
   Scroll,
   Sliders,
+  Layers2,
+  ClipboardList,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import {
@@ -107,7 +109,16 @@ type MenuItem = { icon: React.ElementType; label: string; path: string; children
 
 const menuItems: MenuItem[] = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
-  { icon: Scroll, label: "Project Charter", path: "/charter" },
+  {
+    icon: Scroll,
+    label: "Planning",
+    path: "__planning__",
+    children: [
+      { icon: Scroll, label: "Project Charter", path: "/charter" },
+      { icon: ClipboardList, label: "PM Plan", path: "/pm-plan" },
+      { icon: Layers2, label: "WBS Builder", path: "/wbs" },
+    ],
+  },
   { icon: Flag, label: "Milestones", path: "/milestones" },
   {
     icon: CheckSquare,

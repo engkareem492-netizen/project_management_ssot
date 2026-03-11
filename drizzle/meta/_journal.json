@@ -281,6 +281,13 @@
       "when": 1773178301153,
       "tag": "0039_opposite_gideon",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "5",
+      "when": 1773269816827,
+      "tag": "0040_slippery_arclight",
+      "breakpoints": true
     }
   ]
 }

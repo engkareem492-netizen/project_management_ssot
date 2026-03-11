@@ -1270,3 +1270,45 @@ export const customFieldValues = mysqlTable("customFieldValues", {
 });
 export type CustomFieldValue = typeof customFieldValues.$inferSelect;
 export type InsertCustomFieldValue = typeof customFieldValues.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────
+// PM Plan Sections — one row per subsidiary plan per project
+// sectionKey: scope_mgmt | schedule_mgmt | cost_mgmt | quality_mgmt
+//             resource_mgmt | comms_mgmt | risk_mgmt | procurement_mgmt
+//             stakeholder_mgmt
+// ─────────────────────────────────────────────────────────────
+export const pmPlanSections = mysqlTable("pmPlanSections", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  sectionKey: varchar("sectionKey", { length: 60 }).notNull(),
+  content: json("content").$type<Record<string, string>>().default({}),
+  lastUpdatedBy: varchar("lastUpdatedBy", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type PmPlanSection = typeof pmPlanSections.$inferSelect;
+export type InsertPmPlanSection = typeof pmPlanSections.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────
+// WBS Elements — hierarchical work breakdown structure
+// ─────────────────────────────────────────────────────────────
+export const wbsElements = mysqlTable("wbsElements", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  parentId: int("parentId"),                                  // null = root level
+  code: varchar("code", { length: 50 }).notNull(),            // e.g. "1.2.3"
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  level: int("level").notNull().default(1),                   // 1=phase, 2=deliverable, 3=work-package
+  responsible: varchar("responsible", { length: 255 }),
+  estimatedCost: decimal("estimatedCost", { precision: 15, scale: 2 }),
+  actualCost: decimal("actualCost", { precision: 15, scale: 2 }),
+  status: mysqlEnum("status", ["Not Started", "In Progress", "Complete", "On Hold"]).default("Not Started"),
+  deliverableId: int("deliverableId"),                        // optional link to deliverables table
+  milestoneId: int("milestoneId"),                            // optional link to milestones table
+  sortOrder: int("sortOrder").default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type WbsElement = typeof wbsElements.$inferSelect;
+export type InsertWbsElement = typeof wbsElements.$inferInsert;

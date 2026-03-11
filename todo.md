@@ -576,3 +576,22 @@
 - [x] Fix Requirements page: type dropdown reads from settings DB (already did)
 - [x] Fix cascade: updateTypeOption, updateCategoryOption, updateStatusOption, updatePriorityOption now update both value+label columns and cascade rename to requirements, tasks, issues, deliverables
 - [x] Ensure Settings page edits take effect immediately everywhere (cascade confirmed working)
+
+## Phase 1 Implementation: Charter, PM Plan, WBS (Mar 12, 2026)
+
+### Schema
+- [x] Add projectCharters table (title, purpose, objectives, scope, sponsor, budget, contractType, startDate, endDate, ragStatus) — already existed
+- [x] Add pmPlanSections table (projectId, sectionKey, content, lastUpdatedBy)
+- [x] Add wbsElements table (projectId, code, title, description, parentId, level, deliverableId, responsible, cost, status)
+
+### Server
+- [x] Add charter router (get, create, update) — already existed
+- [x] Add pmPlan router (getAll, upsertSection)
+- [x] Add wbs router (list, create, update, delete with cascade)
+
+### UI
+- [x] Project Charter page with full form — already existed
+- [x] Integrated PM Plan page with 9 tabbed sections (Scope, Schedule, Cost, Quality, Resource, Comms, Risk, Procurement, Stakeholder) with per-section completion tracking
+- [x] WBS Builder page with tree table (expand/collapse, add child, edit, delete, cost summary, WBS code auto-generation)
+- [x] Wire all three pages in sidebar under new "Planning" group
+- [x] Add vitest tests for PM Plan section keys and WBS tree/code logic (6/6 passing)

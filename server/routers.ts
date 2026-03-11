@@ -30,6 +30,8 @@ import { notificationsRouter } from "./routers/notifications.router";
 import { budgetRouter } from "./routers/budget.router";
 import { resourcesRouter } from "./routers/resources.router";
 import { charterRouter } from "./routers/charter.router";
+import { pmPlanRouter } from "./routers/pmPlan.router";
+import { wbsRouter } from "./routers/wbs.router";
 import { milestonesRouter } from "./routers/milestones.router";
 import { testRunsRouter } from "./routers/testRuns.router";
 import { actionItemsRouter } from "./routers/actionItems.router";
@@ -60,6 +62,8 @@ export const appRouter = router({
   budget: budgetRouter,
   resources: resourcesRouter,
   charter: charterRouter,
+  pmPlan: pmPlanRouter,
+  wbs: wbsRouter,
   milestones: milestonesRouter,
   testRuns: testRunsRouter,
   actionItems: actionItemsRouter,
