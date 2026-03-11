@@ -546,3 +546,8 @@
 - [x] On drop, save new powerLevel and interestLevel to DB via stakeholders.update
 - [x] Auto-derive engagementStrategy from quadrant (High P + High I = Manage Closely, etc.)
 - [x] Update Engagement Matrix board to reflect new strategy after bubble drop
+
+## Engagement Matrix ↔ Bubble Map Sync Fix (Mar 11, 2026)
+- [x] When dropping a card into a quadrant in the Engagement Matrix, also update powerLevel and interestLevel to match the quadrant's range
+- [x] Manage Closely → P=5, I=5 | Keep Satisfied → P=5, I=2 | Keep Informed → P=2, I=5 | Monitor → P=2, I=2
+- [x] Unassigned drop → only clear strategy, leave scores unchanged

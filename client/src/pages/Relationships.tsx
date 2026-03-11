@@ -757,8 +757,49 @@ export default function Relationships() {
     },
   });
 
+  // Map each quadrant strategy to representative Power/Interest scores
+  // so the Bubble Map position stays consistent with the matrix placement
+  const QUADRANT_SCORES: Record<string, { powerLevel: number; interestLevel: number }> = {
+    "Manage Closely":  { powerLevel: 5, interestLevel: 5 },
+    "Keep Satisfied":  { powerLevel: 5, interestLevel: 2 },
+    "Keep Informed":   { powerLevel: 2, interestLevel: 5 },
+    "Monitor":         { powerLevel: 2, interestLevel: 2 },
+  };
+
   const handleStrategyChange = (id: number, strategy: string) => {
-    updateMutation.mutate({ id, data: { engagementStrategy: strategy || null } });
+    const scores = strategy ? QUADRANT_SCORES[strategy] : null;
+    // Optimistic update — reflect strategy AND scores immediately in the cache
+    utils.stakeholders.list.setData(
+      { projectId: currentProjectId! },
+      (old) => old?.map((s) => {
+        if (s.id !== id) return s;
+        return {
+          ...s,
+          engagementStrategy: strategy || null,
+          ...(scores ? { powerLevel: scores.powerLevel, interestLevel: scores.interestLevel } : {}),
+        };
+      })
+    );
+    updateMutation.mutate(
+      {
+        id,
+        data: {
+          engagementStrategy: strategy || null,
+          ...(scores ? { powerLevel: scores.powerLevel, interestLevel: scores.interestLevel } : {}),
+        },
+      },
+      {
+        onSuccess: () =>
+          strategy
+            ? toast.success(`Moved to ${strategy} — P${scores!.powerLevel} / I${scores!.interestLevel} updated`)
+            : toast.success("Removed from matrix"),
+        onError: () => {
+          utils.stakeholders.list.invalidate();
+          toast.error("Failed to update strategy");
+        },
+        onSettled: () => utils.stakeholders.list.invalidate(),
+      }
+    );
   };
 
   const handleBubbleUpdate = (id: number, powerLevel: number, interestLevel: number, engagementStrategy: string) => {
