@@ -161,9 +161,13 @@ export default function Tasks() {
     actionSourceType: '',
     actionSourceId: '',
     actionNotes: '',
+    startDate: '',
+    phaseId: '',
+    milestoneId: undefined as number | undefined,
   });
 
   const { data: tasks, isLoading, refetch } = trpc.tasks.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
+  const { data: milestonesList } = trpc.milestones.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
 
   // Handle taskId query parameter from URL
   useEffect(() => {
@@ -688,10 +692,12 @@ export default function Tasks() {
       actionSourceType: (task as any).actionSourceType || '',
       actionSourceId: (task as any).actionSourceId || '',
       actionNotes: (task as any).actionNotes || '',
+      startDate: (task as any).startDate || '',
+      phaseId: (task as any).phaseId || '',
+      milestoneId: (task as any).milestoneId ?? undefined,
     });
     setViewDialogOpen(true);
   };
-
   const handleEditDetails = (task: any) => {
     setSelectedTask(task);
     setIsEditMode(true);
@@ -716,8 +722,11 @@ export default function Tasks() {
       actionSourceType: (task as any).actionSourceType || '',
       actionSourceId: (task as any).actionSourceId || '',
       actionNotes: (task as any).actionNotes || '',
+      startDate: (task as any).startDate || '',
+      phaseId: (task as any).phaseId || '',
+      milestoneId: (task as any).milestoneId ?? undefined,
     });
-    setViewDialogOpen(true);
+    setViewDialogOpen(true);;
   };
 
   const handleSaveEdit = () => {
@@ -1643,6 +1652,15 @@ export default function Tasks() {
               <h4 className="text-sm font-semibold border-b pb-2">Dates</h4>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
+                  <Label htmlFor="startDate">Start Date</Label>
+                  <Input
+                    id="startDate"
+                    type="date"
+                    value={newTask.startDate}
+                    onChange={(e) => setNewTask({ ...newTask, startDate: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="assignDate">Assign Date</Label>
                   <Input
                     id="assignDate"
@@ -1659,6 +1677,38 @@ export default function Tasks() {
                     value={newTask.dueDate}
                     onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })}
                   />
+                </div>
+              </div>
+            </div>
+            {/* Phase & Milestone Section */}
+            <div className="space-y-4">
+              <h4 className="text-sm font-semibold border-b pb-2">Phase & Milestone</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="phaseId">Phase</Label>
+                  <Input
+                    id="phaseId"
+                    placeholder="e.g. Explore, Realize, Deploy"
+                    value={newTask.phaseId}
+                    onChange={(e) => setNewTask({ ...newTask, phaseId: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="milestoneId">Related Milestone</Label>
+                  <Select
+                    value={newTask.milestoneId?.toString() || ''}
+                    onValueChange={(v) => setNewTask({ ...newTask, milestoneId: v ? parseInt(v) : undefined })}
+                  >
+                    <SelectTrigger id="milestoneId">
+                      <SelectValue placeholder="Select milestone..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">None</SelectItem>
+                      {(milestonesList || []).map((m: any) => (
+                        <SelectItem key={m.id} value={m.id.toString()}>{m.title}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>
@@ -2081,6 +2131,14 @@ export default function Tasks() {
                 )}
               </div>
               <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Start Date</Label>
+                {isEditMode ? (
+                  <Input type="date" value={editFormData.startDate || ''} onChange={(e) => setEditFormData({...editFormData, startDate: e.target.value})} className="h-8" />
+                ) : (
+                  <p className="font-medium">{formatDate((selectedTask as any)?.startDate) || <span className="text-muted-foreground">—</span>}</p>
+                )}
+              </div>
+              <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                 <Label className="text-xs text-muted-foreground uppercase tracking-wide">Assign Date</Label>
                 {isEditMode ? (
                   <Input type="date" value={editFormData.assignDate} onChange={(e) => setEditFormData({...editFormData, assignDate: e.target.value})} className="h-8" />
@@ -2094,6 +2152,30 @@ export default function Tasks() {
                   <Input type="date" value={editFormData.dueDate} onChange={(e) => setEditFormData({...editFormData, dueDate: e.target.value})} className="h-8" />
                 ) : (
                   <p className="font-medium">{formatDate(selectedTask?.dueDate)}</p>
+                )}
+              </div>
+              <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Phase</Label>
+                {isEditMode ? (
+                  <Input placeholder="e.g. Explore, Realize, Deploy" value={editFormData.phaseId || ''} onChange={(e) => setEditFormData({...editFormData, phaseId: e.target.value})} className="h-8" />
+                ) : (
+                  <p className="font-medium">{(selectedTask as any)?.phaseId || <span className="text-muted-foreground">—</span>}</p>
+                )}
+              </div>
+              <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Related Milestone</Label>
+                {isEditMode ? (
+                  <Select value={editFormData.milestoneId?.toString() || ''} onValueChange={(v) => setEditFormData({...editFormData, milestoneId: v ? parseInt(v) : undefined})}>
+                    <SelectTrigger className="h-8"><SelectValue placeholder="Select milestone..." /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">None</SelectItem>
+                      {(milestonesList || []).map((m: any) => (
+                        <SelectItem key={m.id} value={m.id.toString()}>{m.title}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="font-medium">{(milestonesList || []).find((m: any) => m.id === (selectedTask as any)?.milestoneId)?.title || <span className="text-muted-foreground">—</span>}</p>
                 )}
               </div>
               <div className="space-y-1 p-3 bg-muted/50 rounded-lg">

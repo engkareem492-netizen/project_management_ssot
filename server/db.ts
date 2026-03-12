@@ -990,27 +990,40 @@ export async function getAllTasksSorted(projectId: number) {
   const db = await getDb();
   if (!db) return [];
   
-  // Get all tasks
+  // Get all tasks in one query
   const allTasks = await db.select().from(tasks)
     .where(eq(tasks.projectId, projectId))
     .orderBy(tasks.taskId);
   
-  // For each task, get the latest action log entry to populate currentStatus
-  const tasksWithStatus = await Promise.all(allTasks.map(async (task) => {
-    const latestLog = await db.select().from(actionLogs)
-      .where(and(eq(actionLogs.entityType, 'task'), eq(actionLogs.entityId, task.taskId)))
-      .orderBy(desc(actionLogs.changedAt))
-      .limit(1);
-    
-    const currentStatus = latestLog[0]?.changedFields?.currentStatus?.newValue || task.currentStatus || 'No updates';
-    
-    return {
-      ...task,
-      currentStatus,
-    };
+  if (allTasks.length === 0) return [];
+
+  // Bulk-fetch the latest action log per task using a single query with MAX(changedAt)
+  // Then join back to get the changedFields for those rows
+  const taskIds = allTasks.map(t => t.taskId);
+  const latestLogs = await db.select({
+    entityId: actionLogs.entityId,
+    changedFields: actionLogs.changedFields,
+    changedAt: actionLogs.changedAt,
+  })
+    .from(actionLogs)
+    .where(and(
+      eq(actionLogs.entityType, 'task'),
+      inArray(actionLogs.entityId, taskIds)
+    ))
+    .orderBy(desc(actionLogs.changedAt));
+
+  // Build a map: taskId -> latest changedFields (first occurrence = most recent due to DESC order)
+  const logMap = new Map<string, any>();
+  for (const log of latestLogs) {
+    if (!logMap.has(log.entityId)) {
+      logMap.set(log.entityId, log.changedFields);
+    }
+  }
+
+  return allTasks.map(task => ({
+    ...task,
+    currentStatus: logMap.get(task.taskId)?.currentStatus?.newValue || task.currentStatus || 'No updates',
   }));
-  
-  return tasksWithStatus;
 }
 
 export async function getAllIssuesSorted(projectId: number) {

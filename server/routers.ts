@@ -726,6 +726,9 @@ export const appRouter = router({
         actionSourceType: z.string().optional(),
         actionSourceId: z.string().optional(),
         actionNotes: z.string().optional(),
+        startDate: z.string().optional(),
+        phaseId: z.string().optional(),
+        milestoneId: z.number().optional(),
       }))
       .mutation(async ({ input }) => {
         try {
@@ -802,6 +805,9 @@ export const appRouter = router({
           actionSourceType: z.string().optional(),
           actionSourceId: z.string().optional(),
           actionNotes: z.string().optional(),
+          startDate: z.string().nullable().optional(),
+          phaseId: z.string().nullable().optional(),
+          milestoneId: z.number().nullable().optional(),
         }),
       }))
       .mutation(async ({ input, ctx }) => {

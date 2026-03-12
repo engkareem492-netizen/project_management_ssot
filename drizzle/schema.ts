@@ -244,16 +244,19 @@ export const tasks = mysqlTable("tasks", {
   recurringEndDate: varchar("recurringEndDate", { length: 50 }),
   // Resource effort
   manHours: decimal("manHours", { precision: 10, scale: 2 }),
-  // Action Item flag — when true this task originated as an action item
+   // Action Item flag — when true this task originated as an action item
   isActionItem: boolean("isActionItem").default(false),
   // Source link for action items (meeting / decision / issue / risk / general)
   actionSourceType: varchar("actionSourceType", { length: 50 }),
   actionSourceId: varchar("actionSourceId", { length: 50 }),
   actionNotes: text("actionNotes"),
+  // Scheduling & traceability
+  startDate: varchar("startDate", { length: 50 }),        // planned start date
+  phaseId: varchar("phaseId", { length: 100 }),           // free-text phase label (e.g. Explore / Realize)
+  milestoneId: int("milestoneId"),                         // FK to milestones.id
   importedAt: timestamp("importedAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
-
 export type Task = typeof tasks.$inferSelect;
 export type InsertTask = typeof tasks.$inferInsert;
 

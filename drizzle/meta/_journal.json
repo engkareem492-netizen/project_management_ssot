@@ -316,6 +316,13 @@
       "when": 1773277347760,
       "tag": "0044_dry_thunderbolts",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "5",
+      "when": 1773304903465,
+      "tag": "0045_low_spectrum",
+      "breakpoints": true
     }
   ]
 }

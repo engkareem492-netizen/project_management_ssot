@@ -879,18 +879,15 @@ export default function Stakeholders() {
             />
           </div>
         </div>
-        <div className="space-y-2">
-          <Label>Engagement Strategy</Label>
-          <Select value={formData.engagementStrategy} onValueChange={(v) => setFormData({ ...formData, engagementStrategy: v })}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select strategy..." />
-            </SelectTrigger>
-            <SelectContent>
-              {ENGAGEMENT_STRATEGIES.map((s) => (
-                <SelectItem key={s} value={s}>{s}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        {/* Engagement strategy auto-derived from Power/Interest sliders */}
+        <div className="space-y-1 p-2 bg-muted/40 rounded-md">
+          <p className="text-xs text-muted-foreground">Engagement Strategy (auto-derived from Power/Interest)</p>
+          <p className="text-sm font-semibold">
+            {formData.powerLevel >= 3 && formData.interestLevel >= 3 ? "Manage Closely" :
+             formData.powerLevel >= 3 && formData.interestLevel < 3 ? "Keep Satisfied" :
+             formData.powerLevel < 3 && formData.interestLevel >= 3 ? "Keep Informed" :
+             "Monitor"}
+          </p>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
@@ -1415,8 +1412,12 @@ export default function Stakeholders() {
               onClick={() => {
                 if (!formData.fullName.trim()) { toast.error("Full name is required"); return; }
                 if (!currentProjectId) { toast.error("No project selected"); return; }
+                const derivedStrategy = formData.powerLevel >= 3 && formData.interestLevel >= 3 ? "Manage Closely" :
+                  formData.powerLevel >= 3 && formData.interestLevel < 3 ? "Keep Satisfied" :
+                  formData.powerLevel < 3 && formData.interestLevel >= 3 ? "Keep Informed" : "Monitor";
                 createMutation.mutate({
                   ...formData,
+                  engagementStrategy: derivedStrategy,
                   projectId: currentProjectId,
                   costPerHour: formData.costPerHour || undefined,
                   costPerDay: formData.costPerDay || undefined,
@@ -1451,10 +1452,14 @@ export default function Stakeholders() {
               onClick={() => {
                 if (!selectedStakeholder) return;
                 if (!formData.fullName.trim()) { toast.error("Full name is required"); return; }
+                const derivedStrategy = formData.powerLevel >= 3 && formData.interestLevel >= 3 ? "Manage Closely" :
+                  formData.powerLevel >= 3 && formData.interestLevel < 3 ? "Keep Satisfied" :
+                  formData.powerLevel < 3 && formData.interestLevel >= 3 ? "Keep Informed" : "Monitor";
                 updateMutation.mutate({
                   id: selectedStakeholder.id,
                   data: {
                     ...formData,
+                    engagementStrategy: derivedStrategy,
                     costPerHour: formData.costPerHour || null,
                     costPerDay: formData.costPerDay || null,
                   },

@@ -688,13 +688,18 @@
 
 ## Bug Fixes (Mar 12, 2026 - Defects Page)
 
-- [ ] Fix missing remote DB tables: features, userStories, testPlans, defects, junction tables
-- [ ] Fix collaboration.getRequirements procedure call (wrong namespace, should use requirements.list)
-- [ ] Implement Defect-to-TestCase traceability: link defects to failing test cases
-- [ ] Add Defect Density per Test Case report tab in Defects page
+- [x] Fix missing remote DB tables: features, userStories, testPlans, defects, junction tables
+- [x] Fix collaboration.getRequirements procedure call (wrong namespace, should use requirements.list)
+- [x] Implement Defect-to-TestCase traceability: link defects to failing test cases
+- [x] Add Defect Density per Test Case report tab in Defects page
 
 ## UX Improvements (Mar 12, 2026)
 - [x] Two-step project delete confirmation (no name re-typing) — Step 1: warning dialog, Step 2: final "Are you sure?" confirmation
 
 ## Bug Fixes (Mar 12, 2026 - Delete Fix)
-- [ ] Fix project delete not executing after two-step confirmation click
+- [x] Fix project delete not executing after two-step confirmation click
+
+## Performance & UX Fixes (Mar 12, 2026)
+- [x] Fix Gantt chart slow loading performance (eliminated N+1 query — now single bulk JOIN)
+- [x] Add startDate, related phase, related milestone fields to task create/edit form
+- [x] Remove duplicate engagement field from Stakeholders — auto-derive from Power/Interest sliders
