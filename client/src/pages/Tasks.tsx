@@ -143,6 +143,12 @@ export default function Tasks() {
     type: '',
     class: '',
   });
+  // Quick milestone create state
+  const [quickMilestoneOpen, setQuickMilestoneOpen] = useState(false);
+  const [quickMilestoneContext, setQuickMilestoneContext] = useState<'create' | 'edit'>('create');
+  const [quickMilestoneTitle, setQuickMilestoneTitle] = useState('');
+  const [quickMilestoneDue, setQuickMilestoneDue] = useState('');
+
   const [newTask, setNewTask] = useState<any>({
     taskGroup: '',
     description: '',
@@ -509,6 +515,23 @@ export default function Tasks() {
       toast.success('Recurring schedule saved');
       setRecurringDialogOpen(false);
       refetch();
+    },
+    onError: (err: any) => toast.error(`Failed: ${err.message}`),
+  });
+
+  const createMilestoneMutation = trpc.milestones.create.useMutation({
+    onSuccess: (created: any) => {
+      toast.success(`Milestone "${created.title}" created`);
+      utils.milestones.list.invalidate({ projectId: currentProjectId! });
+      // Auto-select the new milestone in the relevant form
+      if (quickMilestoneContext === 'create') {
+        setNewTask((prev: any) => ({ ...prev, milestoneId: created.id }));
+      } else {
+        setEditFormData((prev: any) => ({ ...prev, milestoneId: created.id }));
+      }
+      setQuickMilestoneOpen(false);
+      setQuickMilestoneTitle('');
+      setQuickMilestoneDue('');
     },
     onError: (err: any) => toast.error(`Failed: ${err.message}`),
   });
@@ -1695,20 +1718,32 @@ export default function Tasks() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="milestoneId">Related Milestone</Label>
-                  <Select
-                    value={newTask.milestoneId?.toString() || 'none'}
-                    onValueChange={(v) => setNewTask({ ...newTask, milestoneId: (v && v !== 'none') ? parseInt(v) : undefined })}
-                  >
-                    <SelectTrigger id="milestoneId">
-                      <SelectValue placeholder="Select milestone..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
-                      {(milestonesList || []).map((m: any) => (
-                        <SelectItem key={m.id} value={m.id.toString()}>{m.title}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex gap-2 items-center">
+                    <Select
+                      value={newTask.milestoneId?.toString() || 'none'}
+                      onValueChange={(v) => setNewTask({ ...newTask, milestoneId: (v && v !== 'none') ? parseInt(v) : undefined })}
+                    >
+                      <SelectTrigger id="milestoneId" className="flex-1">
+                        <SelectValue placeholder="Select milestone..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {(milestonesList || []).map((m: any) => (
+                          <SelectItem key={m.id} value={m.id.toString()}>{m.title}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="h-9 w-9 shrink-0"
+                      title="Create new milestone"
+                      onClick={() => { setQuickMilestoneContext('create'); setQuickMilestoneOpen(true); }}
+                    >
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2165,15 +2200,27 @@ export default function Tasks() {
               <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                 <Label className="text-xs text-muted-foreground uppercase tracking-wide">Related Milestone</Label>
                 {isEditMode ? (
-                  <Select value={editFormData.milestoneId?.toString() || 'none'} onValueChange={(v) => setEditFormData({...editFormData, milestoneId: (v && v !== 'none') ? parseInt(v) : undefined})}>
-                    <SelectTrigger className="h-8"><SelectValue placeholder="Select milestone..." /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
-                      {(milestonesList || []).map((m: any) => (
-                        <SelectItem key={m.id} value={m.id.toString()}>{m.title}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex gap-2 items-center">
+                    <Select value={editFormData.milestoneId?.toString() || 'none'} onValueChange={(v) => setEditFormData({...editFormData, milestoneId: (v && v !== 'none') ? parseInt(v) : undefined})}>
+                      <SelectTrigger className="h-8 flex-1"><SelectValue placeholder="Select milestone..." /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {(milestonesList || []).map((m: any) => (
+                          <SelectItem key={m.id} value={m.id.toString()}>{m.title}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8 shrink-0"
+                      title="Create new milestone"
+                      onClick={() => { setQuickMilestoneContext('edit'); setQuickMilestoneOpen(true); }}
+                    >
+                      <Plus className="w-3 h-3" />
+                    </Button>
+                  </div>
                 ) : (
                   <p className="font-medium">{(milestonesList || []).find((m: any) => m.id === (selectedTask as any)?.milestoneId)?.title || <span className="text-muted-foreground">—</span>}</p>
                 )}
@@ -3481,6 +3528,52 @@ export default function Tasks() {
               {setRecurringMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save Schedule'}
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Quick Milestone Create Dialog ─────────────────────────────────────── */}
+      <Dialog open={quickMilestoneOpen} onOpenChange={(o) => { setQuickMilestoneOpen(o); if (!o) { setQuickMilestoneTitle(''); setQuickMilestoneDue(''); } }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Create Milestone</DialogTitle>
+            <DialogDescription>Add a new milestone and it will be auto-selected in the form.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="qm-title">Title <span className="text-destructive">*</span></Label>
+              <Input
+                id="qm-title"
+                placeholder="e.g. Phase 1 Complete"
+                value={quickMilestoneTitle}
+                onChange={(e) => setQuickMilestoneTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && quickMilestoneTitle.trim()) {
+                    createMilestoneMutation.mutate({ projectId: currentProjectId!, title: quickMilestoneTitle.trim(), dueDate: quickMilestoneDue || undefined });
+                  }
+                }}
+                autoFocus
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="qm-due">Due Date (optional)</Label>
+              <Input
+                id="qm-due"
+                type="date"
+                value={quickMilestoneDue}
+                onChange={(e) => setQuickMilestoneDue(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setQuickMilestoneOpen(false)}>Cancel</Button>
+            <Button
+              disabled={!quickMilestoneTitle.trim() || createMilestoneMutation.isPending}
+              onClick={() => createMilestoneMutation.mutate({ projectId: currentProjectId!, title: quickMilestoneTitle.trim(), dueDate: quickMilestoneDue || undefined })}
+            >
+              {createMilestoneMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+              Create & Select
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

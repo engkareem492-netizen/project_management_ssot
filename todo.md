@@ -707,3 +707,6 @@
 ## Bug Fixes (Mar 12, 2026 - Tasks/Stakeholders)
 - [x] Fix empty SelectItem value crash on /tasks page (milestone dropdown)
 - [x] Remove Engagement Matrix view toggle from Stakeholders page
+
+## Feature: Milestone Quick-Create (Mar 12, 2026)
+- [x] Add + button next to milestone dropdown in task create/edit form for inline milestone creation
