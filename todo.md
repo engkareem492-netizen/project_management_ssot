@@ -692,3 +692,6 @@
 - [ ] Fix collaboration.getRequirements procedure call (wrong namespace, should use requirements.list)
 - [ ] Implement Defect-to-TestCase traceability: link defects to failing test cases
 - [ ] Add Defect Density per Test Case report tab in Defects page
+
+## UX Improvements (Mar 12, 2026)
+- [x] Two-step project delete confirmation (no name re-typing) — Step 1: warning dialog, Step 2: final "Are you sure?" confirmation

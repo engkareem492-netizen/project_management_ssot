@@ -92,7 +92,7 @@ export default function Settings() {
 
   // Delete project state
   const [showDeleteProject, setShowDeleteProject] = useState(false);
-  const [deleteConfirmName, setDeleteConfirmName] = useState("");
+  const [deleteStep, setDeleteStep] = useState<1 | 2>(1);
 
   // Copy from project state
   const [showCopyDialog, setShowCopyDialog] = useState(false);
@@ -1777,7 +1777,7 @@ export default function Settings() {
                   </div>
                   <Button
                     variant="destructive"
-                    onClick={() => { setDeleteConfirmName(""); setShowDeleteProject(true); }}
+                    onClick={() => { setDeleteStep(1); setShowDeleteProject(true); }}
                   >
                     <Trash2 className="w-4 h-4 mr-2" />
                     Delete Project
@@ -1789,33 +1789,56 @@ export default function Settings() {
         </TabsContent>
       </Tabs>
 
-      {/* ── Delete Project Dialog ── */}
-      <AlertDialog open={showDeleteProject} onOpenChange={setShowDeleteProject}>
+      {/* ── Delete Project Dialog — Step 1: Initial Warning ── */}
+      <AlertDialog
+        open={showDeleteProject && deleteStep === 1}
+        onOpenChange={(open) => { if (!open) setShowDeleteProject(false); }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2 text-red-600">
               <AlertTriangle className="w-5 h-5" /> Delete Project
             </AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete &ldquo;{currentProject?.name}&rdquo; and all its data (tasks, requirements, issues, risks, etc.). This action cannot be undone.
+            <AlertDialogDescription className="text-sm leading-relaxed">
+              You are about to permanently delete <strong className="text-foreground">&ldquo;{currentProject?.name}&rdquo;</strong> and all its associated data — tasks, requirements, issues, risks, stakeholders, and more.
+              <br /><br />
+              This action <strong className="text-red-500">cannot be undone</strong>.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="space-y-2 px-1 pb-2">
-            <Label className="text-sm">Type the project name to confirm:</Label>
-            <Input
-              value={deleteConfirmName}
-              onChange={(e) => setDeleteConfirmName(e.target.value)}
-              placeholder={currentProject?.name ?? "Project name"}
-            />
-          </div>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setDeleteConfirmName("")}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-red-600 hover:bg-red-700 text-white"
-              disabled={deleteConfirmName !== currentProject?.name || deleteProjectMutation.isPending}
+              onClick={() => setDeleteStep(2)}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ── Delete Project Dialog — Step 2: Final Confirmation ── */}
+      <AlertDialog
+        open={showDeleteProject && deleteStep === 2}
+        onOpenChange={(open) => { if (!open) setShowDeleteProject(false); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertTriangle className="w-5 h-5" /> Are you sure?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-sm leading-relaxed">
+              This is your <strong className="text-foreground">final confirmation</strong>. Deleting <strong className="text-foreground">&ldquo;{currentProject?.name}&rdquo;</strong> will erase all project data permanently and cannot be reversed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowDeleteProject(false)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700 text-white"
+              disabled={deleteProjectMutation.isPending}
               onClick={() => currentProjectId && deleteProjectMutation.mutate({ projectId: currentProjectId })}
             >
-              {deleteProjectMutation.isPending ? "Deleting…" : "Delete Permanently"}
+              {deleteProjectMutation.isPending ? "Deleting…" : "Yes, Delete Permanently"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
