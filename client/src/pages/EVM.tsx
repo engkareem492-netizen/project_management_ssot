@@ -164,12 +164,12 @@ export default function EVMDashboard() {
   );
 
   // ── Currency symbol from project currencies ──────────────────────────────
-  const { data: currencies = [] } = trpc.currencies.listProjectCurrencies.useQuery(
+  const { data: currencies = [] } = trpc.currencies.list.useQuery(
     { projectId },
     { enabled: projectId > 0 }
   );
-  const baseCurrency = currencies.find((c: { isBase: boolean }) => c.isBase);
-  const symbol = (baseCurrency as { symbol?: string })?.symbol ?? "";
+  const baseCurrency = (currencies as Array<{ isBase: boolean; symbol?: string }>).find((c) => c.isBase);
+  const symbol = baseCurrency?.symbol ?? "";
 
   // ── Mutations ─────────────────────────────────────────────────────────────
   const upsertBaseline = trpc.evm.upsertBaseline.useMutation({
