@@ -48,6 +48,7 @@ import RaidLog from "./pages/RaidLog";
 // ActionItems merged into Tasks - redirects to /tasks
 import LessonsLearned from "./pages/LessonsLearned";
 import DocumentLibrary from "./pages/DocumentLibrary";
+import EVMDashboard from "./pages/EVM";
 import CustomFields from "./pages/CustomFields";
 
 function Router() {
@@ -236,6 +237,11 @@ function Router() {
       <Route path={"/custom-fields"}>
         <DashboardLayout>
           <CustomFields />
+        </DashboardLayout>
+      </Route>
+      <Route path="/evm">
+        <DashboardLayout>
+          <EVMDashboard />
         </DashboardLayout>
       </Route>
       <Route path={"/documents"}>

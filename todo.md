@@ -622,3 +622,26 @@
 
 ## Bug Fix: Budget Page Currency Symbol (Mar 12, 2026)
 - [x] Budget page shows hardcoded "USD" / "$" — replaced with dynamic base currency from projectCurrencies table (auto-syncs on load via useEffect)
+
+## Phase 2: EVM Dashboard (Mar 12, 2026)
+
+- [x] Create EVM database schema: evmBaseline, evmSnapshots, evmWbsEntries tables
+- [x] Push EVM schema migration to database
+- [x] Build EVM tRPC router with full KPI calculation logic (SV, CV, SPI, CPI, EAC, ETC, VAC, TCPI)
+- [x] Implement getDashboard procedure returning all KPIs + trend series + WBS breakdown
+- [x] Implement upsertBaseline procedure for BAC and project dates
+- [x] Implement CRUD for period snapshots (createSnapshot, updateSnapshot, deleteSnapshot, listSnapshots)
+- [x] Implement syncFromWbs procedure to pull cost data from WBS elements
+- [x] Build EVM Dashboard UI page (client/src/pages/EVM.tsx)
+- [x] KPI cards: BAC, % Complete, EAC, VAC, SPI, CPI, ETC, TCPI with color-coded status
+- [x] PV / EV / AC current period summary cards
+- [x] S-Curve chart (Recharts LineChart with PV/EV/AC lines and BAC reference line)
+- [x] WBS Breakdown table with per-element KPIs and progress bars
+- [x] Period Snapshots table with inline edit/delete and KPI preview
+- [x] EVM Formula Reference table (PMBOK 7 compliant)
+- [x] Set Baseline dialog with BAC, start/end dates, notes
+- [x] Add/Edit Snapshot dialog with live KPI preview
+- [x] Sync from WBS button to auto-populate EVM entries from WBS cost data
+- [x] Register /evm route in App.tsx
+- [x] Add "EVM Dashboard" to Budget sidebar group in DashboardLayout
+- [x] Write 32 Vitest unit tests for EVM KPI calculation logic (all passing)

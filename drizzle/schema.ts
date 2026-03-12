@@ -1357,3 +1357,58 @@ export const exchangeRates = mysqlTable("exchangeRates", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
+
+// ─────────────────────────────────────────────────────────────
+// EVM Baseline — one row per project; defines BAC and project dates
+// ─────────────────────────────────────────────────────────────
+export const evmBaseline = mysqlTable("evmBaseline", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  bac: decimal("bac", { precision: 18, scale: 2 }).notNull().default("0"), // Budget At Completion
+  startDate: date("startDate"),
+  endDate: date("endDate"),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type EvmBaseline = typeof evmBaseline.$inferSelect;
+export type InsertEvmBaseline = typeof evmBaseline.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────
+// EVM Period Snapshots — one row per reporting period per project
+// Stores PV, EV, AC for that period (cumulative values)
+// ─────────────────────────────────────────────────────────────
+export const evmSnapshots = mysqlTable("evmSnapshots", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  periodLabel: varchar("periodLabel", { length: 100 }).notNull(), // e.g. "Week 1", "Mar 2026"
+  periodDate: date("periodDate").notNull(),                        // date of snapshot
+  pv: decimal("pv", { precision: 18, scale: 2 }).notNull().default("0"),  // Planned Value (cumulative)
+  ev: decimal("ev", { precision: 18, scale: 2 }).notNull().default("0"),  // Earned Value (cumulative)
+  ac: decimal("ac", { precision: 18, scale: 2 }).notNull().default("0"),  // Actual Cost (cumulative)
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type EvmSnapshot = typeof evmSnapshots.$inferSelect;
+export type InsertEvmSnapshot = typeof evmSnapshots.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────
+// EVM WBS Entries — per-WBS-element EVM data for the latest period
+// ─────────────────────────────────────────────────────────────
+export const evmWbsEntries = mysqlTable("evmWbsEntries", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  wbsElementId: int("wbsElementId"),                              // FK → wbsElements.id (optional)
+  wbsCode: varchar("wbsCode", { length: 50 }),                    // e.g. "1.2.3"
+  wbsTitle: varchar("wbsTitle", { length: 255 }),
+  bac: decimal("bac", { precision: 18, scale: 2 }).default("0"),  // Budget At Completion for this element
+  pv: decimal("pv", { precision: 18, scale: 2 }).default("0"),    // Planned Value
+  ev: decimal("ev", { precision: 18, scale: 2 }).default("0"),    // Earned Value
+  ac: decimal("ac", { precision: 18, scale: 2 }).default("0"),    // Actual Cost
+  percentComplete: decimal("percentComplete", { precision: 5, scale: 2 }).default("0"), // 0-100
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type EvmWbsEntry = typeof evmWbsEntries.$inferSelect;
+export type InsertEvmWbsEntry = typeof evmWbsEntries.$inferInsert;

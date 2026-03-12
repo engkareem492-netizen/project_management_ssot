@@ -165,6 +165,7 @@ const menuItems: MenuItem[] = [
     path: "__budget__",
     children: [
       { icon: DollarSign, label: "Budget Overview", path: "/budget" },
+      { icon: BarChart2, label: "EVM Dashboard", path: "/evm" },
       { icon: RefreshCw, label: "Currency Settings", path: "/currency-settings" },
     ],
   },
