@@ -685,3 +685,10 @@
 - [x] Add Cumulative Flow Diagram (CFD) to main Dashboard with stacked area chart (Open/In Progress/Blocked/Done)
 - [x] Add "Requirements Mgmt" sidebar group with Features, User Stories, Test Plans, Defects, Concept Guide
 - [x] Write 24 Vitest unit tests for concept model logic (all passing)
+
+## Bug Fixes (Mar 12, 2026 - Defects Page)
+
+- [ ] Fix missing remote DB tables: features, userStories, testPlans, defects, junction tables
+- [ ] Fix collaboration.getRequirements procedure call (wrong namespace, should use requirements.list)
+- [ ] Implement Defect-to-TestCase traceability: link defects to failing test cases
+- [ ] Add Defect Density per Test Case report tab in Defects page

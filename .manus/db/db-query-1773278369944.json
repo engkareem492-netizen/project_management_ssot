@@ -1,0 +1,9 @@
+{
+  "query": "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('features', 'userStories', 'testPlans', 'defects', 'featureRequirements', 'userStoryTestCases', 'testPlanTestCases', 'defectTestCases', 'taskStatusHistory') ORDER BY TABLE_NAME;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 34DzJoQKEqyc4cp.root --database MtjPfUT7z9e3zhUb3tuetB --execute SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('features', 'userStories', 'testPlans', 'defects', 'featureRequirements', 'userStoryTestCases', 'testPlanTestCases', 'defectTestCases', 'taskStatusHistory') ORDER BY TABLE_NAME;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1605
+}

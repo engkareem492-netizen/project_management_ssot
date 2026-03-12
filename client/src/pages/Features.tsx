@@ -35,9 +35,9 @@ export default function FeaturesPage() {
   const { data: featuresList = [], isLoading } = trpc.features.list.useQuery(
     { projectId }, { enabled: projectId > 0 }
   );
-  const { data: requirements = [] } = trpc.collaboration.getRequirements
-    ? trpc.collaboration.getRequirements.useQuery({ projectId }, { enabled: projectId > 0 })
-    : { data: [] };
+  const { data: requirements = [] } = trpc.requirements.list.useQuery(
+    { projectId }, { enabled: projectId > 0 }
+  );
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);

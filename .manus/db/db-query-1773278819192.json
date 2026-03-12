@@ -1,0 +1,37 @@
+{
+  "query": "SHOW TABLES LIKE 'defects'; SHOW TABLES LIKE 'features'; SHOW TABLES LIKE 'userStories'; SHOW TABLES LIKE 'testPlans'; SHOW TABLES LIKE 'defectTestCases';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 34DzJoQKEqyc4cp.root --database MtjPfUT7z9e3zhUb3tuetB --execute SHOW TABLES LIKE 'defects'; SHOW TABLES LIKE 'features'; SHOW TABLES LIKE 'userStories'; SHOW TABLES LIKE 'testPlans'; SHOW TABLES LIKE 'defectTestCases';",
+  "rows": [
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB (defects)": "defects"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB (defects)": "Tables_in_MtjPfUT7z9e3zhUb3tuetB (features)"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB (defects)": "features"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB (defects)": "Tables_in_MtjPfUT7z9e3zhUb3tuetB (userStories)"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB (defects)": "userStories"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB (defects)": "Tables_in_MtjPfUT7z9e3zhUb3tuetB (testPlans)"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB (defects)": "testPlans"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB (defects)": "Tables_in_MtjPfUT7z9e3zhUb3tuetB (defectTestCases)"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB (defects)": "defectTestCases"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_MtjPfUT7z9e3zhUb3tuetB (defects)\ndefects\nTables_in_MtjPfUT7z9e3zhUb3tuetB (features)\nfeatures\nTables_in_MtjPfUT7z9e3zhUb3tuetB (userStories)\nuserStories\nTables_in_MtjPfUT7z9e3zhUb3tuetB (testPlans)\ntestPlans\nTables_in_MtjPfUT7z9e3zhUb3tuetB (defectTestCases)\ndefectTestCases\n",
+  "stderr": "",
+  "execution_time_ms": 2467
+}
