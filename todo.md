@@ -645,3 +645,43 @@
 - [x] Register /evm route in App.tsx
 - [x] Add "EVM Dashboard" to Budget sidebar group in DashboardLayout
 - [x] Write 32 Vitest unit tests for EVM KPI calculation logic (all passing)
+
+## Concept Model Implementation (Mar 12, 2026)
+
+- [ ] DB: features table (id, projectId, title, description, status, priority, createdAt)
+- [ ] DB: userStories table (id, projectId, featureId?, title, asA, iWant, soThat, acceptanceCriteria, status, priority, storyPoints, createdAt)
+- [ ] DB: testPlans table (id, projectId, title, description, status, startDate, endDate, createdAt)
+- [ ] DB: defects table (id, projectId, title, description, severity, priority, status, reportedBy, assignedTo, createdAt)
+- [ ] DB: requirementUserStories junction (requirementId, userStoryId) — n:m
+- [ ] DB: featureRequirements junction (featureId, requirementId) — n:m
+- [ ] DB: userStoryTestCases junction (userStoryId, testCaseId) — n:m
+- [ ] DB: requirementTestCases junction (requirementId, testCaseId) — n:m
+- [ ] DB: testPlanTestCases junction (testPlanId, testCaseId) — n:m
+- [ ] DB: defectTestCases junction (defectId, testCaseId) — n:m
+- [ ] Router: features CRUD + link to requirements/userStories
+- [ ] Router: userStories CRUD + link to requirements/features/testCases
+- [ ] Router: testPlans CRUD + link to testCases
+- [ ] Router: defects CRUD + link to testCases
+- [ ] UI: Features page with CRUD and relationship panel
+- [ ] UI: UserStories page with CRUD and relationship panel
+- [ ] UI: TestPlans page with CRUD and test case assignment
+- [ ] UI: Defects page with CRUD and test case linking
+- [ ] UI: How-to-Use reference guide page with concept diagram and workflow
+- [ ] Sidebar: add Features, UserStories, TestPlans, Defects, How-to-Use to navigation
+
+## Concept Model Implementation (Mar 12, 2026)
+
+- [x] Extend DB schema: features, userStories, testPlans, defects + all junction tables (featureRequirements, userStoryRequirements, userStoryTestCases, testPlanTestCases, defectTestCases, taskStatusHistory)
+- [x] Build tRPC router: features (list, getById, create, update, delete, linkRequirement, unlinkRequirement)
+- [x] Build tRPC router: userStories (list, getById, create, update, delete, linkRequirement, linkTestCase, unlinkTestCase)
+- [x] Build tRPC router: testPlans (list, getById, create, update, delete, linkTestCase, unlinkTestCase)
+- [x] Build tRPC router: defects (list, getById, create, update, delete)
+- [x] Build tRPC router: cfd (getData, saveSnapshot, listSnapshots, deleteSnapshot)
+- [x] Build UI page: Features (/features) with create/edit/delete and requirement linking
+- [x] Build UI page: User Stories (/user-stories) with feature assignment and acceptance criteria
+- [x] Build UI page: Test Plans (/test-plans) with test case assignment
+- [x] Build UI page: Defects (/defects) with severity/priority/status tracking and steps to reproduce
+- [x] Build UI page: Concept Guide (/concept-guide) with SVG relationship diagram and workflow steps
+- [x] Add Cumulative Flow Diagram (CFD) to main Dashboard with stacked area chart (Open/In Progress/Blocked/Done)
+- [x] Add "Requirements Mgmt" sidebar group with Features, User Stories, Test Plans, Defects, Concept Guide
+- [x] Write 24 Vitest unit tests for concept model logic (all passing)

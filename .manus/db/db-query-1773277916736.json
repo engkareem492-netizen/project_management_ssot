@@ -1,0 +1,19 @@
+{
+  "query": "SHOW TABLES LIKE 'features'; SHOW TABLES LIKE 'userStories'; SHOW TABLES LIKE 'testPlans'; SHOW TABLES LIKE 'defects'; SHOW TABLES LIKE 'cfdSnapshots'; SHOW TABLES LIKE 'evmBaseline'; SHOW TABLES LIKE 'evmSnapshots';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 34DzJoQKEqyc4cp.root --database MtjPfUT7z9e3zhUb3tuetB --execute SHOW TABLES LIKE 'features'; SHOW TABLES LIKE 'userStories'; SHOW TABLES LIKE 'testPlans'; SHOW TABLES LIKE 'defects'; SHOW TABLES LIKE 'cfdSnapshots'; SHOW TABLES LIKE 'evmBaseline'; SHOW TABLES LIKE 'evmSnapshots';",
+  "rows": [
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB (evmBaseline)": "evmBaseline"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB (evmBaseline)": "Tables_in_MtjPfUT7z9e3zhUb3tuetB (evmSnapshots)"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB (evmBaseline)": "evmSnapshots"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_MtjPfUT7z9e3zhUb3tuetB (evmBaseline)\nevmBaseline\nTables_in_MtjPfUT7z9e3zhUb3tuetB (evmSnapshots)\nevmSnapshots\n",
+  "stderr": "",
+  "execution_time_ms": 2826
+}

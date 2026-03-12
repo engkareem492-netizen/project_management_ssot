@@ -50,6 +50,11 @@ import LessonsLearned from "./pages/LessonsLearned";
 import DocumentLibrary from "./pages/DocumentLibrary";
 import EVMDashboard from "./pages/EVM";
 import CustomFields from "./pages/CustomFields";
+import FeaturesPage from "./pages/Features";
+import UserStoriesPage from "./pages/UserStories";
+import TestPlansPage from "./pages/TestPlans";
+import DefectsPage from "./pages/Defects";
+import ConceptGuidePage from "./pages/ConceptGuide";
 
 function Router() {
   return (
@@ -242,6 +247,31 @@ function Router() {
       <Route path="/evm">
         <DashboardLayout>
           <EVMDashboard />
+        </DashboardLayout>
+      </Route>
+      <Route path="/features">
+        <DashboardLayout>
+          <FeaturesPage />
+        </DashboardLayout>
+      </Route>
+      <Route path="/user-stories">
+        <DashboardLayout>
+          <UserStoriesPage />
+        </DashboardLayout>
+      </Route>
+      <Route path="/test-plans">
+        <DashboardLayout>
+          <TestPlansPage />
+        </DashboardLayout>
+      </Route>
+      <Route path="/defects">
+        <DashboardLayout>
+          <DefectsPage />
+        </DashboardLayout>
+      </Route>
+      <Route path="/concept-guide">
+        <DashboardLayout>
+          <ConceptGuidePage />
         </DashboardLayout>
       </Route>
       <Route path={"/documents"}>

@@ -1,0 +1,226 @@
+{
+  "query": "SHOW TABLES;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 34DzJoQKEqyc4cp.root --database MtjPfUT7z9e3zhUb3tuetB --execute SHOW TABLES;",
+  "rows": [
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "__drizzle_migrations"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "actionItems"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "actionLogs"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "assumptionCategories"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "assumptionHistory"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "assumptionImpactLevels"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "assumptionStatuses"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "assumptions"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "budgetEntries"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "categoryOptions"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "changeRequests"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "classOptions"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "customFieldDefs"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "customFieldValues"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "decisions"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "deliverableLinks"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "deliverableTypes"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "deliverables"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "dependencies"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "documents"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "dropdownCategories"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "eefFactors"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "evmBaseline"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "evmSnapshots"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "evmWbsEntries"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "exchangeRates"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "idSequences"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "issueGroups"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "issueLinks"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "issueTypes"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "issues"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "knowledgeBase"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "knowledgeBaseCodeConfig"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "knowledgeBaseComponents"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "knowledgeBaseTypes"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "lessonsLearned"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "meetings"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "milestones"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "notifications"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "password_resets"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "pmPlanSections"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "priorityOptions"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "projectBudget"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "projectCharter"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "projectCurrencies"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "project_invitations"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "project_members"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "projects"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "requirements"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "resourceCapacity"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "responseStrategy"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "riskAnalysis"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "riskStatus"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "riskTypes"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "riskUpdates"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "risks"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "scopeItems"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "stakeholderAssessments"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "stakeholderKpiScores"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "stakeholderKpis"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "stakeholderTaskGroups"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "stakeholders"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "statusOptions"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "taskDependencies"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "taskGroups"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "taskTypes"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "tasks"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "testCases"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "testRuns"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "typeOptions"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "users"
+    },
+    {
+      "Tables_in_MtjPfUT7z9e3zhUb3tuetB": "wbsElements"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_MtjPfUT7z9e3zhUb3tuetB\n__drizzle_migrations\nactionItems\nactionLogs\nassumptionCategories\nassumptionHistory\nassumptionImpactLevels\nassumptionStatuses\nassumptions\nbudgetEntries\ncategoryOptions\nchangeRequests\nclassOptions\ncustomFieldDefs\ncustomFieldValues\ndecisions\ndeliverableLinks\ndeliverableTypes\ndeliverables\ndependencies\ndocuments\ndropdownCategories\neefFactors\nevmBaseline\nevmSnapshots\nevmWbsEntries\nexchangeRates\nidSequences\nissueGroups\nissueLinks\nissueTypes\nissues\nknowledgeBase\nknowledgeBaseCodeConfig\nknowledgeBaseComponents\nknowledgeBaseTypes\nlessonsLearned\nmeetings\nmilestones\nnotifications\npassword_resets\npmPlanSections\npriorityOptions\nprojectBudget\nprojectCharter\nprojectCurrencies\nproject_invitations\nproject_members\nprojects\nrequirements\nresourceCapacity\nresponseStrategy\nriskAnalysis\nriskStatus\nriskTypes\nriskUpdates\nrisks\nscopeItems\nstakeholderAssessments\nstakeholderKpiScores\nstakeholderKpis\nstakeholderTaskGroups\nstakeholders\nstatusOptions\ntaskDependencies\ntaskGroups\ntaskTypes\ntasks\ntestCases\ntestRuns\ntypeOptions\nusers\nwbsElements\n",
+  "stderr": "",
+  "execution_time_ms": 1510
+}

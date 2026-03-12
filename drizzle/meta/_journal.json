@@ -309,6 +309,13 @@
       "when": 1773275362631,
       "tag": "0043_faithful_havok",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "5",
+      "when": 1773277347760,
+      "tag": "0044_dry_thunderbolts",
+      "breakpoints": true
     }
   ]
 }

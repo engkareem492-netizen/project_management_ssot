@@ -75,6 +75,8 @@ import {
   Layers2,
   ClipboardList,
   RefreshCw,
+  Bug,
+  HelpCircle,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import {
@@ -170,6 +172,18 @@ const menuItems: MenuItem[] = [
     ],
   },
   { icon: FlaskConical, label: "Test Cases", path: "/test-cases" },
+  {
+    icon: BookOpen,
+    label: "Requirements Mgmt",
+    path: "__reqmgmt__",
+    children: [
+      { icon: Layers, label: "Features", path: "/features" },
+      { icon: BookOpen, label: "User Stories", path: "/user-stories" },
+      { icon: ClipboardList, label: "Test Plans", path: "/test-plans" },
+      { icon: Bug, label: "Defects", path: "/defects" },
+      { icon: HelpCircle, label: "Concept Guide", path: "/concept-guide" },
+    ],
+  },
   { icon: Layers, label: "Traceability Matrix", path: "/traceability" },
   {
     icon: FolderOpen,

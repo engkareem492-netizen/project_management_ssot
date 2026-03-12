@@ -1412,3 +1412,171 @@ export const evmWbsEntries = mysqlTable("evmWbsEntries", {
 });
 export type EvmWbsEntry = typeof evmWbsEntries.$inferSelect;
 export type InsertEvmWbsEntry = typeof evmWbsEntries.$inferInsert;
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CONCEPT MODEL: Features, User Stories, Test Plans, Defects + Junction Tables
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─────────────────────────────────────────────────────────────
+// Features — high-level product capabilities (Feature → Requirement 1:n, Feature → UserStory n:1)
+// ─────────────────────────────────────────────────────────────
+export const features = mysqlTable("features", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  featureCode: varchar("featureCode", { length: 30 }),          // e.g. FT-0001
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  status: varchar("status", { length: 50 }).default("Draft"),   // Draft, Active, Released, Deprecated
+  priority: varchar("priority", { length: 20 }).default("Medium"), // Low, Medium, High, Critical
+  owner: varchar("owner", { length: 100 }),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type Feature = typeof features.$inferSelect;
+export type InsertFeature = typeof features.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────
+// User Stories — agile user stories (Requirement→UserStory 1:n, Feature→UserStory n:1)
+// ─────────────────────────────────────────────────────────────
+export const userStories = mysqlTable("userStories", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  storyCode: varchar("storyCode", { length: 30 }),              // e.g. US-0001
+  featureId: int("featureId"),                                  // FK → features.id (optional)
+  title: varchar("title", { length: 255 }).notNull(),
+  asA: varchar("asA", { length: 255 }),                         // As a [role]
+  iWant: text("iWant"),                                         // I want [goal]
+  soThat: text("soThat"),                                       // So that [benefit]
+  acceptanceCriteria: text("acceptanceCriteria"),
+  status: varchar("status", { length: 50 }).default("Backlog"), // Backlog, Ready, In Progress, Done, Rejected
+  priority: varchar("priority", { length: 20 }).default("Medium"),
+  storyPoints: int("storyPoints").default(0),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type UserStory = typeof userStories.$inferSelect;
+export type InsertUserStory = typeof userStories.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────
+// Test Plans — groups of test cases with schedule (TestPlan ↔ TestCase n:m)
+// ─────────────────────────────────────────────────────────────
+export const testPlans = mysqlTable("testPlans", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  planCode: varchar("planCode", { length: 30 }),                // e.g. TP-0001
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  status: varchar("status", { length: 50 }).default("Draft"),   // Draft, Active, Completed, Archived
+  startDate: date("startDate"),
+  endDate: date("endDate"),
+  owner: varchar("owner", { length: 100 }),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type TestPlan = typeof testPlans.$inferSelect;
+export type InsertTestPlan = typeof testPlans.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────
+// Defects — bugs/issues found during testing (Defect ↔ TestCase n:m)
+// ─────────────────────────────────────────────────────────────
+export const defects = mysqlTable("defects", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  defectCode: varchar("defectCode", { length: 30 }),            // e.g. DF-0001
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  severity: varchar("severity", { length: 20 }).default("Medium"), // Critical, High, Medium, Low
+  priority: varchar("priority", { length: 20 }).default("Medium"),
+  status: varchar("status", { length: 50 }).default("Open"),    // Open, In Progress, Fixed, Verified, Closed, Rejected
+  reportedBy: varchar("reportedBy", { length: 100 }),
+  assignedTo: varchar("assignedTo", { length: 100 }),
+  stepsToReproduce: text("stepsToReproduce"),
+  expectedResult: text("expectedResult"),
+  actualResult: text("actualResult"),
+  resolution: text("resolution"),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type Defect = typeof defects.$inferSelect;
+export type InsertDefect = typeof defects.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────
+// Junction: Requirement ↔ UserStory  (n:m)
+// ─────────────────────────────────────────────────────────────
+export const requirementUserStories = mysqlTable("requirementUserStories", {
+  id: int("id").autoincrement().primaryKey(),
+  requirementId: int("requirementId").notNull(),
+  userStoryId: int("userStoryId").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+// ─────────────────────────────────────────────────────────────
+// Junction: Feature ↔ Requirement  (n:m — a feature groups multiple requirements)
+// ─────────────────────────────────────────────────────────────
+export const featureRequirements = mysqlTable("featureRequirements", {
+  id: int("id").autoincrement().primaryKey(),
+  featureId: int("featureId").notNull(),
+  requirementId: int("requirementId").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+// ─────────────────────────────────────────────────────────────
+// Junction: UserStory ↔ TestCase  (n:m)
+// ─────────────────────────────────────────────────────────────
+export const userStoryTestCases = mysqlTable("userStoryTestCases", {
+  id: int("id").autoincrement().primaryKey(),
+  userStoryId: int("userStoryId").notNull(),
+  testCaseId: int("testCaseId").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+// ─────────────────────────────────────────────────────────────
+// Junction: Requirement ↔ TestCase  (n:m)
+// ─────────────────────────────────────────────────────────────
+export const requirementTestCases = mysqlTable("requirementTestCases", {
+  id: int("id").autoincrement().primaryKey(),
+  requirementId: int("requirementId").notNull(),
+  testCaseId: int("testCaseId").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+// ─────────────────────────────────────────────────────────────
+// Junction: TestPlan ↔ TestCase  (n:m)
+// ─────────────────────────────────────────────────────────────
+export const testPlanTestCases = mysqlTable("testPlanTestCases", {
+  id: int("id").autoincrement().primaryKey(),
+  testPlanId: int("testPlanId").notNull(),
+  testCaseId: int("testCaseId").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+// ─────────────────────────────────────────────────────────────
+// Junction: Defect ↔ TestCase  (n:m)
+// ─────────────────────────────────────────────────────────────
+export const defectTestCases = mysqlTable("defectTestCases", {
+  id: int("id").autoincrement().primaryKey(),
+  defectId: int("defectId").notNull(),
+  testCaseId: int("testCaseId").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+// ─────────────────────────────────────────────────────────────
+// Task Status History — daily snapshots for Cumulative Flow Diagram
+// ─────────────────────────────────────────────────────────────
+export const taskStatusHistory = mysqlTable("taskStatusHistory", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  snapshotDate: date("snapshotDate").notNull(),
+  statusOpen: int("statusOpen").default(0).notNull(),
+  statusInProgress: int("statusInProgress").default(0).notNull(),
+  statusBlocked: int("statusBlocked").default(0).notNull(),
+  statusDone: int("statusDone").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type TaskStatusHistory = typeof taskStatusHistory.$inferSelect;
+export type InsertTaskStatusHistory = typeof taskStatusHistory.$inferInsert;

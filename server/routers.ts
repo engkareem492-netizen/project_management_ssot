@@ -41,6 +41,11 @@ import { lessonsLearnedRouter } from "./routers/lessonsLearned.router";
 import { documentsRouter } from "./routers/documents.router";
 import { customFieldsRouter } from "./routers/customFields";
 import { evmRouter } from "./routers/evm.router";
+import { featuresRouter } from "./routers/features.router";
+import { userStoriesRouter } from "./routers/userStories.router";
+import { testPlansRouter } from "./routers/testPlans.router";
+import { defectsRouter } from "./routers/defects.router";
+import { cfdRouter } from "./routers/cfd.router";
 
 export const appRouter = router({
   system: systemRouter,
@@ -76,6 +81,11 @@ export const appRouter = router({
   documents: documentsRouter,
   customFields: customFieldsRouter,
   evm: evmRouter,
+  features: featuresRouter,
+  userStories: userStoriesRouter,
+  testPlans: testPlansRouter,
+  defects: defectsRouter,
+  cfd: cfdRouter,
   scopeItems: router({
     list: protectedProcedure
       .input(z.object({ projectId: z.number() }))

@@ -14,7 +14,7 @@ import {
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, RadarChart, PolarGrid,
-  PolarAngleAxis, Radar,
+  PolarAngleAxis, Radar, AreaChart, Area,
 } from "recharts";
 
 /* ─── Color tokens ─────────────────────────────────────────────────────── */
@@ -118,6 +118,98 @@ const ENTITY_COLOR: Record<string, string> = {
 };
 
 /* ─── Main Dashboard ───────────────────────────────────────────────────── */
+/* ─── Cumulative Flow Diagram Component ─────────────────────────────── */
+function CumulativeFlowChart({ projectId }: { projectId: number }) {
+  const { data: cfdData, isLoading } = trpc.cfd.getData.useQuery(
+    { projectId, days: 30 },
+    { enabled: projectId > 0 }
+  );
+  const saveMut = trpc.cfd.saveSnapshot.useMutation();
+  const utils = trpc.useUtils();
+
+  const series = cfdData?.series ?? [];
+  const hasData = series.length > 0;
+
+  // Format date labels for X axis
+  function fmtDate(d: string) {
+    const dt = new Date(d);
+    return dt.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  }
+
+  return (
+    <Card className="p-6">
+      <div className="flex items-center justify-between mb-4">
+        <SectionTitle icon={Activity} title="Cumulative Flow of Tasks" />
+        <button
+          onClick={() => { saveMut.mutate({ projectId }); setTimeout(() => utils.cfd.getData.invalidate({ projectId }), 500); }}
+          className="text-xs text-muted-foreground hover:text-foreground border rounded px-2 py-1 transition-colors"
+          title="Save today's snapshot"
+        >
+          Save Snapshot
+        </button>
+      </div>
+      {isLoading ? (
+        <div className="flex items-center justify-center h-64"><Loader2 className="w-5 h-5 animate-spin" /></div>
+      ) : !hasData ? (
+        <div className="flex flex-col items-center justify-center h-64 text-muted-foreground gap-3">
+          <Activity className="w-10 h-10 opacity-30" />
+          <p className="text-sm">No task history yet. Click <strong>Save Snapshot</strong> to record today's counts.</p>
+          <p className="text-xs opacity-60">The chart will show Open / In Progress / Blocked / Done distribution over time.</p>
+        </div>
+      ) : (
+        <ResponsiveContainer width="100%" height={300}>
+          <AreaChart data={series} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+            <defs>
+              <linearGradient id="colorDone" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#22c55e" stopOpacity={0.85} />
+                <stop offset="95%" stopColor="#22c55e" stopOpacity={0.6} />
+              </linearGradient>
+              <linearGradient id="colorBlocked" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#ef4444" stopOpacity={0.85} />
+                <stop offset="95%" stopColor="#ef4444" stopOpacity={0.6} />
+              </linearGradient>
+              <linearGradient id="colorInProgress" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.85} />
+                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.6} />
+              </linearGradient>
+              <linearGradient id="colorOpen" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#94a3b8" stopOpacity={0.5} />
+                <stop offset="95%" stopColor="#94a3b8" stopOpacity={0.2} />
+              </linearGradient>
+            </defs>
+            <XAxis dataKey="date" tickFormatter={fmtDate} tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+            <YAxis tickFormatter={(v) => `${v}%`} domain={[0, 100]} tick={{ fontSize: 10 }} />
+            <Tooltip
+              formatter={(value: any, name: string, props: any) => {
+                const raw = props.payload;
+                const keyMap: Record<string, string> = { done: "rawDone", blocked: "rawBlocked", inProgress: "rawInProgress", open: "rawOpen" };
+                const rawKey = keyMap[name];
+                const rawVal = rawKey ? raw[rawKey] : undefined;
+                return [`${value}%${rawVal !== undefined ? ` (${rawVal} tasks)` : ""}`, name.charAt(0).toUpperCase() + name.slice(1).replace(/([A-Z])/g, " $1")];
+              }}
+              labelFormatter={fmtDate}
+            />
+            <Legend iconType="circle" iconSize={8}
+              formatter={(v) => v === "inProgress" ? "In Progress" : v.charAt(0).toUpperCase() + v.slice(1)}
+            />
+            {/* Stack order: Done (bottom) → Blocked → In Progress → Open (top) */}
+            <Area type="monotone" dataKey="done" stackId="1" stroke="#22c55e" fill="url(#colorDone)" strokeWidth={1.5} dot={{ r: 3, fill: "#22c55e" }} activeDot={{ r: 5 }} />
+            <Area type="monotone" dataKey="blocked" stackId="1" stroke="#ef4444" fill="url(#colorBlocked)" strokeWidth={1.5} dot={{ r: 3, fill: "#ef4444" }} activeDot={{ r: 5 }} />
+            <Area type="monotone" dataKey="inProgress" stackId="1" stroke="#3b82f6" fill="url(#colorInProgress)" strokeWidth={1.5} dot={{ r: 3, fill: "#3b82f6" }} activeDot={{ r: 5 }} />
+            <Area type="monotone" dataKey="open" stackId="1" stroke="#94a3b8" fill="url(#colorOpen)" strokeWidth={1.5} dot={{ r: 3, fill: "#94a3b8" }} activeDot={{ r: 5 }} />
+          </AreaChart>
+        </ResponsiveContainer>
+      )}
+      {hasData && (
+        <div className="flex gap-4 mt-3 justify-end text-xs text-muted-foreground">
+          <span>Total tasks today: <strong className="text-foreground">{cfdData?.latestCounts ? Object.values(cfdData.latestCounts).reduce((a, b) => a + b, 0) : 0}</strong></span>
+          <span>Snapshots: <strong className="text-foreground">{cfdData?.snapshotCount ?? 0}</strong></span>
+        </div>
+      )}
+    </Card>
+  );
+}
+
 export default function Dashboard() {
   const { currentProjectId } = useProject();
   const [, navigate] = useLocation();
@@ -746,6 +838,9 @@ export default function Dashboard() {
           </ResponsiveContainer>
         </Card>
       </div>
+
+      {/* ── Cumulative Flow Diagram ──────────────────────────────────── */}
+      <CumulativeFlowChart projectId={projectId} />
 
       {/* ── Recent Activity ─────────────────────────────────────────────── */}
       <Card className="p-6">
