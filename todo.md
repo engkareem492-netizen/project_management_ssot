@@ -703,3 +703,7 @@
 - [x] Fix Gantt chart slow loading performance (eliminated N+1 query — now single bulk JOIN)
 - [x] Add startDate, related phase, related milestone fields to task create/edit form
 - [x] Remove duplicate engagement field from Stakeholders — auto-derive from Power/Interest sliders
+
+## Bug Fixes (Mar 12, 2026 - Tasks/Stakeholders)
+- [x] Fix empty SelectItem value crash on /tasks page (milestone dropdown)
+- [x] Remove Engagement Matrix view toggle from Stakeholders page

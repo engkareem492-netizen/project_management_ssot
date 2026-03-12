@@ -660,7 +660,7 @@ export default function Stakeholders() {
   const [kpiDialogOpen, setKpiDialogOpen] = useState(false);
   const [devPlanDialogOpen, setDevPlanDialogOpen] = useState(false);
   const [formData, setFormData] = useState<StakeholderFormData>(EMPTY_FORM);
-  const [viewMode, setViewMode] = useState<"table" | "matrix">("table");
+  const [viewMode, setViewMode] = useState<"table" | "matrix">("table"); // matrix view removed
   const [dragOverQuadrant, setDragOverQuadrant] = useState<string | null>(null);
 
   const utils = trpc.useUtils();
@@ -1071,17 +1071,7 @@ export default function Stakeholders() {
             </button>
           ))}
         </div>
-        {/* View mode toggle */}
-        <div className="flex gap-1 border rounded-lg p-1 ml-auto">
-          <button onClick={() => setViewMode("table")}
-            className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${viewMode === "table" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-            Table
-          </button>
-          <button onClick={() => setViewMode("matrix")}
-            className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${viewMode === "matrix" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-            Engagement Matrix
-          </button>
-        </div>
+
       </div>
 
       {/* ── Engagement Matrix View ────────────────────────────────────────────── */}

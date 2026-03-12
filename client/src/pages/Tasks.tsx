@@ -1696,14 +1696,14 @@ export default function Tasks() {
                 <div className="space-y-2">
                   <Label htmlFor="milestoneId">Related Milestone</Label>
                   <Select
-                    value={newTask.milestoneId?.toString() || ''}
-                    onValueChange={(v) => setNewTask({ ...newTask, milestoneId: v ? parseInt(v) : undefined })}
+                    value={newTask.milestoneId?.toString() || 'none'}
+                    onValueChange={(v) => setNewTask({ ...newTask, milestoneId: (v && v !== 'none') ? parseInt(v) : undefined })}
                   >
                     <SelectTrigger id="milestoneId">
                       <SelectValue placeholder="Select milestone..." />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="none">None</SelectItem>
                       {(milestonesList || []).map((m: any) => (
                         <SelectItem key={m.id} value={m.id.toString()}>{m.title}</SelectItem>
                       ))}
@@ -2165,10 +2165,10 @@ export default function Tasks() {
               <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                 <Label className="text-xs text-muted-foreground uppercase tracking-wide">Related Milestone</Label>
                 {isEditMode ? (
-                  <Select value={editFormData.milestoneId?.toString() || ''} onValueChange={(v) => setEditFormData({...editFormData, milestoneId: v ? parseInt(v) : undefined})}>
+                  <Select value={editFormData.milestoneId?.toString() || 'none'} onValueChange={(v) => setEditFormData({...editFormData, milestoneId: (v && v !== 'none') ? parseInt(v) : undefined})}>
                     <SelectTrigger className="h-8"><SelectValue placeholder="Select milestone..." /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="none">None</SelectItem>
                       {(milestonesList || []).map((m: any) => (
                         <SelectItem key={m.id} value={m.id.toString()}>{m.title}</SelectItem>
                       ))}
