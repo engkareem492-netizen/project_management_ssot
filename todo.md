@@ -695,3 +695,6 @@
 
 ## UX Improvements (Mar 12, 2026)
 - [x] Two-step project delete confirmation (no name re-typing) — Step 1: warning dialog, Step 2: final "Are you sure?" confirmation
+
+## Bug Fixes (Mar 12, 2026 - Delete Fix)
+- [ ] Fix project delete not executing after two-step confirmation click
