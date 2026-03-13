@@ -1602,3 +1602,19 @@ export const phases = mysqlTable("phases", {
 });
 export type Phase = typeof phases.$inferSelect;
 export type InsertPhase = typeof phases.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────
+// Task Status Updates — one row per "New Update" text entry (separate from audit log)
+// ─────────────────────────────────────────────────────────────
+export const taskStatusUpdates = mysqlTable("taskStatusUpdates", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  taskId: varchar("taskId", { length: 50 }).notNull(),    // e.g. T-0001
+  taskDbId: int("taskDbId").notNull(),                    // FK to tasks.id
+  updateText: text("updateText").notNull(),               // the free-text update
+  updatedBy: int("updatedBy").notNull(),                  // FK to users.id
+  updatedByName: varchar("updatedByName", { length: 255 }), // denormalised for display
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type TaskStatusUpdate = typeof taskStatusUpdates.$inferSelect;
+export type InsertTaskStatusUpdate = typeof taskStatusUpdates.$inferInsert;

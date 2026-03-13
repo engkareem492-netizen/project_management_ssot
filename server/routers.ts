@@ -844,6 +844,21 @@ export const appRouter = router({
 
         await db.updateTask(input.id, input.data as any);
 
+        // Save status update text to dedicated status-updates table
+        if (input.data.currentStatus && input.data.currentStatus !== current.currentStatus) {
+          const projectId = current.projectId;
+          if (projectId) {
+            await db.createTaskStatusUpdate({
+              projectId,
+              taskId: input.taskId,
+              taskDbId: input.id,
+              updateText: input.data.currentStatus,
+              updatedBy: ctx.user.id,
+              updatedByName: ctx.user.name ?? ctx.user.email ?? 'Unknown',
+            });
+          }
+        }
+
         if (Object.keys(changedFields).length > 0) {
           await db.createActionLog({
             entityType: 'task',
@@ -974,8 +989,14 @@ export const appRouter = router({
       .query(async ({ input }) => {
         return await db.getBadgeCounts(input.projectId);
       }),
-  }),
 
+    // Status Updates — chronological log of "New Update" text entries (separate from audit log)
+    getStatusUpdates: protectedProcedure
+      .input(z.object({ taskId: z.string() }))
+      .query(async ({ input }) => {
+        return await db.getTaskStatusUpdates(input.taskId);
+      }),
+  }),
   // Issues
   issues: router({
     list: protectedProcedure

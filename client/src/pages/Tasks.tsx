@@ -216,6 +216,11 @@ export default function Tasks() {
     { entityType: "task", entityId: selectedEntityId },
     { enabled: historyDialogOpen && !!selectedEntityId }
   );
+  const { data: taskStatusUpdates } = trpc.tasks.getStatusUpdates.useQuery(
+    { taskId: selectedEntityId },
+    { enabled: historyDialogOpen && !!selectedEntityId }
+  );
+  const [historyTab, setHistoryTab] = useState<'audit' | 'status'>('status');
   const { data: taskGroups } = trpc.dropdownOptions.taskGroups.getAll.useQuery(
     { projectId: currentProjectId || 0 },
     { enabled: !!currentProjectId }
@@ -1447,45 +1452,81 @@ export default function Tasks() {
         </CardContent>
       </Card>
 
-      <Dialog open={historyDialogOpen} onOpenChange={setHistoryDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Change History - {selectedEntityId}</DialogTitle>
-            <DialogDescription>
-              Timeline of all changes made to this task
-            </DialogDescription>
+      <Dialog open={historyDialogOpen} onOpenChange={(open) => { setHistoryDialogOpen(open); if (!open) setHistoryTab('status'); }}>
+        <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
+          <DialogHeader className="flex-shrink-0">
+            <DialogTitle>Task History — {selectedEntityId}</DialogTitle>
+            <DialogDescription>View status updates and the full audit trail for this task</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            {actionLogs?.map((log) => (
-              <Card key={log.id}>
-                <CardHeader>
-                  <CardTitle className="text-sm font-medium">
-                    {new Date(log.changedAt).toLocaleString()}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {Object.entries(log.changedFields as Record<string, { oldValue: any; newValue: any }>).map(([field, change]) => (
-                      <div key={field} className="grid grid-cols-3 gap-4 text-sm">
-                        <div className="font-medium">{field}</div>
-                        <div className="text-muted-foreground">
-                          <span className="line-through">{change.oldValue || 'empty'}</span>
+
+          <Tabs value={historyTab} onValueChange={(v) => setHistoryTab(v as 'audit' | 'status')} className="flex-1 flex flex-col overflow-hidden">
+            <TabsList className="flex-shrink-0 w-full">
+              <TabsTrigger value="status" className="flex-1">
+                Status Updates {taskStatusUpdates && taskStatusUpdates.length > 0 ? `(${taskStatusUpdates.length})` : ''}
+              </TabsTrigger>
+              <TabsTrigger value="audit" className="flex-1">
+                Audit Log {actionLogs && actionLogs.length > 0 ? `(${actionLogs.length})` : ''}
+              </TabsTrigger>
+            </TabsList>
+
+            {/* ── Status Updates tab ── */}
+            <TabsContent value="status" className="flex-1 overflow-y-auto mt-3">
+              {taskStatusUpdates && taskStatusUpdates.length > 0 ? (
+                <div className="relative pl-6 space-y-0">
+                  {/* vertical timeline line */}
+                  <div className="absolute left-2.5 top-2 bottom-2 w-px bg-border" />
+                  {taskStatusUpdates.map((upd) => (
+                    <div key={upd.id} className="relative pb-5">
+                      {/* dot */}
+                      <div className="absolute -left-[14px] top-1.5 w-3 h-3 rounded-full bg-primary border-2 border-background" />
+                      <div className="bg-muted/50 rounded-lg p-3">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-xs font-semibold text-primary">{upd.updatedByName || 'Unknown'}</span>
+                          <span className="text-xs text-muted-foreground">{new Date(upd.createdAt).toLocaleString()}</span>
                         </div>
-                        <div className="text-green-600 font-medium">
-                          {change.newValue || 'empty'}
-                        </div>
+                        <p className="text-sm whitespace-pre-wrap">{upd.updateText}</p>
                       </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-            {actionLogs?.length === 0 && (
-              <div className="text-center py-8 text-muted-foreground">
-                No changes recorded yet
-              </div>
-            )}
-          </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  <p className="text-sm">No status updates recorded yet.</p>
+                  <p className="text-xs mt-1">Status updates are saved when you edit the "Current Status" field.</p>
+                </div>
+              )}
+            </TabsContent>
+
+            {/* ── Audit Log tab ── */}
+            <TabsContent value="audit" className="flex-1 overflow-y-auto mt-3 space-y-3">
+              {actionLogs && actionLogs.length > 0 ? (
+                actionLogs.map((log) => (
+                  <Card key={log.id} className="border border-border">
+                    <CardHeader className="py-2 px-3">
+                      <CardTitle className="text-xs font-medium text-muted-foreground">
+                        {new Date(log.changedAt).toLocaleString()}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="py-2 px-3">
+                      <div className="space-y-1.5">
+                        {Object.entries(log.changedFields as Record<string, { oldValue: any; newValue: any }>).map(([field, change]) => (
+                          <div key={field} className="grid grid-cols-[120px_1fr_1fr] gap-2 text-xs">
+                            <div className="font-semibold text-foreground capitalize">{field.replace(/([A-Z])/g, ' $1').trim()}</div>
+                            <div className="text-muted-foreground line-through truncate" title={String(change.oldValue || '')}>{change.oldValue || <em>empty</em>}</div>
+                            <div className="text-green-600 font-medium truncate" title={String(change.newValue || '')}>{change.newValue || <em>empty</em>}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  <p className="text-sm">No field changes recorded yet.</p>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
         </DialogContent>
       </Dialog>
 

@@ -74,7 +74,10 @@ import {
   InsertAssumptionCategory,
   InsertAssumptionStatus,
   InsertAssumptionImpactLevel,
-  InsertAssumptionHistory
+  InsertAssumptionHistory,
+  taskStatusUpdates,
+  InsertTaskStatusUpdate,
+  TaskStatusUpdate
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -2720,4 +2723,21 @@ export async function getResourceCostSummary(projectId: number) {
       };
     });
   return { entries, totalCost };
+}
+
+// ─── Task Status Updates helpers ─────────────────────────────────────────────
+
+export async function createTaskStatusUpdate(data: InsertTaskStatusUpdate): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(taskStatusUpdates).values(data);
+}
+
+export async function getTaskStatusUpdates(taskId: string): Promise<TaskStatusUpdate[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select()
+    .from(taskStatusUpdates)
+    .where(eq(taskStatusUpdates.taskId, taskId))
+    .orderBy(desc(taskStatusUpdates.createdAt));
 }

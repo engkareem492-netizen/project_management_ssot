@@ -330,6 +330,13 @@
       "when": 1773360956671,
       "tag": "0046_unknown_miracleman",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "5",
+      "when": 1773362603566,
+      "tag": "0047_striped_the_initiative",
+      "breakpoints": true
     }
   ]
 }

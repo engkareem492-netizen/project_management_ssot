@@ -720,3 +720,10 @@
 - [x] Replace phaseId free-text in Tasks create/edit form with Phase dropdown + quick-create "+" button
 - [x] Build Traceability Matrix report: Requirement → Feature → User Story → Test Case → Defect chain (new page at /traceability-requirements)
 - [x] Add milestone diamond markers on Gantt timeline with Upcoming/Overdue colour coding
+
+## Feature: Two History Types for Tasks (Mar 13, 2026)
+- [x] Add `taskStatusUpdates` table to store only the "New Update" text entries (separate from audit log)
+- [x] Add statusUpdates router procedures (list, create)
+- [x] Save "New Update" text to `taskStatusUpdates` table when submitting a status update
+- [x] In task detail view, split History into two tabs: "Audit Log" (field changes) and "Status Updates" (timeline of update text entries)
+- [x] Status Updates tab shows chronological feed with timestamp, author, and update text
