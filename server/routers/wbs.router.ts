@@ -2,7 +2,7 @@ import { protectedProcedure, router } from "../_core/trpc";
 import { z } from "zod";
 import { getDb } from "../db";
 import { wbsElements } from "../../drizzle/schema";
-import { eq, and, asc } from "drizzle-orm";
+import { eq, and, asc, isNull } from "drizzle-orm";
 
 export const wbsRouter = router({
   // List all WBS elements for a project (flat list, client builds tree)
@@ -48,7 +48,7 @@ export const wbsRouter = router({
             eq(wbsElements.projectId, input.projectId),
             input.parentId
               ? eq(wbsElements.parentId, input.parentId)
-              : eq(wbsElements.parentId, 0) // root
+              : isNull(wbsElements.parentId) // root level
           )
         );
 

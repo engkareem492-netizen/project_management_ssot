@@ -210,6 +210,12 @@ export default function WBSBuilder() {
   const enabled = !!currentProjectId;
   const utils = trpc.useUtils();
 
+  // Stakeholders for Responsible dropdown
+  const { data: stakeholders = [] } = trpc.stakeholders.list.useQuery(
+    { projectId },
+    { enabled }
+  );
+
   const { data: elements = [], isLoading } = trpc.wbs.list.useQuery(
     { projectId },
     { enabled }
@@ -418,11 +424,22 @@ export default function WBSBuilder() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label>Responsible</Label>
-                <Input
-                  placeholder="Person or team"
-                  value={form.responsible}
-                  onChange={e => setForm(f => ({ ...f, responsible: e.target.value }))}
-                />
+                <Select
+                  value={form.responsible || "__none__"}
+                  onValueChange={v => setForm(f => ({ ...f, responsible: v === "__none__" ? "" : v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select stakeholder..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">— None —</SelectItem>
+                    {(stakeholders as any[]).map((s) => (
+                      <SelectItem key={s.id} value={s.fullName}>
+                        {s.fullName}{s.position ? ` · ${s.position}` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1">
                 <Label>Estimated Cost (USD)</Label>

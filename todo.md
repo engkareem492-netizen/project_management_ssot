@@ -710,3 +710,7 @@
 
 ## Feature: Milestone Quick-Create (Mar 12, 2026)
 - [x] Add + button next to milestone dropdown in task create/edit form for inline milestone creation
+
+## Bug Fixes (Mar 13, 2026 - WBS)
+- [x] Fix WBS element creation: parentId sent as empty string instead of null (fixed isNull query for root-level siblings)
+- [x] WBS Responsible field: replace free-text with stakeholder dropdown
