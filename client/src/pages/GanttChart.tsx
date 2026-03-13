@@ -195,6 +195,9 @@ export default function GanttChart() {
   const { data: dependencies = [] } = trpc.taskDependencies.list.useQuery(
     { projectId }, { enabled: !!projectId }
   );
+  const { data: projectMilestones = [] } = trpc.milestones.list.useQuery(
+    { projectId }, { enabled: !!projectId }
+  );
 
   const isLoading = ganttLoading || tasksLoading;
 
@@ -612,7 +615,9 @@ export default function GanttChart() {
       <div className="flex flex-wrap gap-4 text-xs text-muted-foreground items-center bg-white border border-gray-200 rounded-lg px-4 py-2">
         <div className="flex items-center gap-1.5"><div className="w-8 h-3 rounded bg-blue-500" />Normal Task</div>
         <div className="flex items-center gap-1.5"><div className="w-8 h-3 rounded bg-gray-700" />Summary (Parent)</div>
-        <div className="flex items-center gap-1.5"><div className="w-3 h-3 rotate-45 bg-yellow-500 rounded-sm" />Milestone</div>
+        <div className="flex items-center gap-1.5"><div className="w-3 h-3 rotate-45 bg-green-500 rounded-sm" />Milestone (Achieved)</div>
+        <div className="flex items-center gap-1.5"><div className="w-3 h-3 rotate-45 bg-amber-500 rounded-sm" />Milestone (Upcoming)</div>
+        <div className="flex items-center gap-1.5"><div className="w-3 h-3 rotate-45 bg-red-500 rounded-sm" />Milestone (Overdue)</div>
         <div className="flex items-center gap-1.5"><div className="w-8 h-3 rounded border-2 border-red-500 bg-red-100" />Critical Path</div>
         <div className="flex items-center gap-1.5"><div className="w-0.5 h-4 bg-red-500" />Today</div>
         <div className="flex items-center gap-1.5"><div className="w-8 h-3 rounded border-2 border-dashed border-gray-400 bg-gray-100/50" />Baseline</div>
@@ -747,6 +752,68 @@ export default function GanttChart() {
                         </div>
                       ))}
                     </div>
+
+                    {/* ── Milestone diamonds in header row ── */}
+                    {projectMilestones.map((ms) => {
+                      if (!ms.dueDate) return null;
+                      const msDate = new Date(ms.dueDate);
+                      if (isNaN(msDate.getTime())) return null;
+                      const offsetDays = Math.round((msDate.getTime() - ganttRows.minDate.getTime()) / DAY_MS);
+                      if (offsetDays < 0 || offsetDays > ganttRows.totalDays) return null;
+                      const leftPx = offsetDays * pxPerDay;
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      const isOverdue = ms.status !== 'Achieved' && msDate < today;
+                      const isAchieved = ms.status === 'Achieved';
+                      const diamondColour = isAchieved
+                        ? '#22c55e'   // green — achieved
+                        : isOverdue
+                        ? '#ef4444'   // red — overdue
+                        : '#f59e0b';  // amber — upcoming
+                      const borderColour = isAchieved ? '#16a34a' : isOverdue ? '#dc2626' : '#d97706';
+                      return (
+                        <div
+                          key={`ms-${ms.id}`}
+                          className="absolute z-20 pointer-events-auto"
+                          style={{ left: `${leftPx}px`, top: 0, bottom: 0 }}
+                        >
+                          {/* Vertical dashed line through all rows */}
+                          <div
+                            className="absolute top-10 w-0 border-l-2 border-dashed pointer-events-none"
+                            style={{
+                              borderColor: diamondColour,
+                              opacity: 0.5,
+                              height: `${visibleRows.length * ROW_H}px`,
+                              left: '-1px',
+                            }}
+                          />
+                          {/* Diamond in header */}
+                          <div
+                            className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-4 h-4 rotate-45 cursor-default hover:scale-125 transition-transform"
+                            style={{
+                              backgroundColor: diamondColour,
+                              border: `2px solid ${borderColour}`,
+                              boxShadow: `0 0 0 2px ${diamondColour}33`,
+                            }}
+                            title={`${ms.milestoneId}: ${ms.title}\nDue: ${ms.dueDate}\nStatus: ${ms.status ?? 'Upcoming'}`}
+                          />
+                          {/* Label below diamond */}
+                          <div
+                            className="absolute top-8 text-[9px] font-semibold whitespace-nowrap px-1 py-0.5 rounded pointer-events-none"
+                            style={{
+                              left: '4px',
+                              color: borderColour,
+                              background: 'rgba(255,255,255,0.85)',
+                              maxWidth: '80px',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                            }}
+                          >
+                            {ms.milestoneId}
+                          </div>
+                        </div>
+                      );
+                    })}
 
                     {/* Today line */}
                     {ganttRows.todayOffset > 0 && ganttRows.todayOffset < ganttRows.totalDays && (

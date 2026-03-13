@@ -55,6 +55,7 @@ import UserStoriesPage from "./pages/UserStories";
 import TestPlansPage from "./pages/TestPlans";
 import DefectsPage from "./pages/Defects";
 import ConceptGuidePage from "./pages/ConceptGuide";
+import ReqTraceability from "./pages/ReqTraceability";
 
 function Router() {
   return (
@@ -272,6 +273,11 @@ function Router() {
       <Route path="/concept-guide">
         <DashboardLayout>
           <ConceptGuidePage />
+        </DashboardLayout>
+      </Route>
+      <Route path="/req-traceability">
+        <DashboardLayout>
+          <ReqTraceability />
         </DashboardLayout>
       </Route>
       <Route path={"/documents"}>

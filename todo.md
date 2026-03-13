@@ -714,3 +714,9 @@
 ## Bug Fixes (Mar 13, 2026 - WBS)
 - [x] Fix WBS element creation: parentId sent as empty string instead of null (fixed isNull query for root-level siblings)
 - [x] WBS Responsible field: replace free-text with stakeholder dropdown
+
+## Enhancements (Mar 13, 2026)
+- [x] Add phases table + router (phases per project with code, name, description, startDate, endDate, status)
+- [x] Replace phaseId free-text in Tasks create/edit form with Phase dropdown + quick-create "+" button
+- [x] Build Traceability Matrix report: Requirement → Feature → User Story → Test Case → Defect chain (new page at /traceability-requirements)
+- [x] Add milestone diamond markers on Gantt timeline with Upcoming/Overdue colour coding

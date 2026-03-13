@@ -181,6 +181,7 @@ const menuItems: MenuItem[] = [
       { icon: BookOpen, label: "User Stories", path: "/user-stories" },
       { icon: ClipboardList, label: "Test Plans", path: "/test-plans" },
       { icon: Bug, label: "Defects", path: "/defects" },
+      { icon: Layers, label: "Req Traceability", path: "/req-traceability" },
       { icon: HelpCircle, label: "Concept Guide", path: "/concept-guide" },
     ],
   },

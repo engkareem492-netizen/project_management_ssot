@@ -46,6 +46,8 @@ import { userStoriesRouter } from "./routers/userStories.router";
 import { testPlansRouter } from "./routers/testPlans.router";
 import { defectsRouter } from "./routers/defects.router";
 import { cfdRouter } from "./routers/cfd.router";
+import { phasesRouter } from "./routers/phases.router";
+import { reqTraceabilityRouter } from "./routers/reqTraceability.router";
 
 export const appRouter = router({
   system: systemRouter,
@@ -86,6 +88,8 @@ export const appRouter = router({
   testPlans: testPlansRouter,
   defects: defectsRouter,
   cfd: cfdRouter,
+  phases: phasesRouter,
+  reqTraceability: reqTraceabilityRouter,
   scopeItems: router({
     list: protectedProcedure
       .input(z.object({ projectId: z.number() }))

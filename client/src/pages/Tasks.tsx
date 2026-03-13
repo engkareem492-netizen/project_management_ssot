@@ -149,6 +149,11 @@ export default function Tasks() {
   const [quickMilestoneTitle, setQuickMilestoneTitle] = useState('');
   const [quickMilestoneDue, setQuickMilestoneDue] = useState('');
 
+  // Quick phase create state
+  const [quickPhaseOpen, setQuickPhaseOpen] = useState(false);
+  const [quickPhaseContext, setQuickPhaseContext] = useState<'create' | 'edit'>('create');
+  const [quickPhaseName, setQuickPhaseName] = useState('');
+
   const [newTask, setNewTask] = useState<any>({
     taskGroup: '',
     description: '',
@@ -174,6 +179,7 @@ export default function Tasks() {
 
   const { data: tasks, isLoading, refetch } = trpc.tasks.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
   const { data: milestonesList } = trpc.milestones.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
+  const { data: phasesList } = trpc.phases.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
 
   // Handle taskId query parameter from URL
   useEffect(() => {
@@ -515,6 +521,22 @@ export default function Tasks() {
       toast.success('Recurring schedule saved');
       setRecurringDialogOpen(false);
       refetch();
+    },
+    onError: (err: any) => toast.error(`Failed: ${err.message}`),
+  });
+
+  const createPhaseMutation = trpc.phases.create.useMutation({
+    onSuccess: (created: any) => {
+      toast.success(`Phase "${created.name}" created`);
+      utils.phases.list.invalidate({ projectId: currentProjectId! });
+      // Auto-select the new phase in the relevant form
+      if (quickPhaseContext === 'create') {
+        setNewTask((prev: any) => ({ ...prev, phaseId: created.id.toString() }));
+      } else {
+        setEditFormData((prev: any) => ({ ...prev, phaseId: created.id.toString() }));
+      }
+      setQuickPhaseOpen(false);
+      setQuickPhaseName('');
     },
     onError: (err: any) => toast.error(`Failed: ${err.message}`),
   });
@@ -1709,12 +1731,32 @@ export default function Tasks() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="phaseId">Phase</Label>
-                  <Input
-                    id="phaseId"
-                    placeholder="e.g. Explore, Realize, Deploy"
-                    value={newTask.phaseId}
-                    onChange={(e) => setNewTask({ ...newTask, phaseId: e.target.value })}
-                  />
+                  <div className="flex gap-2 items-center">
+                    <Select
+                      value={newTask.phaseId?.toString() || 'none'}
+                      onValueChange={(v) => setNewTask({ ...newTask, phaseId: (v && v !== 'none') ? v : '' })}
+                    >
+                      <SelectTrigger id="phaseId" className="flex-1">
+                        <SelectValue placeholder="Select phase..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {(phasesList || []).map((p: any) => (
+                          <SelectItem key={p.id} value={p.id.toString()}>{p.phaseCode} - {p.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="h-9 w-9 shrink-0"
+                      title="Create new phase"
+                      onClick={() => { setQuickPhaseContext('create'); setQuickPhaseOpen(true); }}
+                    >
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="milestoneId">Related Milestone</Label>
@@ -2192,9 +2234,32 @@ export default function Tasks() {
               <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                 <Label className="text-xs text-muted-foreground uppercase tracking-wide">Phase</Label>
                 {isEditMode ? (
-                  <Input placeholder="e.g. Explore, Realize, Deploy" value={editFormData.phaseId || ''} onChange={(e) => setEditFormData({...editFormData, phaseId: e.target.value})} className="h-8" />
+                  <div className="flex gap-2 items-center">
+                    <Select
+                      value={editFormData.phaseId?.toString() || 'none'}
+                      onValueChange={(v) => setEditFormData({...editFormData, phaseId: (v && v !== 'none') ? v : ''})}
+                    >
+                      <SelectTrigger className="h-8 flex-1"><SelectValue placeholder="Select phase..." /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {(phasesList || []).map((p: any) => (
+                          <SelectItem key={p.id} value={p.id.toString()}>{p.phaseCode} - {p.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8 shrink-0"
+                      title="Create new phase"
+                      onClick={() => { setQuickPhaseContext('edit'); setQuickPhaseOpen(true); }}
+                    >
+                      <Plus className="w-3 h-3" />
+                    </Button>
+                  </div>
                 ) : (
-                  <p className="font-medium">{(selectedTask as any)?.phaseId || <span className="text-muted-foreground">—</span>}</p>
+                  <p className="font-medium">{(phasesList || []).find((p: any) => p.id.toString() === (selectedTask as any)?.phaseId)?.name || (selectedTask as any)?.phaseId || <span className="text-muted-foreground">—</span>}</p>
                 )}
               </div>
               <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
@@ -3571,6 +3636,43 @@ export default function Tasks() {
               onClick={() => createMilestoneMutation.mutate({ projectId: currentProjectId!, title: quickMilestoneTitle.trim(), dueDate: quickMilestoneDue || undefined })}
             >
               {createMilestoneMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+              Create & Select
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Quick Phase Create Dialog ─────────────────────────────────────────── */}
+      <Dialog open={quickPhaseOpen} onOpenChange={(o) => { setQuickPhaseOpen(o); if (!o) setQuickPhaseName(''); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Create Phase</DialogTitle>
+            <DialogDescription>Add a new project phase and it will be auto-selected in the form.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="qp-name">Phase Name <span className="text-destructive">*</span></Label>
+              <Input
+                id="qp-name"
+                placeholder="e.g. Initiation, Planning, Execution"
+                value={quickPhaseName}
+                onChange={(e) => setQuickPhaseName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && quickPhaseName.trim()) {
+                    createPhaseMutation.mutate({ projectId: currentProjectId!, name: quickPhaseName.trim() });
+                  }
+                }}
+                autoFocus
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setQuickPhaseOpen(false)}>Cancel</Button>
+            <Button
+              disabled={!quickPhaseName.trim() || createPhaseMutation.isPending}
+              onClick={() => createPhaseMutation.mutate({ projectId: currentProjectId!, name: quickPhaseName.trim() })}
+            >
+              {createPhaseMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
               Create & Select
             </Button>
           </DialogFooter>

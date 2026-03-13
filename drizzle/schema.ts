@@ -1583,3 +1583,22 @@ export const taskStatusHistory = mysqlTable("taskStatusHistory", {
 });
 export type TaskStatusHistory = typeof taskStatusHistory.$inferSelect;
 export type InsertTaskStatusHistory = typeof taskStatusHistory.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────
+// Phases — project phases (e.g. Initiation, Planning, Execution, Closure)
+// ─────────────────────────────────────────────────────────────
+export const phases = mysqlTable("phases", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  phaseCode: varchar("phaseCode", { length: 30 }),             // e.g. PH-0001
+  name: varchar("name", { length: 200 }).notNull(),
+  description: text("description"),
+  status: varchar("status", { length: 50 }).default("Planned"), // Planned, Active, Completed, On Hold
+  startDate: date("startDate"),
+  endDate: date("endDate"),
+  order: int("order").default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type Phase = typeof phases.$inferSelect;
+export type InsertPhase = typeof phases.$inferInsert;
