@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Label } from "@/components/ui/label";
 import { Plus, Eye, Pencil, Trash2, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
+import { StakeholderSelect } from "@/components/StakeholderSelect";
 
 const STATUS_COLORS: Record<string, string> = {
   Draft: "bg-gray-100 text-gray-700",
@@ -76,7 +77,12 @@ export default function ChangeRequests() {
   const [statusNote, setStatusNote] = useState("");
 
   const utils = trpc.useUtils();
-  const { data: crs = [], isLoading } = trpc.changeRequests.list.useQuery({ projectId }, { enabled: !!projectId });
+  const enabled = !!projectId;
+  const { data: crs = [], isLoading } = trpc.changeRequests.list.useQuery({ projectId }, { enabled });
+  const { data: stakeholders = [] } = trpc.stakeholders.list.useQuery({ projectId }, { enabled });
+  const { data: requirements = [] } = trpc.requirements.list.useQuery({ projectId }, { enabled });
+  const { data: tasks = [] } = trpc.tasks.list.useQuery({ projectId }, { enabled });
+  const { data: issues = [] } = trpc.issues.list.useQuery({ projectId }, { enabled });
 
   const createMutation = trpc.changeRequests.create.useMutation({
     onSuccess: () => { utils.changeRequests.list.invalidate(); setShowCreate(false); setForm(emptyForm); toast.success("Change Request created"); },
@@ -218,8 +224,8 @@ export default function ChangeRequests() {
           <div className="grid grid-cols-2 gap-4 py-2">
             <div className="col-span-2 space-y-1"><Label>Title *</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Brief title of the change" /></div>
             <div className="col-span-2 space-y-1"><Label>Description</Label><Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} /></div>
-            <div className="space-y-1"><Label>Requested By</Label><Input value={form.requestedBy} onChange={(e) => setForm({ ...form, requestedBy: e.target.value })} /></div>
-            <div className="space-y-1"><Label>Assigned To</Label><Input value={form.assignedTo} onChange={(e) => setForm({ ...form, assignedTo: e.target.value })} /></div>
+            <div className="space-y-1"><Label>Requested By</Label><StakeholderSelect stakeholders={stakeholders as any[]} value={form.requestedBy} onValueChange={(v) => setForm({ ...form, requestedBy: v })} projectId={projectId} /></div>
+            <div className="space-y-1"><Label>Assigned To</Label><StakeholderSelect stakeholders={stakeholders as any[]} value={form.assignedTo} onValueChange={(v) => setForm({ ...form, assignedTo: v })} projectId={projectId} /></div>
             <div className="space-y-1"><Label>Priority</Label>
               <Select value={form.priority} onValueChange={(v) => setForm({ ...form, priority: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -228,9 +234,33 @@ export default function ChangeRequests() {
             </div>
             <div className="space-y-1"><Label>Estimated Effort</Label><Input value={form.estimatedEffort} onChange={(e) => setForm({ ...form, estimatedEffort: e.target.value })} placeholder="e.g. 3 days" /></div>
             <div className="col-span-2 space-y-1"><Label>Impact Assessment</Label><Textarea value={form.impactAssessment} onChange={(e) => setForm({ ...form, impactAssessment: e.target.value })} rows={2} /></div>
-            <div className="space-y-1"><Label>Linked Requirement ID</Label><Input value={form.requirementId} onChange={(e) => setForm({ ...form, requirementId: e.target.value })} placeholder="e.g. EQ-0001" /></div>
-            <div className="space-y-1"><Label>Linked Task ID</Label><Input value={form.taskId} onChange={(e) => setForm({ ...form, taskId: e.target.value })} placeholder="e.g. T-0001" /></div>
-            <div className="space-y-1"><Label>Linked Issue ID</Label><Input value={form.issueId} onChange={(e) => setForm({ ...form, issueId: e.target.value })} placeholder="e.g. ISS-0001" /></div>
+            <div className="space-y-1"><Label>Linked Requirement</Label>
+              <Select value={form.requirementId || "__none__"} onValueChange={(v) => setForm({ ...form, requirementId: v === "__none__" ? "" : v })}>
+                <SelectTrigger><SelectValue placeholder="Select requirement..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">None</SelectItem>
+                  {(requirements as any[]).map((r: any) => <SelectItem key={r.id} value={r.requirementId}>{r.requirementId}{r.title ? ` — ${r.title}` : ""}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1"><Label>Linked Task</Label>
+              <Select value={form.taskId || "__none__"} onValueChange={(v) => setForm({ ...form, taskId: v === "__none__" ? "" : v })}>
+                <SelectTrigger><SelectValue placeholder="Select task..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">None</SelectItem>
+                  {(tasks as any[]).map((t: any) => <SelectItem key={t.id} value={t.taskId}>{t.taskId}{t.title ? ` — ${t.title}` : ""}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1"><Label>Linked Issue</Label>
+              <Select value={form.issueId || "__none__"} onValueChange={(v) => setForm({ ...form, issueId: v === "__none__" ? "" : v })}>
+                <SelectTrigger><SelectValue placeholder="Select issue..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">None</SelectItem>
+                  {(issues as any[]).map((i: any) => <SelectItem key={i.id} value={i.issueId}>{i.issueId}{i.description ? ` — ${i.description}` : ""}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
@@ -281,8 +311,8 @@ export default function ChangeRequests() {
           <div className="grid grid-cols-2 gap-4 py-2">
             <div className="col-span-2 space-y-1"><Label>Title *</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></div>
             <div className="col-span-2 space-y-1"><Label>Description</Label><Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} /></div>
-            <div className="space-y-1"><Label>Requested By</Label><Input value={form.requestedBy} onChange={(e) => setForm({ ...form, requestedBy: e.target.value })} /></div>
-            <div className="space-y-1"><Label>Assigned To</Label><Input value={form.assignedTo} onChange={(e) => setForm({ ...form, assignedTo: e.target.value })} /></div>
+            <div className="space-y-1"><Label>Requested By</Label><StakeholderSelect stakeholders={stakeholders as any[]} value={form.requestedBy} onValueChange={(v) => setForm({ ...form, requestedBy: v })} projectId={projectId} /></div>
+            <div className="space-y-1"><Label>Assigned To</Label><StakeholderSelect stakeholders={stakeholders as any[]} value={form.assignedTo} onValueChange={(v) => setForm({ ...form, assignedTo: v })} projectId={projectId} /></div>
             <div className="space-y-1"><Label>Priority</Label>
               <Select value={form.priority} onValueChange={(v) => setForm({ ...form, priority: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -291,9 +321,33 @@ export default function ChangeRequests() {
             </div>
             <div className="space-y-1"><Label>Estimated Effort</Label><Input value={form.estimatedEffort} onChange={(e) => setForm({ ...form, estimatedEffort: e.target.value })} /></div>
             <div className="col-span-2 space-y-1"><Label>Impact Assessment</Label><Textarea value={form.impactAssessment} onChange={(e) => setForm({ ...form, impactAssessment: e.target.value })} rows={2} /></div>
-            <div className="space-y-1"><Label>Linked Requirement ID</Label><Input value={form.requirementId} onChange={(e) => setForm({ ...form, requirementId: e.target.value })} /></div>
-            <div className="space-y-1"><Label>Linked Task ID</Label><Input value={form.taskId} onChange={(e) => setForm({ ...form, taskId: e.target.value })} /></div>
-            <div className="space-y-1"><Label>Linked Issue ID</Label><Input value={form.issueId} onChange={(e) => setForm({ ...form, issueId: e.target.value })} /></div>
+            <div className="space-y-1"><Label>Linked Requirement</Label>
+              <Select value={form.requirementId || "__none__"} onValueChange={(v) => setForm({ ...form, requirementId: v === "__none__" ? "" : v })}>
+                <SelectTrigger><SelectValue placeholder="Select requirement..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">None</SelectItem>
+                  {(requirements as any[]).map((r: any) => <SelectItem key={r.id} value={r.requirementId}>{r.requirementId}{r.title ? ` — ${r.title}` : ""}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1"><Label>Linked Task</Label>
+              <Select value={form.taskId || "__none__"} onValueChange={(v) => setForm({ ...form, taskId: v === "__none__" ? "" : v })}>
+                <SelectTrigger><SelectValue placeholder="Select task..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">None</SelectItem>
+                  {(tasks as any[]).map((t: any) => <SelectItem key={t.id} value={t.taskId}>{t.taskId}{t.title ? ` — ${t.title}` : ""}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1"><Label>Linked Issue</Label>
+              <Select value={form.issueId || "__none__"} onValueChange={(v) => setForm({ ...form, issueId: v === "__none__" ? "" : v })}>
+                <SelectTrigger><SelectValue placeholder="Select issue..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">None</SelectItem>
+                  {(issues as any[]).map((i: any) => <SelectItem key={i.id} value={i.issueId}>{i.issueId}{i.description ? ` — ${i.description}` : ""}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowEdit(false)}>Cancel</Button>

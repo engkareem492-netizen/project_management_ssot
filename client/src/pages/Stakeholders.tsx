@@ -34,6 +34,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ImportExportToolbar } from "@/components/ImportExportToolbar";
+import { StakeholderSelect } from "@/components/StakeholderSelect";
 import { EmptyState } from "@/components/EmptyState";
 import { formatDate } from "@/lib/dateUtils";
 
@@ -932,9 +933,11 @@ export default function Stakeholders() {
         </div>
         <div className="space-y-2">
           <Label>Communication Responsible</Label>
-          <Input
+          <StakeholderSelect
+            stakeholders={stakeholders as any[]}
             value={formData.communicationResponsible}
-            onChange={(e) => setFormData({ ...formData, communicationResponsible: e.target.value })}
+            onValueChange={(v) => setFormData({ ...formData, communicationResponsible: v })}
+            projectId={currentProjectId ?? undefined}
             placeholder="Who is responsible for communication?"
           />
         </div>
