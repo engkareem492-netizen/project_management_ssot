@@ -15,6 +15,7 @@ import {
   Plus, Clock, Trash2, BarChart2, List, Edit, Loader2,
   Calendar, Users, TrendingUp, Timer,
 } from "lucide-react";
+import { StakeholderSelect } from "@/components/StakeholderSelect";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, PieChart, Pie, Cell, Legend,
@@ -40,6 +41,7 @@ export default function TimeTracking() {
 
   const { data: logs = [], isLoading, refetch } = trpc.timeLogs.list.useQuery({ projectId }, { enabled });
   const { data: tasks = [] } = trpc.tasks.list.useQuery({ projectId }, { enabled });
+  const { data: stakeholders = [] } = trpc.stakeholders.list.useQuery({ projectId }, { enabled });
   const { data: summary } = trpc.timeLogs.getSummary.useQuery({ projectId }, { enabled });
 
   const createMut = trpc.timeLogs.create.useMutation({
@@ -258,7 +260,12 @@ export default function TimeTracking() {
             </div>
             <div>
               <Label>Logged By</Label>
-              <Input value={form.loggedBy} onChange={(e) => setForm({ ...form, loggedBy: e.target.value })} placeholder="Your name" />
+              <StakeholderSelect
+                stakeholders={stakeholders as any[]}
+                value={form.loggedBy}
+                onValueChange={(v) => setForm({ ...form, loggedBy: v })}
+                projectId={projectId}
+              />
             </div>
             <div>
               <Label>Task (optional)</Label>

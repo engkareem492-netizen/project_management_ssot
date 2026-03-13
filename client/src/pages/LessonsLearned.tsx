@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Loader2, Plus, Pencil, Trash2, BookMarked, Search, ThumbsUp, TrendingUp, Lightbulb } from "lucide-react";
+import { StakeholderSelect } from "@/components/StakeholderSelect";
 
 const CATEGORY_COLORS: Record<string, string> = {
   Technical: "bg-blue-100 text-blue-800",
@@ -47,6 +48,7 @@ export default function LessonsLearned() {
   const enabled = !!currentProjectId;
 
   const { data: lessons = [], isLoading, refetch } = trpc.lessonsLearned.list.useQuery({ projectId }, { enabled });
+  const { data: stakeholders = [] } = trpc.stakeholders.list.useQuery({ projectId }, { enabled });
 
   const create = trpc.lessonsLearned.create.useMutation({ onSuccess: () => { toast.success("Lesson recorded"); refetch(); setOpen(false); } });
   const update = trpc.lessonsLearned.update.useMutation({ onSuccess: () => { toast.success("Updated"); refetch(); setOpen(false); } });
@@ -255,7 +257,12 @@ export default function LessonsLearned() {
               </div>
               <div>
                 <Label>Owner</Label>
-                <Input value={form.owner} onChange={e => set("owner", e.target.value)} placeholder="Name..." />
+                <StakeholderSelect
+                  stakeholders={stakeholders as any[]}
+                  value={form.owner}
+                  onValueChange={(v) => set("owner", v)}
+                  projectId={projectId}
+                />
               </div>
               <div>
                 <Label>Date Recorded</Label>

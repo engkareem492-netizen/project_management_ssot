@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
 import { Loader2, Plus, Pencil, Trash2, Flag, CheckCircle2, AlertTriangle, Clock } from "lucide-react";
+import { StakeholderSelect } from "@/components/StakeholderSelect";
 
 const RAG_COLORS: Record<string, string> = {
   Green: "bg-green-100 text-green-800",
@@ -230,7 +231,12 @@ export default function Milestones() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Owner</Label>
-                <Input value={form.owner} onChange={e => set("owner", e.target.value)} placeholder="Owner name..." />
+                <StakeholderSelect
+                  stakeholders={stakeholders as any[]}
+                  value={form.owner}
+                  onValueChange={(v) => set("owner", v)}
+                  projectId={projectId}
+                />
               </div>
               <div>
                 <Label>RAG Status</Label>

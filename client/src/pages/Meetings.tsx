@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Eye, Pencil, Trash2, Users, CheckSquare, Link2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDate as _formatDateUtil } from "@/lib/dateUtils";
+import { StakeholderSelect, StakeholderMultiSelect } from "@/components/StakeholderSelect";
 
 const MEETING_TYPE_COLORS: Record<string, string> = {
   "Steering Committee": "bg-purple-100 text-purple-700",
@@ -106,6 +107,7 @@ export default function Meetings() {
   const utils = trpc.useUtils();
   const { data: meetings = [], isLoading: loadingMeetings } = trpc.meetings.listMeetings.useQuery({ projectId }, { enabled: !!projectId });
   const { data: decisions = [], isLoading: loadingDecisions } = trpc.meetings.listDecisions.useQuery({ projectId }, { enabled: !!projectId });
+  const { data: stakeholders = [] } = trpc.stakeholders.list.useQuery({ projectId }, { enabled: !!projectId });
 
   const createMeetingMutation = trpc.meetings.createMeeting.useMutation({
     onSuccess: () => { utils.meetings.listMeetings.invalidate(); setShowCreateMeeting(false); setMeetingForm(emptyMeetingForm); setAttendeesText(""); toast.success("Meeting created"); },
@@ -343,8 +345,8 @@ export default function Meetings() {
                 <SelectContent>{(["Scheduled", "In Progress", "Completed", "Cancelled"] as MeetingStatus[]).map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div className="space-y-1"><Label>Organizer</Label><Input value={meetingForm.organizer} onChange={(e) => setMeetingForm({ ...meetingForm, organizer: e.target.value })} /></div>
-            <div className="col-span-2 space-y-1"><Label>Attendees (comma-separated)</Label><Textarea value={attendeesText} onChange={(e) => { setAttendeesText(e.target.value); setMeetingForm({ ...meetingForm, attendees: e.target.value.split(",").map((a) => a.trim()).filter(Boolean) }); }} rows={2} placeholder="John Doe, Jane Smith, ..." /></div>
+            <div className="space-y-1"><Label>Organizer</Label><StakeholderSelect stakeholders={stakeholders as any[]} value={meetingForm.organizer} onValueChange={(v) => setMeetingForm({ ...meetingForm, organizer: v })} projectId={projectId} /></div>
+            <div className="col-span-2 space-y-1"><Label>Attendees</Label><StakeholderMultiSelect stakeholders={stakeholders as any[]} value={meetingForm.attendees} onValueChange={(v) => setMeetingForm({ ...meetingForm, attendees: v })} projectId={projectId} /></div>
             <div className="col-span-2 space-y-1"><Label>Agenda</Label><Textarea value={meetingForm.agenda} onChange={(e) => setMeetingForm({ ...meetingForm, agenda: e.target.value })} rows={3} /></div>
             <div className="col-span-2 space-y-1"><Label>Minutes / Summary</Label><Textarea value={meetingForm.minutes} onChange={(e) => setMeetingForm({ ...meetingForm, minutes: e.target.value })} rows={3} /></div>
           </div>
@@ -371,8 +373,8 @@ export default function Meetings() {
                 <SelectContent>{(["Scheduled", "In Progress", "Completed", "Cancelled"] as MeetingStatus[]).map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div className="space-y-1"><Label>Organizer</Label><Input value={meetingForm.organizer} onChange={(e) => setMeetingForm({ ...meetingForm, organizer: e.target.value })} /></div>
-            <div className="col-span-2 space-y-1"><Label>Attendees (comma-separated)</Label><Textarea value={attendeesText} onChange={(e) => { setAttendeesText(e.target.value); setMeetingForm({ ...meetingForm, attendees: e.target.value.split(",").map((a) => a.trim()).filter(Boolean) }); }} rows={2} /></div>
+            <div className="space-y-1"><Label>Organizer</Label><StakeholderSelect stakeholders={stakeholders as any[]} value={meetingForm.organizer} onValueChange={(v) => setMeetingForm({ ...meetingForm, organizer: v })} projectId={projectId} /></div>
+            <div className="col-span-2 space-y-1"><Label>Attendees</Label><StakeholderMultiSelect stakeholders={stakeholders as any[]} value={meetingForm.attendees} onValueChange={(v) => setMeetingForm({ ...meetingForm, attendees: v })} projectId={projectId} /></div>
             <div className="col-span-2 space-y-1"><Label>Agenda</Label><Textarea value={meetingForm.agenda} onChange={(e) => setMeetingForm({ ...meetingForm, agenda: e.target.value })} rows={3} /></div>
             <div className="col-span-2 space-y-1"><Label>Minutes / Summary</Label><Textarea value={meetingForm.minutes} onChange={(e) => setMeetingForm({ ...meetingForm, minutes: e.target.value })} rows={3} /></div>
           </div>
@@ -450,7 +452,7 @@ export default function Meetings() {
           <div className="grid grid-cols-2 gap-4 py-2">
             <div className="col-span-2 space-y-1"><Label>Decision Title *</Label><Input value={decisionForm.title} onChange={(e) => setDecisionForm({ ...decisionForm, title: e.target.value })} /></div>
             <div className="col-span-2 space-y-1"><Label>Description</Label><Textarea value={decisionForm.description} onChange={(e) => setDecisionForm({ ...decisionForm, description: e.target.value })} rows={3} /></div>
-            <div className="space-y-1"><Label>Decided By</Label><Input value={decisionForm.decidedBy} onChange={(e) => setDecisionForm({ ...decisionForm, decidedBy: e.target.value })} /></div>
+            <div className="space-y-1"><Label>Decided By</Label><StakeholderSelect stakeholders={stakeholders as any[]} value={decisionForm.decidedBy} onValueChange={(v) => setDecisionForm({ ...decisionForm, decidedBy: v })} projectId={projectId} /></div>
             <div className="space-y-1"><Label>Decision Date</Label><Input type="date" value={decisionForm.decisionDate} onChange={(e) => setDecisionForm({ ...decisionForm, decisionDate: e.target.value })} /></div>
             <div className="space-y-1"><Label>Status</Label>
               <Select value={decisionForm.status} onValueChange={(v) => setDecisionForm({ ...decisionForm, status: v as DecisionStatus })}>
@@ -556,7 +558,7 @@ export default function Meetings() {
           <div className="grid grid-cols-2 gap-4 py-2">
             <div className="col-span-2 space-y-1"><Label>Decision Title *</Label><Input value={decisionForm.title} onChange={(e) => setDecisionForm({ ...decisionForm, title: e.target.value })} /></div>
             <div className="col-span-2 space-y-1"><Label>Description</Label><Textarea value={decisionForm.description} onChange={(e) => setDecisionForm({ ...decisionForm, description: e.target.value })} rows={3} /></div>
-            <div className="space-y-1"><Label>Decided By</Label><Input value={decisionForm.decidedBy} onChange={(e) => setDecisionForm({ ...decisionForm, decidedBy: e.target.value })} /></div>
+            <div className="space-y-1"><Label>Decided By</Label><StakeholderSelect stakeholders={stakeholders as any[]} value={decisionForm.decidedBy} onValueChange={(v) => setDecisionForm({ ...decisionForm, decidedBy: v })} projectId={projectId} /></div>
             <div className="space-y-1"><Label>Decision Date</Label><Input type="date" value={decisionForm.decisionDate} onChange={(e) => setDecisionForm({ ...decisionForm, decisionDate: e.target.value })} /></div>
             <div className="space-y-1"><Label>Status</Label>
               <Select value={decisionForm.status} onValueChange={(v) => setDecisionForm({ ...decisionForm, status: v as DecisionStatus })}>

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
+import { StakeholderSelect } from "@/components/StakeholderSelect";
 import { useProject } from "@/contexts/ProjectContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -437,27 +438,23 @@ export default function SlaTickets() {
               </div>
               <div>
                 <Label>Assignee</Label>
-                <Select
+                <StakeholderSelect
+                  stakeholders={stakeholders as any[]}
                   value={ticketForm.assigneeName}
                   onValueChange={(v) => setTicketForm({ ...ticketForm, assigneeName: v })}
-                >
-                  <SelectTrigger><SelectValue placeholder="Assign to..." /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">Unassigned</SelectItem>
-                    {(stakeholders as any[]).map((s: any) => (
-                      <SelectItem key={s.id} value={s.fullName}>{s.fullName}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  projectId={projectId}
+                  placeholder="Assign to..."
+                />
               </div>
             </div>
             {!editTicket && (
               <div>
                 <Label>Reporter</Label>
-                <Input
+                <StakeholderSelect
+                  stakeholders={stakeholders as any[]}
                   value={ticketForm.reporterName}
-                  onChange={(e) => setTicketForm({ ...ticketForm, reporterName: e.target.value })}
-                  placeholder="Who reported this?"
+                  onValueChange={(v) => setTicketForm({ ...ticketForm, reporterName: v })}
+                  projectId={projectId}
                 />
               </div>
             )}

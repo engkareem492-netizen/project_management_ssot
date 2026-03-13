@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
 import { Loader2, Plus, Pencil, Trash2, ListChecks, Search, CheckCircle2 } from "lucide-react";
+import { StakeholderSelect } from "@/components/StakeholderSelect";
 
 const STATUS_COLORS: Record<string, string> = {
   Open: "bg-blue-100 text-blue-800",
@@ -41,6 +42,7 @@ export default function ActionItems() {
 
   const { data: items = [], isLoading, refetch } = trpc.actionItems.list.useQuery({ projectId }, { enabled });
   const { data: meetings = [] } = trpc.meetings.listMeetings.useQuery({ projectId }, { enabled });
+  const { data: stakeholders = [] } = trpc.stakeholders.list.useQuery({ projectId }, { enabled });
 
   const create = trpc.actionItems.create.useMutation({ onSuccess: () => { toast.success("Action item created"); refetch(); setOpen(false); } });
   const update = trpc.actionItems.update.useMutation({ onSuccess: () => { toast.success("Updated"); refetch(); setOpen(false); } });
@@ -220,7 +222,12 @@ export default function ActionItems() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Owner</Label>
-                <Input value={form.owner} onChange={e => set("owner", e.target.value)} placeholder="Owner name..." />
+                <StakeholderSelect
+                  stakeholders={stakeholders as any[]}
+                  value={form.owner}
+                  onValueChange={(v) => set("owner", v)}
+                  projectId={projectId}
+                />
               </div>
               <div>
                 <Label>Due Date</Label>

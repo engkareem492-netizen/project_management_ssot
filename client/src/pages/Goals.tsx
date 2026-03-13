@@ -17,6 +17,7 @@ import {
   Loader2, TrendingUp, CheckCircle2, AlertTriangle, Circle,
   Minus,
 } from "lucide-react";
+import { StakeholderSelect } from "@/components/StakeholderSelect";
 
 const GOAL_STATUS_STYLES: Record<string, { badge: string; icon: any; color: string }> = {
   "Not Started": { badge: "bg-gray-100 text-gray-700", icon: Circle, color: "text-gray-500" },
@@ -45,6 +46,7 @@ export default function Goals() {
   const [krForm, setKrForm] = useState({ title: "", targetValue: "", currentValue: "0", unit: "", status: "Not Started" });
 
   const { data: goals = [], isLoading, refetch } = trpc.goals.list.useQuery({ projectId }, { enabled });
+  const { data: stakeholders = [] } = trpc.stakeholders.list.useQuery({ projectId }, { enabled });
 
   const createGoalMut = trpc.goals.create.useMutation({
     onSuccess: () => { toast.success("Goal created"); refetch(); setCreateGoalOpen(false); resetGoalForm(); },
@@ -212,7 +214,12 @@ export default function Goals() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Owner</Label>
-                <Input value={goalForm.owner} onChange={(e) => setGoalForm({ ...goalForm, owner: e.target.value })} placeholder="Owner name" />
+                <StakeholderSelect
+                  stakeholders={stakeholders as any[]}
+                  value={goalForm.owner}
+                  onValueChange={(v) => setGoalForm({ ...goalForm, owner: v })}
+                  projectId={projectId}
+                />
               </div>
               <div>
                 <Label>Status</Label>

@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Plus, Eye, Pencil, Trash2, CheckSquare, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { StakeholderSelect } from "@/components/StakeholderSelect";
 
 type DecisionStatus = "Open" | "Implemented" | "Deferred" | "Cancelled";
 
@@ -58,6 +59,11 @@ export default function Decisions() {
   const [form, setForm] = useState<DecisionForm>(emptyForm);
 
   const utils = trpc.useUtils();
+
+  const { data: stakeholders = [] } = trpc.stakeholders.list.useQuery(
+    { projectId },
+    { enabled: !!currentProjectId }
+  );
 
   const { data: decisions = [], isLoading } = trpc.meetings.listDecisions.useQuery(
     { projectId },
@@ -363,7 +369,7 @@ export default function Decisions() {
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>New Decision</DialogTitle></DialogHeader>
-          <DecisionFormFields form={form} setForm={setForm} />
+          <DecisionFormFields form={form} setForm={setForm} stakeholders={stakeholders as any[]} projectId={projectId} />
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
             <Button
@@ -381,7 +387,7 @@ export default function Decisions() {
       <Dialog open={showEdit} onOpenChange={setShowEdit}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Edit Decision</DialogTitle></DialogHeader>
-          <DecisionFormFields form={form} setForm={setForm} />
+          <DecisionFormFields form={form} setForm={setForm} stakeholders={stakeholders as any[]} projectId={projectId} />
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowEdit(false)}>Cancel</Button>
             <Button
@@ -401,9 +407,13 @@ export default function Decisions() {
 function DecisionFormFields({
   form,
   setForm,
+  stakeholders = [],
+  projectId,
 }: {
   form: DecisionForm;
   setForm: React.Dispatch<React.SetStateAction<DecisionForm>>;
+  stakeholders?: { id: number; fullName: string }[];
+  projectId?: number;
 }) {
   const set = (key: keyof DecisionForm, value: string) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -420,7 +430,12 @@ function DecisionFormFields({
       </div>
       <div className="space-y-1">
         <Label>Decided By</Label>
-        <Input value={form.decidedBy} onChange={(e) => set("decidedBy", e.target.value)} />
+        <StakeholderSelect
+          stakeholders={stakeholders}
+          value={form.decidedBy}
+          onValueChange={(v) => set("decidedBy", v)}
+          projectId={projectId}
+        />
       </div>
       <div className="space-y-1">
         <Label>Decision Date</Label>
