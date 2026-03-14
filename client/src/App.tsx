@@ -59,6 +59,8 @@ import ReqTraceability from "./pages/ReqTraceability";
 import BusinessCase from "./pages/BusinessCase";
 import ClosingReport from "./pages/ClosingReport";
 import TeamCharter from "./pages/TeamCharter";
+import EngagementPlan from "./pages/EngagementPlan";
+import CommunicationPlan from "./pages/CommunicationPlan";
 
 function Router() {
   return (
@@ -301,6 +303,16 @@ function Router() {
       <Route path="/team-charter">
         <DashboardLayout>
           <TeamCharter />
+        </DashboardLayout>
+      </Route>
+      <Route path="/engagement-plan">
+        <DashboardLayout>
+          <EngagementPlan />
+        </DashboardLayout>
+      </Route>
+      <Route path="/communication-plan">
+        <DashboardLayout>
+          <CommunicationPlan />
         </DashboardLayout>
       </Route>
       <Route path={"/404"} component={NotFound} />

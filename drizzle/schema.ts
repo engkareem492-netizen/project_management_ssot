@@ -142,16 +142,29 @@ export const stakeholders = mysqlTable("stakeholders", {
   role: varchar("role", { length: 200 }),
   job: varchar("job", { length: 200 }),
   phone: varchar("phone", { length: 50 }),
+  department: varchar("department", { length: 200 }),
+  remark: text("remark"),
+  // Classification: 'team_member' | 'external' | 'stakeholder'
+  classification: varchar("classification", { length: 50 }).default("stakeholder"),
   // Internal team & engagement fields
   isInternalTeam: boolean("isInternalTeam").default(false).notNull(),
+  isPooledResource: boolean("isPooledResource").default(false),
+  stakeholderManagerId: int("stakeholderManagerId"),  // FK to stakeholders.id (for External)
+  workingSchedule: varchar("workingSchedule", { length: 100 }),  // e.g. 'Full-Time', 'Part-Time', 'Contractor'
   powerLevel: int("powerLevel").default(3),       // 1-5
   interestLevel: int("interestLevel").default(3),  // 1-5
+  // Engagement status (for Stakeholder classification)
+  currentEngagementStatus: varchar("currentEngagementStatus", { length: 50 }),  // Unaware|Resistant|Neutral|Supportive|Leading
+  desiredEngagementStatus: varchar("desiredEngagementStatus", { length: 50 }),  // Unaware|Resistant|Neutral|Supportive|Leading
+  includeInEngagementPlan: boolean("includeInEngagementPlan").default(false),
   engagementStrategy: varchar("engagementStrategy", { length: 100 }), // Manage Closely | Keep Satisfied | Keep Informed | Monitor
   communicationFrequency: varchar("communicationFrequency", { length: 100 }),
   communicationChannel: varchar("communicationChannel", { length: 100 }),
   communicationMessage: text("communicationMessage"),
   communicationResponsible: varchar("communicationResponsible", { length: 200 }),
   communicationResponsibleId: int("communicationResponsibleId"),  // FK to stakeholders.id
+  informationNeeded: text("informationNeeded"),  // For Communication Plan
+  escalationProcedure: text("escalationProcedure"),  // For Communication Plan
   notes: text("notes"),
   // Cost / billing rate
   costPerHour: decimal("costPerHour", { precision: 10, scale: 2 }),
@@ -1823,3 +1836,91 @@ export const stakeholderSuccession = mysqlTable("stakeholderSuccession", {
 });
 export type StakeholderSuccession = typeof stakeholderSuccession.$inferSelect;
 export type InsertStakeholderSuccession = typeof stakeholderSuccession.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────
+// Stakeholder SWOT Analysis
+// ─────────────────────────────────────────────────────────────
+export const stakeholderSwot = mysqlTable("stakeholderSwot", {
+  id: int("id").autoincrement().primaryKey(),
+  stakeholderId: int("stakeholderId").notNull(),
+  projectId: int("projectId").notNull(),
+  category: varchar("category", { length: 20 }).notNull(), // 'strength'|'weakness'|'opportunity'|'threat'
+  description: text("description").notNull(),
+  sortOrder: int("sortOrder").default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type StakeholderSwot = typeof stakeholderSwot.$inferSelect;
+export type InsertStakeholderSwot = typeof stakeholderSwot.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────
+// Engagement Plan Task Groups
+// (separate from normal task groups - only for engagement plan)
+// ─────────────────────────────────────────────────────────────
+export const engagementTaskGroups = mysqlTable("engagementTaskGroups", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  name: varchar("name", { length: 200 }).notNull(),
+  description: text("description"),
+  // Target engagement transition: from → to
+  fromStatus: varchar("fromStatus", { length: 50 }), // Unaware|Resistant|Neutral|Supportive|Leading
+  toStatus: varchar("toStatus", { length: 50 }),     // Unaware|Resistant|Neutral|Supportive|Leading
+  sortOrder: int("sortOrder").default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type EngagementTaskGroup = typeof engagementTaskGroups.$inferSelect;
+export type InsertEngagementTaskGroup = typeof engagementTaskGroups.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────
+// Engagement Plan Tasks
+// (tasks under engagement task groups, linked to stakeholders as subjects)
+// ─────────────────────────────────────────────────────────────
+export const engagementTasks = mysqlTable("engagementTasks", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  groupId: int("groupId").notNull().default(0), // FK to engagementTaskGroups.id (0 = standalone)
+  stakeholderId: int("stakeholderId"), // FK to stakeholders.id (for standalone plan items)
+  title: varchar("title", { length: 300 }).notNull(),
+  description: text("description"),
+  responsible: varchar("responsible", { length: 200 }),
+  responsibleId: int("responsibleId"), // FK to stakeholders.id
+  dueDate: date("dueDate"),
+  status: varchar("status", { length: 50 }).default("Not Started"),
+  targetStatus: varchar("targetStatus", { length: 50 }), // desired engagement status after this action
+  frequency: varchar("frequency", { length: 50 }),       // e.g. Monthly, Weekly
+  notes: text("notes"),
+  sortOrder: int("sortOrder").default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type EngagementTask = typeof engagementTasks.$inferSelect;
+export type InsertEngagementTask = typeof engagementTasks.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────
+// Engagement Task Subjects (stakeholders assigned as subjects to engagement tasks)
+// ─────────────────────────────────────────────────────────────
+export const engagementTaskSubjects = mysqlTable("engagementTaskSubjects", {
+  id: int("id").autoincrement().primaryKey(),
+  taskId: int("taskId").notNull(),
+  stakeholderId: int("stakeholderId").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type EngagementTaskSubject = typeof engagementTaskSubjects.$inferSelect;
+export type InsertEngagementTaskSubject = typeof engagementTaskSubjects.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────
+// Engagement Status History
+// (tracks changes to stakeholder engagement status over time)
+// ─────────────────────────────────────────────────────────────
+export const engagementStatusHistory = mysqlTable("engagementStatusHistory", {
+  id: int("id").autoincrement().primaryKey(),
+  stakeholderId: int("stakeholderId").notNull(),
+  projectId: int("projectId").notNull(),
+  previousStatus: varchar("previousStatus", { length: 50 }),
+  newStatus: varchar("newStatus", { length: 50 }).notNull(),
+  changedBy: varchar("changedBy", { length: 200 }),
+  notes: text("notes"),
+  changedAt: timestamp("changedAt").defaultNow().notNull(),
+});
+export type EngagementStatusHistory = typeof engagementStatusHistory.$inferSelect;
+export type InsertEngagementStatusHistory = typeof engagementStatusHistory.$inferInsert;

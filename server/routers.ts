@@ -49,6 +49,7 @@ import { cfdRouter } from "./routers/cfd.router";
 import { phasesRouter } from "./routers/phases.router";
 import { reqTraceabilityRouter } from "./routers/reqTraceability.router";
 import { businessCaseRouter } from "./routers/businessCase.router";
+import { engagementRouter } from "./routers/engagement.router";
 import { teamCharterRouter } from "./routers/teamCharter.router";
 import { closingReportRouter } from "./routers/closingReport.router";
 
@@ -96,6 +97,7 @@ export const appRouter = router({
   businessCase: businessCaseRouter,
   teamCharter: teamCharterRouter,
   closingReport: closingReportRouter,
+  engagement: engagementRouter,
   scopeItems: router({
     list: protectedProcedure
       .input(z.object({ projectId: z.number() }))
@@ -1403,14 +1405,22 @@ export const appRouter = router({
         role: z.string().optional(),
         job: z.string().optional(),
         phone: z.string().optional(),
+        department: z.string().optional(),
+        remark: z.string().optional(),
+        classification: z.enum(["team_member", "external", "stakeholder"]).optional(),
         isInternalTeam: z.boolean().optional(),
+        isPooledResource: z.boolean().optional(),
+        stakeholderManagerId: z.number().optional(),
+        workingSchedule: z.string().optional(),
         powerLevel: z.number().min(1).max(5).optional(),
         interestLevel: z.number().min(1).max(5).optional(),
+        currentEngagementStatus: z.string().optional(),
+        desiredEngagementStatus: z.string().optional(),
         engagementStrategy: z.string().optional(),
         communicationFrequency: z.string().optional(),
         communicationChannel: z.string().optional(),
         communicationMessage: z.string().optional(),
-         communicationResponsible: z.string().optional(),
+        communicationResponsible: z.string().optional(),
         communicationResponsibleId: z.number().optional(),
         notes: z.string().optional(),
         costPerHour: z.string().optional(),
@@ -1471,9 +1481,17 @@ export const appRouter = router({
           role: z.string().optional(),
           job: z.string().optional(),
           phone: z.string().optional(),
+          department: z.string().optional(),
+          remark: z.string().optional(),
+          classification: z.enum(["team_member", "external", "stakeholder"]).optional(),
           isInternalTeam: z.boolean().optional(),
+          isPooledResource: z.boolean().optional(),
+          stakeholderManagerId: z.number().nullable().optional(),
+          workingSchedule: z.string().optional(),
           powerLevel: z.number().min(1).max(5).optional(),
           interestLevel: z.number().min(1).max(5).optional(),
+          currentEngagementStatus: z.string().optional(),
+          desiredEngagementStatus: z.string().optional(),
           engagementStrategy: z.string().nullable().optional(),
           communicationFrequency: z.string().optional(),
           communicationChannel: z.string().optional(),

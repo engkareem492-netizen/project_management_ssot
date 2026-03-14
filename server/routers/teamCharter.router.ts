@@ -27,6 +27,7 @@ export const teamCharterRouter = router({
       decisionMakingAuthority: z.string().optional(),
       groundRules: z.array(z.string()).optional(),
       violations: z.array(z.object({ violation: z.string(), consequence: z.string() })).optional(),
+      acknowledgements: z.array(z.object({ name: z.string(), role: z.string(), date: z.string(), signed: z.boolean() })).optional(),
       responsibilityMatrix: z.string().optional(),
       conflictResolution: z.string().optional(),
     }))

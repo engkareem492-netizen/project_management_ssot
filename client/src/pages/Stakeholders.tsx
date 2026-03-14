@@ -35,6 +35,8 @@ import { formatDate } from "@/lib/dateUtils";
 import { CustomFieldsSection } from "@/components/CustomFieldsSection";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+type Classification = "team_member" | "external" | "stakeholder";
+
 type StakeholderFormData = {
   fullName: string;
   email: string;
@@ -42,9 +44,17 @@ type StakeholderFormData = {
   role: string;
   job: string;
   phone: string;
+  department: string;
+  remark: string;
+  classification: Classification;
   isInternalTeam: boolean;
+  isPooledResource: boolean;
+  stakeholderManagerId: string;
+  workingSchedule: string;
   powerLevel: number;
   interestLevel: number;
+  currentEngagementStatus: string;
+  desiredEngagementStatus: string;
   engagementStrategy: string;
   communicationFrequency: string;
   communicationChannel: string;
@@ -58,11 +68,26 @@ type StakeholderFormData = {
 
 const EMPTY_FORM: StakeholderFormData = {
   fullName: "", email: "", position: "", role: "", job: "", phone: "",
-  isInternalTeam: false, powerLevel: 3, interestLevel: 3,
+  department: "", remark: "",
+  classification: "stakeholder",
+  isInternalTeam: false, isPooledResource: false,
+  stakeholderManagerId: "", workingSchedule: "",
+  powerLevel: 3, interestLevel: 3,
+  currentEngagementStatus: "", desiredEngagementStatus: "",
   engagementStrategy: "", communicationFrequency: "", communicationChannel: "",
   communicationMessage: "", communicationResponsible: "", communicationResponsibleId: undefined, notes: "",
   costPerHour: "", costPerDay: "",
 };
+
+const ENGAGEMENT_STATUSES = ["Unaware", "Resistant", "Neutral", "Supportive", "Leading"];
+const ENGAGEMENT_STATUS_COLORS: Record<string, string> = {
+  Unaware: "bg-gray-100 text-gray-700",
+  Resistant: "bg-red-100 text-red-700",
+  Neutral: "bg-yellow-100 text-yellow-700",
+  Supportive: "bg-blue-100 text-blue-700",
+  Leading: "bg-green-100 text-green-700",
+};
+const WORKING_SCHEDULE_OPTIONS = ["Full-Time", "Part-Time", "Contractor", "Consultant", "Secondment"];
 
 const ENGAGEMENT_STRATEGIES = [
   "Manage Closely",
@@ -708,9 +733,17 @@ export default function Stakeholders() {
       role: s.role || "",
       job: s.job || "",
       phone: s.phone || "",
+      department: s.department || "",
+      remark: s.remark || "",
+      classification: (s.classification as Classification) || "stakeholder",
       isInternalTeam: s.isInternalTeam || false,
+      isPooledResource: s.isPooledResource || false,
+      stakeholderManagerId: s.stakeholderManagerId?.toString() || "",
+      workingSchedule: s.workingSchedule || "",
       powerLevel: s.powerLevel ?? 3,
       interestLevel: s.interestLevel ?? 3,
+      currentEngagementStatus: s.currentEngagementStatus || "",
+      desiredEngagementStatus: s.desiredEngagementStatus || "",
       engagementStrategy: s.engagementStrategy || "",
       communicationFrequency: s.communicationFrequency || "",
       communicationChannel: s.communicationChannel || "",
@@ -736,14 +769,19 @@ export default function Stakeholders() {
         s.job?.toLowerCase().includes(q);
       const matchesTab =
         activeTab === "all" ||
+        (activeTab === "team_member" && (s.classification === "team_member" || s.isInternalTeam)) ||
+        (activeTab === "external" && (s.classification === "external" || (!s.isInternalTeam && s.classification !== "stakeholder"))) ||
+        (activeTab === "stakeholder" && (s.classification === "stakeholder" || (!s.isInternalTeam && !s.classification))) ||
         (activeTab === "internal" && s.isInternalTeam) ||
-        (activeTab === "external" && !s.isInternalTeam);
+        (activeTab === "pooled" && s.isPooledResource);
       return matchesSearch && matchesTab;
     });
   }, [stakeholders, searchTerm, activeTab]);
 
-  const internalCount = stakeholders.filter((s) => s.isInternalTeam).length;
-  const externalCount = stakeholders.filter((s) => !s.isInternalTeam).length;
+  const internalCount = stakeholders.filter((s) => s.isInternalTeam || s.classification === "team_member").length;
+  const externalCount = stakeholders.filter((s) => s.classification === "external").length;
+  const stakeholderCount = stakeholders.filter((s) => s.classification === "stakeholder" || (!s.isInternalTeam && !s.classification)).length;
+  const pooledCount = stakeholders.filter((s) => s.isPooledResource).length;
 
   if (isLoading) {
     return (
@@ -843,24 +881,91 @@ export default function Stakeholders() {
         </div>
       </div>
 
-      {/* Internal Team */}
+      {/* Classification */}
       <div className="space-y-3 border-t pt-3">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Team Classification</p>
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Classification</p>
+        <div className="grid grid-cols-3 gap-2">
+          {(["team_member", "external", "stakeholder"] as Classification[]).map((cls) => (
+            <button
+              key={cls}
+              type="button"
+              onClick={() => setFormData({
+                ...formData,
+                classification: cls,
+                isInternalTeam: cls === "team_member",
+              })}
+              className={`px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                formData.classification === cls
+                  ? cls === "team_member" ? "bg-blue-600 text-white border-blue-600"
+                  : cls === "external" ? "bg-purple-600 text-white border-purple-600"
+                  : "bg-orange-500 text-white border-orange-500"
+                  : "border-border text-muted-foreground hover:bg-muted"
+              }`}
+            >
+              {cls === "team_member" ? "Team Member" : cls === "external" ? "External" : "Stakeholder"}
+            </button>
+          ))}
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <Label>Department</Label>
+            <Input
+              value={formData.department}
+              onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+              placeholder="IT, Finance, Operations..."
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Working Schedule</Label>
+            <Select value={formData.workingSchedule} onValueChange={(v) => setFormData({ ...formData, workingSchedule: v })}>
+              <SelectTrigger><SelectValue placeholder="Select schedule..." /></SelectTrigger>
+              <SelectContent>
+                {WORKING_SCHEDULE_OPTIONS.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
         <div className="flex items-center gap-3">
           <Switch
-            checked={formData.isInternalTeam}
-            onCheckedChange={(v) => setFormData({ ...formData, isInternalTeam: v })}
+            checked={formData.isPooledResource}
+            onCheckedChange={(v) => setFormData({ ...formData, isPooledResource: v })}
           />
-          <Label>Internal Team Member</Label>
-          {formData.isInternalTeam && (
-            <Badge className="bg-blue-100 text-blue-700 border-blue-200">Internal</Badge>
-          )}
+          <Label>Pooled Resource (shared across projects)</Label>
+        </div>
+        <div className="space-y-2">
+          <Label>Remark</Label>
+          <Textarea
+            value={formData.remark}
+            onChange={(e) => setFormData({ ...formData, remark: e.target.value })}
+            placeholder="Any special notes about this person's role or constraints..."
+            rows={2}
+          />
         </div>
       </div>
 
       {/* Engagement */}
       <div className="space-y-3 border-t pt-3">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Engagement & Communication</p>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <Label>Current Engagement Status</Label>
+            <Select value={formData.currentEngagementStatus} onValueChange={(v) => setFormData({ ...formData, currentEngagementStatus: v })}>
+              <SelectTrigger><SelectValue placeholder="Current status..." /></SelectTrigger>
+              <SelectContent>
+                {ENGAGEMENT_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Desired Engagement Status</Label>
+            <Select value={formData.desiredEngagementStatus} onValueChange={(v) => setFormData({ ...formData, desiredEngagementStatus: v })}>
+              <SelectTrigger><SelectValue placeholder="Desired status..." /></SelectTrigger>
+              <SelectContent>
+                {ENGAGEMENT_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label>Power Level: {formData.powerLevel}/5</Label>
@@ -1052,11 +1157,13 @@ export default function Stakeholders() {
             className="pl-10"
           />
         </div>
-        <div className="flex gap-1 border rounded-lg p-1">
+        <div className="flex gap-1 border rounded-lg p-1 flex-wrap">
           {[
-            { key: "all", label: "All" },
-            { key: "internal", label: "Internal Team" },
-            { key: "external", label: "External" },
+            { key: "all", label: `All (${stakeholders.length})` },
+            { key: "team_member", label: `Team Members (${internalCount})` },
+            { key: "external", label: `External (${externalCount})` },
+            { key: "stakeholder", label: `Stakeholders (${stakeholderCount})` },
+            { key: "pooled", label: `Pooled (${pooledCount})` },
           ].map((t) => (
             <button
               key={t.key}
@@ -1291,11 +1398,18 @@ export default function Stakeholders() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    {s.isInternalTeam ? (
-                      <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-xs">Internal</Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-xs">External</Badge>
-                    )}
+                    <div className="flex flex-col gap-1">
+                      {s.classification === "team_member" || s.isInternalTeam ? (
+                        <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-xs">Team Member</Badge>
+                      ) : s.classification === "external" ? (
+                        <Badge className="bg-purple-100 text-purple-700 border-purple-200 text-xs">External</Badge>
+                      ) : (
+                        <Badge className="bg-orange-100 text-orange-700 border-orange-200 text-xs">Stakeholder</Badge>
+                      )}
+                      {s.isPooledResource && (
+                        <Badge variant="outline" className="text-xs text-teal-600 border-teal-300">Pooled</Badge>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <div className="text-sm">
@@ -1320,13 +1434,30 @@ export default function Stakeholders() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    {s.engagementStrategy ? (
-                      <Badge className={`text-xs border ${getEngagementBadge(s.engagementStrategy)}`}>
-                        {s.engagementStrategy}
-                      </Badge>
-                    ) : (
-                      <span className="text-muted-foreground text-xs">—</span>
-                    )}
+                    <div className="space-y-1">
+                      {s.engagementStrategy ? (
+                        <Badge className={`text-xs border ${getEngagementBadge(s.engagementStrategy)}`}>
+                          {s.engagementStrategy}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">—</span>
+                      )}
+                      {(s.currentEngagementStatus || s.desiredEngagementStatus) && (
+                        <div className="flex items-center gap-1 text-xs">
+                          {s.currentEngagementStatus && (
+                            <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${ENGAGEMENT_STATUS_COLORS[s.currentEngagementStatus] || "bg-gray-100 text-gray-700"}`}>
+                              C: {s.currentEngagementStatus}
+                            </span>
+                          )}
+                          {s.currentEngagementStatus && s.desiredEngagementStatus && <span className="text-muted-foreground">→</span>}
+                          {s.desiredEngagementStatus && (
+                            <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${ENGAGEMENT_STATUS_COLORS[s.desiredEngagementStatus] || "bg-gray-100 text-gray-700"}`}>
+                              D: {s.desiredEngagementStatus}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <div className="text-xs text-muted-foreground">
@@ -1411,6 +1542,7 @@ export default function Stakeholders() {
                   projectId: currentProjectId,
                   costPerHour: formData.costPerHour || undefined,
                   costPerDay: formData.costPerDay || undefined,
+                  stakeholderManagerId: formData.stakeholderManagerId ? parseInt(formData.stakeholderManagerId) : undefined,
                 });
               }}
               disabled={createMutation.isPending}
@@ -1452,6 +1584,7 @@ export default function Stakeholders() {
                     engagementStrategy: derivedStrategy,
                     costPerHour: formData.costPerHour || null,
                     costPerDay: formData.costPerDay || null,
+                    stakeholderManagerId: formData.stakeholderManagerId ? parseInt(formData.stakeholderManagerId) : null,
                   },
                 });
               }}

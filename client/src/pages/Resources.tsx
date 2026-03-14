@@ -184,6 +184,7 @@ export default function Resources() {
           <TabsTrigger value="rbs"><Network className="w-3.5 h-3.5 mr-1.5" />RBS</TabsTrigger>
           <TabsTrigger value="rmp"><BookOpen className="w-3.5 h-3.5 mr-1.5" />Resource Mgmt Plan</TabsTrigger>
           <TabsTrigger value="calendar"><CalendarDays className="w-3.5 h-3.5 mr-1.5" />Resource Calendar</TabsTrigger>
+          <TabsTrigger value="utilization"><BarChart2 className="w-3.5 h-3.5 mr-1.5" />Utilization</TabsTrigger>
         </TabsList>
 
         <TabsContent value="workload" className="mt-0 space-y-6">
@@ -439,6 +440,11 @@ export default function Resources() {
         {/* ── Resource Calendar Tab ── */}
         <TabsContent value="calendar" className="mt-0">
           <ResourceCalendarTab stakeholders={stakeholders} projectId={projectId} />
+        </TabsContent>
+
+        {/* ── Utilization Tab ── */}
+        <TabsContent value="utilization" className="mt-0">
+          <UtilizationTab stakeholders={stakeholders} tasks={tasks} />
         </TabsContent>
       </Tabs>
 
@@ -911,6 +917,160 @@ function ResourceCalendarTab({ stakeholders, projectId }: { stakeholders: any[];
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────────────── */
+/* Utilization Tab                                                              */
+/* Shows task allocation per resource across a date range with daily/weekly/  */
+/* monthly breakdown and colour-coded utilization heat map.                    */
+/* ─────────────────────────────────────────────────────────────────────────── */
+function UtilizationTab({ stakeholders, tasks }: { stakeholders: any[]; tasks: any[] }) {
+  const [viewMode, setViewMode] = useState<"daily" | "weekly" | "monthly">("weekly");
+  const [rangeStart, setRangeStart] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - d.getDay()); // start of this week
+    return d.toISOString().slice(0, 10);
+  });
+  const [rangeEnd, setRangeEnd] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 27); // 4 weeks ahead
+    return d.toISOString().slice(0, 10);
+  });
+
+  const periods = useMemo(() => {
+    const start = new Date(rangeStart);
+    const end = new Date(rangeEnd);
+    const result: { label: string; start: Date; end: Date }[] = [];
+    if (viewMode === "daily") {
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        const day = new Date(d);
+        result.push({ label: day.toLocaleDateString("en-US", { month: "short", day: "numeric" }), start: new Date(day), end: new Date(day) });
+      }
+    } else if (viewMode === "weekly") {
+      let cur = new Date(start);
+      while (cur <= end) {
+        const wStart = new Date(cur);
+        const wEnd = new Date(cur);
+        wEnd.setDate(wEnd.getDate() + 6);
+        result.push({ label: `${wStart.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`, start: wStart, end: wEnd > end ? end : wEnd });
+        cur.setDate(cur.getDate() + 7);
+      }
+    } else {
+      let cur = new Date(start.getFullYear(), start.getMonth(), 1);
+      while (cur <= end) {
+        const mStart = new Date(cur);
+        const mEnd = new Date(cur.getFullYear(), cur.getMonth() + 1, 0);
+        result.push({ label: mStart.toLocaleDateString("en-US", { month: "short", year: "numeric" }), start: mStart, end: mEnd > end ? end : mEnd });
+        cur.setMonth(cur.getMonth() + 1);
+      }
+    }
+    return result;
+  }, [rangeStart, rangeEnd, viewMode]);
+
+  const utilizationData = useMemo(() => {
+    return stakeholders.map((s: any) => {
+      const name = s.fullName ?? s.name ?? `#${s.id}`;
+      const myTasks = tasks.filter((t: any) =>
+        t.responsible === name || t.responsible === s.fullName || t.responsible === s.name
+      );
+      const periodCounts = periods.map((p) => {
+        const count = myTasks.filter((t: any) => {
+          if (!t.dueDate) return false;
+          const due = new Date(t.dueDate);
+          return due >= p.start && due <= p.end;
+        }).length;
+        return count;
+      });
+      const total = myTasks.length;
+      const maxInPeriod = Math.max(...periodCounts, 1);
+      return { id: s.id, name, role: s.role ?? "", periodCounts, total, maxInPeriod };
+    });
+  }, [stakeholders, tasks, periods]);
+
+  const globalMax = Math.max(...utilizationData.map((u) => u.maxInPeriod), 1);
+
+  function heatColor(count: number, max: number) {
+    if (count === 0) return "bg-gray-50 text-gray-400";
+    const ratio = count / max;
+    if (ratio >= 0.8) return "bg-red-500 text-white font-semibold";
+    if (ratio >= 0.5) return "bg-orange-400 text-white";
+    if (ratio >= 0.25) return "bg-yellow-300 text-yellow-900";
+    return "bg-green-100 text-green-800";
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Controls */}
+      <Card className="p-4">
+        <div className="flex flex-wrap items-end gap-4">
+          <div className="space-y-1">
+            <Label className="text-xs">View</Label>
+            <div className="flex gap-1">
+              {(["daily", "weekly", "monthly"] as const).map((m) => (
+                <Button key={m} size="sm" variant={viewMode === m ? "default" : "outline"} className="h-7 text-xs capitalize" onClick={() => setViewMode(m)}>{m}</Button>
+              ))}
+            </div>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">From</Label>
+            <Input type="date" value={rangeStart} onChange={(e) => setRangeStart(e.target.value)} className="h-7 text-xs w-36" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">To</Label>
+            <Input type="date" value={rangeEnd} onChange={(e) => setRangeEnd(e.target.value)} className="h-7 text-xs w-36" />
+          </div>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground ml-auto">
+            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-green-100 inline-block" /> Low</span>
+            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-yellow-300 inline-block" /> Medium</span>
+            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-orange-400 inline-block" /> High</span>
+            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-red-500 inline-block" /> Overloaded</span>
+          </div>
+        </div>
+      </Card>
+
+      {/* Heat map table */}
+      <Card className="overflow-x-auto">
+        <div className="min-w-max">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="bg-muted/50 border-b">
+                <th className="text-left px-3 py-2 font-medium w-40 sticky left-0 bg-muted/50">Resource</th>
+                <th className="text-center px-2 py-2 font-medium w-16">Total</th>
+                {periods.map((p, i) => (
+                  <th key={i} className="text-center px-1 py-2 font-medium min-w-[60px]">{p.label}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {utilizationData.map((u) => (
+                <tr key={u.id} className="border-b hover:bg-muted/20">
+                  <td className="px-3 py-2 sticky left-0 bg-background">
+                    <div className="font-medium truncate max-w-36">{u.name}</div>
+                    {u.role && <div className="text-muted-foreground truncate">{u.role}</div>}
+                  </td>
+                  <td className="text-center px-2 py-2 font-semibold">{u.total}</td>
+                  {u.periodCounts.map((count, i) => (
+                    <td key={i} className="px-1 py-1">
+                      <div className={`rounded text-center py-1 px-1 ${heatColor(count, globalMax)}`}>
+                        {count > 0 ? count : "—"}
+                      </div>
+                    </td>
+                  ))}
+                </tr>
+              ))}
+              {utilizationData.length === 0 && (
+                <tr>
+                  <td colSpan={periods.length + 2} className="text-center text-muted-foreground py-10">
+                    No team members found.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
     </div>
   );
 }

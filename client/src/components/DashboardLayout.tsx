@@ -83,6 +83,8 @@ import {
   TrendingUp,
   CalendarDays,
   Network,
+  Radio,
+  UserCog,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import {
@@ -162,6 +164,8 @@ const menuItems: MenuItem[] = [
       { icon: Map, label: "Engagement Map", path: "/relationships" },
       { icon: BarChart2, label: "Workload & Resources", path: "/resources" },
       { icon: Shield, label: "Team Charter", path: "/team-charter" },
+      { icon: UserCog, label: "Engagement Plan", path: "/engagement-plan" },
+      { icon: Radio, label: "Communication Plan", path: "/communication-plan" },
     ],
   },
   { icon: Package, label: "Deliverables", path: "/deliverables" },

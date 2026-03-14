@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Loader2, Save, Users, Plus, Trash2, Shield, MessageSquare, Gavel, BookOpen } from "lucide-react";
+import { Loader2, Save, Users, Plus, Trash2, Shield, MessageSquare, Gavel, BookOpen, UserCheck, CheckCircle2 } from "lucide-react";
 
 export default function TeamCharter() {
   const { currentProjectId } = useProject();
@@ -26,7 +26,10 @@ export default function TeamCharter() {
   const [form, setForm] = useState<Record<string, string>>({});
   const [coreValues, setCoreValues] = useState<string[]>([]);
   const [groundRules, setGroundRules] = useState<string[]>([]);
-  const [violations, setViolations] = useState<Array<{ violation: string; consequence: string }>>([]);
+  const [violations, setViolations] = useState<Array<{ violation: string; consequence: string }>>([])
+  const [acknowledgements, setAcknowledgements] = useState<Array<{ name: string; role: string; date: string; signed: boolean }>>([])
+
+  const { data: stakeholders = [] } = trpc.stakeholders.list.useQuery({ projectId }, { enabled });
 
   const set = (f: string, v: string) => setForm(prev => ({ ...prev, [f]: v }));
 
@@ -38,6 +41,7 @@ export default function TeamCharter() {
     setCoreValues((charter as any)?.coreValues ?? []);
     setGroundRules((charter as any)?.groundRules ?? []);
     setViolations((charter as any)?.violations ?? []);
+    setAcknowledgements((charter as any)?.acknowledgements ?? []);
     setEditing(true);
   };
 
@@ -52,6 +56,7 @@ export default function TeamCharter() {
       decisionMakingAuthority: form.decisionMakingAuthority || undefined,
       responsibilityMatrix: form.responsibilityMatrix || undefined,
       conflictResolution: form.conflictResolution || undefined,
+      acknowledgements: acknowledgements as any,
     });
   };
 
@@ -91,6 +96,8 @@ export default function TeamCharter() {
           <TabsTrigger value="communication"><MessageSquare className="w-3.5 h-3.5 mr-1" />Communication</TabsTrigger>
           <TabsTrigger value="decisions"><Gavel className="w-3.5 h-3.5 mr-1" />Decisions & Roles</TabsTrigger>
           <TabsTrigger value="rules"><Shield className="w-3.5 h-3.5 mr-1" />Ground Rules & Violations</TabsTrigger>
+          <TabsTrigger value="succession"><UserCheck className="w-3.5 h-3.5 mr-1" />Succession & Delegation</TabsTrigger>
+          <TabsTrigger value="signatures"><CheckCircle2 className="w-3.5 h-3.5 mr-1" />Acknowledgements</TabsTrigger>
         </TabsList>
 
         {/* ── Core Values ── */}
@@ -249,6 +256,97 @@ export default function TeamCharter() {
                           <tr key={i} className="border-b last:border-0">
                             <td className="py-2 pr-4 text-red-700">{v.violation}</td>
                             <td className="py-2 text-muted-foreground">{v.consequence}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        {/* ── Succession & Delegation ── */}
+        <TabsContent value="succession" className="space-y-4 mt-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Succession & Delegation Plan</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-xs text-muted-foreground mb-3">Team members marked with succession or delegation requirements in the Stakeholder Register appear here.</p>
+              {(stakeholders as any[]).filter((s: any) => s.needsSuccessionPlan || s.hasDelegation).length === 0 ? (
+                <p className="text-sm text-muted-foreground italic">No succession or delegation flags set. Go to Stakeholder Register → edit a team member → check "Needs Succession Plan" or "Has Delegation".</p>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead><tr className="border-b text-muted-foreground text-xs uppercase">
+                    <th className="text-left py-1 pr-4">Name</th>
+                    <th className="text-left py-1 pr-4">Role</th>
+                    <th className="text-center py-1 pr-4">Succession Plan</th>
+                    <th className="text-center py-1">Delegation</th>
+                  </tr></thead>
+                  <tbody>
+                    {(stakeholders as any[]).filter((s: any) => s.needsSuccessionPlan || s.hasDelegation).map((s: any) => (
+                      <tr key={s.id} className="border-b last:border-0">
+                        <td className="py-2 pr-4 font-medium">{s.fullName ?? s.name ?? s.stakeholderName}</td>
+                        <td className="py-2 pr-4 text-muted-foreground">{s.role ?? s.stakeholderRole ?? "—"}</td>
+                        <td className="py-2 pr-4 text-center">{s.needsSuccessionPlan ? <span className="text-amber-600 font-medium">Required</span> : <span className="text-muted-foreground">—</span>}</td>
+                        <td className="py-2 text-center">{s.hasDelegation ? <span className="text-blue-600 font-medium">Yes</span> : <span className="text-muted-foreground">—</span>}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ── Acknowledgements / Signatures ── */}
+        <TabsContent value="signatures" className="space-y-4 mt-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center justify-between">
+                <span>Team Acknowledgements</span>
+                {editing && (
+                  <Button size="sm" variant="outline" onClick={() => setAcknowledgements(prev => [...prev, { name: "", role: "", date: new Date().toISOString().slice(0, 10), signed: false }])}>
+                    <Plus className="w-3.5 h-3.5 mr-1" /> Add Member
+                  </Button>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-xs text-muted-foreground mb-3">Each team member acknowledges they have read, understood, and agreed to the Team Charter.</p>
+              {editing ? (
+                <div className="space-y-2">
+                  {acknowledgements.length === 0 && <p className="text-sm text-muted-foreground italic">No acknowledgements yet. Add team members above.</p>}
+                  {acknowledgements.map((a, i) => (
+                    <div key={i} className="flex gap-2 items-center">
+                      <input type="checkbox" checked={a.signed} onChange={e => setAcknowledgements(prev => prev.map((x, idx) => idx === i ? { ...x, signed: e.target.checked } : x))} className="w-4 h-4" />
+                      <input className="flex-1 border rounded px-2 py-1 text-sm" placeholder="Full name" value={a.name} onChange={e => setAcknowledgements(prev => prev.map((x, idx) => idx === i ? { ...x, name: e.target.value } : x))} />
+                      <input className="flex-1 border rounded px-2 py-1 text-sm" placeholder="Role" value={a.role} onChange={e => setAcknowledgements(prev => prev.map((x, idx) => idx === i ? { ...x, role: e.target.value } : x))} />
+                      <input type="date" className="border rounded px-2 py-1 text-sm" value={a.date} onChange={e => setAcknowledgements(prev => prev.map((x, idx) => idx === i ? { ...x, date: e.target.value } : x))} />
+                      <Button size="icon" variant="ghost" onClick={() => setAcknowledgements(prev => prev.filter((_, idx) => idx !== i))} className="text-destructive"><Trash2 className="w-4 h-4" /></Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div>
+                  {(tc?.acknowledgements ?? []).length === 0 ? (
+                    <p className="text-sm text-muted-foreground italic">No acknowledgements recorded yet.</p>
+                  ) : (
+                    <table className="w-full text-sm">
+                      <thead><tr className="border-b text-muted-foreground text-xs uppercase">
+                        <th className="text-left py-1 pr-4">Name</th>
+                        <th className="text-left py-1 pr-4">Role</th>
+                        <th className="text-center py-1 pr-4">Date</th>
+                        <th className="text-center py-1">Signed</th>
+                      </tr></thead>
+                      <tbody>
+                        {(tc?.acknowledgements ?? []).map((a: any, i: number) => (
+                          <tr key={i} className="border-b last:border-0">
+                            <td className="py-2 pr-4 font-medium">{a.name}</td>
+                            <td className="py-2 pr-4 text-muted-foreground">{a.role}</td>
+                            <td className="py-2 pr-4 text-center text-muted-foreground">{a.date}</td>
+                            <td className="py-2 text-center">{a.signed ? <span className="text-green-600 font-medium flex items-center justify-center gap-1"><CheckCircle2 className="w-4 h-4" /> Signed</span> : <span className="text-muted-foreground">Pending</span>}</td>
                           </tr>
                         ))}
                       </tbody>
