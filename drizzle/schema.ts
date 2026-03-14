@@ -1107,6 +1107,19 @@ export const projectCharter = mysqlTable("projectCharter", {
   budget: decimal("budget", { precision: 15, scale: 2 }),
   currency: varchar("currency", { length: 10 }).default("USD"),
   notes: text("notes"),
+  // ── Business Case ──
+  businessCaseCause: varchar("businessCaseCause", { length: 100 }),  // Customer Requirement | Governmental | Regulation | Process Improvement | Technology Change | Strategic Initiative | Other
+  businessCaseSummary: text("businessCaseSummary"),
+  feasibilityStudy: text("feasibilityStudy"),
+  // ── Governance ──
+  governanceStructure: text("governanceStructure"),
+  pmResponsibilities: text("pmResponsibilities"),
+  escalationPath: text("escalationPath"),
+  decisionAuthority: text("decisionAuthority"),
+  // ── Need Assessment & Benefits ──
+  needAssessment: text("needAssessment"),
+  benefitsManagementPlan: text("benefitsManagementPlan"),
+  expectedBenefits: json("expectedBenefits").$type<Array<{ benefit: string; metric: string; targetDate: string }>>(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -1618,3 +1631,195 @@ export const taskStatusUpdates = mysqlTable("taskStatusUpdates", {
 });
 export type TaskStatusUpdate = typeof taskStatusUpdates.$inferSelect;
 export type InsertTaskStatusUpdate = typeof taskStatusUpdates.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────
+// Business Case Document — one record per project
+// ─────────────────────────────────────────────────────────────
+export const businessCase = mysqlTable("businessCase", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull().unique(),
+  // Justification
+  projectJustification: text("projectJustification"),
+  problemStatement: text("problemStatement"),
+  alternativesConsidered: text("alternativesConsidered"),
+  recommendedSolution: text("recommendedSolution"),
+  // Strategic Alignment
+  strategicObjectives: text("strategicObjectives"),
+  alignmentRationale: text("alignmentRationale"),
+  // Cost-Benefit Analysis
+  estimatedCost: decimal("estimatedCost", { precision: 15, scale: 2 }),
+  estimatedBenefit: decimal("estimatedBenefit", { precision: 15, scale: 2 }),
+  roi: decimal("roi", { precision: 8, scale: 2 }),
+  paybackPeriodMonths: int("paybackPeriodMonths"),
+  costBenefitDetails: json("costBenefitDetails").$type<Array<{ item: string; cost: string; benefit: string; notes: string }>>(),
+  // Success Measurement
+  successMeasures: text("successMeasures"),
+  reportSections: json("reportSections").$type<Array<{ section: string; metric: string; target: string }>>(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type BusinessCase = typeof businessCase.$inferSelect;
+export type InsertBusinessCase = typeof businessCase.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────
+// Project OKRs — Objectives & Key Results
+// ─────────────────────────────────────────────────────────────
+export const projectOKRs = mysqlTable("projectOKRs", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  okrCode: varchar("okrCode", { length: 30 }),
+  objective: varchar("objective", { length: 500 }).notNull(),
+  keyResults: json("keyResults").$type<Array<{ kr: string; target: string; current: string; unit: string; status: string }>>(),
+  linkedReportSection: varchar("linkedReportSection", { length: 200 }),
+  owner: varchar("owner", { length: 200 }),
+  ownerId: int("ownerId"),
+  dueDate: date("dueDate"),
+  status: mysqlEnum("status", ["On Track", "At Risk", "Behind", "Achieved", "Cancelled"]).default("On Track"),
+  progressPct: int("progressPct").default(0),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ProjectOKR = typeof projectOKRs.$inferSelect;
+export type InsertProjectOKR = typeof projectOKRs.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────
+// Team Charter — one record per project
+// ─────────────────────────────────────────────────────────────
+export const teamCharter = mysqlTable("teamCharter", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull().unique(),
+  coreValues: json("coreValues").$type<string[]>(),
+  communicationProtocol: text("communicationProtocol"),
+  meetingCadence: text("meetingCadence"),
+  decisionMakingAuthority: text("decisionMakingAuthority"),
+  groundRules: json("groundRules").$type<string[]>(),
+  violations: json("violations").$type<Array<{ violation: string; consequence: string }>>(),
+  responsibilityMatrix: text("responsibilityMatrix"),
+  conflictResolution: text("conflictResolution"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type TeamCharter = typeof teamCharter.$inferSelect;
+export type InsertTeamCharter = typeof teamCharter.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────
+// Stakeholder Skills — skills per team member (linked to stakeholders)
+// ─────────────────────────────────────────────────────────────
+export const stakeholderSkills = mysqlTable("stakeholderSkills", {
+  id: int("id").autoincrement().primaryKey(),
+  stakeholderId: int("stakeholderId").notNull(),
+  projectId: int("projectId").notNull(),
+  skillName: varchar("skillName", { length: 200 }).notNull(),
+  category: varchar("category", { length: 100 }),  // Technical | Soft | Domain | Leadership
+  proficiencyLevel: mysqlEnum("proficiencyLevel", ["Beginner", "Intermediate", "Advanced", "Expert"]).default("Intermediate"),
+  developmentPlanNote: text("developmentPlanNote"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type StakeholderSkill = typeof stakeholderSkills.$inferSelect;
+export type InsertStakeholderSkill = typeof stakeholderSkills.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────
+// Resource Calendar — availability calendar per resource
+// ─────────────────────────────────────────────────────────────
+export const resourceCalendar = mysqlTable("resourceCalendar", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  stakeholderId: int("stakeholderId").notNull(),
+  entryDate: date("entryDate").notNull(),
+  availabilityPct: int("availabilityPct").default(100),  // 0-100%
+  type: mysqlEnum("type", ["Working", "Leave", "Holiday", "Training", "Partial"]).default("Working"),
+  notes: varchar("notes", { length: 300 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type ResourceCalendarEntry = typeof resourceCalendar.$inferSelect;
+export type InsertResourceCalendarEntry = typeof resourceCalendar.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────
+// Resource Breakdown Structure — hierarchical resource categories
+// ─────────────────────────────────────────────────────────────
+export const resourceBreakdownStructure = mysqlTable("resourceBreakdownStructure", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  parentId: int("parentId"),
+  code: varchar("code", { length: 50 }),
+  name: varchar("name", { length: 200 }).notNull(),
+  type: mysqlEnum("type", ["Human", "Material", "Equipment", "Financial", "Other"]).default("Human"),
+  description: text("description"),
+  unit: varchar("unit", { length: 50 }),
+  estimatedQuantity: decimal("estimatedQuantity", { precision: 10, scale: 2 }),
+  unitCost: decimal("unitCost", { precision: 12, scale: 2 }),
+  level: int("level").default(1),
+  sortOrder: int("sortOrder").default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ResourceBreakdownStructureItem = typeof resourceBreakdownStructure.$inferSelect;
+export type InsertResourceBreakdownStructureItem = typeof resourceBreakdownStructure.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────
+// Resource Management Plan — one record per project
+// ─────────────────────────────────────────────────────────────
+export const resourceManagementPlan = mysqlTable("resourceManagementPlan", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull().unique(),
+  acquisitionStrategy: text("acquisitionStrategy"),
+  releaseStrategy: text("releaseStrategy"),
+  trainingNeeds: text("trainingNeeds"),
+  recognitionRewards: text("recognitionRewards"),
+  complianceRequirements: text("complianceRequirements"),
+  safetyConsiderations: text("safetyConsiderations"),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ResourceManagementPlan = typeof resourceManagementPlan.$inferSelect;
+export type InsertResourceManagementPlan = typeof resourceManagementPlan.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────
+// Closing Project Report — one record per project
+// ─────────────────────────────────────────────────────────────
+export const closingReport = mysqlTable("closingReport", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull().unique(),
+  // Objective Status
+  objectivesStatus: json("objectivesStatus").$type<Array<{ objective: string; status: "Met" | "Partially Met" | "Not Met"; completionPct: number; notes: string }>>(),
+  // Funding
+  initialBudget: decimal("initialBudget", { precision: 15, scale: 2 }),
+  finalCost: decimal("finalCost", { precision: 15, scale: 2 }),
+  budgetVariance: decimal("budgetVariance", { precision: 15, scale: 2 }),
+  fundingNotes: text("fundingNotes"),
+  // Closure Criteria
+  closureCriteria: json("closureCriteria").$type<Array<{ criterion: string; met: boolean; notes: string }>>(),
+  closureJustification: text("closureJustification"),
+  lessonsLearnedSummary: text("lessonsLearnedSummary"),
+  handoverNotes: text("handoverNotes"),
+  closedDate: date("closedDate"),
+  closedById: int("closedById"),
+  closedBy: varchar("closedBy", { length: 200 }),
+  status: mysqlEnum("status", ["Draft", "Under Review", "Approved", "Archived"]).default("Draft"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ClosingReport = typeof closingReport.$inferSelect;
+export type InsertClosingReport = typeof closingReport.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────
+// Stakeholder succession/delegation flags (extends stakeholders)
+// ─────────────────────────────────────────────────────────────
+export const stakeholderSuccession = mysqlTable("stakeholderSuccession", {
+  id: int("id").autoincrement().primaryKey(),
+  stakeholderId: int("stakeholderId").notNull().unique(),
+  projectId: int("projectId").notNull(),
+  requiresSuccessionPlan: boolean("requiresSuccessionPlan").default(false),
+  requiresDelegation: boolean("requiresDelegation").default(false),
+  successorId: int("successorId"),
+  successorName: varchar("successorName", { length: 200 }),
+  delegateName: varchar("delegateName", { length: 200 }),
+  delegateId: int("delegateId"),
+  successionNotes: text("successionNotes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type StakeholderSuccession = typeof stakeholderSuccession.$inferSelect;
+export type InsertStakeholderSuccession = typeof stakeholderSuccession.$inferInsert;

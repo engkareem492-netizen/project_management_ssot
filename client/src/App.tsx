@@ -56,6 +56,9 @@ import TestPlansPage from "./pages/TestPlans";
 import DefectsPage from "./pages/Defects";
 import ConceptGuidePage from "./pages/ConceptGuide";
 import ReqTraceability from "./pages/ReqTraceability";
+import BusinessCase from "./pages/BusinessCase";
+import ClosingReport from "./pages/ClosingReport";
+import TeamCharter from "./pages/TeamCharter";
 
 function Router() {
   return (
@@ -283,6 +286,21 @@ function Router() {
       <Route path={"/documents"}>
         <DashboardLayout>
           <DocumentLibrary />
+        </DashboardLayout>
+      </Route>
+      <Route path="/business-case">
+        <DashboardLayout>
+          <BusinessCase />
+        </DashboardLayout>
+      </Route>
+      <Route path="/closing-report">
+        <DashboardLayout>
+          <ClosingReport />
+        </DashboardLayout>
+      </Route>
+      <Route path="/team-charter">
+        <DashboardLayout>
+          <TeamCharter />
         </DashboardLayout>
       </Route>
       <Route path={"/404"} component={NotFound} />

@@ -33,6 +33,19 @@ export const charterRouter = router({
       budget: z.string().optional(),
       currency: z.string().optional(),
       notes: z.string().optional(),
+      // Business Case
+      businessCaseCause: z.string().optional(),
+      businessCaseSummary: z.string().optional(),
+      feasibilityStudy: z.string().optional(),
+      // Governance
+      governanceStructure: z.string().optional(),
+      pmResponsibilities: z.string().optional(),
+      escalationPath: z.string().optional(),
+      decisionAuthority: z.string().optional(),
+      // Need Assessment & Benefits
+      needAssessment: z.string().optional(),
+      benefitsManagementPlan: z.string().optional(),
+      expectedBenefits: z.array(z.object({ benefit: z.string(), metric: z.string(), targetDate: z.string() })).optional(),
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
@@ -46,9 +59,9 @@ export const charterRouter = router({
       };
       const [existing] = await db.select({ id: projectCharter.id }).from(projectCharter).where(eq(projectCharter.projectId, projectId));
       if (existing) {
-        await db.update(projectCharter).set(values).where(eq(projectCharter.projectId, projectId));
+        await db.update(projectCharter).set(values as any).where(eq(projectCharter.projectId, projectId));
       } else {
-        await db.insert(projectCharter).values({ projectId, ...values });
+        await db.insert(projectCharter).values({ projectId, ...values } as any);
       }
       const [updated] = await db.select().from(projectCharter).where(eq(projectCharter.projectId, projectId));
       return updated;

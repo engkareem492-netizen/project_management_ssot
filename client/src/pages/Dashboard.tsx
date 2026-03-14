@@ -93,6 +93,117 @@ function SectionTitle({ icon: Icon, title, action, onAction }: {
   );
 }
 
+/* ─── Constraints Widget ────────────────────────────────────────────────── */
+function ConstraintsWidget({ charter, budgetUtil, tasks, navigate }: {
+  charter: any; budgetUtil: any; tasks: any[]; navigate: (path: string) => void;
+}) {
+  const now = new Date();
+  // TIME: based on charter start/end dates
+  const startDate = charter?.projectStartDate ? new Date(charter.projectStartDate) : null;
+  const endDate = charter?.projectEndDate ? new Date(charter.projectEndDate) : null;
+  let timeStatus = "Unknown";
+  let timePct = 0;
+  if (startDate && endDate) {
+    const total = endDate.getTime() - startDate.getTime();
+    const elapsed = now.getTime() - startDate.getTime();
+    timePct = Math.min(100, Math.max(0, Math.round((elapsed / total) * 100)));
+    const doneTasks = tasks.filter((t: any) => t.status === "Done" || t.status === "Completed").length;
+    const taskPct = tasks.length > 0 ? Math.round((doneTasks / tasks.length) * 100) : 0;
+    if (now > endDate) timeStatus = "Overdue";
+    else if (taskPct >= timePct - 10) timeStatus = "On Track";
+    else if (taskPct >= timePct - 25) timeStatus = "At Risk";
+    else timeStatus = "Behind";
+  }
+  // BUDGET: based on budgetUtil
+  let budgetStatus = "Unknown";
+  let budgetPct = 0;
+  if (budgetUtil) {
+    budgetPct = budgetUtil.pct;
+    if (budgetPct > 100) budgetStatus = "Over Budget";
+    else if (budgetPct >= 90) budgetStatus = "At Risk";
+    else if (budgetPct >= 70) budgetStatus = "Caution";
+    else budgetStatus = "On Track";
+  }
+  // SCOPE: based on pending change requests (from charter phase)
+  const scopeStatus = charter?.ragStatus === "Red" ? "At Risk" : charter?.ragStatus === "Amber" ? "Caution" : "On Track";
+  // QUALITY: based on test pass rate
+  const overdueTasks = tasks.filter((t: any) => t.dueDate && new Date(t.dueDate) < now && t.status !== "Done" && t.status !== "Completed" && t.status !== "Cancelled").length;
+  const qualityStatus = overdueTasks > 5 ? "At Risk" : overdueTasks > 2 ? "Caution" : "On Track";
+
+  const STATUS_CONFIG: Record<string, { bg: string; text: string; dot: string }> = {
+    "On Track":   { bg: "bg-green-50 dark:bg-green-950/30 border-green-200",  text: "text-green-700 dark:text-green-400",  dot: "bg-green-500" },
+    "Caution":    { bg: "bg-yellow-50 dark:bg-yellow-950/30 border-yellow-200", text: "text-yellow-700 dark:text-yellow-400", dot: "bg-yellow-500" },
+    "At Risk":    { bg: "bg-orange-50 dark:bg-orange-950/30 border-orange-200", text: "text-orange-700 dark:text-orange-400", dot: "bg-orange-500" },
+    "Behind":     { bg: "bg-red-50 dark:bg-red-950/30 border-red-200",         text: "text-red-700 dark:text-red-400",       dot: "bg-red-500" },
+    "Overdue":    { bg: "bg-red-50 dark:bg-red-950/30 border-red-200",         text: "text-red-700 dark:text-red-400",       dot: "bg-red-500" },
+    "Over Budget":{ bg: "bg-red-50 dark:bg-red-950/30 border-red-200",         text: "text-red-700 dark:text-red-400",       dot: "bg-red-500" },
+    "Unknown":    { bg: "bg-muted/30 border-muted",                             text: "text-muted-foreground",                dot: "bg-muted-foreground" },
+  };
+
+  const constraints = [
+    {
+      label: "Time",
+      icon: Clock,
+      status: timeStatus,
+      detail: startDate && endDate
+        ? `${timePct}% elapsed · ${endDate > now ? Math.ceil((endDate.getTime() - now.getTime()) / 86400000) + " days left" : "Past due date"}`
+        : "No dates set",
+      href: "/gantt",
+    },
+    {
+      label: "Budget",
+      icon: DollarSign,
+      status: budgetStatus,
+      detail: budgetUtil
+        ? `${budgetPct}% committed · ${budgetUtil.currency} ${budgetUtil.spent.toLocaleString()} spent`
+        : "No budget configured",
+      href: "/budget",
+    },
+    {
+      label: "Scope",
+      icon: Target,
+      status: scopeStatus,
+      detail: charter?.ragStatus ? `Overall RAG: ${charter.ragStatus}` : "No charter defined",
+      href: "/change-requests",
+    },
+    {
+      label: "Quality",
+      icon: CheckCircle2,
+      status: qualityStatus,
+      detail: `${overdueTasks} overdue task(s)`,
+      href: "/test-cases",
+    },
+  ];
+
+  return (
+    <Card className="p-6">
+      <SectionTitle icon={Flag} title="Main Constraints" />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {constraints.map(({ label, icon: Icon, status, detail, href }) => {
+          const cfg = STATUS_CONFIG[status] ?? STATUS_CONFIG["Unknown"];
+          return (
+            <div
+              key={label}
+              className={`border rounded-xl p-4 cursor-pointer hover:shadow-sm transition-shadow ${cfg.bg}`}
+              onClick={() => navigate(href)}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-1.5">
+                  <Icon className={`w-4 h-4 ${cfg.text}`} />
+                  <span className={`text-sm font-semibold ${cfg.text}`}>{label}</span>
+                </div>
+                <span className={`w-2.5 h-2.5 rounded-full ${cfg.dot}`} />
+              </div>
+              <div className={`text-base font-bold ${cfg.text}`}>{status}</div>
+              <div className="text-xs text-muted-foreground mt-1 leading-snug">{detail}</div>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
+
 function timeAgo(dateStr: string | null | undefined): string {
   if (!dateStr) return "";
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -516,6 +627,9 @@ export default function Dashboard() {
           </div>
         </Card>
       </div>
+
+      {/* ── Main Constraints ──────────────────────────────────────────── */}
+      <ConstraintsWidget charter={charter} budgetUtil={budgetUtil} tasks={tasks} navigate={navigate} />
 
       {/* ── RAID Summary Panel ──────────────────────────────────────────── */}
       <Card className="p-6">

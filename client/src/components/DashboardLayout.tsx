@@ -77,6 +77,12 @@ import {
   RefreshCw,
   Bug,
   HelpCircle,
+  Briefcase,
+  FolderCheck,
+  Shield,
+  TrendingUp,
+  CalendarDays,
+  Network,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import {
@@ -118,6 +124,7 @@ const menuItems: MenuItem[] = [
     path: "__planning__",
     children: [
       { icon: Scroll, label: "Project Charter", path: "/charter" },
+      { icon: Briefcase, label: "Business Case", path: "/business-case" },
       { icon: ClipboardList, label: "PM Plan", path: "/pm-plan" },
       { icon: Layers2, label: "WBS Builder", path: "/wbs" },
       { icon: Crosshair, label: "Scope Items", path: "/scope" },
@@ -153,7 +160,8 @@ const menuItems: MenuItem[] = [
     children: [
       { icon: Users, label: "Stakeholders", path: "/stakeholders" },
       { icon: Map, label: "Engagement Map", path: "/relationships" },
-      { icon: BarChart2, label: "Workload", path: "/resources" },
+      { icon: BarChart2, label: "Workload & Resources", path: "/resources" },
+      { icon: Shield, label: "Team Charter", path: "/team-charter" },
     ],
   },
   { icon: Package, label: "Deliverables", path: "/deliverables" },
@@ -198,6 +206,7 @@ const menuItems: MenuItem[] = [
     ],
   },
   { icon: FileBarChart, label: "Periodic Report", path: "/periodic-report" },
+  { icon: FolderCheck, label: "Closing Report", path: "/closing-report" },
   { icon: SettingsIcon, label: "Settings", path: "/settings" },
 ];
 
