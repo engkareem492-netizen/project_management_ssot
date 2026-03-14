@@ -88,8 +88,8 @@ export default function Resources() {
   // Build workload data per stakeholder
   const workloadData = useMemo(() => {
     return stakeholders.map((s: any) => {
-      const name = s.name ?? s.stakeholderName ?? `Stakeholder ${s.id}`;
-      const assigned = tasks.filter((t: any) => t.responsible === name || t.responsible === s.name);
+      const name = s.fullName ?? s.name ?? `Stakeholder ${s.id}`;
+      const assigned = tasks.filter((t: any) => t.responsible === name || t.responsible === s.fullName || t.responsible === s.name);
       const thisWeek = assigned.filter((t: any) => isInWeek(t.dueDate, 0)).length;
       const nextWeek = assigned.filter((t: any) => isInWeek(t.dueDate, 1)).length;
       const next2 = assigned.filter((t: any) => isInWeek(t.dueDate, 2)).length;

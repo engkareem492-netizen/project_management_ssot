@@ -674,21 +674,13 @@ export async function getNextId(entityType: string, defaultPrefix: string, proje
   } else {
     // Use prefix from database configuration, not the default parameter
     actualPrefix = existing[0].prefix;
-    // Self-heal: if sequence is at 0 or stale, sync with actual max ID in the data table
+    // Always sync with actual max ID in the data table to prevent reuse of deleted/imported IDs
     let baseNumber = existing[0].currentNumber;
-    if (baseNumber === 0) {
-      // Look up the actual maximum numeric suffix from the data table for this project
-      const maxFromData = await getMaxEntityNumber(entityType, projectId, actualPrefix);
-      if (maxFromData > baseNumber) {
-        baseNumber = maxFromData;
-        // Persist the corrected base so future single-row creates are also correct
-        await db
-          .update(idSequences)
-          .set({ currentNumber: maxFromData })
-          .where(and(eq(idSequences.entityType, entityType), eq(idSequences.projectId, projectId)));
-      }
+    const maxFromData = await getMaxEntityNumber(entityType, projectId, actualPrefix);
+    if (maxFromData > baseNumber) {
+      baseNumber = maxFromData;
     }
-    // Increment existing sequence
+    // Increment
     nextNumber = baseNumber + 1;
     await db
       .update(idSequences)

@@ -30,8 +30,8 @@ export const ticketTypesRouter = router({
       projectId: z.number(),
       name: z.string().min(1),
       description: z.string().optional(),
-      responseTimeHours: z.number().min(0),
-      resolutionTimeHours: z.number().min(0),
+      responseTimeHours: z.number().min(0).optional(),
+      resolutionTimeHours: z.number().min(0).optional(),
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
@@ -40,8 +40,8 @@ export const ticketTypesRouter = router({
         projectId: input.projectId,
         name: input.name,
         description: input.description ?? null,
-        responseTimeHours: input.responseTimeHours,
-        resolutionTimeHours: input.resolutionTimeHours,
+        responseTimeHours: input.responseTimeHours ?? 0,
+        resolutionTimeHours: input.resolutionTimeHours ?? 0,
       });
       const [created] = await db.select().from(ticketTypes)
         .where(eq(ticketTypes.projectId, input.projectId))

@@ -96,7 +96,7 @@ export default function Meetings() {
   const [selectedDecision, setSelectedDecision] = useState<number | null>(null);
   const [meetingForm, setMeetingForm] = useState<MeetingForm>(emptyMeetingForm);
   const [decisionForm, setDecisionForm] = useState<DecisionForm>(emptyDecisionForm);
-  const [attendeesText, setAttendeesText] = useState("");
+
 
   // Inline create task/issue from decision dialog
   const [showInlineTask, setShowInlineTask] = useState(false);
@@ -110,7 +110,7 @@ export default function Meetings() {
   const { data: stakeholders = [] } = trpc.stakeholders.list.useQuery({ projectId }, { enabled: !!projectId });
 
   const createMeetingMutation = trpc.meetings.createMeeting.useMutation({
-    onSuccess: () => { utils.meetings.listMeetings.invalidate(); setShowCreateMeeting(false); setMeetingForm(emptyMeetingForm); setAttendeesText(""); toast.success("Meeting created"); },
+    onSuccess: () => { utils.meetings.listMeetings.invalidate(); setShowCreateMeeting(false); setMeetingForm(emptyMeetingForm); toast.success("Meeting created"); },
     onError: (e) => toast.error(e.message),
   });
   const updateMeetingMutation = trpc.meetings.updateMeeting.useMutation({
@@ -172,7 +172,6 @@ export default function Meetings() {
       minutes: m.minutes ?? "",
       status: (m.status as MeetingStatus) ?? "Scheduled",
     });
-    setAttendeesText(((m.attendees as string[]) ?? []).join(", "));
     setShowEditMeeting(true);
   }
 
@@ -224,7 +223,7 @@ export default function Meetings() {
           <div className="flex gap-2">
             <Input placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-56" />
             {tab === "meetings" ? (
-              <Button onClick={() => { setMeetingForm(emptyMeetingForm); setAttendeesText(""); setShowCreateMeeting(true); }} className="bg-gray-900 hover:bg-gray-800 text-white">
+              <Button onClick={() => { setMeetingForm(emptyMeetingForm); setShowCreateMeeting(true); }} className="bg-gray-900 hover:bg-gray-800 text-white">
                 <Plus className="w-4 h-4 mr-1" /> Add Meeting
               </Button>
             ) : (

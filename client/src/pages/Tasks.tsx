@@ -944,8 +944,10 @@ export default function Tasks() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredTasks?.map((task) => (
-                    <TableRow key={task.id} className={`hover:bg-muted/50 text-xs ${selectedTaskIds.includes(task.id) ? 'bg-primary/5' : ''}`}>
+                  {filteredTasks?.map((task) => {
+                    const complete = task.status === "Completed" || task.status === "Done" || task.status === "Closed";
+                    return (
+                    <TableRow key={task.id} className={`hover:bg-muted/50 text-xs ${selectedTaskIds.includes(task.id) ? 'bg-primary/5' : ''} ${complete ? 'opacity-50' : ''}`}>
                       <TableCell className="w-8 px-2 py-1" onClick={(e) => e.stopPropagation()}>
                         <Checkbox
                           checked={selectedTaskIds.includes(task.id)}
@@ -962,7 +964,7 @@ export default function Tasks() {
                           {task.parentTaskId && <GitBranch className="w-3 h-3 text-green-600 flex-shrink-0" />}
                           {task.followUpOfId && <ArrowRight className="w-3 h-3 text-purple-600 flex-shrink-0" />}
                           {task.recurringType && <RefreshCw className="w-3 h-3 text-orange-500 flex-shrink-0" />}
-                          <span className="truncate" title={task.description ?? undefined}>{task.description}</span>
+                          <span className={`truncate ${complete ? 'line-through text-muted-foreground' : ''}`} title={task.description ?? undefined}>{task.description}</span>
                           {task.requirementId && (
                             <Badge variant="secondary" className="text-[10px] px-1 py-0 flex-shrink-0">{task.requirementId}</Badge>
                           )}
@@ -982,7 +984,7 @@ export default function Tasks() {
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  );})}
                 </TableBody>
               </Table>
             ) : (
@@ -1009,8 +1011,10 @@ export default function Tasks() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredTasks?.map((task) => (
-                  <TableRow key={task.id} className={`hover:bg-muted/50 ${selectedTaskIds.includes(task.id) ? 'bg-primary/5' : ''}`}>
+                {filteredTasks?.map((task) => {
+                  const complete = task.status === "Completed" || task.status === "Done" || task.status === "Closed";
+                  return (
+                  <TableRow key={task.id} className={`hover:bg-muted/50 ${selectedTaskIds.includes(task.id) ? 'bg-primary/5' : ''} ${complete ? 'opacity-50' : ''}`}>
                     <TableCell className="w-10 align-top pt-5" onClick={(e) => e.stopPropagation()}>
                       <Checkbox
                         checked={selectedTaskIds.includes(task.id)}
@@ -1027,7 +1031,7 @@ export default function Tasks() {
                               <span className="font-bold text-base">{task.taskId}</span>
                               <span className="text-xs px-2 py-0.5 rounded bg-muted">{task.taskGroup || '-'}</span>
                             </div>
-                            <p className="mt-1 text-sm">{task.description}</p>
+                            <p className={`mt-1 text-sm ${complete ? 'line-through text-muted-foreground' : ''}`}>{task.description}</p>
                           </div>
                           <div className="flex gap-2 flex-shrink-0">
                             {editingId === task.id ? (
@@ -1182,7 +1186,7 @@ export default function Tasks() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
+                );})}
               </TableBody>
               </Table>
             )}
