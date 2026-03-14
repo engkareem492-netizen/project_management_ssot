@@ -38,6 +38,7 @@ import { commentsRouter } from "./routers/comments.router";
 import { goalsRouter } from "./routers/goals.router";
 import { ticketTypesRouter } from "./routers/ticketTypes.router";
 import { ticketsRouter } from "./routers/tickets.router";
+import { slaPolicyRouter } from "./routers/slaPolicy.router";
 import { projectTemplatesRouter } from "./routers/projectTemplates.router";
 import { reportBuilderRouter } from "./routers/reportBuilder.router";
 import { capacityPlanningRouter } from "./routers/capacityPlanning.router";
@@ -78,6 +79,7 @@ export const appRouter = router({
   goals: goalsRouter,
   ticketTypes: ticketTypesRouter,
   tickets: ticketsRouter,
+  slaPolicy: slaPolicyRouter,
   projectTemplates: projectTemplatesRouter,
   reportBuilder: reportBuilderRouter,
   capacityPlanning: capacityPlanningRouter,

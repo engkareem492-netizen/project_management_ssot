@@ -1339,6 +1339,19 @@ export const tickets = mysqlTable("tickets", {
 export type Ticket = typeof tickets.$inferSelect;
 export type InsertTicket = typeof tickets.$inferInsert;
 
+// ─── SLA Priority Policies ────────────────────────────────────────────────────
+export const slaPolicies = mysqlTable("slaPolicies", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  priority: mysqlEnum("priority", ["Critical", "High", "Medium", "Low"]).notNull(),
+  responseTimeHours: int("responseTimeHours").notNull().default(4),
+  resolutionTimeHours: int("resolutionTimeHours").notNull().default(24),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type SlaPolicy = typeof slaPolicies.$inferSelect;
+export type InsertSlaPolicy = typeof slaPolicies.$inferInsert;
+
 // ─── Project Templates ────────────────────────────────────────────────────────
 export const projectTemplates = mysqlTable("projectTemplates", {
   id: int("id").autoincrement().primaryKey(),

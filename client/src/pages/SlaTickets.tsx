@@ -1,6 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
-import { StakeholderSelect } from "@/components/StakeholderSelect";
 import { useProject } from "@/contexts/ProjectContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,13 +47,35 @@ import {
   Edit,
   ShieldCheck,
   Timer,
+  Zap,
+  Save,
 } from "lucide-react";
+import { StakeholderSelect } from "@/components/StakeholderSelect";
 
-const PRIORITY_COLORS: Record<string, string> = {
-  Low: "bg-gray-100 text-gray-700 border-gray-200",
-  Medium: "bg-blue-100 text-blue-700 border-blue-200",
-  High: "bg-orange-100 text-orange-700 border-orange-200",
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const PRIORITIES = ["Critical", "High", "Medium", "Low"] as const;
+type Priority = typeof PRIORITIES[number];
+
+const PRIORITY_COLORS: Record<Priority, string> = {
   Critical: "bg-red-100 text-red-700 border-red-200",
+  High: "bg-orange-100 text-orange-700 border-orange-200",
+  Medium: "bg-blue-100 text-blue-700 border-blue-200",
+  Low: "bg-gray-100 text-gray-700 border-gray-200",
+};
+
+const PRIORITY_RING: Record<Priority, string> = {
+  Critical: "border-l-4 border-l-red-500",
+  High: "border-l-4 border-l-orange-400",
+  Medium: "border-l-4 border-l-blue-400",
+  Low: "border-l-4 border-l-gray-300",
+};
+
+const PRIORITY_DOT: Record<Priority, string> = {
+  Critical: "bg-red-500",
+  High: "bg-orange-400",
+  Medium: "bg-blue-400",
+  Low: "bg-gray-400",
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -65,20 +86,79 @@ const STATUS_COLORS: Record<string, string> = {
   Closed: "bg-gray-100 text-gray-600 border-gray-200",
 };
 
+// Default SLA targets shown before a project configures its own (matches backend defaults)
+const DEFAULT_SLA: Record<Priority, { responseTimeHours: number; resolutionTimeHours: number }> = {
+  Critical: { responseTimeHours: 1, resolutionTimeHours: 4 },
+  High:     { responseTimeHours: 4, resolutionTimeHours: 24 },
+  Medium:   { responseTimeHours: 8, resolutionTimeHours: 72 },
+  Low:      { responseTimeHours: 24, resolutionTimeHours: 168 },
+};
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function formatHours(h: number): string {
+  if (h < 1) return `${Math.round(h * 60)}m`;
+  if (h < 24) return `${h.toFixed(h % 1 === 0 ? 0 : 1)}h`;
+  const days = h / 24;
+  return `${days.toFixed(days % 1 === 0 ? 0 : 1)}d`;
+}
+
+function getSlaRemaining(createdAt: Date, hours: number, doneAt?: Date | null): {
+  remainingHours: number;
+  pct: number;     // 0-100, how much of the budget has been consumed
+  breached: boolean;
+} {
+  const now = doneAt ? new Date(doneAt) : new Date();
+  const elapsedMs = now.getTime() - new Date(createdAt).getTime();
+  const budgetMs = hours * 3600_000;
+  const remainingMs = budgetMs - elapsedMs;
+  return {
+    remainingHours: Math.max(0, +(remainingMs / 3600_000).toFixed(2)),
+    pct: Math.min(100, +(elapsedMs / budgetMs * 100).toFixed(1)),
+    breached: elapsedMs > budgetMs,
+  };
+}
+
+function SlaBar({ label, hours, createdAt, doneAt, isDone }: {
+  label: string;
+  hours: number;
+  createdAt: Date;
+  doneAt?: Date | null;
+  isDone: boolean;
+}) {
+  const { remainingHours, pct, breached } = getSlaRemaining(createdAt, hours, doneAt);
+  const color = isDone
+    ? (breached ? "bg-red-400" : "bg-green-400")
+    : (breached ? "bg-red-500" : pct > 75 ? "bg-orange-400" : "bg-green-500");
+  const textColor = breached ? "text-red-600" : isDone ? "text-green-600" : pct > 75 ? "text-orange-600" : "text-green-600";
+
+  return (
+    <div className="space-y-1">
+      <div className="flex justify-between items-center text-xs">
+        <span className="text-gray-500">{label}</span>
+        <span className={`font-semibold ${textColor}`}>
+          {breached
+            ? `Overdue${doneAt ? "" : ""}`
+            : isDone ? "Met ✓"
+            : `${formatHours(remainingHours)} left`}
+        </span>
+      </div>
+      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+        <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${Math.min(100, pct)}%` }} />
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+
 const emptyTicketForm = {
   ticketTypeId: "",
   title: "",
   description: "",
-  priority: "Medium" as "Low" | "Medium" | "High" | "Critical",
+  priority: "Medium" as Priority,
   assigneeName: "",
   reporterName: "",
-};
-
-const emptyTypeForm = {
-  name: "",
-  description: "",
-  responseTimeHours: "4",
-  resolutionTimeHours: "24",
 };
 
 export default function SlaTickets() {
@@ -86,35 +166,45 @@ export default function SlaTickets() {
   const projectId = currentProjectId!;
   const enabled = !!currentProjectId;
 
-  // Ticket dialog state
   const [ticketOpen, setTicketOpen] = useState(false);
   const [editTicket, setEditTicket] = useState<any>(null);
   const [ticketForm, setTicketForm] = useState(emptyTicketForm);
   const [deleteTicketId, setDeleteTicketId] = useState<number | null>(null);
-
-  // Ticket type dialog state
-  const [typeOpen, setTypeOpen] = useState(false);
-  const [editType, setEditType] = useState<any>(null);
-  const [typeForm, setTypeForm] = useState(emptyTypeForm);
   const [deleteTypeId, setDeleteTypeId] = useState<number | null>(null);
 
-  // Data queries
-  const { data: tickets = [], refetch: refetchTickets } = trpc.tickets.list.useQuery(
-    { projectId },
-    { enabled },
-  );
-  const { data: ticketTypes = [], refetch: refetchTypes } = trpc.ticketTypes.list.useQuery(
-    { projectId },
-    { enabled },
-  );
-  const { data: summary } = trpc.tickets.slaSummary.useQuery(
-    { projectId },
-    { enabled },
-  );
-  const { data: stakeholders = [] } = trpc.stakeholders.list.useQuery(
-    { projectId },
-    { enabled },
-  );
+  // Ticket type CRUD (simplified — category only)
+  const [typeOpen, setTypeOpen] = useState(false);
+  const [editType, setEditType] = useState<any>(null);
+  const [typeName, setTypeName] = useState("");
+  const [typeDesc, setTypeDesc] = useState("");
+
+  // SLA policy editing state: { [priority]: { response, resolution } }
+  const [policyDraft, setPolicyDraft] = useState<Record<string, { responseTimeHours: string; resolutionTimeHours: string }>>({});
+
+  // Data
+  const { data: tickets = [], refetch: refetchTickets } = trpc.tickets.list.useQuery({ projectId }, { enabled });
+  const { data: ticketTypes = [], refetch: refetchTypes } = trpc.ticketTypes.list.useQuery({ projectId }, { enabled });
+  const { data: slaPoliciesData = [], refetch: refetchPolicies } = trpc.slaPolicy.list.useQuery({ projectId }, { enabled });
+  const { data: summary } = trpc.tickets.slaSummary.useQuery({ projectId }, { enabled });
+  const { data: stakeholders = [] } = trpc.stakeholders.list.useQuery({ projectId }, { enabled });
+
+  // When policies load, initialise the draft
+  useEffect(() => {
+    if (!slaPoliciesData.length) return;
+    const draft: Record<string, { responseTimeHours: string; resolutionTimeHours: string }> = {};
+    slaPoliciesData.forEach((p: any) => {
+      draft[p.priority] = {
+        responseTimeHours: String(p.responseTimeHours),
+        resolutionTimeHours: String(p.resolutionTimeHours),
+      };
+    });
+    setPolicyDraft(draft);
+  }, [JSON.stringify(slaPoliciesData)]);
+
+  function getPolicyForPriority(priority: Priority) {
+    const saved = slaPoliciesData.find((p: any) => p.priority === priority);
+    return saved ?? DEFAULT_SLA[priority];
+  }
 
   // Ticket mutations
   const createTicket = trpc.tickets.create.useMutation({
@@ -140,7 +230,7 @@ export default function SlaTickets() {
 
   // Ticket type mutations
   const createType = trpc.ticketTypes.create.useMutation({
-    onSuccess: () => { toast.success("Ticket type created"); refetchTypes(); setTypeOpen(false); setTypeForm(emptyTypeForm); },
+    onSuccess: () => { toast.success("Ticket type created"); refetchTypes(); setTypeOpen(false); },
     onError: (e) => toast.error(e.message),
   });
   const updateType = trpc.ticketTypes.update.useMutation({
@@ -149,6 +239,12 @@ export default function SlaTickets() {
   });
   const deleteType = trpc.ticketTypes.delete.useMutation({
     onSuccess: () => { toast.success("Ticket type deleted"); refetchTypes(); setDeleteTypeId(null); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  // SLA policy mutation
+  const upsertPolicy = trpc.slaPolicy.upsert.useMutation({
+    onSuccess: () => { toast.success("SLA policy saved"); refetchPolicies(); },
     onError: (e) => toast.error(e.message),
   });
 
@@ -166,12 +262,8 @@ export default function SlaTickets() {
 
   function openEditType(t: any) {
     setEditType(t);
-    setTypeForm({
-      name: t.name,
-      description: t.description ?? "",
-      responseTimeHours: String(t.responseTimeHours),
-      resolutionTimeHours: String(t.resolutionTimeHours),
-    });
+    setTypeName(t.name);
+    setTypeDesc(t.description ?? "");
   }
 
   function submitTicket() {
@@ -202,18 +294,25 @@ export default function SlaTickets() {
   }
 
   function submitType() {
-    if (!typeForm.name.trim()) return;
-    const payload = {
-      name: typeForm.name,
-      description: typeForm.description || undefined,
-      responseTimeHours: parseInt(typeForm.responseTimeHours) || 4,
-      resolutionTimeHours: parseInt(typeForm.resolutionTimeHours) || 24,
-    };
+    if (!typeName.trim()) return;
+    // Keep required DB columns — SLA hours are no longer meaningful on the type
+    const payload = { name: typeName, description: typeDesc || undefined, responseTimeHours: 0, resolutionTimeHours: 0 };
     if (editType) {
-      updateType.mutate({ id: editType.id, data: payload });
+      updateType.mutate({ id: editType.id, data: { name: typeName, description: typeDesc || undefined } });
     } else {
       createType.mutate({ projectId, ...payload });
     }
+  }
+
+  function savePrioritySla(priority: Priority) {
+    const draft = policyDraft[priority];
+    if (!draft) return;
+    upsertPolicy.mutate({
+      projectId,
+      priority,
+      responseTimeHours: parseInt(draft.responseTimeHours) || 0,
+      resolutionTimeHours: parseInt(draft.resolutionTimeHours) || 0,
+    });
   }
 
   const openTickets = (tickets as any[]).filter(t => t.status === "Open" || t.status === "In Progress" || t.status === "Waiting");
@@ -223,10 +322,13 @@ export default function SlaTickets() {
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="bg-white border border-gray-200 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-          <Ticket className="w-6 h-6 text-blue-600" />
-          SLA Tickets
-        </h1>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <Ticket className="w-6 h-6 text-blue-600" />
+            SLA Tickets
+          </h1>
+          <p className="text-xs text-gray-400 mt-0.5">SLA timers are driven by ticket priority</p>
+        </div>
         <Button onClick={() => { setEditTicket(null); setTicketForm(emptyTicketForm); setTicketOpen(true); }}>
           <Plus className="w-4 h-4 mr-2" />New Ticket
         </Button>
@@ -283,6 +385,9 @@ export default function SlaTickets() {
           <TabsTrigger value="resolved">
             <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />Resolved ({resolvedTickets.length})
           </TabsTrigger>
+          <TabsTrigger value="sla">
+            <Zap className="w-3.5 h-3.5 mr-1.5" />SLA Policy
+          </TabsTrigger>
           <TabsTrigger value="types">
             <Settings className="w-3.5 h-3.5 mr-1.5" />Ticket Types
           </TabsTrigger>
@@ -301,6 +406,7 @@ export default function SlaTickets() {
               key={t.id}
               ticket={t}
               ticketTypes={ticketTypes as any[]}
+              slaPolicy={getPolicyForPriority(t.priority)}
               onEdit={() => openEditTicket(t)}
               onDelete={() => setDeleteTicketId(t.id)}
               onRespond={() => respondMut.mutate({ id: t.id })}
@@ -323,6 +429,7 @@ export default function SlaTickets() {
               key={t.id}
               ticket={t}
               ticketTypes={ticketTypes as any[]}
+              slaPolicy={getPolicyForPriority(t.priority)}
               onEdit={() => openEditTicket(t)}
               onDelete={() => setDeleteTicketId(t.id)}
               onRespond={() => respondMut.mutate({ id: t.id })}
@@ -332,11 +439,93 @@ export default function SlaTickets() {
           ))}
         </TabsContent>
 
-        {/* Ticket Types (SLA Settings) */}
+        {/* SLA Policy — JIRA style, per priority */}
+        <TabsContent value="sla" className="mt-4">
+          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100">
+              <h2 className="font-semibold text-gray-900 flex items-center gap-2">
+                <Zap className="w-4 h-4 text-blue-500" />
+                Priority SLA Configuration
+              </h2>
+              <p className="text-xs text-gray-400 mt-1">
+                Set how quickly tickets of each priority must receive a first response and be resolved — regardless of ticket type.
+              </p>
+            </div>
+
+            {/* Column headers */}
+            <div className="grid grid-cols-[180px_1fr_1fr_80px] gap-4 px-5 py-2.5 bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              <span>Priority</span>
+              <span>First Response</span>
+              <span>Resolution</span>
+              <span></span>
+            </div>
+
+            {PRIORITIES.map((priority) => {
+              const draft = policyDraft[priority] ?? {
+                responseTimeHours: String(DEFAULT_SLA[priority].responseTimeHours),
+                resolutionTimeHours: String(DEFAULT_SLA[priority].resolutionTimeHours),
+              };
+              const isSaving = upsertPolicy.isPending;
+              return (
+                <div
+                  key={priority}
+                  className={`grid grid-cols-[180px_1fr_1fr_80px] gap-4 items-center px-5 py-4 border-b border-gray-100 last:border-b-0 ${PRIORITY_RING[priority]} bg-white`}
+                >
+                  {/* Priority label */}
+                  <div className="flex items-center gap-2">
+                    <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${PRIORITY_DOT[priority]}`} />
+                    <span className="font-semibold text-sm text-gray-800">{priority}</span>
+                  </div>
+
+                  {/* First Response */}
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min={0}
+                      className="w-20 h-8 text-sm"
+                      value={draft.responseTimeHours}
+                      onChange={(e) => setPolicyDraft(d => ({ ...d, [priority]: { ...draft, responseTimeHours: e.target.value } }))}
+                    />
+                    <span className="text-xs text-gray-400">hours</span>
+                    <span className="text-xs text-gray-300">({formatHours(Number(draft.responseTimeHours) || 0)})</span>
+                  </div>
+
+                  {/* Resolution */}
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min={0}
+                      className="w-20 h-8 text-sm"
+                      value={draft.resolutionTimeHours}
+                      onChange={(e) => setPolicyDraft(d => ({ ...d, [priority]: { ...draft, resolutionTimeHours: e.target.value } }))}
+                    />
+                    <span className="text-xs text-gray-400">hours</span>
+                    <span className="text-xs text-gray-300">({formatHours(Number(draft.resolutionTimeHours) || 0)})</span>
+                  </div>
+
+                  {/* Save */}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 text-xs"
+                    onClick={() => savePrioritySla(priority)}
+                    disabled={isSaving}
+                  >
+                    <Save className="w-3 h-3 mr-1" />Save
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        </TabsContent>
+
+        {/* Ticket Types (category labels) */}
         <TabsContent value="types" className="mt-4">
           <div className="flex justify-between items-center mb-4">
-            <p className="text-sm text-gray-500">Configure SLA response and resolution times per ticket type.</p>
-            <Button size="sm" onClick={() => { setEditType(null); setTypeForm(emptyTypeForm); setTypeOpen(true); }}>
+            <p className="text-sm text-gray-500">
+              Ticket types are category labels (e.g. Bug, Incident, Feature). SLA timers are set in the <strong>SLA Policy</strong> tab.
+            </p>
+            <Button size="sm" onClick={() => { setEditType(null); setTypeName(""); setTypeDesc(""); setTypeOpen(true); }}>
               <Plus className="w-4 h-4 mr-2" />Add Type
             </Button>
           </div>
@@ -357,18 +546,6 @@ export default function SlaTickets() {
                   </div>
                   {tt.description && <p className="text-xs text-gray-500 mt-1">{tt.description}</p>}
                 </CardHeader>
-                <CardContent className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm">
-                    <Timer className="w-4 h-4 text-blue-500" />
-                    <span className="text-gray-600">Response SLA:</span>
-                    <span className="font-semibold">{tt.responseTimeHours}h</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <CheckCircle2 className="w-4 h-4 text-green-500" />
-                    <span className="text-gray-600">Resolution SLA:</span>
-                    <span className="font-semibold">{tt.resolutionTimeHours}h</span>
-                  </div>
-                </CardContent>
               </Card>
             ))}
             {ticketTypes.length === 0 && (
@@ -392,14 +569,37 @@ export default function SlaTickets() {
           </DialogHeader>
           <div className="space-y-3 py-2">
             <div>
+              <Label>Priority *</Label>
+              <Select
+                value={ticketForm.priority}
+                onValueChange={(v) => setTicketForm({ ...ticketForm, priority: v as Priority })}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {PRIORITIES.map((p) => {
+                    const pol = getPolicyForPriority(p);
+                    return (
+                      <SelectItem key={p} value={p}>
+                        <span className="flex items-center gap-2">
+                          <span className={`w-2 h-2 rounded-full inline-block ${PRIORITY_DOT[p]}`} />
+                          {p}
+                          <span className="text-xs text-gray-400">
+                            — Response {formatHours(pol.responseTimeHours)} / Resolution {formatHours(pol.resolutionTimeHours)}
+                          </span>
+                        </span>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
               <Label>Ticket Type *</Label>
               <Select value={ticketForm.ticketTypeId} onValueChange={(v) => setTicketForm({ ...ticketForm, ticketTypeId: v })}>
-                <SelectTrigger><SelectValue placeholder="Select type..." /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Select category..." /></SelectTrigger>
                 <SelectContent>
                   {(ticketTypes as any[]).map((tt: any) => (
-                    <SelectItem key={tt.id} value={String(tt.id)}>
-                      {tt.name} (R:{tt.responseTimeHours}h / Res:{tt.resolutionTimeHours}h)
-                    </SelectItem>
+                    <SelectItem key={tt.id} value={String(tt.id)}>{tt.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -421,31 +621,15 @@ export default function SlaTickets() {
                 rows={3}
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Priority</Label>
-                <Select
-                  value={ticketForm.priority}
-                  onValueChange={(v) => setTicketForm({ ...ticketForm, priority: v as any })}
-                >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {["Low", "Medium", "High", "Critical"].map(p => (
-                      <SelectItem key={p} value={p}>{p}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Assignee</Label>
-                <StakeholderSelect
-                  stakeholders={stakeholders as any[]}
-                  value={ticketForm.assigneeName}
-                  onValueChange={(v) => setTicketForm({ ...ticketForm, assigneeName: v })}
-                  projectId={projectId}
-                  placeholder="Assign to..."
-                />
-              </div>
+            <div>
+              <Label>Assignee</Label>
+              <StakeholderSelect
+                stakeholders={stakeholders as any[]}
+                value={ticketForm.assigneeName}
+                onValueChange={(v) => setTicketForm({ ...ticketForm, assigneeName: v })}
+                projectId={projectId}
+                placeholder="Assign to..."
+              />
             </div>
             {!editTicket && (
               <div>
@@ -455,6 +639,7 @@ export default function SlaTickets() {
                   value={ticketForm.reporterName}
                   onValueChange={(v) => setTicketForm({ ...ticketForm, reporterName: v })}
                   projectId={projectId}
+                  placeholder="Who reported this?"
                 />
               </div>
             )}
@@ -483,47 +668,16 @@ export default function SlaTickets() {
           <div className="space-y-3 py-2">
             <div>
               <Label>Name *</Label>
-              <Input
-                value={typeForm.name}
-                onChange={(e) => setTypeForm({ ...typeForm, name: e.target.value })}
-                placeholder="e.g. Bug, Feature Request, Incident"
-              />
+              <Input value={typeName} onChange={(e) => setTypeName(e.target.value)} placeholder="e.g. Bug, Feature Request, Incident" />
             </div>
             <div>
               <Label>Description</Label>
-              <Input
-                value={typeForm.description}
-                onChange={(e) => setTypeForm({ ...typeForm, description: e.target.value })}
-                placeholder="Optional description"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Response SLA (hours)</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={typeForm.responseTimeHours}
-                  onChange={(e) => setTypeForm({ ...typeForm, responseTimeHours: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label>Resolution SLA (hours)</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={typeForm.resolutionTimeHours}
-                  onChange={(e) => setTypeForm({ ...typeForm, resolutionTimeHours: e.target.value })}
-                />
-              </div>
+              <Input value={typeDesc} onChange={(e) => setTypeDesc(e.target.value)} placeholder="Optional description" />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => { setTypeOpen(false); setEditType(null); }}>Cancel</Button>
-            <Button
-              disabled={!typeForm.name.trim() || createType.isPending || updateType.isPending}
-              onClick={submitType}
-            >
+            <Button disabled={!typeName.trim() || createType.isPending || updateType.isPending} onClick={submitType}>
               {editType ? "Save Changes" : "Create Type"}
             </Button>
           </DialogFooter>
@@ -539,10 +693,7 @@ export default function SlaTickets() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-red-600 hover:bg-red-700"
-              onClick={() => deleteTicketId && deleteTicket.mutate({ id: deleteTicketId })}
-            >
+            <AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={() => deleteTicketId && deleteTicket.mutate({ id: deleteTicketId })}>
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -554,14 +705,11 @@ export default function SlaTickets() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Ticket Type</AlertDialogTitle>
-            <AlertDialogDescription>This will not delete existing tickets of this type, but new tickets cannot be created with it.</AlertDialogDescription>
+            <AlertDialogDescription>Existing tickets of this type will not be deleted.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-red-600 hover:bg-red-700"
-              onClick={() => deleteTypeId && deleteType.mutate({ id: deleteTypeId })}
-            >
+            <AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={() => deleteTypeId && deleteType.mutate({ id: deleteTypeId })}>
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -575,6 +723,7 @@ export default function SlaTickets() {
 function TicketCard({
   ticket,
   ticketTypes,
+  slaPolicy,
   onEdit,
   onDelete,
   onRespond,
@@ -583,6 +732,7 @@ function TicketCard({
 }: {
   ticket: any;
   ticketTypes: any[];
+  slaPolicy: { responseTimeHours: number; resolutionTimeHours: number };
   onEdit: () => void;
   onDelete: () => void;
   onRespond: () => void;
@@ -591,9 +741,10 @@ function TicketCard({
 }) {
   const type = ticketTypes.find(t => t.id === ticket.ticketTypeId);
   const isOpen = ticket.status !== "Resolved" && ticket.status !== "Closed";
+  const priority: Priority = ticket.priority;
 
   return (
-    <div className={`bg-white border rounded-xl p-4 space-y-3 ${ticket.slaResolutionBreached ? "border-red-300" : "border-gray-200"}`}>
+    <div className={`bg-white border rounded-xl p-4 space-y-3 ${ticket.slaResolutionBreached ? "border-red-300" : "border-gray-200"} ${PRIORITY_RING[priority]}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-2 min-w-0">
           {(ticket.slaResponseBreached || ticket.slaResolutionBreached) && (
@@ -602,9 +753,9 @@ function TicketCard({
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-mono text-gray-400">{ticket.idCode}</span>
-              {type && <span className="text-xs text-gray-500">{type.name}</span>}
+              {type && <span className="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">{type.name}</span>}
             </div>
-            <p className="font-medium text-gray-900 truncate">{ticket.title}</p>
+            <p className="font-medium text-gray-900 truncate mt-0.5">{ticket.title}</p>
             {ticket.description && (
               <p className="text-sm text-gray-500 line-clamp-2">{ticket.description}</p>
             )}
@@ -621,22 +772,30 @@ function TicketCard({
       </div>
 
       <div className="flex flex-wrap gap-2 items-center">
-        <Badge className={`text-xs border ${PRIORITY_COLORS[ticket.priority] ?? ""}`} variant="outline">
-          {ticket.priority}
+        <Badge className={`text-xs border ${PRIORITY_COLORS[priority] ?? ""}`} variant="outline">
+          {priority}
         </Badge>
         <Badge className={`text-xs border ${STATUS_COLORS[ticket.status] ?? ""}`} variant="outline">
           {ticket.status}
         </Badge>
-        {ticket.slaResponseBreached && (
-          <Badge className="text-xs bg-red-50 text-red-600 border-red-200" variant="outline">
-            Response Breached
-          </Badge>
-        )}
-        {ticket.slaResolutionBreached && (
-          <Badge className="text-xs bg-red-50 text-red-600 border-red-200" variant="outline">
-            Resolution Breached
-          </Badge>
-        )}
+      </div>
+
+      {/* SLA timers */}
+      <div className="space-y-2 pt-1 border-t border-gray-50">
+        <SlaBar
+          label="First Response"
+          hours={slaPolicy.responseTimeHours}
+          createdAt={ticket.createdAt}
+          doneAt={ticket.respondedAt}
+          isDone={!!ticket.respondedAt}
+        />
+        <SlaBar
+          label="Resolution"
+          hours={slaPolicy.resolutionTimeHours}
+          createdAt={ticket.createdAt}
+          doneAt={ticket.resolvedAt}
+          isDone={!!ticket.resolvedAt}
+        />
       </div>
 
       <div className="flex flex-wrap gap-4 text-xs text-gray-500">
@@ -654,18 +813,6 @@ function TicketCard({
           <Clock className="w-3 h-3" />
           {new Date(ticket.createdAt).toLocaleDateString()}
         </span>
-        {ticket.respondedAt && (
-          <span className="flex items-center gap-1 text-green-600">
-            <CheckCircle2 className="w-3 h-3" />
-            Responded {new Date(ticket.respondedAt).toLocaleDateString()}
-          </span>
-        )}
-        {ticket.resolvedAt && (
-          <span className="flex items-center gap-1 text-green-600">
-            <CheckCircle2 className="w-3 h-3" />
-            Resolved {new Date(ticket.resolvedAt).toLocaleDateString()}
-          </span>
-        )}
       </div>
 
       {isOpen && (

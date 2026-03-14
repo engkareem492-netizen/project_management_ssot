@@ -2,8 +2,22 @@ import { protectedProcedure, router } from "../_core/trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "../db";
-import { tickets, ticketTypes } from "../../drizzle/schema";
+import { tickets, ticketTypes, slaPolicies } from "../../drizzle/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
+
+// Default SLA thresholds when no policy is configured for a priority
+const DEFAULT_SLA: Record<string, { responseTimeHours: number; resolutionTimeHours: number }> = {
+  Critical: { responseTimeHours: 1, resolutionTimeHours: 4 },
+  High:     { responseTimeHours: 4, resolutionTimeHours: 24 },
+  Medium:   { responseTimeHours: 8, resolutionTimeHours: 72 },
+  Low:      { responseTimeHours: 24, resolutionTimeHours: 168 },
+};
+
+async function getSlaForPriority(db: any, projectId: number, priority: string) {
+  const [policy] = await db.select().from(slaPolicies)
+    .where(and(eq(slaPolicies.projectId, projectId), eq(slaPolicies.priority, priority)));
+  return policy ?? DEFAULT_SLA[priority] ?? { responseTimeHours: 8, resolutionTimeHours: 48 };
+}
 
 function computeSla(ticket: {
   createdAt: Date;
@@ -54,11 +68,8 @@ export const ticketsRouter = router({
       const [ticket] = await db.select().from(tickets).where(eq(tickets.id, input.id));
       if (!ticket) return null;
 
-      // Fetch ticket type for SLA thresholds
-      const [type] = await db.select().from(ticketTypes).where(eq(ticketTypes.id, ticket.ticketTypeId));
-      if (!type) return { ...ticket, sla: null };
-
-      const sla = computeSla(ticket, type);
+      const slaThreshold = await getSlaForPriority(db, ticket.projectId, ticket.priority);
+      const sla = computeSla(ticket, slaThreshold);
       return { ...ticket, sla };
     }),
 
@@ -134,10 +145,8 @@ export const ticketsRouter = router({
       if (ticket.respondedAt) throw new TRPCError({ code: "BAD_REQUEST", message: "Already responded" });
 
       const now = new Date();
-      const [type] = await db.select().from(ticketTypes).where(eq(ticketTypes.id, ticket.ticketTypeId));
-      const breached = type
-        ? (now.getTime() - ticket.createdAt.getTime()) > type.responseTimeHours * 3600_000
-        : false;
+      const slaThreshold = await getSlaForPriority(db, ticket.projectId, ticket.priority);
+      const breached = (now.getTime() - ticket.createdAt.getTime()) > slaThreshold.responseTimeHours * 3600_000;
 
       await db.update(tickets).set({
         respondedAt: now,
@@ -160,10 +169,8 @@ export const ticketsRouter = router({
       if (ticket.resolvedAt) throw new TRPCError({ code: "BAD_REQUEST", message: "Already resolved" });
 
       const now = new Date();
-      const [type] = await db.select().from(ticketTypes).where(eq(ticketTypes.id, ticket.ticketTypeId));
-      const breached = type
-        ? (now.getTime() - ticket.createdAt.getTime()) > type.resolutionTimeHours * 3600_000
-        : false;
+      const slaThreshold = await getSlaForPriority(db, ticket.projectId, ticket.priority);
+      const breached = (now.getTime() - ticket.createdAt.getTime()) > slaThreshold.resolutionTimeHours * 3600_000;
 
       await db.update(tickets).set({
         resolvedAt: now,
