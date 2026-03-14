@@ -77,6 +77,10 @@ import {
   Target,
   Clock,
   Ticket,
+  Network,
+  Radio,
+  ClipboardList,
+  UserCog,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import {
@@ -139,14 +143,16 @@ const menuItems: MenuItem[] = [
     label: "Team",
     path: "__team__",
     children: [
-      { icon: Users, label: "Stakeholders", path: "/stakeholders" },
-      { icon: BarChart2, label: "Workload", path: "/resources" },
+      { icon: Users, label: "Stakeholder Register", path: "/stakeholders" },
+      { icon: Network, label: "Engagement Plan", path: "/engagement-plan" },
+      { icon: Radio, label: "Communication Plan", path: "/communication-plan" },
+      { icon: BarChart2, label: "Resource Management", path: "/resources" },
+      { icon: ClipboardList, label: "Team Charter", path: "/team-charter" },
     ],
   },
   { icon: Package, label: "Deliverables", path: "/deliverables" },
   { icon: BookOpen, label: "Knowledge Base", path: "/knowledge-base" },
   { icon: AlertTriangle, label: "Risk Register", path: "/risk-register" },
-  { icon: Map, label: "Engagement Map", path: "/relationships" },
   { icon: GitPullRequest, label: "Change Requests", path: "/change-requests" },
   { icon: MessageSquare, label: "Meetings & Decisions", path: "/meetings" },
   { icon: CalendarRange, label: "Calendar", path: "/calendar" },

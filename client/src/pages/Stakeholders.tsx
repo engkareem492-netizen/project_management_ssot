@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -23,22 +23,23 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import {
+  Sheet, SheetContent, SheetHeader, SheetTitle,
+} from "@/components/ui/sheet";
 import { toast } from "sonner";
 import {
-  Plus, Trash2, Pencil, Search, Users, Mail, Phone, Briefcase,
-  Target, ClipboardList, Star, TrendingUp, UserCheck, Link2, Unlink,
-  BarChart2, ChevronRight, Award, Activity, Wand2, ArrowLeftRight,
-  MoreVertical, UserCog, MessageSquare, ListChecks, MoveRight,
+  Plus, Trash2, Pencil, Search, Users, Mail, Phone,
+  Target, Award, Activity, UserCheck, Briefcase,
+  MoveRight, ChevronRight, ClipboardList,
 } from "lucide-react";
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { ImportExportToolbar } from "@/components/ImportExportToolbar";
 import { StakeholderSelect } from "@/components/StakeholderSelect";
 import { EmptyState } from "@/components/EmptyState";
 import { formatDate } from "@/lib/dateUtils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+type Classification = "TeamMember" | "External" | "Stakeholder";
+
 type StakeholderFormData = {
   fullName: string;
   email: string;
@@ -46,10 +47,18 @@ type StakeholderFormData = {
   role: string;
   job: string;
   phone: string;
+  department: string;
+  classification: Classification;
   isInternalTeam: boolean;
+  isPooledResource: boolean;
+  workingHoursPerDay: string;
+  workingDaysPerWeek: number;
+  stakeholderManagerId: number | null;
   powerLevel: number;
   interestLevel: number;
   engagementStrategy: string;
+  currentEngagementStatus: string;
+  desiredEngagementStatus: string;
   communicationFrequency: string;
   communicationChannel: string;
   communicationMessage: string;
@@ -60,24 +69,53 @@ type StakeholderFormData = {
 };
 
 const EMPTY_FORM: StakeholderFormData = {
-  fullName: "", email: "", position: "", role: "", job: "", phone: "",
-  isInternalTeam: false, powerLevel: 3, interestLevel: 3,
-  engagementStrategy: "", communicationFrequency: "", communicationChannel: "",
-  communicationMessage: "", communicationResponsible: "", notes: "",
-  costPerHour: "", costPerDay: "",
+  fullName: "",
+  email: "",
+  position: "",
+  role: "",
+  job: "",
+  phone: "",
+  department: "",
+  classification: "Stakeholder",
+  isInternalTeam: false,
+  isPooledResource: false,
+  workingHoursPerDay: "8",
+  workingDaysPerWeek: 5,
+  stakeholderManagerId: null,
+  powerLevel: 3,
+  interestLevel: 3,
+  engagementStrategy: "",
+  currentEngagementStatus: "",
+  desiredEngagementStatus: "",
+  communicationFrequency: "",
+  communicationChannel: "",
+  communicationMessage: "",
+  communicationResponsible: "",
+  notes: "",
+  costPerHour: "",
+  costPerDay: "",
 };
 
-const ENGAGEMENT_STRATEGIES = [
-  "Manage Closely",
-  "Keep Satisfied",
-  "Keep Informed",
-  "Monitor",
-];
-
+const ENGAGEMENT_STRATEGIES = ["Manage Closely", "Keep Satisfied", "Keep Informed", "Monitor"];
+const ENGAGEMENT_STATUSES = ["Unaware", "Resistant", "Neutral", "Supportive", "Leading"];
 const COMM_FREQUENCIES = ["Daily", "Weekly", "Bi-weekly", "Monthly", "Quarterly", "As needed"];
 const COMM_CHANNELS = ["Email", "Meeting", "Phone", "Slack", "Teams", "Report", "Newsletter"];
 
-function getEngagementBadge(strategy: string | null | undefined) {
+function classificationToIsInternal(c: Classification): boolean {
+  return c === "TeamMember";
+}
+
+function getClassificationBadge(classification: string | null | undefined) {
+  if (classification === "TeamMember") {
+    return <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-xs">Team Member</Badge>;
+  }
+  if (classification === "External") {
+    return <Badge className="bg-orange-100 text-orange-700 border-orange-200 text-xs">External</Badge>;
+  }
+  return <Badge className="bg-purple-100 text-purple-700 border-purple-200 text-xs">Stakeholder</Badge>;
+}
+
+function getEngagementBadgeClass(strategy: string | null | undefined) {
   const map: Record<string, string> = {
     "Manage Closely": "bg-red-100 text-red-700 border-red-200",
     "Keep Satisfied": "bg-orange-100 text-orange-700 border-orange-200",
@@ -85,6 +123,17 @@ function getEngagementBadge(strategy: string | null | undefined) {
     "Monitor": "bg-gray-100 text-gray-600 border-gray-200",
   };
   return map[strategy || ""] || "bg-muted text-muted-foreground border-border";
+}
+
+function getEngagementStatusBadgeClass(status: string | null | undefined) {
+  const map: Record<string, string> = {
+    "Unaware": "bg-gray-100 text-gray-600 border-gray-200",
+    "Resistant": "bg-red-100 text-red-700 border-red-200",
+    "Neutral": "bg-yellow-100 text-yellow-700 border-yellow-200",
+    "Supportive": "bg-green-100 text-green-700 border-green-200",
+    "Leading": "bg-emerald-100 text-emerald-700 border-emerald-200",
+  };
+  return map[status || ""] || "bg-muted text-muted-foreground border-border";
 }
 
 function getScoreColor(score: number) {
@@ -501,172 +550,622 @@ function KpiManagementDialog({
   );
 }
 
-// ─── Dev Plan Dialog (Internal Team Task Groups) ──────────────────────────────
-function DevPlanDialog({
+// ─── Stakeholder Form Dialog ──────────────────────────────────────────────────
+function StakeholderFormDialog({
+  open,
+  onOpenChange,
+  title,
+  formData,
+  setFormData,
+  onSubmit,
+  isPending,
+  stakeholders,
+  currentProjectId,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  title: string;
+  formData: StakeholderFormData;
+  setFormData: (data: StakeholderFormData) => void;
+  onSubmit: () => void;
+  isPending: boolean;
+  stakeholders: any[];
+  currentProjectId: number | null | undefined;
+}) {
+  const set = (partial: Partial<StakeholderFormData>) => setFormData({ ...formData, ...partial });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-5 py-1">
+          {/* Basic Information */}
+          <div className="space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Basic Information</p>
+
+            <div className="space-y-2">
+              <Label>Full Name *</Label>
+              <Input
+                value={formData.fullName}
+                onChange={(e) => set({ fullName: e.target.value })}
+                placeholder="Jane Smith"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Email</Label>
+                <Input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => set({ email: e.target.value })}
+                  placeholder="jane@company.com"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Phone</Label>
+                <Input
+                  value={formData.phone}
+                  onChange={(e) => set({ phone: e.target.value })}
+                  placeholder="+1 234 567 8900"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Department</Label>
+              <Input
+                value={formData.department}
+                onChange={(e) => set({ department: e.target.value })}
+                placeholder="Engineering"
+              />
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-2">
+                <Label>Position</Label>
+                <Input
+                  value={formData.position}
+                  onChange={(e) => set({ position: e.target.value })}
+                  placeholder="Manager"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Job</Label>
+                <Input
+                  value={formData.job}
+                  onChange={(e) => set({ job: e.target.value })}
+                  placeholder="Developer"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Role</Label>
+                <Input
+                  value={formData.role}
+                  onChange={(e) => set({ role: e.target.value })}
+                  placeholder="Sponsor"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Classification</Label>
+              <Select
+                value={formData.classification}
+                onValueChange={(v) =>
+                  set({
+                    classification: v as Classification,
+                    isInternalTeam: classificationToIsInternal(v as Classification),
+                  })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="TeamMember">Team Member</SelectItem>
+                  <SelectItem value="External">External</SelectItem>
+                  <SelectItem value="Stakeholder">Stakeholder</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Remark / Notes</Label>
+              <Textarea
+                value={formData.notes}
+                onChange={(e) => set({ notes: e.target.value })}
+                placeholder="Additional notes..."
+                rows={2}
+              />
+            </div>
+          </div>
+
+          {/* Team Member fields */}
+          {formData.classification === "TeamMember" && (
+            <div className="space-y-3 border-t pt-4">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Team Member Details</p>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>Cost Per Hour ($)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={formData.costPerHour}
+                    onChange={(e) => set({ costPerHour: e.target.value })}
+                    placeholder="0.00"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Cost Per Day ($)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={formData.costPerDay}
+                    onChange={(e) => set({ costPerDay: e.target.value })}
+                    placeholder="0.00"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>Working Hours/Day</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    max="24"
+                    value={formData.workingHoursPerDay}
+                    onChange={(e) => set({ workingHoursPerDay: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Working Days/Week</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    max="7"
+                    value={formData.workingDaysPerWeek}
+                    onChange={(e) => set({ workingDaysPerWeek: parseInt(e.target.value) || 5 })}
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 pt-1">
+                <Switch
+                  checked={formData.isPooledResource}
+                  onCheckedChange={(v) => set({ isPooledResource: v })}
+                />
+                <Label>Is Pooled Resource</Label>
+              </div>
+            </div>
+          )}
+
+          {/* External fields */}
+          {formData.classification === "External" && (
+            <div className="space-y-3 border-t pt-4">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">External Details</p>
+
+              <div className="space-y-2">
+                <Label>Stakeholder Manager</Label>
+                <Select
+                  value={formData.stakeholderManagerId != null ? String(formData.stakeholderManagerId) : ""}
+                  onValueChange={(v) => set({ stakeholderManagerId: v ? parseInt(v) : null })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select manager..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {stakeholders.map((s: any) => (
+                      <SelectItem key={s.id} value={String(s.id)}>
+                        {s.fullName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+
+          {/* Stakeholder fields */}
+          {formData.classification === "Stakeholder" && (
+            <div className="space-y-3 border-t pt-4">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Stakeholder Engagement</p>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Power Level: {formData.powerLevel}/5</Label>
+                  <Slider
+                    min={1} max={5} step={1}
+                    value={[formData.powerLevel]}
+                    onValueChange={([v]) => set({ powerLevel: v })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Interest Level: {formData.interestLevel}/5</Label>
+                  <Slider
+                    min={1} max={5} step={1}
+                    value={[formData.interestLevel]}
+                    onValueChange={([v]) => set({ interestLevel: v })}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Engagement Strategy</Label>
+                <Select value={formData.engagementStrategy} onValueChange={(v) => set({ engagementStrategy: v })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select strategy..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ENGAGEMENT_STRATEGIES.map((s) => (
+                      <SelectItem key={s} value={s}>{s}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>Current Engagement Status</Label>
+                  <Select value={formData.currentEngagementStatus} onValueChange={(v) => set({ currentEngagementStatus: v })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Current..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ENGAGEMENT_STATUSES.map((s) => (
+                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Desired Engagement Status</Label>
+                  <Select value={formData.desiredEngagementStatus} onValueChange={(v) => set({ desiredEngagementStatus: v })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Desired..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ENGAGEMENT_STATUSES.map((s) => (
+                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>Communication Frequency</Label>
+                  <Select value={formData.communicationFrequency} onValueChange={(v) => set({ communicationFrequency: v })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Frequency..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {COMM_FREQUENCIES.map((f) => (
+                        <SelectItem key={f} value={f}>{f}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Communication Channel</Label>
+                  <Select value={formData.communicationChannel} onValueChange={(v) => set({ communicationChannel: v })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Channel..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {COMM_CHANNELS.map((c) => (
+                        <SelectItem key={c} value={c}>{c}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Communication Message</Label>
+                <Textarea
+                  value={formData.communicationMessage}
+                  onChange={(e) => set({ communicationMessage: e.target.value })}
+                  placeholder="Key message to communicate..."
+                  rows={2}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Communication Responsible</Label>
+                <Input
+                  value={formData.communicationResponsible}
+                  onChange={(e) => set({ communicationResponsible: e.target.value })}
+                  placeholder="Name of responsible person..."
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        <DialogFooter className="mt-4">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button onClick={onSubmit} disabled={isPending}>
+            {isPending ? "Saving..." : "Save"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Detail Panel ─────────────────────────────────────────────────────────────
+function DetailPanel({
   stakeholder,
   open,
   onOpenChange,
+  onEdit,
+  onDelete,
+  onKpi,
 }: {
   stakeholder: any;
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  onKpi: () => void;
 }) {
-  const { currentProjectId } = useProject();
-  const utils = trpc.useUtils();
-  const [selectedTgId, setSelectedTgId] = useState<string>("");
+  if (!stakeholder) return null;
 
-  const { data: links = [] } = trpc.stakeholderEnhancements.listTaskGroupLinks.useQuery(
-    { stakeholderId: stakeholder?.id },
-    { enabled: !!stakeholder?.id && open }
-  );
-  const { data: allTaskGroups = [] } = trpc.dropdownOptions.taskGroups.getAll.useQuery(
-    { projectId: currentProjectId! },
-    { enabled: !!currentProjectId && open }
-  );
-  const { data: allTasks = [] } = trpc.tasks.list.useQuery(
-    { projectId: currentProjectId! },
-    { enabled: !!currentProjectId && open }
-  );
-
-  const linkMutation = trpc.stakeholderEnhancements.linkTaskGroup.useMutation({
-    onSuccess: () => {
-      utils.stakeholderEnhancements.listTaskGroupLinks.invalidate({ stakeholderId: stakeholder.id });
-      setSelectedTgId("");
-      toast.success("Task Group linked");
-    },
-  });
-  const unlinkMutation = trpc.stakeholderEnhancements.unlinkTaskGroup.useMutation({
-    onSuccess: () => {
-      utils.stakeholderEnhancements.listTaskGroupLinks.invalidate({ stakeholderId: stakeholder.id });
-      toast.success("Task Group unlinked");
-    },
-  });
-
-  const linkedIds = new Set(links.map((l: any) => l.taskGroupId));
-  const availableTgs = allTaskGroups.filter((tg: any) => !linkedIds.has(tg.id));
+  const classification: Classification = stakeholder.classification || (stakeholder.isInternalTeam ? "TeamMember" : "Stakeholder");
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <ClipboardList className="h-5 w-5 text-primary" />
-            Development Plan — {stakeholder?.fullName}
-          </DialogTitle>
-          <DialogDescription>
-            Link Task Groups to this team member to define their development responsibilities.
-          </DialogDescription>
-        </DialogHeader>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="w-[420px] sm:w-[480px] overflow-y-auto">
+        <SheetHeader className="pb-4">
+          <SheetTitle className="flex items-center gap-2 text-base">
+            {stakeholder.fullName}
+            {getClassificationBadge(classification)}
+          </SheetTitle>
+        </SheetHeader>
 
-        {/* Link new task group */}
-        <div className="flex gap-2">
-          <Select value={selectedTgId} onValueChange={setSelectedTgId}>
-            <SelectTrigger className="flex-1">
-              <SelectValue placeholder="Select a Task Group to link..." />
-            </SelectTrigger>
-            <SelectContent>
-              {availableTgs.map((tg: any) => (
-                <SelectItem key={tg.id} value={String(tg.id)}>
-                  {tg.idCode} — {tg.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button
-            disabled={!selectedTgId || linkMutation.isPending}
-            onClick={() => linkMutation.mutate({ stakeholderId: stakeholder.id, taskGroupId: parseInt(selectedTgId) })}
-          >
-            <Link2 className="h-4 w-4 mr-1" /> Link
-          </Button>
-        </div>
+        <div className="space-y-5">
+          {/* Basic info */}
+          <div className="space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Contact</p>
+            {stakeholder.email && (
+              <div className="flex items-center gap-2 text-sm">
+                <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+                <span>{stakeholder.email}</span>
+              </div>
+            )}
+            {stakeholder.phone && (
+              <div className="flex items-center gap-2 text-sm">
+                <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+                <span>{stakeholder.phone}</span>
+              </div>
+            )}
+          </div>
 
-        {/* Linked Task Groups with their tasks */}
-        <div className="space-y-4">
-          {links.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">No Task Groups linked yet.</p>
-          ) : (
-            links.map((link: any) => {
-              const groupTasks = allTasks.filter((t: any) => t.taskGroupId === link.taskGroupId);
-              const doneTasks = groupTasks.filter((t: any) =>
-                ["Completed", "Closed", "Done", "Solved", "Approved", "Passed"].some(
-                  (s) => (t.currentStatus || "").toLowerCase() === s.toLowerCase()
-                )
-              );
-              const progress = groupTasks.length > 0 ? Math.round((doneTasks.length / groupTasks.length) * 100) : 0;
+          {/* Position info */}
+          <div className="space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Position</p>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              {stakeholder.department && (
+                <div>
+                  <p className="text-muted-foreground text-xs">Department</p>
+                  <p>{stakeholder.department}</p>
+                </div>
+              )}
+              {stakeholder.position && (
+                <div>
+                  <p className="text-muted-foreground text-xs">Position</p>
+                  <p>{stakeholder.position}</p>
+                </div>
+              )}
+              {stakeholder.job && (
+                <div>
+                  <p className="text-muted-foreground text-xs">Job</p>
+                  <p>{stakeholder.job}</p>
+                </div>
+              )}
+              {stakeholder.role && (
+                <div>
+                  <p className="text-muted-foreground text-xs">Role</p>
+                  <p>{stakeholder.role}</p>
+                </div>
+              )}
+            </div>
+          </div>
 
-              return (
-                <div key={link.id} className="border rounded-lg p-4 space-y-3">
-                  <div className="flex items-center justify-between">
+          {/* Team Member details */}
+          {classification === "TeamMember" && (
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Team Member Details</p>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                {stakeholder.costPerHour != null && (
+                  <div>
+                    <p className="text-muted-foreground text-xs">Cost/Hour</p>
+                    <p>${Number(stakeholder.costPerHour).toFixed(2)}</p>
+                  </div>
+                )}
+                {stakeholder.costPerDay != null && (
+                  <div>
+                    <p className="text-muted-foreground text-xs">Cost/Day</p>
+                    <p>${Number(stakeholder.costPerDay).toFixed(2)}</p>
+                  </div>
+                )}
+                {stakeholder.workingHoursPerDay != null && (
+                  <div>
+                    <p className="text-muted-foreground text-xs">Hours/Day</p>
+                    <p>{stakeholder.workingHoursPerDay}</p>
+                  </div>
+                )}
+                {stakeholder.workingDaysPerWeek != null && (
+                  <div>
+                    <p className="text-muted-foreground text-xs">Days/Week</p>
+                    <p>{stakeholder.workingDaysPerWeek}</p>
+                  </div>
+                )}
+              </div>
+              {stakeholder.isPooledResource && (
+                <Badge variant="outline" className="text-xs">Pooled Resource</Badge>
+              )}
+            </div>
+          )}
+
+          {/* Stakeholder engagement details */}
+          {classification === "Stakeholder" && (
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Engagement</p>
+
+              {(stakeholder.currentEngagementStatus || stakeholder.desiredEngagementStatus) && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  {stakeholder.currentEngagementStatus && (
+                    <Badge className={`text-xs border ${getEngagementStatusBadgeClass(stakeholder.currentEngagementStatus)}`}>
+                      {stakeholder.currentEngagementStatus}
+                    </Badge>
+                  )}
+                  {stakeholder.currentEngagementStatus && stakeholder.desiredEngagementStatus && (
+                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                  )}
+                  {stakeholder.desiredEngagementStatus && (
+                    <Badge className={`text-xs border ${getEngagementStatusBadgeClass(stakeholder.desiredEngagementStatus)}`}>
+                      {stakeholder.desiredEngagementStatus}
+                    </Badge>
+                  )}
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <p className="text-muted-foreground text-xs">Power Level</p>
+                  <p>{stakeholder.powerLevel ?? "—"}/5</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs">Interest Level</p>
+                  <p>{stakeholder.interestLevel ?? "—"}/5</p>
+                </div>
+              </div>
+
+              {stakeholder.engagementStrategy && (
+                <div>
+                  <p className="text-muted-foreground text-xs">Strategy</p>
+                  <Badge className={`text-xs border mt-1 ${getEngagementBadgeClass(stakeholder.engagementStrategy)}`}>
+                    {stakeholder.engagementStrategy}
+                  </Badge>
+                </div>
+              )}
+
+              {stakeholder.communicationFrequency && (
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <p className="text-muted-foreground text-xs">Comm. Frequency</p>
+                    <p>{stakeholder.communicationFrequency}</p>
+                  </div>
+                  {stakeholder.communicationChannel && (
                     <div>
-                      <span className="font-medium">{link.taskGroupCode} — {link.taskGroupName}</span>
-                      <span className="ml-2 text-sm text-muted-foreground">
-                        {doneTasks.length}/{groupTasks.length} tasks complete
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-primary">{progress}%</span>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-destructive"
-                        onClick={() => unlinkMutation.mutate({ id: link.id })}
-                      >
-                        <Unlink className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-                  {/* Progress bar */}
-                  <div className="h-2 bg-muted rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-primary rounded-full transition-all"
-                      style={{ width: `${progress}%` }}
-                    />
-                  </div>
-                  {/* Task list */}
-                  {groupTasks.length > 0 && (
-                    <div className="space-y-1">
-                      {groupTasks.slice(0, 5).map((t: any) => (
-                        <div key={t.id} className="flex items-center gap-2 text-sm">
-                          <div className={`h-2 w-2 rounded-full shrink-0 ${
-                            ["Completed", "Closed", "Done", "Solved"].some((s) => (t.currentStatus || "").toLowerCase() === s.toLowerCase())
-                              ? "bg-green-500"
-                              : "bg-muted-foreground/40"
-                          }`} />
-                          <span className="flex-1 truncate">{t.taskId} — {t.description}</span>
-                          <Badge variant="outline" className="text-xs shrink-0">{t.currentStatus || "Open"}</Badge>
-                        </div>
-                      ))}
-                      {groupTasks.length > 5 && (
-                        <p className="text-xs text-muted-foreground pl-4">+{groupTasks.length - 5} more tasks</p>
-                      )}
+                      <p className="text-muted-foreground text-xs">Channel</p>
+                      <p>{stakeholder.communicationChannel}</p>
                     </div>
                   )}
                 </div>
-              );
-            })
+              )}
+
+              {stakeholder.communicationResponsible && (
+                <div className="text-sm">
+                  <p className="text-muted-foreground text-xs">Comm. Responsible</p>
+                  <p>{stakeholder.communicationResponsible}</p>
+                </div>
+              )}
+
+              {stakeholder.communicationMessage && (
+                <div className="text-sm">
+                  <p className="text-muted-foreground text-xs">Key Message</p>
+                  <p className="text-sm">{stakeholder.communicationMessage}</p>
+                </div>
+              )}
+            </div>
           )}
+
+          {/* Notes */}
+          {stakeholder.notes && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Remark / Notes</p>
+              <p className="text-sm text-muted-foreground">{stakeholder.notes}</p>
+            </div>
+          )}
+
+          {/* Action buttons */}
+          <div className="space-y-2 pt-2 border-t">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Actions</p>
+
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" onClick={onEdit}>
+                <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                Edit
+              </Button>
+              <Button size="sm" variant="outline" onClick={onKpi}>
+                <Target className="h-3.5 w-3.5 mr-1.5" />
+                KPI & Assessments
+              </Button>
+            </div>
+
+            {classification === "TeamMember" && (
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => toast.info("Coming soon — use Engagement Plan / Resource Management pages")}
+                >
+                  <ClipboardList className="h-3.5 w-3.5 mr-1.5" />
+                  Development Plan
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => toast.info("Coming soon — use Engagement Plan / Resource Management pages")}
+                >
+                  <Activity className="h-3.5 w-3.5 mr-1.5" />
+                  Skills & SWOT
+                </Button>
+              </div>
+            )}
+
+            <div>
+              <Button size="sm" variant="destructive" onClick={onDelete}>
+                <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                Delete
+              </Button>
+            </div>
+          </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }
 
 // ─── Main Stakeholders Page ───────────────────────────────────────────────────
 export default function Stakeholders() {
   const { currentProjectId } = useProject();
+
+  // State
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeTab, setActiveTab] = useState("all");
+  const [classificationFilter, setClassificationFilter] = useState<"all" | "TeamMember" | "External" | "Stakeholder">("all");
+  const [strategyFilter, setStrategyFilter] = useState<string>("all");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
   const [selectedStakeholder, setSelectedStakeholder] = useState<any>(null);
   const [kpiDialogOpen, setKpiDialogOpen] = useState(false);
-  const [devPlanDialogOpen, setDevPlanDialogOpen] = useState(false);
   const [formData, setFormData] = useState<StakeholderFormData>(EMPTY_FORM);
-  const [viewMode, setViewMode] = useState<"table" | "matrix">("table");
-  const [dragOverQuadrant, setDragOverQuadrant] = useState<string | null>(null);
 
   const utils = trpc.useUtils();
+
   const { data: stakeholders = [], isLoading } = trpc.stakeholders.list.useQuery(
     { projectId: currentProjectId! },
     { enabled: !!currentProjectId }
@@ -686,6 +1185,7 @@ export default function Stakeholders() {
     onSuccess: () => {
       utils.stakeholders.list.invalidate();
       setIsEditOpen(false);
+      setDetailOpen(false);
       setSelectedStakeholder(null);
       setFormData(EMPTY_FORM);
       toast.success("Stakeholder updated");
@@ -697,24 +1197,38 @@ export default function Stakeholders() {
     onSuccess: () => {
       utils.stakeholders.list.invalidate();
       setIsDeleteOpen(false);
+      setDetailOpen(false);
       setSelectedStakeholder(null);
       toast.success("Stakeholder deleted");
     },
   });
 
-  const handleEdit = (s: any) => {
-    setSelectedStakeholder(s);
-    setFormData({
+  function getStakeholderClassification(s: any): Classification {
+    if (s.classification) return s.classification as Classification;
+    return s.isInternalTeam ? "TeamMember" : "Stakeholder";
+  }
+
+  function buildFormData(s: any): StakeholderFormData {
+    const classification = getStakeholderClassification(s);
+    return {
       fullName: s.fullName || "",
       email: s.email || "",
       position: s.position || "",
       role: s.role || "",
       job: s.job || "",
       phone: s.phone || "",
-      isInternalTeam: s.isInternalTeam || false,
+      department: s.department || "",
+      classification,
+      isInternalTeam: classificationToIsInternal(classification),
+      isPooledResource: s.isPooledResource || false,
+      workingHoursPerDay: s.workingHoursPerDay != null ? String(s.workingHoursPerDay) : "8",
+      workingDaysPerWeek: s.workingDaysPerWeek ?? 5,
+      stakeholderManagerId: s.stakeholderManagerId ?? null,
       powerLevel: s.powerLevel ?? 3,
       interestLevel: s.interestLevel ?? 3,
       engagementStrategy: s.engagementStrategy || "",
+      currentEngagementStatus: s.currentEngagementStatus || "",
+      desiredEngagementStatus: s.desiredEngagementStatus || "",
       communicationFrequency: s.communicationFrequency || "",
       communicationChannel: s.communicationChannel || "",
       communicationMessage: s.communicationMessage || "",
@@ -722,30 +1236,75 @@ export default function Stakeholders() {
       notes: s.notes || "",
       costPerHour: s.costPerHour != null ? String(s.costPerHour) : "",
       costPerDay: s.costPerDay != null ? String(s.costPerDay) : "",
-    });
+    };
+  }
+
+  const handleEdit = (s: any) => {
+    setSelectedStakeholder(s);
+    setFormData(buildFormData(s));
     setIsEditOpen(true);
   };
+
+  const handleRowClick = (s: any) => {
+    setSelectedStakeholder(s);
+    setDetailOpen(true);
+  };
+
+  const handleCreate = () => {
+    if (!formData.fullName.trim()) { toast.error("Full name is required"); return; }
+    if (!currentProjectId) { toast.error("No project selected"); return; }
+    createMutation.mutate({
+      ...formData,
+      projectId: currentProjectId,
+      isInternalTeam: classificationToIsInternal(formData.classification),
+      costPerHour: formData.costPerHour || undefined,
+      costPerDay: formData.costPerDay || undefined,
+    });
+  };
+
+  const handleUpdate = () => {
+    if (!selectedStakeholder) return;
+    if (!formData.fullName.trim()) { toast.error("Full name is required"); return; }
+    updateMutation.mutate({
+      id: selectedStakeholder.id,
+      data: {
+        ...formData,
+        isInternalTeam: classificationToIsInternal(formData.classification),
+        costPerHour: formData.costPerHour || null,
+        costPerDay: formData.costPerDay || null,
+      },
+    });
+  };
+
+  // Derived counts
+  const teamMemberCount = stakeholders.filter((s) => getStakeholderClassification(s) === "TeamMember").length;
+  const externalCount = stakeholders.filter((s) => getStakeholderClassification(s) === "External").length;
+  const stakeholderCount = stakeholders.filter((s) => getStakeholderClassification(s) === "Stakeholder").length;
+  const manageCloselyCount = stakeholders.filter((s) => s.engagementStrategy === "Manage Closely").length;
 
   const filteredStakeholders = useMemo(() => {
     const q = searchTerm.toLowerCase();
     return stakeholders.filter((s) => {
+      const classification = getStakeholderClassification(s);
+
       const matchesSearch =
         !q ||
         s.fullName?.toLowerCase().includes(q) ||
         s.email?.toLowerCase().includes(q) ||
-        s.position?.toLowerCase().includes(q) ||
+        s.department?.toLowerCase().includes(q) ||
         s.role?.toLowerCase().includes(q) ||
-        s.job?.toLowerCase().includes(q);
-      const matchesTab =
-        activeTab === "all" ||
-        (activeTab === "internal" && s.isInternalTeam) ||
-        (activeTab === "external" && !s.isInternalTeam);
-      return matchesSearch && matchesTab;
-    });
-  }, [stakeholders, searchTerm, activeTab]);
+        s.job?.toLowerCase().includes(q) ||
+        s.position?.toLowerCase().includes(q);
 
-  const internalCount = stakeholders.filter((s) => s.isInternalTeam).length;
-  const externalCount = stakeholders.filter((s) => !s.isInternalTeam).length;
+      const matchesClassification =
+        classificationFilter === "all" || classification === classificationFilter;
+
+      const matchesStrategy =
+        strategyFilter === "all" || s.engagementStrategy === strategyFilter;
+
+      return matchesSearch && matchesClassification && matchesStrategy;
+    });
+  }, [stakeholders, searchTerm, classificationFilter, strategyFilter]);
 
   if (isLoading) {
     return (
@@ -755,205 +1314,6 @@ export default function Stakeholders() {
     );
   }
 
-  // ─── Shared form fields ───────────────────────────────────────────────────
-  const renderFormFields = () => (
-    <div className="space-y-4">
-      {/* Basic Info */}
-      <div className="space-y-3">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Basic Information</p>
-        <div className="space-y-2">
-          <Label>Full Name *</Label>
-          <Input
-            value={formData.fullName}
-            onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-            placeholder="John Doe"
-          />
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-2">
-            <Label>Email</Label>
-            <Input
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              placeholder="john@company.com"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Phone</Label>
-            <Input
-              value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              placeholder="+1 234 567 8900"
-            />
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-2">
-            <Label>Position</Label>
-            <Input
-              value={formData.position}
-              onChange={(e) => setFormData({ ...formData, position: e.target.value })}
-              placeholder="Project Manager"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Role</Label>
-            <Input
-              value={formData.role}
-              onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-              placeholder="Sponsor"
-            />
-          </div>
-        </div>
-        <div className="space-y-2">
-          <Label>Department</Label>
-          <Input
-            value={formData.job}
-            onChange={(e) => setFormData({ ...formData, job: e.target.value })}
-            placeholder="IT Department"
-          />
-        </div>
-      </div>
-
-      {/* Cost fields */}
-      <div className="space-y-3 border-t pt-3">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Cost Rates</p>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-2">
-            <Label>Cost Per Hour ($)</Label>
-            <Input
-              type="number"
-              min="0"
-              step="0.01"
-              value={formData.costPerHour}
-              onChange={(e) => setFormData({ ...formData, costPerHour: e.target.value })}
-              placeholder="0.00"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Cost Per Day ($)</Label>
-            <Input
-              type="number"
-              min="0"
-              step="0.01"
-              value={formData.costPerDay}
-              onChange={(e) => setFormData({ ...formData, costPerDay: e.target.value })}
-              placeholder="0.00"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Internal Team */}
-      <div className="space-y-3 border-t pt-3">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Team Classification</p>
-        <div className="flex items-center gap-3">
-          <Switch
-            checked={formData.isInternalTeam}
-            onCheckedChange={(v) => setFormData({ ...formData, isInternalTeam: v })}
-          />
-          <Label>Internal Team Member</Label>
-          {formData.isInternalTeam && (
-            <Badge className="bg-blue-100 text-blue-700 border-blue-200">Internal</Badge>
-          )}
-        </div>
-      </div>
-
-      {/* Engagement */}
-      <div className="space-y-3 border-t pt-3">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Engagement & Communication</p>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>Power Level: {formData.powerLevel}/5</Label>
-            <Slider
-              min={1} max={5} step={1}
-              value={[formData.powerLevel]}
-              onValueChange={([v]) => setFormData({ ...formData, powerLevel: v })}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Interest Level: {formData.interestLevel}/5</Label>
-            <Slider
-              min={1} max={5} step={1}
-              value={[formData.interestLevel]}
-              onValueChange={([v]) => setFormData({ ...formData, interestLevel: v })}
-            />
-          </div>
-        </div>
-        <div className="space-y-2">
-          <Label>Engagement Strategy</Label>
-          <Select value={formData.engagementStrategy} onValueChange={(v) => setFormData({ ...formData, engagementStrategy: v })}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select strategy..." />
-            </SelectTrigger>
-            <SelectContent>
-              {ENGAGEMENT_STRATEGIES.map((s) => (
-                <SelectItem key={s} value={s}>{s}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-2">
-            <Label>Communication Frequency</Label>
-            <Select value={formData.communicationFrequency} onValueChange={(v) => setFormData({ ...formData, communicationFrequency: v })}>
-              <SelectTrigger>
-                <SelectValue placeholder="Frequency..." />
-              </SelectTrigger>
-              <SelectContent>
-                {COMM_FREQUENCIES.map((f) => (
-                  <SelectItem key={f} value={f}>{f}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Channel</Label>
-            <Select value={formData.communicationChannel} onValueChange={(v) => setFormData({ ...formData, communicationChannel: v })}>
-              <SelectTrigger>
-                <SelectValue placeholder="Channel..." />
-              </SelectTrigger>
-              <SelectContent>
-                {COMM_CHANNELS.map((c) => (
-                  <SelectItem key={c} value={c}>{c}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-        <div className="space-y-2">
-          <Label>Key Message</Label>
-          <Textarea
-            value={formData.communicationMessage}
-            onChange={(e) => setFormData({ ...formData, communicationMessage: e.target.value })}
-            placeholder="Key message to communicate to this stakeholder..."
-            rows={2}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label>Communication Responsible</Label>
-          <StakeholderSelect
-            stakeholders={stakeholders as any[]}
-            value={formData.communicationResponsible}
-            onValueChange={(v) => setFormData({ ...formData, communicationResponsible: v })}
-            projectId={currentProjectId ?? undefined}
-            placeholder="Who is responsible for communication?"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label>Notes</Label>
-          <Textarea
-            value={formData.notes}
-            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-            placeholder="Additional notes..."
-            rows={2}
-          />
-        </div>
-      </div>
-    </div>
-  );
-
   return (
     <div className="space-y-6 p-6">
       {/* Header */}
@@ -961,16 +1321,18 @@ export default function Stakeholders() {
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Users className="w-6 h-6 text-primary" />
-            Stakeholder Management
+            Stakeholder Register
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Manage stakeholders, internal team development plans, KPIs, and engagement strategies
+            Manage team members, external parties, stakeholders, KPIs, and engagement strategies.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Badge variant="outline">{stakeholders.length} Total</Badge>
-          <Badge className="bg-blue-100 text-blue-700 border-blue-200">{internalCount} Internal</Badge>
-          <Button onClick={() => { setFormData(EMPTY_FORM); setIsCreateOpen(true); }} className="gap-2">
+          <Button
+            onClick={() => { setFormData(EMPTY_FORM); setIsCreateOpen(true); }}
+            className="gap-2"
+          >
             <Plus className="h-4 w-4" /> Add Stakeholder
           </Button>
           {currentProjectId && (
@@ -986,8 +1348,8 @@ export default function Stakeholders() {
             <div className="flex items-center gap-3">
               <div className="p-2 bg-blue-100 rounded-lg"><Users className="h-5 w-5 text-blue-600" /></div>
               <div>
-                <p className="text-xs text-muted-foreground">Total</p>
-                <p className="text-2xl font-bold">{stakeholders.length}</p>
+                <p className="text-xs text-muted-foreground">Team Members</p>
+                <p className="text-2xl font-bold">{teamMemberCount}</p>
               </div>
             </div>
           </CardContent>
@@ -995,18 +1357,7 @@ export default function Stakeholders() {
         <Card>
           <CardContent className="pt-4 pb-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 rounded-lg"><UserCheck className="h-5 w-5 text-green-600" /></div>
-              <div>
-                <p className="text-xs text-muted-foreground">Internal Team</p>
-                <p className="text-2xl font-bold">{internalCount}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 rounded-lg"><Briefcase className="h-5 w-5 text-purple-600" /></div>
+              <div className="p-2 bg-orange-100 rounded-lg"><Briefcase className="h-5 w-5 text-orange-600" /></div>
               <div>
                 <p className="text-xs text-muted-foreground">External</p>
                 <p className="text-2xl font-bold">{externalCount}</p>
@@ -1017,40 +1368,54 @@ export default function Stakeholders() {
         <Card>
           <CardContent className="pt-4 pb-4">
             <div className="flex items-center gap-3">
+              <div className="p-2 bg-purple-100 rounded-lg"><UserCheck className="h-5 w-5 text-purple-600" /></div>
+              <div>
+                <p className="text-xs text-muted-foreground">Stakeholders</p>
+                <p className="text-2xl font-bold">{stakeholderCount}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-center gap-3">
               <div className="p-2 bg-red-100 rounded-lg"><Activity className="h-5 w-5 text-red-600" /></div>
               <div>
                 <p className="text-xs text-muted-foreground">Manage Closely</p>
-                <p className="text-2xl font-bold">
-                  {stakeholders.filter((s) => s.engagementStrategy === "Manage Closely").length}
-                </p>
+                <p className="text-2xl font-bold">{manageCloselyCount}</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Tabs + Search */}
+      {/* Filter bar */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search stakeholders..."
+            placeholder="Search name, email, department, role..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
           />
         </div>
+
+        {/* Classification filter */}
         <div className="flex gap-1 border rounded-lg p-1">
-          {[
-            { key: "all", label: "All" },
-            { key: "internal", label: "Internal Team" },
-            { key: "external", label: "External" },
-          ].map((t) => (
+          {(
+            [
+              { key: "all", label: "All" },
+              { key: "TeamMember", label: "Team Members" },
+              { key: "External", label: "External" },
+              { key: "Stakeholder", label: "Stakeholders" },
+            ] as const
+          ).map((t) => (
             <button
               key={t.key}
-              onClick={() => setActiveTab(t.key)}
+              onClick={() => setClassificationFilter(t.key)}
               className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-                activeTab === t.key
+                classificationFilter === t.key
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:text-foreground"
               }`}
@@ -1059,238 +1424,42 @@ export default function Stakeholders() {
             </button>
           ))}
         </div>
-        {/* View mode toggle */}
-        <div className="flex gap-1 border rounded-lg p-1 ml-auto">
-          <button onClick={() => setViewMode("table")}
-            className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${viewMode === "table" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-            Table
-          </button>
-          <button onClick={() => setViewMode("matrix")}
-            className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${viewMode === "matrix" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-            Engagement Matrix
-          </button>
-        </div>
+
+        {/* Strategy filter — only relevant for Stakeholders */}
+        {(classificationFilter === "all" || classificationFilter === "Stakeholder") && (
+          <Select value={strategyFilter} onValueChange={setStrategyFilter}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Engagement Strategy" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Strategies</SelectItem>
+              {ENGAGEMENT_STRATEGIES.map((s) => (
+                <SelectItem key={s} value={s}>{s}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
-      {/* ── Engagement Matrix View ────────────────────────────────────────────── */}
-      {viewMode === "matrix" && (() => {
-        const QUADRANTS = [
-          { key: "Keep Satisfied",  label: "Keep Satisfied",  sub: "High Power · Low Interest",  color: "bg-orange-50 border-orange-300",  headerColor: "text-orange-700",  countColor: "bg-orange-100 text-orange-700" },
-          { key: "Manage Closely",  label: "Manage Closely",  sub: "High Power · High Interest", color: "bg-red-50 border-red-300",        headerColor: "text-red-700",     countColor: "bg-red-100 text-red-700"     },
-          { key: "Monitor",         label: "Monitor",         sub: "Low Power · Low Interest",   color: "bg-gray-50 border-gray-300",      headerColor: "text-gray-600",    countColor: "bg-gray-100 text-gray-600"   },
-          { key: "Keep Informed",   label: "Keep Informed",   sub: "Low Power · High Interest",  color: "bg-blue-50 border-blue-300",      headerColor: "text-blue-700",    countColor: "bg-blue-100 text-blue-700"   },
-        ];
-
-        // Avatar color palette — consistent per stakeholder id
-        const AVATAR_COLORS = [
-          "bg-violet-500","bg-blue-500","bg-emerald-500","bg-amber-500",
-          "bg-rose-500","bg-indigo-500","bg-teal-500","bg-pink-500",
-        ];
-        function avatarColor(id: number) { return AVATAR_COLORS[id % AVATAR_COLORS.length]; }
-        function initials(name: string) {
-          const parts = name.trim().split(" ");
-          return parts.length >= 2 ? parts[0][0] + parts[parts.length - 1][0] : parts[0].slice(0, 2);
-        }
-
-        // Auto-suggest quadrant from power/interest levels
-        function suggestedQuadrant(s: any): string {
-          const p = s.powerLevel ?? 3;
-          const i = s.interestLevel ?? 3;
-          if (p >= 3 && i >= 3) return "Manage Closely";
-          if (p >= 3 && i < 3)  return "Keep Satisfied";
-          if (p < 3  && i >= 3) return "Keep Informed";
-          return "Monitor";
-        }
-
-        const placed = filteredStakeholders.filter(s => s.engagementStrategy && QUADRANTS.some(q => q.key === s.engagementStrategy));
-        const unplaced = filteredStakeholders.filter(s => !s.engagementStrategy || !QUADRANTS.some(q => q.key === s.engagementStrategy));
-
-        function StakeholderCard({ s, quadrantKey }: { s: any; quadrantKey?: string }) {
-          const influence = ((s.powerLevel ?? 3) * (s.interestLevel ?? 3));
-          return (
-            <div
-              draggable
-              onDragStart={(e) => {
-                e.dataTransfer.setData("stakeholderId", String(s.id));
-                e.dataTransfer.effectAllowed = "move";
-              }}
-              className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all cursor-grab active:cursor-grabbing select-none w-full"
-            >
-              <div className="flex items-start gap-2.5 p-2.5">
-                {/* Avatar */}
-                <div className={`w-8 h-8 rounded-full ${avatarColor(s.id)} flex items-center justify-center text-white text-xs font-bold flex-shrink-0`}>
-                  {initials(s.fullName ?? "?")}
-                </div>
-                {/* Info */}
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-start justify-between gap-1">
-                    <p className="text-xs font-semibold text-gray-900 leading-tight truncate">{s.fullName}</p>
-                    {/* Context menu */}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button className="p-0.5 rounded hover:bg-gray-100 flex-shrink-0" onMouseDown={e => e.stopPropagation()}>
-                          <MoreVertical className="w-3 h-3 text-gray-400" />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-48 text-xs">
-                        <DropdownMenuItem className="gap-2 text-xs" onClick={() => { setSelectedStakeholder(s); setFormData({ ...EMPTY_FORM, fullName: s.fullName ?? "", email: s.email ?? "", position: s.position ?? "", role: s.role ?? "", job: s.job ?? "", phone: s.phone ?? "", isInternalTeam: !!s.isInternalTeam, powerLevel: s.powerLevel ?? 3, interestLevel: s.interestLevel ?? 3, engagementStrategy: s.engagementStrategy ?? "", costPerHour: s.costPerHour ?? "", costPerDay: s.costPerDay ?? "", communicationFrequency: s.communicationFrequency ?? "", communicationChannel: s.communicationChannel ?? "", communicationMessage: s.communicationMessage ?? "", communicationResponsible: s.communicationResponsible ?? "", notes: s.notes ?? "" }); setIsCreateOpen(true); }}>
-                          <UserCog className="w-3.5 h-3.5" />Edit Profile
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        {QUADRANTS.filter(q => q.key !== quadrantKey).map(q => (
-                          <DropdownMenuItem key={q.key} className="gap-2 text-xs" onClick={() => updateMutation.mutate({ id: s.id, data: { engagementStrategy: q.key } })}>
-                            <MoveRight className="w-3.5 h-3.5" />Move to {q.label}
-                          </DropdownMenuItem>
-                        ))}
-                        {quadrantKey && (
-                          <DropdownMenuItem className="gap-2 text-xs text-gray-500" onClick={() => updateMutation.mutate({ id: s.id, data: { engagementStrategy: "" } })}>
-                            <ArrowLeftRight className="w-3.5 h-3.5" />Move to Pool
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                  {s.position && <p className="text-[10px] text-gray-500 truncate">{s.position}</p>}
-                  {/* Power × Interest chips */}
-                  <div className="flex items-center gap-1.5 mt-1.5">
-                    <span className="text-[9px] bg-gray-100 text-gray-600 rounded px-1 py-0.5">P {s.powerLevel ?? "—"}/5</span>
-                    <span className="text-[9px] bg-gray-100 text-gray-600 rounded px-1 py-0.5">I {s.interestLevel ?? "—"}/5</span>
-                    <span className="text-[9px] bg-blue-50 text-blue-600 rounded px-1 py-0.5 font-medium">⚡ {influence}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-        }
-
-        return (
-          <div className="space-y-3">
-            {/* Toolbar row */}
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-xs text-muted-foreground">
-                Drag stakeholder cards between quadrants or use the context menu (⋮) to move, edit, or send to pool.
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-xs gap-1.5 flex-shrink-0"
-                onClick={() => {
-                  unplaced.forEach(s => {
-                    const suggested = suggestedQuadrant(s);
-                    updateMutation.mutate({ id: s.id, data: { engagementStrategy: suggested } });
-                  });
-                  if (unplaced.length > 0) toast.success(`Auto-placed ${unplaced.length} stakeholder(s) based on Power × Interest`);
-                  else toast.info("All stakeholders are already placed");
-                }}
-              >
-                <Wand2 className="w-3.5 h-3.5" />Auto-Place from Scores
-              </Button>
-            </div>
-
-            <div className="flex gap-4">
-              {/* Left: Pool sidebar */}
-              <div
-                className={`w-44 flex-shrink-0 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 p-3 transition-all ${dragOverQuadrant === "__pool__" ? "ring-2 ring-primary bg-gray-100" : ""}`}
-                onDragOver={(e) => { e.preventDefault(); setDragOverQuadrant("__pool__"); }}
-                onDragLeave={() => setDragOverQuadrant(null)}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  setDragOverQuadrant(null);
-                  const id = parseInt(e.dataTransfer.getData("stakeholderId"));
-                  if (!id) return;
-                  updateMutation.mutate({ id, data: { engagementStrategy: "" } });
-                }}
-              >
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="text-xs font-semibold text-gray-600">Unplaced Pool</span>
-                  <span className="text-[10px] bg-gray-200 text-gray-600 rounded-full px-1.5 py-0.5 font-medium">{unplaced.length}</span>
-                </div>
-                <div className="space-y-2">
-                  {unplaced.map(s => (
-                    <StakeholderCard key={s.id} s={s} />
-                  ))}
-                  {unplaced.length === 0 && (
-                    <p className="text-[10px] text-gray-400 italic text-center py-4">All placed ✓</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Right: 2×2 matrix */}
-              <div className="flex-1 space-y-1">
-                {/* Power axis label */}
-                <div className="flex items-center gap-1 text-[10px] text-muted-foreground mb-1">
-                  <TrendingUp className="w-3 h-3" /><span>Power ↕ (High at top)</span>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  {QUADRANTS.map(q => {
-                    const members = placed.filter(s => s.engagementStrategy === q.key);
-                    return (
-                      <div
-                        key={q.key}
-                        className={`rounded-xl border-2 p-3 min-h-[180px] transition-all flex flex-col ${q.color} ${dragOverQuadrant === q.key ? "ring-2 ring-primary ring-offset-1 scale-[1.005]" : ""}`}
-                        onDragOver={(e) => { e.preventDefault(); setDragOverQuadrant(q.key); }}
-                        onDragLeave={() => setDragOverQuadrant(null)}
-                        onDrop={(e) => {
-                          e.preventDefault();
-                          setDragOverQuadrant(null);
-                          const id = parseInt(e.dataTransfer.getData("stakeholderId"));
-                          if (!id) return;
-                          updateMutation.mutate({ id, data: { engagementStrategy: q.key } });
-                          toast.success(`Moved to ${q.label}`);
-                        }}
-                      >
-                        <div className="flex items-start justify-between mb-2.5">
-                          <div>
-                            <div className={`font-bold text-sm ${q.headerColor}`}>{q.label}</div>
-                            <div className="text-[10px] text-muted-foreground">{q.sub}</div>
-                          </div>
-                          <span className={`text-[10px] rounded-full px-1.5 py-0.5 font-semibold ${q.countColor}`}>{members.length}</span>
-                        </div>
-                        <div className="flex-1 space-y-2 overflow-y-auto">
-                          {members.map(s => (
-                            <StakeholderCard key={s.id} s={s} quadrantKey={q.key} />
-                          ))}
-                          {members.length === 0 && (
-                            <div className="text-[10px] text-muted-foreground/50 italic text-center py-6 border border-dashed border-current/20 rounded-lg">
-                              Drop here
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                {/* Interest axis label */}
-                <div className="flex justify-between text-[10px] text-muted-foreground px-1 mt-1">
-                  <span className="flex items-center gap-0.5"><ArrowLeftRight className="w-3 h-3" />Low Interest</span>
-                  <span className="flex items-center gap-0.5">High Interest<ArrowLeftRight className="w-3 h-3" /></span>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
-
       {/* Table */}
-      {viewMode === "table" &&
       <div className="border rounded-lg overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
               <TableHead>Name</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Position / Role</TableHead>
-              <TableHead>Contact</TableHead>
-              <TableHead>Engagement</TableHead>
-              <TableHead>Power / Interest</TableHead>
-              <TableHead className="hidden xl:table-cell">Cost Rate</TableHead>
-              <TableHead className="w-32">Actions</TableHead>
+              <TableHead>Department</TableHead>
+              <TableHead>Job / Role</TableHead>
+              <TableHead>Classification</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Phone</TableHead>
+              <TableHead>Remark</TableHead>
+              <TableHead className="w-28">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredStakeholders.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7}>
+                <TableCell colSpan={8}>
                   <EmptyState
                     icon={Users}
                     title={searchTerm ? "No stakeholders match your search" : "No stakeholders yet"}
@@ -1301,170 +1470,137 @@ export default function Stakeholders() {
                 </TableCell>
               </TableRow>
             ) : (
-              filteredStakeholders.map((s) => (
-                <TableRow key={s.id} className="hover:bg-muted/30">
-                  <TableCell>
-                    <div>
-                      <p className="font-medium">{s.fullName}</p>
-                      {s.job && <p className="text-xs text-muted-foreground">{s.job}</p>}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {s.isInternalTeam ? (
-                      <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-xs">Internal</Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-xs">External</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-sm">
-                      {s.position && <p>{s.position}</p>}
-                      {s.role && <p className="text-muted-foreground">{s.role}</p>}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-sm space-y-0.5">
-                      {s.email && (
-                        <div className="flex items-center gap-1">
-                          <Mail className="h-3 w-3 text-muted-foreground" />
+              filteredStakeholders.map((s) => {
+                const classification = getStakeholderClassification(s);
+                return (
+                  <TableRow
+                    key={s.id}
+                    className="hover:bg-muted/30 cursor-pointer"
+                    onClick={() => handleRowClick(s)}
+                  >
+                    <TableCell>
+                      <div>
+                        <p className="font-medium">{s.fullName}</p>
+                        {s.position && <p className="text-xs text-muted-foreground">{s.position}</p>}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm">{s.department || "—"}</span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        {s.job && <p>{s.job}</p>}
+                        {s.role && <p className="text-muted-foreground text-xs">{s.role}</p>}
+                        {!s.job && !s.role && <span className="text-muted-foreground">—</span>}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {getClassificationBadge(classification)}
+                    </TableCell>
+                    <TableCell>
+                      {s.email ? (
+                        <div className="flex items-center gap-1 text-sm">
+                          <Mail className="h-3 w-3 text-muted-foreground shrink-0" />
                           <span className="truncate max-w-[140px]">{s.email}</span>
                         </div>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">—</span>
                       )}
-                      {s.phone && (
-                        <div className="flex items-center gap-1">
-                          <Phone className="h-3 w-3 text-muted-foreground" />
+                    </TableCell>
+                    <TableCell>
+                      {s.phone ? (
+                        <div className="flex items-center gap-1 text-sm">
+                          <Phone className="h-3 w-3 text-muted-foreground shrink-0" />
                           {s.phone}
                         </div>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">—</span>
                       )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {s.engagementStrategy ? (
-                      <Badge className={`text-xs border ${getEngagementBadge(s.engagementStrategy)}`}>
-                        {s.engagementStrategy}
-                      </Badge>
-                    ) : (
-                      <span className="text-muted-foreground text-xs">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-xs text-muted-foreground">
-                      <span>P: {s.powerLevel ?? "—"}/5</span>
-                      <span className="mx-1">·</span>
-                      <span>I: {s.interestLevel ?? "—"}/5</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="hidden xl:table-cell">
-                    <div className="text-xs space-y-0.5">
-                      {s.costPerHour != null && (
-                        <div className="text-muted-foreground">${Number(s.costPerHour).toFixed(2)}/hr</div>
+                    </TableCell>
+                    <TableCell>
+                      {s.notes ? (
+                        <span className="text-xs text-muted-foreground line-clamp-2 max-w-[160px]">{s.notes}</span>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">—</span>
                       )}
-                      {s.costPerDay != null && (
-                        <div className="text-muted-foreground">${Number(s.costPerDay).toFixed(2)}/day</div>
-                      )}
-                      {s.costPerHour == null && s.costPerDay == null && (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost" size="icon" className="h-7 w-7"
-                        title="Edit"
-                        onClick={() => handleEdit(s)}
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      {s.isInternalTeam && (
+                    </TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center gap-1">
                         <Button
-                          variant="ghost" size="icon" className="h-7 w-7 text-blue-600"
-                          title="Development Plan"
-                          onClick={() => { setSelectedStakeholder(s); setDevPlanDialogOpen(true); }}
+                          variant="ghost" size="icon" className="h-7 w-7"
+                          title="Edit"
+                          onClick={() => handleEdit(s)}
                         >
-                          <ClipboardList className="h-3.5 w-3.5" />
+                          <Pencil className="h-3.5 w-3.5" />
                         </Button>
-                      )}
-                      <Button
-                        variant="ghost" size="icon" className="h-7 w-7 text-primary"
-                        title="KPIs & Assessments"
-                        onClick={() => { setSelectedStakeholder(s); setKpiDialogOpen(true); }}
-                      >
-                        <Target className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost" size="icon" className="h-7 w-7 text-destructive"
-                        title="Delete"
-                        onClick={() => { setSelectedStakeholder(s); setIsDeleteOpen(true); }}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
+                        <Button
+                          variant="ghost" size="icon" className="h-7 w-7 text-primary"
+                          title="KPIs & Assessments"
+                          onClick={() => { setSelectedStakeholder(s); setKpiDialogOpen(true); }}
+                        >
+                          <Target className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost" size="icon" className="h-7 w-7 text-destructive"
+                          title="Delete"
+                          onClick={() => { setSelectedStakeholder(s); setIsDeleteOpen(true); }}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>
-      </div>}
+      </div>
 
       {/* Create Dialog */}
-      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Add New Stakeholder</DialogTitle>
-          </DialogHeader>
-          {renderFormFields()}
-          <DialogFooter className="mt-4">
-            <Button variant="outline" onClick={() => { setIsCreateOpen(false); setFormData(EMPTY_FORM); }}>Cancel</Button>
-            <Button
-              onClick={() => {
-                if (!formData.fullName.trim()) { toast.error("Full name is required"); return; }
-                if (!currentProjectId) { toast.error("No project selected"); return; }
-                createMutation.mutate({
-                  ...formData,
-                  projectId: currentProjectId,
-                  costPerHour: formData.costPerHour || undefined,
-                  costPerDay: formData.costPerDay || undefined,
-                });
-              }}
-              disabled={createMutation.isPending}
-            >
-              {createMutation.isPending ? "Creating..." : "Create Stakeholder"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <StakeholderFormDialog
+        open={isCreateOpen}
+        onOpenChange={setIsCreateOpen}
+        title="Add New Stakeholder"
+        formData={formData}
+        setFormData={setFormData}
+        onSubmit={handleCreate}
+        isPending={createMutation.isPending}
+        stakeholders={stakeholders as any[]}
+        currentProjectId={currentProjectId}
+      />
 
       {/* Edit Dialog */}
-      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Edit Stakeholder — {selectedStakeholder?.fullName}</DialogTitle>
-          </DialogHeader>
-          {renderFormFields()}
-          <DialogFooter className="mt-4">
-            <Button variant="outline" onClick={() => { setIsEditOpen(false); setFormData(EMPTY_FORM); }}>Cancel</Button>
-            <Button
-              onClick={() => {
-                if (!selectedStakeholder) return;
-                if (!formData.fullName.trim()) { toast.error("Full name is required"); return; }
-                updateMutation.mutate({
-                  id: selectedStakeholder.id,
-                  data: {
-                    ...formData,
-                    costPerHour: formData.costPerHour || null,
-                    costPerDay: formData.costPerDay || null,
-                  },
-                });
-              }}
-              disabled={updateMutation.isPending}
-            >
-              {updateMutation.isPending ? "Saving..." : "Save Changes"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <StakeholderFormDialog
+        open={isEditOpen}
+        onOpenChange={(v) => { setIsEditOpen(v); if (!v) setFormData(EMPTY_FORM); }}
+        title={`Edit — ${selectedStakeholder?.fullName}`}
+        formData={formData}
+        setFormData={setFormData}
+        onSubmit={handleUpdate}
+        isPending={updateMutation.isPending}
+        stakeholders={stakeholders as any[]}
+        currentProjectId={currentProjectId}
+      />
+
+      {/* Detail Panel */}
+      <DetailPanel
+        stakeholder={selectedStakeholder}
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        onEdit={() => {
+          setDetailOpen(false);
+          if (selectedStakeholder) handleEdit(selectedStakeholder);
+        }}
+        onDelete={() => {
+          setDetailOpen(false);
+          setIsDeleteOpen(true);
+        }}
+        onKpi={() => {
+          setDetailOpen(false);
+          setKpiDialogOpen(true);
+        }}
+      />
 
       {/* Delete Confirmation */}
       <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
@@ -1493,15 +1629,6 @@ export default function Stakeholders() {
           stakeholder={selectedStakeholder}
           open={kpiDialogOpen}
           onOpenChange={setKpiDialogOpen}
-        />
-      )}
-
-      {/* Dev Plan Dialog */}
-      {selectedStakeholder && (
-        <DevPlanDialog
-          stakeholder={selectedStakeholder}
-          open={devPlanDialogOpen}
-          onOpenChange={setDevPlanDialogOpen}
         />
       )}
     </div>

@@ -142,11 +142,23 @@ export const stakeholders = mysqlTable("stakeholders", {
   role: varchar("role", { length: 200 }),
   job: varchar("job", { length: 200 }),
   phone: varchar("phone", { length: 50 }),
-  // Internal team & engagement fields
+  department: varchar("department", { length: 200 }),
+  // Classification: TeamMember | External | Stakeholder
+  classification: mysqlEnum("classification", ["TeamMember", "External", "Stakeholder"]).default("Stakeholder"),
+  // Legacy boolean kept for backward compat; derived from classification
   isInternalTeam: boolean("isInternalTeam").default(false).notNull(),
+  // TeamMember-specific
+  isPooledResource: boolean("isPooledResource").default(false),
+  workingHoursPerDay: decimal("workingHoursPerDay", { precision: 4, scale: 1 }).default("8.0"),
+  workingDaysPerWeek: int("workingDaysPerWeek").default(5),
+  // External-specific: manager is another stakeholder
+  stakeholderManagerId: int("stakeholderManagerId"),
+  // Stakeholder engagement tracking
   powerLevel: int("powerLevel").default(3),       // 1-5
   interestLevel: int("interestLevel").default(3),  // 1-5
   engagementStrategy: varchar("engagementStrategy", { length: 100 }), // Manage Closely | Keep Satisfied | Keep Informed | Monitor
+  currentEngagementStatus: mysqlEnum("currentEngagementStatus", ["Unaware", "Resistant", "Neutral", "Supportive", "Leading"]),
+  desiredEngagementStatus: mysqlEnum("desiredEngagementStatus", ["Unaware", "Resistant", "Neutral", "Supportive", "Leading"]),
   communicationFrequency: varchar("communicationFrequency", { length: 100 }),
   communicationChannel: varchar("communicationChannel", { length: 100 }),
   communicationMessage: text("communicationMessage"),
@@ -1377,3 +1389,152 @@ export const stakeholderPortalTokens = mysqlTable("stakeholderPortalTokens", {
 });
 export type StakeholderPortalToken = typeof stakeholderPortalTokens.$inferSelect;
 export type InsertStakeholderPortalToken = typeof stakeholderPortalTokens.$inferInsert;
+
+// ─── Engagement Status History ─────────────────────────────────────────────────
+export const engagementStatusHistory = mysqlTable("engagementStatusHistory", {
+  id: int("id").autoincrement().primaryKey(),
+  stakeholderId: int("stakeholderId").notNull(),
+  projectId: int("projectId").notNull(),
+  statusType: mysqlEnum("statusType", ["current", "desired"]).notNull(),
+  status: mysqlEnum("engagementStatus", ["Unaware", "Resistant", "Neutral", "Supportive", "Leading"]).notNull(),
+  assessedBy: varchar("assessedBy", { length: 200 }),
+  assessmentDate: date("assessmentDate").notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type EngagementStatusHistory = typeof engagementStatusHistory.$inferSelect;
+export type InsertEngagementStatusHistory = typeof engagementStatusHistory.$inferInsert;
+
+// ─── Engagement Task Groups ────────────────────────────────────────────────────
+export const engagementTaskGroups = mysqlTable("engagementTaskGroups", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  name: varchar("name", { length: 200 }).notNull(),
+  description: text("description"),
+  fromStatus: mysqlEnum("fromStatus", ["Unaware", "Resistant", "Neutral", "Supportive", "Leading", "Any"]).notNull(),
+  toStatus: mysqlEnum("toStatus", ["Unaware", "Resistant", "Neutral", "Supportive", "Leading"]).notNull(),
+  color: varchar("color", { length: 50 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type EngagementTaskGroup = typeof engagementTaskGroups.$inferSelect;
+export type InsertEngagementTaskGroup = typeof engagementTaskGroups.$inferInsert;
+
+// ─── Engagement Tasks ──────────────────────────────────────────────────────────
+export const engagementTasks = mysqlTable("engagementTasks", {
+  id: int("id").autoincrement().primaryKey(),
+  taskGroupId: int("taskGroupId").notNull(),
+  projectId: int("projectId").notNull(),
+  title: varchar("title", { length: 300 }).notNull(),
+  description: text("description"),
+  responsibleId: int("responsibleId"), // stakeholder id of the person responsible
+  dueDate: date("dueDate"),
+  status: mysqlEnum("engTaskStatus", ["Pending", "In Progress", "Done", "Cancelled"]).default("Pending").notNull(),
+  priority: mysqlEnum("engTaskPriority", ["Low", "Medium", "High"]).default("Medium").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type EngagementTask = typeof engagementTasks.$inferSelect;
+export type InsertEngagementTask = typeof engagementTasks.$inferInsert;
+
+// ─── Engagement Task Subjects ──────────────────────────────────────────────────
+// Which stakeholders are subjects/targets of a task group
+export const engagementTaskSubjects = mysqlTable("engagementTaskSubjects", {
+  id: int("id").autoincrement().primaryKey(),
+  taskGroupId: int("taskGroupId").notNull(),
+  stakeholderId: int("stakeholderId").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type EngagementTaskSubject = typeof engagementTaskSubjects.$inferSelect;
+export type InsertEngagementTaskSubject = typeof engagementTaskSubjects.$inferInsert;
+
+// ─── Stakeholder Skills ────────────────────────────────────────────────────────
+export const stakeholderSkills = mysqlTable("stakeholderSkills", {
+  id: int("id").autoincrement().primaryKey(),
+  stakeholderId: int("stakeholderId").notNull(),
+  name: varchar("name", { length: 200 }).notNull(),
+  level: mysqlEnum("skillLevel", ["Beginner", "Intermediate", "Advanced", "Expert"]).default("Intermediate").notNull(),
+  linkedKpiId: int("linkedKpiId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type StakeholderSkill = typeof stakeholderSkills.$inferSelect;
+export type InsertStakeholderSkill = typeof stakeholderSkills.$inferInsert;
+
+// ─── Stakeholder SWOT ─────────────────────────────────────────────────────────
+export const stakeholderSwot = mysqlTable("stakeholderSwot", {
+  id: int("id").autoincrement().primaryKey(),
+  stakeholderId: int("stakeholderId").notNull(),
+  quadrant: mysqlEnum("swotQuadrant", ["Strength", "Weakness", "Opportunity", "Threat"]).notNull(),
+  description: text("description").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type StakeholderSwot = typeof stakeholderSwot.$inferSelect;
+export type InsertStakeholderSwot = typeof stakeholderSwot.$inferInsert;
+
+// ─── Development Plans ────────────────────────────────────────────────────────
+export const developmentPlans = mysqlTable("developmentPlans", {
+  id: int("id").autoincrement().primaryKey(),
+  stakeholderId: int("stakeholderId").notNull(),
+  projectId: int("projectId").notNull(),
+  title: varchar("title", { length: 200 }).notNull(),
+  description: text("description"),
+  goals: text("goals"),
+  startDate: date("startDate"),
+  endDate: date("endDate"),
+  status: mysqlEnum("devPlanStatus", ["Not Started", "In Progress", "Completed", "On Hold"]).default("Not Started").notNull(),
+  linkedTaskGroupId: int("linkedTaskGroupId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type DevelopmentPlan = typeof developmentPlans.$inferSelect;
+export type InsertDevelopmentPlan = typeof developmentPlans.$inferInsert;
+
+// ─── Team Charter ─────────────────────────────────────────────────────────────
+export const teamCharter = mysqlTable("teamCharter", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull().unique(),
+  mission: text("mission"),
+  scopeAndBoundaries: text("scopeAndBoundaries"),
+  metricsOfSuccess: text("metricsOfSuccess"),
+  coreValues: text("coreValues"),
+  groundRules: text("groundRules"),
+  restrictedViolations: text("restrictedViolations"),
+  teamActivities: text("teamActivities"),
+  internalCommunicationPlan: text("internalCommunicationPlan"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type TeamCharter = typeof teamCharter.$inferSelect;
+export type InsertTeamCharter = typeof teamCharter.$inferInsert;
+
+// ─── Communication Plan Entries ────────────────────────────────────────────────
+export const communicationPlanEntries = mysqlTable("communicationPlanEntries", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  stakeholderId: int("stakeholderId"),
+  role: varchar("role", { length: 200 }),
+  informationNeeded: text("informationNeeded"),
+  preferredMethods: json("preferredMethods").$type<string[]>(),
+  frequency: varchar("frequency", { length: 100 }),
+  textNote: text("textNote"),
+  escalationProcedures: text("escalationProcedures"),
+  responsible: varchar("responsible", { length: 200 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type CommunicationPlanEntry = typeof communicationPlanEntries.$inferSelect;
+export type InsertCommunicationPlanEntry = typeof communicationPlanEntries.$inferInsert;
+
+// ─── Resource Calendar ────────────────────────────────────────────────────────
+export const resourceCalendar = mysqlTable("resourceCalendar", {
+  id: int("id").autoincrement().primaryKey(),
+  stakeholderId: int("stakeholderId").notNull(),
+  projectId: int("projectId").notNull(),
+  date: date("date").notNull(),
+  type: mysqlEnum("calType", ["Working", "Leave", "Holiday", "Training"]).default("Working").notNull(),
+  availableHours: decimal("availableHours", { precision: 4, scale: 1 }).default("8.0"),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type ResourceCalendar = typeof resourceCalendar.$inferSelect;
+export type InsertResourceCalendar = typeof resourceCalendar.$inferInsert;
