@@ -1250,6 +1250,12 @@ export default function Stakeholders() {
     setDetailOpen(true);
   };
 
+  type EngagementStatusValue = "Unaware" | "Resistant" | "Neutral" | "Supportive" | "Leading";
+  const toEngagementStatus = (v: string): EngagementStatusValue | undefined =>
+    (["Unaware", "Resistant", "Neutral", "Supportive", "Leading"].includes(v)
+      ? (v as EngagementStatusValue)
+      : undefined);
+
   const handleCreate = () => {
     if (!formData.fullName.trim()) { toast.error("Full name is required"); return; }
     if (!currentProjectId) { toast.error("No project selected"); return; }
@@ -1257,6 +1263,8 @@ export default function Stakeholders() {
       ...formData,
       projectId: currentProjectId,
       isInternalTeam: classificationToIsInternal(formData.classification),
+      currentEngagementStatus: toEngagementStatus(formData.currentEngagementStatus),
+      desiredEngagementStatus: toEngagementStatus(formData.desiredEngagementStatus),
       costPerHour: formData.costPerHour || undefined,
       costPerDay: formData.costPerDay || undefined,
     });
@@ -1270,6 +1278,8 @@ export default function Stakeholders() {
       data: {
         ...formData,
         isInternalTeam: classificationToIsInternal(formData.classification),
+        currentEngagementStatus: toEngagementStatus(formData.currentEngagementStatus),
+        desiredEngagementStatus: toEngagementStatus(formData.desiredEngagementStatus),
         costPerHour: formData.costPerHour || null,
         costPerDay: formData.costPerDay || null,
       },
