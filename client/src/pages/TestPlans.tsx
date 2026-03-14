@@ -55,7 +55,8 @@ export default function TestPlansPage() {
   function openCreate() { setEditId(null); setForm(EMPTY_FORM); setDialogOpen(true); }
   function openEdit(p: typeof plans[0]) {
     setEditId(p.id);
-    setForm({ title: p.title, description: p.description ?? "", status: p.status ?? "Draft", startDate: p.startDate ?? "", endDate: p.endDate ?? "", owner: p.owner ?? "", notes: p.notes ?? "" });
+    const toDateStr = (d: Date | string | null | undefined) => d instanceof Date ? d.toISOString().split('T')[0] : (d ?? '');
+    setForm({ title: p.title, description: p.description ?? "", status: p.status ?? "Draft", startDate: toDateStr(p.startDate), endDate: toDateStr(p.endDate), owner: p.owner ?? "", notes: p.notes ?? "" });
     setDialogOpen(true);
   }
   function handleSave() {
@@ -118,7 +119,7 @@ export default function TestPlansPage() {
                 {(p.startDate || p.endDate) && (
                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
                     <Calendar className="w-3 h-3" />
-                    {p.startDate} {p.endDate ? `→ ${p.endDate}` : ""}
+                    {p.startDate instanceof Date ? p.startDate.toLocaleDateString() : p.startDate}{p.endDate ? ` → ${p.endDate instanceof Date ? p.endDate.toLocaleDateString() : p.endDate}` : ""}
                   </div>
                 )}
               </CardContent>
@@ -173,7 +174,7 @@ export default function TestPlansPage() {
               </div>
               {detail.description && <p className="text-sm text-muted-foreground">{detail.description}</p>}
               {(detail.startDate || detail.endDate) && (
-                <div className="text-sm flex items-center gap-2"><Calendar className="w-4 h-4" /> {detail.startDate} → {detail.endDate}</div>
+                <div className="text-sm flex items-center gap-2"><Calendar className="w-4 h-4" /> {detail.startDate instanceof Date ? detail.startDate.toLocaleDateString() : detail.startDate} → {detail.endDate instanceof Date ? detail.endDate.toLocaleDateString() : detail.endDate}</div>
               )}
               <div>
                 <h3 className="text-sm font-semibold mb-2">Linked Test Cases ({detail.linkedTestCaseIds?.length ?? 0})</h3>

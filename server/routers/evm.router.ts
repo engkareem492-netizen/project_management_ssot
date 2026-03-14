@@ -2,7 +2,8 @@ import { protectedProcedure, router } from "../_core/trpc";
 import { z } from "zod";
 import { getDb } from "../db";
 import { evmBaseline, evmSnapshots, evmWbsEntries, wbsElements } from "../../drizzle/schema";
-import { eq, and, asc } from "drizzle-orm";
+import { eq, and, asc, sql } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
 
 // ─── EVM Calculation Helpers ──────────────────────────────────────────────────
 
@@ -13,18 +14,24 @@ function toNum(val: string | number | null | undefined): number {
 }
 
 function calcEvm(pv: number, ev: number, ac: number, bac: number) {
-  const sv = ev - pv;                                   // Schedule Variance
-  const cv = ev - ac;                                   // Cost Variance
-  const spi = pv === 0 ? 0 : ev / pv;                  // Schedule Performance Index
-  const cpi = ac === 0 ? 0 : ev / ac;                  // Cost Performance Index
-  const eac = cpi === 0 ? bac : bac / cpi;             // Estimate At Completion
-  const etc = eac - ac;                                 // Estimate To Complete
-  const vac = bac - eac;                                // Variance At Completion
-  const tcpi = (bac - ev) === 0 ? 0 : (bac - ev) / (bac - ac); // To-Complete Performance Index
+  const sv = ev - pv;
+  const cv = ev - ac;
+  const spi = pv === 0 ? 0 : ev / pv;
+  const cpi = ac === 0 ? 0 : ev / ac;
+  const eac = cpi === 0 ? bac : bac / cpi;
+  const etc = eac - ac;
+  const vac = bac - eac;
+  const tcpi = (bac - ev) === 0 ? 0 : (bac - ev) / (bac - ac);
   const svPct = bac === 0 ? 0 : (sv / bac) * 100;
   const cvPct = bac === 0 ? 0 : (cv / bac) * 100;
   const percentComplete = bac === 0 ? 0 : (ev / bac) * 100;
   return { sv, cv, spi, cpi, eac, etc, vac, tcpi, svPct, cvPct, percentComplete };
+}
+
+/** Convert a string date (YYYY-MM-DD) or null to a SQL-safe value for a date column */
+function toDateOrNull(val: string | null | undefined): string | null {
+  if (!val) return null;
+  return val; // MySQL accepts 'YYYY-MM-DD' strings for date columns via Drizzle
 }
 
 // ─── Router ──────────────────────────────────────────────────────────────────
@@ -37,6 +44,7 @@ export const evmRouter = router({
     .input(z.object({ projectId: z.number() }))
     .query(async ({ input }) => {
       const db = await getDb();
+      if (!db) return null;
       const rows = await db
         .select()
         .from(evmBaseline)
@@ -55,19 +63,23 @@ export const evmRouter = router({
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
       const existing = await db
         .select()
         .from(evmBaseline)
         .where(eq(evmBaseline.projectId, input.projectId))
         .limit(1);
 
+      const startDate = toDateOrNull(input.startDate);
+      const endDate = toDateOrNull(input.endDate);
+
       if (existing.length > 0) {
         await db
           .update(evmBaseline)
           .set({
             bac: input.bac.toString(),
-            startDate: input.startDate ?? undefined,
-            endDate: input.endDate ?? undefined,
+            ...(startDate !== undefined ? { startDate: startDate as any } : {}),
+            ...(endDate !== undefined ? { endDate: endDate as any } : {}),
             notes: input.notes ?? undefined,
           })
           .where(eq(evmBaseline.projectId, input.projectId));
@@ -75,8 +87,8 @@ export const evmRouter = router({
         await db.insert(evmBaseline).values({
           projectId: input.projectId,
           bac: input.bac.toString(),
-          startDate: input.startDate ?? undefined,
-          endDate: input.endDate ?? undefined,
+          startDate: startDate as any,
+          endDate: endDate as any,
           notes: input.notes ?? undefined,
         });
       }
@@ -94,6 +106,7 @@ export const evmRouter = router({
     .input(z.object({ projectId: z.number() }))
     .query(async ({ input }) => {
       const db = await getDb();
+      if (!db) return [];
       return db
         .select()
         .from(evmSnapshots)
@@ -113,10 +126,11 @@ export const evmRouter = router({
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
       const [result] = await db.insert(evmSnapshots).values({
         projectId: input.projectId,
         periodLabel: input.periodLabel,
-        periodDate: input.periodDate,
+        periodDate: input.periodDate as any,
         pv: input.pv.toString(),
         ev: input.ev.toString(),
         ac: input.ac.toString(),
@@ -125,7 +139,7 @@ export const evmRouter = router({
       const rows = await db
         .select()
         .from(evmSnapshots)
-        .where(eq(evmSnapshots.id, result.insertId))
+        .where(eq(evmSnapshots.id, (result as any).insertId))
         .limit(1);
       return rows[0];
     }),
@@ -142,6 +156,7 @@ export const evmRouter = router({
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
       const { id, ...data } = input;
       const updateData: Record<string, unknown> = {};
       if (data.periodLabel !== undefined) updateData.periodLabel = data.periodLabel;
@@ -159,6 +174,7 @@ export const evmRouter = router({
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
       const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
       await db.delete(evmSnapshots).where(eq(evmSnapshots.id, input.id));
       return { success: true };
     }),
@@ -169,6 +185,7 @@ export const evmRouter = router({
     .input(z.object({ projectId: z.number() }))
     .query(async ({ input }) => {
       const db = await getDb();
+      if (!db) return [];
       return db
         .select()
         .from(evmWbsEntries)
@@ -189,7 +206,7 @@ export const evmRouter = router({
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
-      // Check if entry exists for this wbsElementId or wbsCode
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
       let existing = null;
       if (input.wbsElementId) {
         const rows = await db
@@ -219,7 +236,7 @@ export const evmRouter = router({
         return rows[0];
       } else {
         const [result] = await db.insert(evmWbsEntries).values(payload);
-        const rows = await db.select().from(evmWbsEntries).where(eq(evmWbsEntries.id, result.insertId)).limit(1);
+        const rows = await db.select().from(evmWbsEntries).where(eq(evmWbsEntries.id, (result as any).insertId)).limit(1);
         return rows[0];
       }
     }),
@@ -228,19 +245,19 @@ export const evmRouter = router({
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
       const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
       await db.delete(evmWbsEntries).where(eq(evmWbsEntries.id, input.id));
       return { success: true };
     }),
 
   // ── Computed Dashboard ─────────────────────────────────────────────────────
-  // Returns baseline + latest snapshot KPIs + trend series + WBS breakdown
 
   getDashboard: protectedProcedure
     .input(z.object({ projectId: z.number() }))
     .query(async ({ input }) => {
       const db = await getDb();
+      if (!db) return null;
 
-      // 1. Baseline
       const baselineRows = await db
         .select()
         .from(evmBaseline)
@@ -249,21 +266,18 @@ export const evmRouter = router({
       const baseline = baselineRows[0] ?? null;
       const bac = toNum(baseline?.bac);
 
-      // 2. All snapshots (ordered by date)
       const snapshots = await db
         .select()
         .from(evmSnapshots)
         .where(eq(evmSnapshots.projectId, input.projectId))
         .orderBy(asc(evmSnapshots.periodDate));
 
-      // 3. Latest snapshot KPIs
       const latest = snapshots.length > 0 ? snapshots[snapshots.length - 1] : null;
       const latestPv = toNum(latest?.pv);
       const latestEv = toNum(latest?.ev);
       const latestAc = toNum(latest?.ac);
       const kpis = calcEvm(latestPv, latestEv, latestAc, bac);
 
-      // 4. Trend series for S-curve chart
       const trendSeries = snapshots.map((s) => ({
         period: s.periodLabel,
         date: s.periodDate,
@@ -272,7 +286,6 @@ export const evmRouter = router({
         ac: toNum(s.ac),
       }));
 
-      // 5. WBS breakdown with per-element KPIs
       const wbsEntries = await db
         .select()
         .from(evmWbsEntries)
@@ -293,8 +306,8 @@ export const evmRouter = router({
           pv: ePv,
           ev: eEv,
           ac: eAc,
-          percentComplete: toNum(e.percentComplete),
           ...eKpis,
+          percentComplete: toNum(e.percentComplete), // override calcEvm's derived value with stored value
         };
       });
 
@@ -313,12 +326,12 @@ export const evmRouter = router({
     }),
 
   // ── Sync WBS cost data into EVM entries ────────────────────────────────────
-  // Pulls estimatedCost/actualCost from wbsElements and creates/updates evmWbsEntries
 
   syncFromWbs: protectedProcedure
     .input(z.object({ projectId: z.number() }))
     .mutation(async ({ input }) => {
       const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
       const elements = await db
         .select()
         .from(wbsElements)
@@ -330,16 +343,14 @@ export const evmRouter = router({
         const ac = toNum(el.actualCost);
         if (bac === 0 && ac === 0) continue;
 
-        // Derive % complete from status
         let pct = 0;
         if (el.status === "Complete") pct = 100;
         else if (el.status === "In Progress") pct = 50;
         else if (el.status === "On Hold") pct = 25;
 
         const ev = bac * (pct / 100);
-        const pv = bac; // simplified: PV = BAC (full budget planned)
+        const pv = bac;
 
-        // Upsert
         const existing = await db
           .select()
           .from(evmWbsEntries)

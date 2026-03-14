@@ -94,8 +94,8 @@ function SectionTitle({ icon: Icon, title, action, onAction }: {
 }
 
 /* ─── Constraints Widget ────────────────────────────────────────────────── */
-function ConstraintsWidget({ charter, budgetUtil, tasks, navigate }: {
-  charter: any; budgetUtil: any; tasks: any[]; navigate: (path: string) => void;
+function ConstraintsWidget({ charter, budgetUtil, tasks, changeRequests, testCases, navigate }: {
+  charter: any; budgetUtil: any; tasks: any[]; changeRequests: any[]; testCases: any[]; navigate: (path: string) => void;
 }) {
   const now = new Date();
   // TIME: based on charter start/end dates
@@ -124,11 +124,13 @@ function ConstraintsWidget({ charter, budgetUtil, tasks, navigate }: {
     else if (budgetPct >= 70) budgetStatus = "Caution";
     else budgetStatus = "On Track";
   }
-  // SCOPE: based on pending change requests (from charter phase)
-  const scopeStatus = charter?.ragStatus === "Red" ? "At Risk" : charter?.ragStatus === "Amber" ? "Caution" : "On Track";
+  // SCOPE: based on pending change requests
+  const pendingCRs = changeRequests.filter((c: any) => c.status === "Submitted" || c.status === "Under Review" || c.status === "Pending").length;
+  const scopeStatus = pendingCRs > 3 ? "At Risk" : pendingCRs > 1 ? "Caution" : "On Track";
   // QUALITY: based on test pass rate
-  const overdueTasks = tasks.filter((t: any) => t.dueDate && new Date(t.dueDate) < now && t.status !== "Done" && t.status !== "Completed" && t.status !== "Cancelled").length;
-  const qualityStatus = overdueTasks > 5 ? "At Risk" : overdueTasks > 2 ? "Caution" : "On Track";
+  const passedTests = testCases.filter((t: any) => t.status === "Passed").length;
+  const testPassRate = testCases.length > 0 ? Math.round((passedTests / testCases.length) * 100) : 100;
+  const qualityStatus = testCases.length === 0 ? "Unknown" : testPassRate < 60 ? "At Risk" : testPassRate < 80 ? "Caution" : "On Track";
 
   const STATUS_CONFIG: Record<string, { bg: string; text: string; dot: string }> = {
     "On Track":   { bg: "bg-green-50 dark:bg-green-950/30 border-green-200",  text: "text-green-700 dark:text-green-400",  dot: "bg-green-500" },
@@ -163,14 +165,14 @@ function ConstraintsWidget({ charter, budgetUtil, tasks, navigate }: {
       label: "Scope",
       icon: Target,
       status: scopeStatus,
-      detail: charter?.ragStatus ? `Overall RAG: ${charter.ragStatus}` : "No charter defined",
+      detail: changeRequests.length > 0 ? `${pendingCRs} pending CR(s) of ${changeRequests.length} total` : "No change requests",
       href: "/change-requests",
     },
     {
       label: "Quality",
       icon: CheckCircle2,
       status: qualityStatus,
-      detail: `${overdueTasks} overdue task(s)`,
+      detail: testCases.length > 0 ? `${testPassRate}% pass rate (${passedTests}/${testCases.length})` : "No test cases defined",
       href: "/test-cases",
     },
   ];
@@ -629,7 +631,7 @@ export default function Dashboard() {
       </div>
 
       {/* ── Main Constraints ──────────────────────────────────────────── */}
-      <ConstraintsWidget charter={charter} budgetUtil={budgetUtil} tasks={tasks} navigate={navigate} />
+      <ConstraintsWidget charter={charter} budgetUtil={budgetUtil} tasks={tasks} changeRequests={changeRequests} testCases={testCases} navigate={navigate} />
 
       {/* ── RAID Summary Panel ──────────────────────────────────────────── */}
       <Card className="p-6">

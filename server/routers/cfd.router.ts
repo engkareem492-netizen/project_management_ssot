@@ -2,11 +2,10 @@ import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { tasks, taskStatusHistory } from "../../drizzle/schema";
-import { eq, and, gte, lte, desc } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 
 // ── Helper: compute task status counts from live tasks ────────────────────────
-async function computeLiveSnapshot(db: Awaited<ReturnType<typeof getDb>>, projectId: number) {
-  if (!db) return { open: 0, inProgress: 0, blocked: 0, done: 0 };
+async function computeLiveSnapshot(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, projectId: number) {
   const allTasks = await db.select().from(tasks).where(eq(tasks.projectId, projectId));
   let open = 0, inProgress = 0, blocked = 0, done = 0;
   for (const t of allTasks) {
@@ -24,34 +23,37 @@ export const cfdRouter = router({
   getData: protectedProcedure
     .input(z.object({
       projectId: z.number(),
-      days: z.number().optional().default(30), // how many days back to show
+      days: z.number().optional().default(30),
     }))
     .query(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new Error("DB not available");
 
-      // Get stored snapshots
       const snapshots = await db.select().from(taskStatusHistory)
         .where(eq(taskStatusHistory.projectId, input.projectId))
         .orderBy(taskStatusHistory.snapshotDate);
 
-      // Compute today's live snapshot
       const live = await computeLiveSnapshot(db, input.projectId);
       const today = new Date().toISOString().split("T")[0];
 
       // Build series: combine stored + live (deduplicate today)
-      const series = snapshots
-        .filter(s => s.snapshotDate !== today)
-        .map(s => ({
-          date: s.snapshotDate,
+      // snapshotDate is a Date object from Drizzle date column; convert to string for comparison
+      const series: { date: string; open: number; inProgress: number; blocked: number; done: number; total: number }[] = [];
+      for (const s of snapshots) {
+        const dateStr = s.snapshotDate instanceof Date
+          ? s.snapshotDate.toISOString().split("T")[0]
+          : String(s.snapshotDate);
+        if (dateStr === today) continue; // will be replaced by live
+        series.push({
+          date: dateStr,
           open: s.statusOpen,
           inProgress: s.statusInProgress,
           blocked: s.statusBlocked,
           done: s.statusDone,
           total: s.statusOpen + s.statusInProgress + s.statusBlocked + s.statusDone,
-        }));
+        });
+      }
 
-      // Add today's live data
       const liveTotal = live.open + live.inProgress + live.blocked + live.done;
       series.push({
         date: today,
@@ -62,16 +64,14 @@ export const cfdRouter = router({
         total: liveTotal,
       });
 
-      // Convert to percentage series for stacked area chart
       const percentSeries = series.map(s => {
-        const total = s.total || 1; // avoid division by zero
+        const total = s.total || 1;
         return {
           date: s.date,
           open: Math.round((s.open / total) * 100),
           inProgress: Math.round((s.inProgress / total) * 100),
           blocked: Math.round((s.blocked / total) * 100),
           done: Math.round((s.done / total) * 100),
-          // raw counts for tooltips
           rawOpen: s.open,
           rawInProgress: s.inProgress,
           rawBlocked: s.blocked,
@@ -91,7 +91,7 @@ export const cfdRouter = router({
   saveSnapshot: protectedProcedure
     .input(z.object({
       projectId: z.number(),
-      snapshotDate: z.string().optional(), // ISO date string, defaults to today
+      snapshotDate: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
@@ -99,15 +99,14 @@ export const cfdRouter = router({
       const live = await computeLiveSnapshot(db, input.projectId);
       const snapshotDate = input.snapshotDate ?? new Date().toISOString().split("T")[0];
 
-      // Check if snapshot for this date already exists
       const existing = await db.select().from(taskStatusHistory)
         .where(and(
           eq(taskStatusHistory.projectId, input.projectId),
-          eq(taskStatusHistory.snapshotDate, snapshotDate)
+          // Use SQL cast to compare string with date column
+          eq(taskStatusHistory.snapshotDate, snapshotDate as any)
         ));
 
       if (existing.length > 0) {
-        // Update existing
         return db.update(taskStatusHistory)
           .set({
             statusOpen: live.open,
@@ -117,10 +116,9 @@ export const cfdRouter = router({
           })
           .where(eq(taskStatusHistory.id, existing[0].id));
       } else {
-        // Insert new
         return db.insert(taskStatusHistory).values({
           projectId: input.projectId,
-          snapshotDate,
+          snapshotDate: snapshotDate as any,
           statusOpen: live.open,
           statusInProgress: live.inProgress,
           statusBlocked: live.blocked,

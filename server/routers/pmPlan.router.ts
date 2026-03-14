@@ -42,7 +42,7 @@ export const pmPlanRouter = router({
       z.object({
         projectId: z.number(),
         sectionKey: z.string(),
-        content: z.record(z.string()),
+        content: z.record(z.string(), z.string()),
         updatedBy: z.string().optional(),
       })
     )

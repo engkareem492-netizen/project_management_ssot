@@ -727,3 +727,11 @@
 - [x] Save "New Update" text to `taskStatusUpdates` table when submitting a status update
 - [x] In task detail view, split History into two tabs: "Audit Log" (field changes) and "Status Updates" (timeline of update text entries)
 - [x] Status Updates tab shows chronological feed with timestamp, author, and update text
+
+## Feature: OKR Progress Tracking with Check-ins (Mar 14, 2026)
+- [ ] Add `okrCheckIns` table (okrId, checkInDate, actualValue, notes, reviewedBy, cycle)
+- [ ] Add server procedures: listCheckIns, addCheckIn, deleteCheckIn
+- [ ] Enhance Business Case OKR section with check-in log dialog per OKR
+- [ ] Show progress timeline/history for each OKR (check-in feed)
+- [ ] Show progress bar and trend indicator on each OKR card
+- [ ] Add cycle selector (Monthly/Quarterly/Annual) to check-in form

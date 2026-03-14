@@ -144,7 +144,7 @@ export const defectsRouter = router({
       // Build density map: testCaseId → defect count + defect details
       const densityMap = new Map<number, {
         count: number;
-        defects: { id: number; defectCode: string; title: string; severity: string | null; status: string | null }[];
+        defects: { id: number; defectCode: string | null; title: string; severity: string | null; status: string | null }[];
       }>();
       for (const tc of allTCs) {
         densityMap.set(tc.id, { count: 0, defects: [] });

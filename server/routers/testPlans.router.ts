@@ -47,7 +47,18 @@ export const testPlansRouter = router({
       const existing = await db.select().from(testPlans).where(eq(testPlans.projectId, input.projectId));
       const nextNum = (existing.length + 1).toString().padStart(4, "0");
       const planCode = `TP-${nextNum}`;
-      const [result] = await db.insert(testPlans).values({ ...input, planCode });
+      const insertData: Record<string, unknown> = {
+        projectId: input.projectId,
+        title: input.title,
+        planCode,
+        ...(input.description !== undefined ? { description: input.description } : {}),
+        ...(input.status !== undefined ? { status: input.status } : {}),
+        ...(input.startDate !== undefined ? { startDate: input.startDate } : {}),
+        ...(input.endDate !== undefined ? { endDate: input.endDate } : {}),
+        ...(input.owner !== undefined ? { owner: input.owner } : {}),
+        ...(input.notes !== undefined ? { notes: input.notes } : {}),
+      };
+      const [result] = await db.insert(testPlans).values(insertData as any);
       return { id: (result as { insertId: number }).insertId, planCode };
     }),
 
@@ -67,7 +78,15 @@ export const testPlansRouter = router({
       const db = await getDb();
       if (!db) throw new Error("DB not available");
       const { id, ...data } = input;
-      return db.update(testPlans).set(data).where(eq(testPlans.id, id));
+      const updateData: Record<string, unknown> = {};
+      if (data.title !== undefined) updateData.title = data.title;
+      if (data.description !== undefined) updateData.description = data.description;
+      if (data.status !== undefined) updateData.status = data.status;
+      if (data.startDate !== undefined) updateData.startDate = data.startDate;
+      if (data.endDate !== undefined) updateData.endDate = data.endDate;
+      if (data.owner !== undefined) updateData.owner = data.owner;
+      if (data.notes !== undefined) updateData.notes = data.notes;
+      return db.update(testPlans).set(updateData as any).where(eq(testPlans.id, id));
     }),
 
   // ── Delete test plan ──────────────────────────────────────────────────────
