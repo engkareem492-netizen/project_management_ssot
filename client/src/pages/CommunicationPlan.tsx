@@ -376,7 +376,8 @@ export default function CommunicationPlan() {
       textNote: entry.textNote ?? "",
       escalationProcedures: entry.escalationProcedures ?? "",
       responsibleStakeholderId: entry.responsibleStakeholderId ?? null,
-      commNeeded: [],  // will be loaded async below
+      commNeeded: [],    // will be loaded async via editingItems query
+      inputNeeded: [],   // will be loaded async via editingInputItems query
     });
     // Load commNeeded items for this entry (they come from commPlanItems table)
     // We'll fetch them via a separate query triggered by editing state
