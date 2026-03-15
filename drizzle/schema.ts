@@ -251,6 +251,8 @@ export const tasks = mysqlTable("tasks", {
   recurringType: mysqlEnum("recurringType", ["none", "daily", "weekly", "monthly", "custom"]).default("none"),
   recurringInterval: int("recurringInterval").default(1),
   recurringEndDate: varchar("recurringEndDate", { length: 50 }),
+  // Communication task link
+  communicationStakeholderId: int("communicationStakeholderId"),
   // Resource effort
   manHours: decimal("manHours", { precision: 10, scale: 2 }),
   // Sprint association

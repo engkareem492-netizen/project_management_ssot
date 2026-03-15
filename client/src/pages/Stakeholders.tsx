@@ -63,6 +63,7 @@ type StakeholderFormData = {
   communicationChannel: string;
   communicationMessage: string;
   communicationResponsible: string;
+  communicationResponsibleId: number | null;
   notes: string;
   costPerHour: string;
   costPerDay: string;
@@ -84,13 +85,14 @@ const EMPTY_FORM: StakeholderFormData = {
   stakeholderManagerId: null,
   powerLevel: 3,
   interestLevel: 3,
-  engagementStrategy: "",
+  engagementStrategy: "Manage Closely", // default: power=3, interest=3 → Manage Closely (Mendelow)
   currentEngagementStatus: "",
   desiredEngagementStatus: "",
   communicationFrequency: "",
   communicationChannel: "",
   communicationMessage: "",
   communicationResponsible: "",
+  communicationResponsibleId: null,
   notes: "",
   costPerHour: "",
   costPerDay: "",
@@ -100,6 +102,16 @@ const ENGAGEMENT_STRATEGIES = ["Manage Closely", "Keep Satisfied", "Keep Informe
 const ENGAGEMENT_STATUSES = ["Unaware", "Resistant", "Neutral", "Supportive", "Leading"];
 const COMM_FREQUENCIES = ["Daily", "Weekly", "Bi-weekly", "Monthly", "Quarterly", "As needed"];
 const COMM_CHANNELS = ["Email", "Meeting", "Phone", "Slack", "Teams", "Report", "Newsletter"];
+
+// Auto-propose engagement strategy using the Mendelow Power-Interest Matrix
+function proposeEngagementStrategy(power: number, interest: number): string {
+  const highPower = power >= 3;
+  const highInterest = interest >= 3;
+  if (highPower && highInterest) return "Manage Closely";   // High Power, High Interest
+  if (highPower && !highInterest) return "Keep Satisfied";  // High Power, Low Interest
+  if (!highPower && highInterest) return "Keep Informed";   // Low Power, High Interest
+  return "Monitor";                                         // Low Power, Low Interest
+}
 
 function classificationToIsInternal(c: Classification): boolean {
   return c === "TeamMember";
@@ -572,7 +584,15 @@ function StakeholderFormDialog({
   stakeholders: any[];
   currentProjectId: number | null | undefined;
 }) {
-  const set = (partial: Partial<StakeholderFormData>) => setFormData({ ...formData, ...partial });
+  const set = (partial: Partial<StakeholderFormData>) => {
+    const next = { ...formData, ...partial };
+    // Auto-propose engagement strategy when classification is Stakeholder and power/interest change
+    if (next.classification === "Stakeholder" &&
+        (partial.powerLevel !== undefined || partial.interestLevel !== undefined || partial.classification === "Stakeholder")) {
+      next.engagementStrategy = proposeEngagementStrategy(next.powerLevel, next.interestLevel);
+    }
+    setFormData(next);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -798,12 +818,18 @@ function StakeholderFormDialog({
               </div>
 
               <div className="space-y-2">
-                <Label>Engagement Strategy</Label>
-                <Select value={formData.engagementStrategy} onValueChange={(v) => set({ engagementStrategy: v })}>
+                <Label className="flex items-center gap-1.5">
+                  Engagement Strategy
+                  <span className="text-[10px] font-normal text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                    Auto-proposed from Power × Interest
+                  </span>
+                </Label>
+                <Select value={formData.engagementStrategy || "__none__"} onValueChange={(v) => set({ engagementStrategy: v === "__none__" ? "" : v })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select strategy..." />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="__none__">— Not set —</SelectItem>
                     {ENGAGEMENT_STRATEGIES.map((s) => (
                       <SelectItem key={s} value={s}>{s}</SelectItem>
                     ))}
@@ -814,11 +840,12 @@ function StakeholderFormDialog({
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label>Current Engagement Status</Label>
-                  <Select value={formData.currentEngagementStatus} onValueChange={(v) => set({ currentEngagementStatus: v })}>
+                  <Select value={formData.currentEngagementStatus || "__none__"} onValueChange={(v) => set({ currentEngagementStatus: v === "__none__" ? "" : v })}>
                     <SelectTrigger>
                       <SelectValue placeholder="Current..." />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="__none__">— Not set —</SelectItem>
                       {ENGAGEMENT_STATUSES.map((s) => (
                         <SelectItem key={s} value={s}>{s}</SelectItem>
                       ))}
@@ -827,11 +854,12 @@ function StakeholderFormDialog({
                 </div>
                 <div className="space-y-2">
                   <Label>Desired Engagement Status</Label>
-                  <Select value={formData.desiredEngagementStatus} onValueChange={(v) => set({ desiredEngagementStatus: v })}>
+                  <Select value={formData.desiredEngagementStatus || "__none__"} onValueChange={(v) => set({ desiredEngagementStatus: v === "__none__" ? "" : v })}>
                     <SelectTrigger>
                       <SelectValue placeholder="Desired..." />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="__none__">— Not set —</SelectItem>
                       {ENGAGEMENT_STATUSES.map((s) => (
                         <SelectItem key={s} value={s}>{s}</SelectItem>
                       ))}
@@ -843,11 +871,12 @@ function StakeholderFormDialog({
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label>Communication Frequency</Label>
-                  <Select value={formData.communicationFrequency} onValueChange={(v) => set({ communicationFrequency: v })}>
+                  <Select value={formData.communicationFrequency || "__none__"} onValueChange={(v) => set({ communicationFrequency: v === "__none__" ? "" : v })}>
                     <SelectTrigger>
                       <SelectValue placeholder="Frequency..." />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="__none__">— Not set —</SelectItem>
                       {COMM_FREQUENCIES.map((f) => (
                         <SelectItem key={f} value={f}>{f}</SelectItem>
                       ))}
@@ -856,11 +885,12 @@ function StakeholderFormDialog({
                 </div>
                 <div className="space-y-2">
                   <Label>Communication Channel</Label>
-                  <Select value={formData.communicationChannel} onValueChange={(v) => set({ communicationChannel: v })}>
+                  <Select value={formData.communicationChannel || "__none__"} onValueChange={(v) => set({ communicationChannel: v === "__none__" ? "" : v })}>
                     <SelectTrigger>
                       <SelectValue placeholder="Channel..." />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="__none__">— Not set —</SelectItem>
                       {COMM_CHANNELS.map((c) => (
                         <SelectItem key={c} value={c}>{c}</SelectItem>
                       ))}
@@ -881,11 +911,25 @@ function StakeholderFormDialog({
 
               <div className="space-y-2">
                 <Label>Communication Responsible</Label>
-                <Input
-                  value={formData.communicationResponsible}
-                  onChange={(e) => set({ communicationResponsible: e.target.value })}
-                  placeholder="Name of responsible person..."
-                />
+                <Select
+                  value={formData.communicationResponsibleId != null ? String(formData.communicationResponsibleId) : ""}
+                  onValueChange={(v) => {
+                    const id = v ? parseInt(v) : null;
+                    const found = stakeholders.find((s: any) => s.id === id);
+                    set({ communicationResponsibleId: id, communicationResponsible: found?.fullName ?? "" });
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select responsible stakeholder..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {stakeholders.map((s: any) => (
+                      <SelectItem key={s.id} value={String(s.id)}>
+                        {s.fullName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           )}
@@ -1233,6 +1277,7 @@ export default function Stakeholders() {
       communicationChannel: s.communicationChannel || "",
       communicationMessage: s.communicationMessage || "",
       communicationResponsible: s.communicationResponsible || "",
+      communicationResponsibleId: s.communicationResponsibleId ?? null,
       notes: s.notes || "",
       costPerHour: s.costPerHour != null ? String(s.costPerHour) : "",
       costPerDay: s.costPerDay != null ? String(s.costPerDay) : "",
@@ -1267,6 +1312,7 @@ export default function Stakeholders() {
       desiredEngagementStatus: toEngagementStatus(formData.desiredEngagementStatus),
       costPerHour: formData.costPerHour || undefined,
       costPerDay: formData.costPerDay || undefined,
+      communicationResponsibleId: formData.communicationResponsibleId ?? undefined,
     });
   };
 

@@ -4,6 +4,9 @@ import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import * as db from "./db";
+import { getDb } from "./db";
+import { tasks } from "../drizzle/schema";
+import { eq, and } from "drizzle-orm";
 import * as XLSX from "xlsx";
 import { TRPCError } from "@trpc/server";
 import { projectsRouter } from "./projects.router";
@@ -1377,12 +1380,53 @@ export const appRouter = router({
         communicationChannel: z.string().optional(),
         communicationMessage: z.string().optional(),
         communicationResponsible: z.string().optional(),
+        communicationResponsibleId: z.number().optional(),
         notes: z.string().optional(),
         costPerHour: z.string().optional(),
         costPerDay: z.string().optional(),
       }))
       .mutation(async ({ input }) => {
-        const result = await db.createStakeholder(input);
+        // Resolve communicationResponsibleId to name
+        let commResponsibleName = input.communicationResponsible;
+        if (input.communicationResponsibleId) {
+          const resp = await db.getStakeholderById(input.communicationResponsibleId);
+          if (resp) commResponsibleName = resp.fullName ?? commResponsibleName;
+        }
+        const result = await db.createStakeholder({
+          ...input,
+          communicationResponsible: commResponsibleName,
+        });
+        // Auto-create recurring task if frequency + responsible are set
+        if (input.communicationFrequency && input.communicationFrequency !== 'None' && input.communicationResponsibleId) {
+          const freqMap: Record<string, 'daily' | 'weekly' | 'monthly'> = {
+            Daily: 'daily', Weekly: 'weekly', 'Bi-weekly': 'weekly',
+            Monthly: 'monthly', Quarterly: 'monthly',
+          };
+          const intervalMap: Record<string, number> = {
+            Daily: 1, Weekly: 1, 'Bi-weekly': 2, Monthly: 1, Quarterly: 3,
+          };
+          const recurringType = freqMap[input.communicationFrequency] ?? 'weekly';
+          const recurringInterval = intervalMap[input.communicationFrequency] ?? 1;
+          const newStakeholderId = (result as any).id ?? (result as any).insertId;
+          const dbConn = await getDb();
+          const existingCommTask = dbConn ? await dbConn.select().from(tasks)
+            .where(and(eq(tasks.projectId, input.projectId), eq(tasks.communicationStakeholderId, newStakeholderId)))
+            .limit(1) : [];
+          if (existingCommTask.length === 0) {
+            const taskId = await db.getNextId('task', 'T', input.projectId);
+            await db.createTask({
+              projectId: input.projectId,
+              taskId,
+              description: `Communicate with ${input.fullName} (${input.communicationFrequency} via ${input.communicationChannel ?? 'TBD'})`,
+              responsibleId: input.communicationResponsibleId,
+              responsible: commResponsibleName ?? undefined,
+              recurringType,
+              recurringInterval,
+              status: 'Open',
+              communicationStakeholderId: newStakeholderId,
+            } as any);
+          }
+        }
         return result;
       }),
 
