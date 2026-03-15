@@ -205,6 +205,19 @@ const commPlanItemsRouter = router({
       return { success: true };
     }),
 
+  // Fetch all comm-needed items for a project (used by main table)
+  listAllByProject: protectedProcedure
+    .input(z.object({ projectId: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+      return await db
+        .select()
+        .from(commPlanItems)
+        .where(eq(commPlanItems.projectId, input.projectId))
+        .orderBy(commPlanItems.entryId, commPlanItems.sequence);
+    }),
+
   // Bulk replace all items for an entry (used when saving the form)
   bulkReplace: protectedProcedure
     .input(

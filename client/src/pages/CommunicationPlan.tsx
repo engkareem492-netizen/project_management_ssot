@@ -228,6 +228,10 @@ export default function CommunicationPlan() {
     refetch,
   } = trpc.communicationPlan.list.useQuery({ projectId }, { enabled });
 
+  // Fetch all comm-needed items for the project (for main table expansion)
+  const { data: allCommItems = [], refetch: refetchAllItems } =
+    trpc.commPlanOptions.items.listAllByProject.useQuery({ projectId }, { enabled });
+
   const { data: roleOptions = [], refetch: refetchRoles } =
     trpc.commPlanOptions.roleOptions.list.useQuery({ projectId }, { enabled });
   const { data: jobOptions = [], refetch: refetchJobs } =
@@ -254,6 +258,7 @@ export default function CommunicationPlan() {
     onSuccess: () => {
       toast.success("Entry added");
       refetch();
+      refetchAllItems();
       setEntryDialogOpen(false);
     },
     onError: (e) => toast.error(e.message),
@@ -263,6 +268,7 @@ export default function CommunicationPlan() {
     onSuccess: () => {
       toast.success("Entry updated");
       refetch();
+      refetchAllItems();
       setEntryDialogOpen(false);
     },
     onError: (e) => toast.error(e.message),
@@ -705,10 +711,10 @@ export default function CommunicationPlan() {
               <TableRow>
                 <TableHead className="w-44">Target</TableHead>
                 <TableHead className="w-52">Information Needed</TableHead>
-                <TableHead className="w-52">Preferred Methods</TableHead>
+                <TableHead>Communication Needed</TableHead>
+                <TableHead className="w-28">Type</TableHead>
                 <TableHead className="w-28">Frequency</TableHead>
-                <TableHead className="w-44">Notes</TableHead>
-                <TableHead className="w-44">Escalation Procedures</TableHead>
+                <TableHead className="w-52">Preferred Methods</TableHead>
                 <TableHead className="w-36">Responsible</TableHead>
                 <TableHead className="w-20 text-right">Actions</TableHead>
               </TableRow>
@@ -719,80 +725,95 @@ export default function CommunicationPlan() {
                 const responsibleName = entry.responsibleStakeholderId
                   ? (stakeholderMap[entry.responsibleStakeholderId]?.fullName ?? entry.responsible ?? "—")
                   : (entry.responsible ?? "—");
-                return (
-                  <TableRow key={entry.id}>
-                    {/* Target */}
-                    <TableCell>
-                      <div className="font-medium text-sm">{label.primary}</div>
-                      {label.secondary && (
-                        <div className="text-xs text-muted-foreground mt-0.5">{label.secondary}</div>
-                      )}
+                const entryItems = (allCommItems as any[]).filter((i: any) => i.entryId === entry.id);
+                if (entryItems.length === 0) {
+                  return (
+                    <TableRow key={entry.id} className="border-b">
+                      <TableCell className="align-top border-r">
+                        <div className="font-medium text-sm">{label.primary}</div>
+                        {label.secondary && (
+                          <div className="text-xs text-muted-foreground mt-0.5">{label.secondary}</div>
+                        )}
+                      </TableCell>
+                      <TableCell className="align-top border-r">
+                        <p className="text-sm whitespace-pre-wrap break-words max-w-[200px]">
+                          {entry.informationNeeded || "—"}
+                        </p>
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground italic" colSpan={3}>
+                        No communication lines added
+                      </TableCell>
+                      <TableCell className="align-top">
+                        <MethodsBadges methods={Array.isArray(entry.preferredMethods) ? entry.preferredMethods : []} />
+                      </TableCell>
+                      <TableCell className="align-top">
+                        <span className="text-sm">{responsibleName}</span>
+                      </TableCell>
+                      <TableCell className="text-right align-top">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(entry)} title="Edit">
+                            <Pencil className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => deleteMut.mutate({ id: entry.id })} title="Delete" disabled={deleteMut.isPending}>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                }
+                return entryItems.map((item: any, idx: number) => (
+                  <TableRow key={`${entry.id}-${item.id}`} className={idx < entryItems.length - 1 ? "border-b-0" : "border-b"}>
+                    {idx === 0 && (
+                      <TableCell rowSpan={entryItems.length} className="align-top border-r bg-muted/20">
+                        <div className="font-medium text-sm">{label.primary}</div>
+                        {label.secondary && (
+                          <div className="text-xs text-muted-foreground mt-0.5">{label.secondary}</div>
+                        )}
+                      </TableCell>
+                    )}
+                    {idx === 0 && (
+                      <TableCell rowSpan={entryItems.length} className="align-top border-r bg-muted/20">
+                        <p className="text-sm whitespace-pre-wrap break-words max-w-[200px]">
+                          {entry.informationNeeded || "—"}
+                        </p>
+                      </TableCell>
+                    )}
+                    <TableCell className="align-middle py-2">
+                      <span className="text-sm font-medium">{item.description || "—"}</span>
                     </TableCell>
-
-                    {/* Information Needed */}
-                    <TableCell>
-                      <p className="text-sm whitespace-pre-wrap break-words max-w-[200px]">
-                        {entry.informationNeeded || "—"}
-                      </p>
-                    </TableCell>
-
-                    {/* Preferred Methods */}
-                    <TableCell>
-                      <MethodsBadges
-                        methods={Array.isArray(entry.preferredMethods) ? entry.preferredMethods : []}
-                      />
-                    </TableCell>
-
-                    {/* Frequency */}
-                    <TableCell>
-                      <span className="text-sm">{entry.frequency || "—"}</span>
-                    </TableCell>
-
-                    {/* Notes */}
-                    <TableCell>
-                      <span className="text-sm text-muted-foreground" title={entry.textNote ?? ""}>
-                        {truncate(entry.textNote ?? "", 55) || "—"}
+                    <TableCell className="align-middle py-2">
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-secondary text-secondary-foreground">
+                        {item.commType || "—"}
                       </span>
                     </TableCell>
-
-                    {/* Escalation Procedures */}
-                    <TableCell>
-                      <span className="text-sm text-muted-foreground" title={entry.escalationProcedures ?? ""}>
-                        {truncate(entry.escalationProcedures ?? "", 55) || "—"}
-                      </span>
+                    <TableCell className="align-middle py-2">
+                      <span className="text-sm text-muted-foreground">{item.periodic || "—"}</span>
                     </TableCell>
-
-                    {/* Responsible */}
-                    <TableCell>
-                      <span className="text-sm">{responsibleName}</span>
-                    </TableCell>
-
-                    {/* Actions */}
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => openEdit(entry)}
-                          title="Edit"
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
-                          onClick={() => deleteMut.mutate({ id: entry.id })}
-                          title="Delete"
-                          disabled={deleteMut.isPending}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
-                    </TableCell>
+                    {idx === 0 && (
+                      <TableCell rowSpan={entryItems.length} className="align-top bg-muted/20">
+                        <MethodsBadges methods={Array.isArray(entry.preferredMethods) ? entry.preferredMethods : []} />
+                      </TableCell>
+                    )}
+                    {idx === 0 && (
+                      <TableCell rowSpan={entryItems.length} className="align-top bg-muted/20">
+                        <span className="text-sm">{responsibleName}</span>
+                      </TableCell>
+                    )}
+                    {idx === 0 && (
+                      <TableCell rowSpan={entryItems.length} className="text-right align-top bg-muted/20">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(entry)} title="Edit">
+                            <Pencil className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => deleteMut.mutate({ id: entry.id })} title="Delete" disabled={deleteMut.isPending}>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    )}
                   </TableRow>
-                );
+                ));
               })}
             </TableBody>
           </Table>
