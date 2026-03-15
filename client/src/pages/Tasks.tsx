@@ -517,6 +517,8 @@ export default function Tasks() {
   const getSubTasks = (parentId: number) => tasks?.filter((t: any) => t.parentTaskId === parentId) || [];
 
   const filteredTasks = tasks?.filter(task => {
+    // Exclude COMM- tasks from the main Tasks tab — they live in Communication Tasks tab
+    if ((task.taskId || '').startsWith('COMM-') || task.taskCategory === 'communication') return false;
     const matchesSearch =
       task.taskId.toLowerCase().includes(searchTerm.toLowerCase()) ||
       task.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
