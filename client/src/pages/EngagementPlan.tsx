@@ -1,15 +1,4 @@
 import { useState, useMemo, useCallback } from "react";
-import {
-  DndContext,
-  DragOverlay,
-  useDraggable,
-  useDroppable,
-  type DragEndEvent,
-  type DragStartEvent,
-  PointerSensor,
-  useSensor,
-  useSensors,
-} from "@dnd-kit/core";
 import { trpc } from "@/lib/trpc";
 import { useProject } from "@/contexts/ProjectContext";
 import { Button } from "@/components/ui/button";
@@ -189,89 +178,6 @@ function StatusBadge({ status }: { status: string | null | undefined }) {
 
 // ─── Tab 1: Stakeholder Analysis ─────────────────────────────────────────────
 
-// ─── Draggable Stakeholder Token ─────────────────────────────────────────────
-
-function DraggableToken({
-  stakeholder,
-  isDragging,
-  onStakeholderClick,
-}: {
-  stakeholder: any;
-  isDragging?: boolean;
-  onStakeholderClick?: (s: any) => void;
-}) {
-  const { attributes, listeners, setNodeRef, transform } = useDraggable({
-    id: String(stakeholder.id),
-    data: { stakeholder },
-  });
-  const color = getStrategyColor(stakeholder.engagementStrategy);
-  const style = transform
-    ? { transform: `translate3d(${transform.x}px,${transform.y}px,0)`, zIndex: 50 }
-    : undefined;
-  return (
-    <TooltipProvider delayDuration={200}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div
-            ref={setNodeRef}
-            style={{ ...style, backgroundColor: color, opacity: isDragging ? 0.4 : 1 }}
-            {...listeners}
-            {...attributes}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-bold shadow-md border-2 border-white cursor-grab active:cursor-grabbing select-none transition-opacity"
-            onClick={(e) => {
-              // Only fire click if not dragging
-              if (!transform && onStakeholderClick) {
-                e.stopPropagation();
-                onStakeholderClick(stakeholder);
-              }
-            }}
-          >
-            {getInitials(stakeholder.fullName)}
-          </div>
-        </TooltipTrigger>
-        <TooltipContent side="top" className="text-xs max-w-[180px]">
-          <p className="font-semibold">{stakeholder.fullName}</p>
-          {stakeholder.position && <p className="text-muted-foreground">{stakeholder.position}</p>}
-          {stakeholder.role && <p className="text-muted-foreground">{stakeholder.role}</p>}
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
-}
-
-// ─── Droppable Cell ───────────────────────────────────────────────────────────
-
-function DroppableCell({
-  power,
-  interest,
-  children,
-  isOver,
-}: {
-  power: number;
-  interest: number;
-  children: React.ReactNode;
-  isOver: boolean;
-}) {
-  const { setNodeRef } = useDroppable({ id: `cell-${power}-${interest}` });
-  // Quadrant color
-  const qColor =
-    power >= 3 && interest >= 3 ? "bg-red-50"
-    : power >= 3 && interest < 3 ? "bg-orange-50"
-    : power < 3 && interest >= 3 ? "bg-blue-50"
-    : "bg-gray-50";
-  return (
-    <div
-      ref={setNodeRef}
-      className={`relative flex flex-wrap items-center justify-center gap-1 p-1 border border-dashed border-muted-foreground/20 transition-colors ${
-        isOver ? "ring-2 ring-primary ring-inset bg-primary/10" : qColor
-      }`}
-      style={{ minHeight: 52 }}
-    >
-      {children}
-    </div>
-  );
-}
-
 // ─── Power/Interest Map ───────────────────────────────────────────────────────
 
 function PowerInterestMap({
@@ -283,16 +189,9 @@ function PowerInterestMap({
   onUpdate: (id: number, power: number, interest: number) => void;
   onStakeholderClick?: (s: any) => void;
 }) {
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [overId, setOverId] = useState<string | null>(null);
-  // Optimistic local overrides: stakeholderId -> { power, interest }
   const [localPos, setLocalPos] = useState<Record<number, { power: number; interest: number }>>({});
+  const [tooltip, setTooltip] = useState<{ s: any; x: number; y: number } | null>(null);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 4 } })
-  );
-
-  // Merge server data with local optimistic overrides
   const resolvedStakeholders = useMemo(() => {
     return stakeholders.map((s) => ({
       ...s,
@@ -301,159 +200,199 @@ function PowerInterestMap({
     }));
   }, [stakeholders, localPos]);
 
-  // Build cell map: `${power}-${interest}` -> stakeholders[]
-  const cellMap = useMemo(() => {
-    const map: Record<string, any[]> = {};
+  // SVG dimensions
+  const W = 600;
+  const H = 460;
+  const PAD = { top: 36, right: 24, bottom: 52, left: 52 };
+  const plotW = W - PAD.left - PAD.right;
+  const plotH = H - PAD.top - PAD.bottom;
+
+  // Map power (1-5) and interest (1-5) to SVG coords
+  // interest → x (1=left, 5=right), power → y (1=bottom, 5=top)
+  const toX = (interest: number) => PAD.left + ((interest - 1) / 4) * plotW;
+  const toY = (power: number) => PAD.top + ((5 - power) / 4) * plotH;
+
+  // Cluster offset for overlapping bubbles
+  const clustered = useMemo(() => {
+    const groups: Record<string, any[]> = {};
     for (const s of resolvedStakeholders) {
       const key = `${s.powerLevel}-${s.interestLevel}`;
-      if (!map[key]) map[key] = [];
-      map[key].push(s);
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(s);
     }
-    return map;
+    const result: Array<{ s: any; cx: number; cy: number }> = [];
+    for (const group of Object.values(groups)) {
+      const baseCx = toX(group[0].interestLevel);
+      const baseCy = toY(group[0].powerLevel);
+      group.forEach((s, idx) => {
+        const angle = (idx / group.length) * 2 * Math.PI;
+        const r = group.length > 1 ? 18 : 0;
+        result.push({
+          s,
+          cx: baseCx + r * Math.cos(angle),
+          cy: baseCy + r * Math.sin(angle),
+        });
+      });
+    }
+    return result;
   }, [resolvedStakeholders]);
 
-  const activeStakeholder = useMemo(
-    () => resolvedStakeholders.find((s) => String(s.id) === activeId),
-    [activeId, resolvedStakeholders]
-  );
-
-  const handleDragStart = (e: DragStartEvent) => {
-    setActiveId(String(e.active.id));
-  };
-
-  const handleDragOver = (e: any) => {
-    setOverId(e.over?.id ?? null);
-  };
-
-  const handleDragEnd = (e: DragEndEvent) => {
-    setActiveId(null);
-    setOverId(null);
-    if (!e.over) return;
-    const cellId = String(e.over.id);
-    if (!cellId.startsWith("cell-")) return;
-    const [, p, i] = cellId.split("-");
-    const newPower = parseInt(p);
-    const newInterest = parseInt(i);
-    const stakeholderId = parseInt(String(e.active.id));
-    // Optimistic update
-    setLocalPos((prev) => ({ ...prev, [stakeholderId]: { power: newPower, interest: newInterest } }));
-    // Persist to server
-    onUpdate(stakeholderId, newPower, newInterest);
-  };
-
-  // Grid: rows = power 5 (top) → 1 (bottom), cols = interest 1 (left) → 5 (right)
-  const powers = [5, 4, 3, 2, 1];
-  const interests = [1, 2, 3, 4, 5];
+  const quadrants = [
+    { label: "Keep Satisfied",  x: PAD.left,           y: PAD.top,           w: plotW/2, h: plotH/2, fill: "#fff7ed", stroke: "#f97316", textColor: "#c2410c" },
+    { label: "Manage Closely",  x: PAD.left + plotW/2, y: PAD.top,           w: plotW/2, h: plotH/2, fill: "#fef2f2", stroke: "#ef4444", textColor: "#b91c1c" },
+    { label: "Monitor",         x: PAD.left,           y: PAD.top + plotH/2, w: plotW/2, h: plotH/2, fill: "#f9fafb", stroke: "#9ca3af", textColor: "#6b7280" },
+    { label: "Keep Informed",   x: PAD.left + plotW/2, y: PAD.top + plotH/2, w: plotW/2, h: plotH/2, fill: "#eff6ff", stroke: "#3b82f6", textColor: "#1d4ed8" },
+  ];
 
   return (
     <div className="space-y-3">
-      {/* Axis label: Interest (top) */}
-      <div className="flex items-center gap-2">
-        <div className="w-8 shrink-0" />
-        <div className="flex-1 flex justify-between text-xs text-muted-foreground px-1">
-          <span>Low Interest →</span>
-          <span>← High Interest</span>
-        </div>
-      </div>
-
-      <div className="flex gap-2">
-        {/* Axis label: Power (left, vertical) */}
-        <div className="flex flex-col justify-between items-center w-7 shrink-0 py-1">
-          <span className="text-[10px] text-muted-foreground [writing-mode:vertical-rl] rotate-180 leading-none">High Power</span>
-          <span className="text-[10px] text-muted-foreground [writing-mode:vertical-rl] rotate-180 leading-none">Low Power</span>
-        </div>
-
-        {/* Grid */}
-        <DndContext
-          sensors={sensors}
-          onDragStart={handleDragStart}
-          onDragOver={handleDragOver}
-          onDragEnd={handleDragEnd}
+      <div className="w-full overflow-x-auto">
+        <svg
+          viewBox={`0 0 ${W} ${H}`}
+          className="w-full"
+          style={{ minWidth: 320, maxHeight: 480 }}
         >
-          <div className="flex-1">
-            {/* Interest column headers */}
-            <div className="grid mb-0.5" style={{ gridTemplateColumns: `repeat(5, 1fr)` }}>
-              {interests.map((i) => (
-                <div key={i} className="text-center text-[10px] font-semibold text-muted-foreground">{i}</div>
-              ))}
-            </div>
-
-            {/* Cells */}
-            <div className="grid" style={{ gridTemplateColumns: `repeat(5, 1fr)`, gridTemplateRows: `repeat(5, 1fr)` }}>
-              {powers.map((power) =>
-                interests.map((interest) => {
-                  const key = `${power}-${interest}`;
-                  const cellTokens = cellMap[key] ?? [];
-                  const cellDropId = `cell-${power}-${interest}`;
-                  return (
-                    <DroppableCell
-                      key={key}
-                      power={power}
-                      interest={interest}
-                      isOver={overId === cellDropId}
-                    >
-                      {cellTokens.map((s) => (
-                        <DraggableToken
-                          key={s.id}
-                          stakeholder={s}
-                          isDragging={String(s.id) === activeId}
-                          onStakeholderClick={onStakeholderClick}
-                        />
-                      ))}
-                    </DroppableCell>
-                  );
-                })
-              )}
-            </div>
-
-            {/* Power row labels on the right */}
-            <div className="flex justify-between mt-1 px-0.5">
-              {interests.map((i) => (
-                <div key={i} className="flex-1" />
-              ))}
-            </div>
-          </div>
-
-          {/* Drag overlay */}
-          <DragOverlay>
-            {activeStakeholder ? (
-              <div
-                className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-bold shadow-xl border-2 border-white cursor-grabbing scale-110"
-                style={{ backgroundColor: getStrategyColor(activeStakeholder.engagementStrategy) }}
+          {/* Quadrant backgrounds */}
+          {quadrants.map((q) => (
+            <g key={q.label}>
+              <rect x={q.x} y={q.y} width={q.w} height={q.h} fill={q.fill} stroke={q.stroke} strokeWidth={1.5} strokeDasharray="4 2" rx={4} />
+              {/* Quadrant label */}
+              <text
+                x={q.x + q.w / 2}
+                y={q.y + 22}
+                textAnchor="middle"
+                fontSize={13}
+                fontWeight="700"
+                fill={q.textColor}
+                opacity={0.85}
               >
-                {getInitials(activeStakeholder.fullName)}
-              </div>
-            ) : null}
-          </DragOverlay>
-        </DndContext>
-      </div>
-
-      {/* Power row labels */}
-      <div className="flex gap-2">
-        <div className="w-7 shrink-0" />
-        <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(5, 1fr)` }}>
-          {powers.map((p) => (
-            <div key={p} className="text-center text-[10px] text-muted-foreground font-semibold">{p}</div>
+                {q.label}
+              </text>
+              {/* Sub-hint */}
+              <text
+                x={q.x + q.w / 2}
+                y={q.y + 37}
+                textAnchor="middle"
+                fontSize={9.5}
+                fill={q.textColor}
+                opacity={0.55}
+              >
+                {q.label === "Keep Satisfied" && "High Power · Low Interest"}
+                {q.label === "Manage Closely" && "High Power · High Interest"}
+                {q.label === "Monitor" && "Low Power · Low Interest"}
+                {q.label === "Keep Informed" && "Low Power · High Interest"}
+              </text>
+            </g>
           ))}
-        </div>
+
+          {/* Divider lines */}
+          <line x1={PAD.left + plotW/2} y1={PAD.top} x2={PAD.left + plotW/2} y2={PAD.top + plotH} stroke="#64748b" strokeWidth={2} strokeDasharray="6 3" opacity={0.5} />
+          <line x1={PAD.left} y1={PAD.top + plotH/2} x2={PAD.left + plotW} y2={PAD.top + plotH/2} stroke="#64748b" strokeWidth={2} strokeDasharray="6 3" opacity={0.5} />
+
+          {/* Y-axis label: Power */}
+          <text
+            x={14}
+            y={PAD.top + plotH / 2}
+            textAnchor="middle"
+            fontSize={11}
+            fontWeight="600"
+            fill="#64748b"
+            transform={`rotate(-90, 14, ${PAD.top + plotH / 2})`}
+          >
+            POWER
+          </text>
+          {/* Y-axis ticks */}
+          {[1,2,3,4,5].map((p) => (
+            <g key={p}>
+              <line x1={PAD.left - 5} y1={toY(p)} x2={PAD.left} y2={toY(p)} stroke="#94a3b8" strokeWidth={1} />
+              <text x={PAD.left - 8} y={toY(p) + 4} textAnchor="end" fontSize={9} fill="#94a3b8">{p}</text>
+            </g>
+          ))}
+
+          {/* X-axis label: Interest */}
+          <text
+            x={PAD.left + plotW / 2}
+            y={H - 8}
+            textAnchor="middle"
+            fontSize={11}
+            fontWeight="600"
+            fill="#64748b"
+          >
+            INTEREST
+          </text>
+          {/* X-axis ticks */}
+          {[1,2,3,4,5].map((i) => (
+            <g key={i}>
+              <line x1={toX(i)} y1={PAD.top + plotH} x2={toX(i)} y2={PAD.top + plotH + 5} stroke="#94a3b8" strokeWidth={1} />
+              <text x={toX(i)} y={PAD.top + plotH + 16} textAnchor="middle" fontSize={9} fill="#94a3b8">{i}</text>
+            </g>
+          ))}
+
+          {/* Stakeholder bubbles */}
+          {clustered.map(({ s, cx, cy }) => {
+            const color = getStrategyColor(s.engagementStrategy);
+            const initials = getInitials(s.fullName);
+            return (
+              <g
+                key={s.id}
+                style={{ cursor: "pointer" }}
+                onClick={() => onStakeholderClick?.(s)}
+                onMouseEnter={(e) => setTooltip({ s, x: cx, y: cy })}
+                onMouseLeave={() => setTooltip(null)}
+              >
+                {/* Shadow */}
+                <circle cx={cx + 2} cy={cy + 2} r={18} fill="rgba(0,0,0,0.12)" />
+                {/* Main bubble */}
+                <circle cx={cx} cy={cy} r={18} fill={color} stroke="white" strokeWidth={2.5} />
+                {/* Initials */}
+                <text
+                  x={cx}
+                  y={cy + 4}
+                  textAnchor="middle"
+                  fontSize={10}
+                  fontWeight="700"
+                  fill="white"
+                  style={{ pointerEvents: "none", userSelect: "none" }}
+                >
+                  {initials}
+                </text>
+              </g>
+            );
+          })}
+
+          {/* Tooltip */}
+          {tooltip && (() => {
+            const tx = Math.min(tooltip.x + 24, W - 130);
+            const ty = Math.max(tooltip.y - 40, PAD.top + 4);
+            return (
+              <g>
+                <rect x={tx} y={ty} width={120} height={36} rx={6} fill="#1e293b" opacity={0.92} />
+                <text x={tx + 8} y={ty + 14} fontSize={10} fontWeight="700" fill="white">{tooltip.s.fullName}</text>
+                <text x={tx + 8} y={ty + 27} fontSize={9} fill="#94a3b8">
+                  {tooltip.s.engagementStrategy ?? "—"}
+                </text>
+              </g>
+            );
+          })()}
+        </svg>
       </div>
 
-      {/* Quadrant legend */}
-      <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1">
+      {/* Legend */}
+      <div className="flex flex-wrap gap-x-5 gap-y-1.5 pt-1 border-t">
         {[
-          { label: "Manage Closely", color: "#ef4444", hint: "High Power, High Interest" },
-          { label: "Keep Satisfied", color: "#f97316", hint: "High Power, Low Interest" },
-          { label: "Keep Informed", color: "#3b82f6", hint: "Low Power, High Interest" },
-          { label: "Monitor", color: "#9ca3af", hint: "Low Power, Low Interest" },
+          { label: "Manage Closely", color: "#ef4444", hint: "High Power · High Interest" },
+          { label: "Keep Satisfied", color: "#f97316", hint: "High Power · Low Interest" },
+          { label: "Keep Informed", color: "#3b82f6", hint: "Low Power · High Interest" },
+          { label: "Monitor",        color: "#9ca3af", hint: "Low Power · Low Interest" },
         ].map((item) => (
-          <span key={item.label} className="flex items-center gap-1.5 text-xs text-muted-foreground" title={item.hint}>
-            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
-            {item.label}
+          <span key={item.label} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <span className="w-3 h-3 rounded-full shrink-0 shadow-sm" style={{ backgroundColor: item.color }} />
+            <span className="font-medium text-foreground">{item.label}</span>
+            <span className="text-muted-foreground/60">— {item.hint}</span>
           </span>
         ))}
       </div>
-
-      <p className="text-xs text-muted-foreground/60 italic">Drag a stakeholder token to change their Power &amp; Interest position</p>
+      <p className="text-xs text-muted-foreground/60 italic">Click a bubble to view stakeholder details · Set Power &amp; Interest values in the Stakeholder Register</p>
     </div>
   );
 }
@@ -500,12 +439,12 @@ function StakeholderAnalysisTab({
 
   return (
     <>
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        {/* Drag-and-Drop Power/Interest Map */}
+      <div className="flex flex-col gap-6">
+        {/* Power/Interest Map */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Power / Interest Map</CardTitle>
-            <p className="text-xs text-muted-foreground">Drag to reposition · Click a bubble to view details</p>
+            <p className="text-xs text-muted-foreground">Click a bubble to view stakeholder details · Set Power &amp; Interest values in the Stakeholder Register</p>
           </CardHeader>
           <CardContent>
             {mapStakeholders.length === 0 ? (
