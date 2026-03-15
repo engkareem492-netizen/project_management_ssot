@@ -931,6 +931,7 @@ export default function Tasks() {
           </CardContent>
         </Card>
       ) : (
+      <>
       <Card className="border-blue-100">
         <CardContent>
           <div className="flex items-center gap-4 mb-4">
@@ -3361,7 +3362,7 @@ export default function Tasks() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+      </>
       )}
     </div>
   );
