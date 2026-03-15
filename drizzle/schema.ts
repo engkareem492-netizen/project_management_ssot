@@ -254,6 +254,8 @@ export const tasks = mysqlTable("tasks", {
   recurringEndDate: varchar("recurringEndDate", { length: 50 }),
   // Communication task link
   communicationStakeholderId: int("communicationStakeholderId"),
+  // Subject (stakeholder name for COMM tasks)
+  subject: varchar("subject", { length: 200 }),
   // Resource effort
   manHours: decimal("manHours", { precision: 10, scale: 2 }),
   // Sprint association
