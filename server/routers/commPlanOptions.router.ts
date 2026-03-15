@@ -6,6 +6,7 @@ import {
   commPlanRoleOptions,
   commPlanJobOptions,
   commPlanItems,
+  stakeholderPositionOptions,
 } from "../../drizzle/schema";
 
 // ─── Role Options ─────────────────────────────────────────────────────────────
@@ -244,9 +245,50 @@ const commPlanItemsRouter = router({
     }),
 });
 
+// ─── Position Options (for Stakeholder form) ─────────────────────────────────
+const positionOptionsRouter = router({
+  list: protectedProcedure
+    .input(z.object({ projectId: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+      return await db
+        .select()
+        .from(stakeholderPositionOptions)
+        .where(eq(stakeholderPositionOptions.projectId, input.projectId))
+        .orderBy(stakeholderPositionOptions.label);
+    }),
+
+  create: protectedProcedure
+    .input(z.object({ projectId: z.number(), label: z.string().min(1) }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("DB unavailable");
+      const result = await db.insert(stakeholderPositionOptions).values(input);
+      const rows = await db
+        .select()
+        .from(stakeholderPositionOptions)
+        .where(eq(stakeholderPositionOptions.id, (result as any)[0]?.insertId))
+        .limit(1);
+      return rows[0];
+    }),
+
+  delete: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("DB unavailable");
+      await db
+        .delete(stakeholderPositionOptions)
+        .where(eq(stakeholderPositionOptions.id, input.id));
+      return { success: true };
+    }),
+});
+
 // ─── Combined export ──────────────────────────────────────────────────────────
 export const commPlanOptionsRouter = router({
   roleOptions: roleOptionsRouter,
   jobOptions: jobOptionsRouter,
   items: commPlanItemsRouter,
+  positionOptions: positionOptionsRouter,
 });

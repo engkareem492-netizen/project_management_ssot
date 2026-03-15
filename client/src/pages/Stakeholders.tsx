@@ -644,30 +644,85 @@ function StakeholderFormDialog({
               />
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3">
+              {/* Position — managed dropdown with inline create */}
               <div className="space-y-2">
                 <Label>Position</Label>
-                <Input
-                  value={formData.position}
-                  onChange={(e) => set({ position: e.target.value })}
-                  placeholder="Manager"
-                />
+                <div className="flex gap-1">
+                  <Select
+                    value={formData.position || ""}
+                    onValueChange={(v) => set({ position: v })}
+                  >
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Select position..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {positionOptions.map((o: any) => (
+                        <SelectItem key={o.id} value={o.label}>{o.label}</SelectItem>
+                      ))}
+                      {formData.position && !positionOptions.some((o: any) => o.label === formData.position) && (
+                        <SelectItem value={formData.position}>{formData.position}</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="outline"
+                    className="shrink-0"
+                    onClick={() => {
+                      const val = prompt("New position name:");
+                      if (val?.trim() && currentProjectId) {
+                        createPositionOption.mutate({ projectId: currentProjectId, label: val.trim() }, {
+                          onSuccess: (row: any) => row && set({ position: row.label }),
+                        });
+                      }
+                    }}
+                    title="Add new position"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label>Job</Label>
-                <Input
-                  value={formData.job}
-                  onChange={(e) => set({ job: e.target.value })}
-                  placeholder="Developer"
-                />
-              </div>
+
+              {/* Role — managed dropdown with inline create */}
               <div className="space-y-2">
                 <Label>Role</Label>
-                <Input
-                  value={formData.role}
-                  onChange={(e) => set({ role: e.target.value })}
-                  placeholder="Sponsor"
-                />
+                <div className="flex gap-1">
+                  <Select
+                    value={formData.role || ""}
+                    onValueChange={(v) => set({ role: v })}
+                  >
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Select role..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {roleOptions.map((o: any) => (
+                        <SelectItem key={o.id} value={o.label}>{o.label}</SelectItem>
+                      ))}
+                      {formData.role && !roleOptions.some((o: any) => o.label === formData.role) && (
+                        <SelectItem value={formData.role}>{formData.role}</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="outline"
+                    className="shrink-0"
+                    onClick={() => {
+                      const val = prompt("New role name:");
+                      if (val?.trim() && currentProjectId) {
+                        createRoleOption.mutate({ projectId: currentProjectId, label: val.trim() }, {
+                          onSuccess: (row: any) => row && set({ role: row.label }),
+                        });
+                      }
+                    }}
+                    title="Add new role"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </div>
 
@@ -1259,6 +1314,35 @@ export default function Stakeholders() {
       toast.success("Stakeholder deleted");
     },
   });
+
+  // Position options
+  const { data: positionOptions = [] } = trpc.commPlanOptions.positionOptions.list.useQuery(
+    { projectId: currentProjectId! },
+    { enabled: !!currentProjectId }
+  );
+  const createPositionOption = trpc.commPlanOptions.positionOptions.create.useMutation({
+    onSuccess: () => utils.commPlanOptions.positionOptions.list.invalidate(),
+    onError: (e) => toast.error(`Failed: ${e.message}`),
+  });
+  const deletePositionOption = trpc.commPlanOptions.positionOptions.delete.useMutation({
+    onSuccess: () => utils.commPlanOptions.positionOptions.list.invalidate(),
+  });
+
+  // Role options (reuse commPlanOptions.roleOptions)
+  const { data: roleOptions = [] } = trpc.commPlanOptions.roleOptions.list.useQuery(
+    { projectId: currentProjectId! },
+    { enabled: !!currentProjectId }
+  );
+  const createRoleOption = trpc.commPlanOptions.roleOptions.create.useMutation({
+    onSuccess: () => utils.commPlanOptions.roleOptions.list.invalidate(),
+    onError: (e) => toast.error(`Failed: ${e.message}`),
+  });
+  const deleteRoleOption = trpc.commPlanOptions.roleOptions.delete.useMutation({
+    onSuccess: () => utils.commPlanOptions.roleOptions.list.invalidate(),
+  });
+
+  const [newPositionInput, setNewPositionInput] = useState("");
+  const [newRoleInput, setNewRoleInput] = useState("");
 
   function getStakeholderClassification(s: any): Classification {
     if (s.classification) return s.classification as Classification;

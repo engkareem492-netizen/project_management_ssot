@@ -1598,3 +1598,14 @@ export const rbsResourceTypes = mysqlTable("rbsResourceTypes", {
 });
 export type RbsResourceType = typeof rbsResourceTypes.$inferSelect;
 export type InsertRbsResourceType = typeof rbsResourceTypes.$inferInsert;
+
+// ─── Stakeholder Position Options ─────────────────────────────────────────────
+// Managed list of Position options that can be assigned to stakeholders.
+export const stakeholderPositionOptions = mysqlTable("stakeholderPositionOptions", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  label: varchar("label", { length: 200 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type StakeholderPositionOption = typeof stakeholderPositionOptions.$inferSelect;
+export type InsertStakeholderPositionOption = typeof stakeholderPositionOptions.$inferInsert;
