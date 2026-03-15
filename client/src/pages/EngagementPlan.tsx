@@ -1230,6 +1230,16 @@ function EngagementAssessmentTab({
   const [editTarget, setEditTarget] = useState<any>(null);
   const [logTarget, setLogTarget] = useState<any>(null);
   const [newGroupFor, setNewGroupFor] = useState<{ id: number; name: string } | null>(null);
+  const [filterCurrent, setFilterCurrent] = useState<string>("all");
+  const [filterDesired, setFilterDesired] = useState<string>("all");
+
+  const ENGAGEMENT_STATUSES = ["Unaware", "Resistant", "Neutral", "Supportive", "Leading"];
+
+  const filteredStakeholders = stakeholders.filter((s) => {
+    const currentOk = filterCurrent === "all" || s.currentEngagementStatus === filterCurrent || (filterCurrent === "none" && !s.currentEngagementStatus);
+    const desiredOk = filterDesired === "all" || s.desiredEngagementStatus === filterDesired || (filterDesired === "none" && !s.desiredEngagementStatus);
+    return currentOk && desiredOk;
+  });
 
   const syncMut = trpc.engagement.syncSubjects.useMutation({
     onSuccess: () => {
@@ -1242,6 +1252,46 @@ function EngagementAssessmentTab({
 
   return (
     <div className="space-y-4">
+      {/* Filters */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">Current Status:</span>
+          <Select value={filterCurrent} onValueChange={setFilterCurrent}>
+            <SelectTrigger className="h-8 w-36 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="none">Not Set</SelectItem>
+              {ENGAGEMENT_STATUSES.map((s) => (
+                <SelectItem key={s} value={s}>{s}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">Desired Status:</span>
+          <Select value={filterDesired} onValueChange={setFilterDesired}>
+            <SelectTrigger className="h-8 w-36 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="none">Not Set</SelectItem>
+              {ENGAGEMENT_STATUSES.map((s) => (
+                <SelectItem key={s} value={s}>{s}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        {(filterCurrent !== "all" || filterDesired !== "all") && (
+          <Button variant="ghost" size="sm" className="h-8 text-xs gap-1" onClick={() => { setFilterCurrent("all"); setFilterDesired("all"); }}>
+            <X className="h-3 w-3" /> Clear Filters
+          </Button>
+        )}
+        <span className="text-xs text-muted-foreground ml-auto">{filteredStakeholders.length} of {stakeholders.length} stakeholders</span>
+      </div>
+
       {stakeholders.length === 0 ? (
         <EmptyState
           icon={ClipboardList}
@@ -1263,7 +1313,13 @@ function EngagementAssessmentTab({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {stakeholders.map((s) => (
+                  {filteredStakeholders.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-8 text-sm text-muted-foreground">
+                        No stakeholders match the selected filters.
+                      </TableCell>
+                    </TableRow>
+                  ) : filteredStakeholders.map((s) => (
                     <TableRow key={s.id}>
                       <TableCell className="font-medium text-sm">{s.fullName}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{s.role ?? "—"}</TableCell>
