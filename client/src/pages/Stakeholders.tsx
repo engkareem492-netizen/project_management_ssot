@@ -584,6 +584,7 @@ function StakeholderFormDialog({
   stakeholders: any[];
   currentProjectId: number | null | undefined;
 }) {
+  const utils = trpc.useUtils();
   const set = (partial: Partial<StakeholderFormData>) => {
     const next = { ...formData, ...partial };
     // Auto-propose engagement strategy when classification is Stakeholder and power/interest change
@@ -593,6 +594,26 @@ function StakeholderFormDialog({
     }
     setFormData(next);
   };
+
+  // Position options
+  const { data: positionOptions = [] } = trpc.commPlanOptions.positionOptions.list.useQuery(
+    { projectId: currentProjectId! },
+    { enabled: !!currentProjectId }
+  );
+  const createPositionOption = trpc.commPlanOptions.positionOptions.create.useMutation({
+    onSuccess: () => utils.commPlanOptions.positionOptions.list.invalidate(),
+    onError: (e: any) => toast.error(`Failed: ${e.message}`),
+  });
+
+  // Role options
+  const { data: roleOptions = [] } = trpc.commPlanOptions.roleOptions.list.useQuery(
+    { projectId: currentProjectId! },
+    { enabled: !!currentProjectId }
+  );
+  const createRoleOption = trpc.commPlanOptions.roleOptions.create.useMutation({
+    onSuccess: () => utils.commPlanOptions.roleOptions.list.invalidate(),
+    onError: (e: any) => toast.error(`Failed: ${e.message}`),
+  });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -1314,35 +1335,6 @@ export default function Stakeholders() {
       toast.success("Stakeholder deleted");
     },
   });
-
-  // Position options
-  const { data: positionOptions = [] } = trpc.commPlanOptions.positionOptions.list.useQuery(
-    { projectId: currentProjectId! },
-    { enabled: !!currentProjectId }
-  );
-  const createPositionOption = trpc.commPlanOptions.positionOptions.create.useMutation({
-    onSuccess: () => utils.commPlanOptions.positionOptions.list.invalidate(),
-    onError: (e) => toast.error(`Failed: ${e.message}`),
-  });
-  const deletePositionOption = trpc.commPlanOptions.positionOptions.delete.useMutation({
-    onSuccess: () => utils.commPlanOptions.positionOptions.list.invalidate(),
-  });
-
-  // Role options (reuse commPlanOptions.roleOptions)
-  const { data: roleOptions = [] } = trpc.commPlanOptions.roleOptions.list.useQuery(
-    { projectId: currentProjectId! },
-    { enabled: !!currentProjectId }
-  );
-  const createRoleOption = trpc.commPlanOptions.roleOptions.create.useMutation({
-    onSuccess: () => utils.commPlanOptions.roleOptions.list.invalidate(),
-    onError: (e) => toast.error(`Failed: ${e.message}`),
-  });
-  const deleteRoleOption = trpc.commPlanOptions.roleOptions.delete.useMutation({
-    onSuccess: () => utils.commPlanOptions.roleOptions.list.invalidate(),
-  });
-
-  const [newPositionInput, setNewPositionInput] = useState("");
-  const [newRoleInput, setNewRoleInput] = useState("");
 
   function getStakeholderClassification(s: any): Classification {
     if (s.classification) return s.classification as Classification;
