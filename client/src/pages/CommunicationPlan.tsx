@@ -732,36 +732,128 @@ export default function CommunicationPlan() {
         <TabsContent value="stakeholder" className="mt-4 space-y-4">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
-              Each stakeholder has one card. Their role and position communication plans are merged in.
+              Showing only stakeholders with a communication plan entry. Use <strong>Import from Stakeholders</strong> to add more.
             </p>
           </div>
           {isLoading ? (
             <div className="flex items-center justify-center h-48"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
-          ) : (stakeholders as any[]).length === 0 ? (
-            <EmptyState icon={Users} title="No stakeholders yet" description="Add stakeholders first, then create their communication plan cards." actionLabel="Go to Stakeholders" onAction={() => {}} />
-          ) : (
-            <div className="space-y-4">
-              {(stakeholders as any[]).map((s: any) => {
-                const directEntry = stakeholderEntryMap[s.id] ?? null;
-                const roleEntry = s.role ? (roleEntryMap[s.role] ?? null) : null;
-                const positionEntry = s.job ? (positionEntryMap[s.job] ?? null) : null;
-                return (
-                  <StakeholderCard
-                    key={s.id}
-                    stakeholder={s}
-                    directEntry={directEntry}
-                    roleEntry={roleEntry}
-                    positionEntry={positionEntry}
-                    allCommItems={allCommItems as any[]}
-                    onEdit={openEdit}
-                    onDelete={(id) => deleteMut.mutate({ id })}
-                    onAdd={openNewForStakeholder}
-                    deleteIsPending={deleteMut.isPending}
-                  />
-                );
-              })}
-            </div>
-          )}
+          ) : (() => {
+            // Only stakeholders who have a direct comm plan entry
+            const stakeholdersWithPlan = (stakeholders as any[]).filter(
+              (s: any) => !!stakeholderEntryMap[s.id]
+            );
+            if (stakeholdersWithPlan.length === 0) {
+              return (
+                <EmptyState
+                  icon={Users}
+                  title="No stakeholder plans yet"
+                  description="Import stakeholders or add a card to get started."
+                  actionLabel="Import from Stakeholders"
+                  onAction={() => { setSelectedStakeholderIds([]); setImportDialogOpen(true); }}
+                />
+              );
+            }
+            // Build flat rows: one row per comm-item per stakeholder entry
+            const rows: React.ReactNode[] = [];
+            stakeholdersWithPlan.forEach((s: any) => {
+              const entry = stakeholderEntryMap[s.id];
+              const roleEntry = s.role ? (roleEntryMap[s.role] ?? null) : null;
+              const positionEntry = s.job ? (positionEntryMap[s.job] ?? null) : null;
+              // Collect all sources for this stakeholder
+              const sources = [
+                { entry, label: s.fullName, badge: "bg-primary/10 text-primary", isDirect: true },
+                roleEntry ? { entry: roleEntry, label: `Role: ${s.role}`, badge: "bg-purple-100 text-purple-700", isDirect: false } : null,
+                positionEntry ? { entry: positionEntry, label: `Position: ${s.job}`, badge: "bg-orange-100 text-orange-700", isDirect: false } : null,
+              ].filter(Boolean) as { entry: any; label: string; badge: string; isDirect: boolean }[];
+
+              sources.forEach(({ entry: src, label, badge, isDirect }) => {
+                const items = (allCommItems as any[]).filter((i: any) => i.entryId === src.id);
+                const methods = Array.isArray(src.preferredMethods) ? src.preferredMethods : [];
+                const responsibleName = src.responsibleStakeholderId
+                  ? (stakeholderMap[src.responsibleStakeholderId]?.fullName ?? src.responsible ?? "—")
+                  : (src.responsible ?? "—");
+
+                if (items.length === 0) {
+                  rows.push(
+                    <TableRow key={`${s.id}-${src.id}-empty`}>
+                      <TableCell className="font-medium text-sm align-top">
+                        <div className="font-semibold">{s.fullName}</div>
+                        <span className={`inline-block mt-0.5 text-xs px-1.5 py-0.5 rounded font-medium ${badge}`}>{label}</span>
+                      </TableCell>
+                      <TableCell className="text-sm align-top whitespace-pre-wrap break-words max-w-[200px]">{src.informationNeeded || "—"}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground italic align-top" colSpan={3}>No communication lines</TableCell>
+                      <TableCell className="align-top"><MethodsBadges methods={methods} /></TableCell>
+                      <TableCell className="text-sm align-top">{responsibleName}</TableCell>
+                      <TableCell className="text-right align-top">
+                        {isDirect && (
+                          <div className="flex items-center justify-end gap-1">
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(src)} title="Edit"><Pencil className="w-3.5 h-3.5" /></Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => deleteMut.mutate({ id: src.id })} disabled={deleteMut.isPending} title="Delete"><Trash2 className="w-3.5 h-3.5" /></Button>
+                          </div>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                  return;
+                }
+
+                items.forEach((item: any, idx: number) => {
+                  rows.push(
+                    <TableRow key={`${s.id}-${src.id}-${item.id ?? idx}`} className={idx < items.length - 1 ? "border-b-0" : ""}>
+                      {idx === 0 && (
+                        <TableCell rowSpan={items.length} className="font-medium text-sm align-top bg-muted/10">
+                          <div className="font-semibold">{s.fullName}</div>
+                          <span className={`inline-block mt-0.5 text-xs px-1.5 py-0.5 rounded font-medium ${badge}`}>{label}</span>
+                        </TableCell>
+                      )}
+                      {idx === 0 && (
+                        <TableCell rowSpan={items.length} className="text-sm align-top bg-muted/10 whitespace-pre-wrap break-words max-w-[200px]">{src.informationNeeded || "—"}</TableCell>
+                      )}
+                      <TableCell className="py-2 text-sm">{item.description || "—"}</TableCell>
+                      <TableCell className="py-2"><span className="text-xs px-1.5 py-0.5 rounded bg-secondary text-secondary-foreground">{item.commType || "—"}</span></TableCell>
+                      <TableCell className="py-2 text-sm text-muted-foreground">{item.periodic || "—"}</TableCell>
+                      {idx === 0 && (
+                        <TableCell rowSpan={items.length} className="align-top bg-muted/10"><MethodsBadges methods={methods} /></TableCell>
+                      )}
+                      {idx === 0 && (
+                        <TableCell rowSpan={items.length} className="text-sm align-top bg-muted/10">{responsibleName}</TableCell>
+                      )}
+                      {idx === 0 && (
+                        <TableCell rowSpan={items.length} className="text-right align-top bg-muted/10">
+                          {isDirect && (
+                            <div className="flex items-center justify-end gap-1">
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(src)} title="Edit"><Pencil className="w-3.5 h-3.5" /></Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => deleteMut.mutate({ id: src.id })} disabled={deleteMut.isPending} title="Delete"><Trash2 className="w-3.5 h-3.5" /></Button>
+                            </div>
+                          )}
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  );
+                });
+              });
+            });
+
+            return (
+              <div className="rounded-md border overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-44">Stakeholder / Source</TableHead>
+                      <TableHead className="w-52">Information Needed</TableHead>
+                      <TableHead>Communication Needed</TableHead>
+                      <TableHead className="w-28">Type</TableHead>
+                      <TableHead className="w-28">Frequency</TableHead>
+                      <TableHead className="w-48">Preferred Methods</TableHead>
+                      <TableHead className="w-36">Responsible</TableHead>
+                      <TableHead className="w-20 text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>{rows}</TableBody>
+                </Table>
+              </div>
+            );
+          })()}
         </TabsContent>
 
         {/* ─── Role Tab ─── */}
