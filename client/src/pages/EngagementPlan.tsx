@@ -1758,15 +1758,17 @@ function EngagementPlanTab({
             {groups.map((group: any) => {
               const isSelected = selectedGroupId === group.id;
               return (
-                <button
+                <div
                   key={group.id}
-                  type="button"
-                  className={`w-full text-left rounded-lg border p-3 transition-colors hover:bg-muted/50 ${
+                  role="button"
+                  tabIndex={0}
+                  className={`w-full text-left rounded-lg border p-3 transition-colors hover:bg-muted/50 cursor-pointer ${
                     isSelected
                       ? "border-primary bg-primary/5 ring-1 ring-primary/20"
                       : "border-border bg-card"
                   }`}
                   onClick={() => setSelectedGroupId(isSelected ? null : group.id)}
+                  onKeyDown={(e) => e.key === 'Enter' && setSelectedGroupId(isSelected ? null : group.id)}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-start gap-2 min-w-0">
@@ -1818,7 +1820,7 @@ function EngagementPlanTab({
                       />
                     </div>
                   </div>
-                </button>
+                </div>
               );
             })}
           </div>
