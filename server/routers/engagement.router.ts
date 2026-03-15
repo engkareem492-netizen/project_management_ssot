@@ -316,9 +316,9 @@ export const engagementRouter = router({
               // Description: [Group] Action Item — with Subject: Name
               description: `[${group.name}] ${item.title}${subject ? ` — with ${subject.fullName}` : ""}`,
               status: "Open",
-              // Responsible = Project Manager (falls back to subject if no PM defined)
-              responsible: pm?.fullName ?? subject?.fullName ?? undefined,
-              responsibleId: pm?.id ?? subject?.id ?? undefined,
+              // Responsible = Project Manager only; no fallback to subject
+              responsible: pm?.fullName ?? undefined,
+              responsibleId: pm?.id ?? undefined,
               // Subject = the stakeholder this communication is about
               subject: subject?.fullName ?? undefined,
               recurringType: recurringType as any,
@@ -507,9 +507,9 @@ export const engagementRouter = router({
             addedSubjects++;
           } catch { /* already exists — still create missing COMM tasks */ }
 
-          // Responsible = PM (falls back to subject if no PM defined)
-          const responsibleId = pm?.id ?? s.id;
-          const responsibleName = pm?.fullName ?? s.fullName;
+          // Responsible = PM only; if no PM defined, leave blank (null)
+          const responsibleId = pm?.id ?? null;
+          const responsibleName = pm?.fullName ?? null;
 
           // Create COMM tasks for each action item (whether subject was new or existing)
           for (const item of actionItems) {
@@ -538,8 +538,9 @@ export const engagementRouter = router({
                   taskId,
                   description: `[${group.name}] ${item.title} — with ${s.fullName}`,
                   status: "Open",
+                  // Responsible = PM only; if no PM, leave blank
                   responsible: responsibleName ?? undefined,
-                  responsibleId,
+                  responsibleId: responsibleName ? responsibleId : undefined,
                   // Subject = the stakeholder this communication is about
                   subject: s.fullName ?? undefined,
                   recurringType: recurringType as any,
