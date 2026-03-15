@@ -1025,6 +1025,20 @@ export default function CommunicationPlan() {
                       </div>
                       <Button
                         type="button"
+                        size="sm"
+                        variant="secondary"
+                        className="h-8 text-xs shrink-0 mt-0.5 px-2 font-medium"
+                        title="Mark line as saved"
+                        onClick={() => {
+                          if (item.description.trim()) {
+                            toast.success("Line noted — click Update to persist all changes");
+                          }
+                        }}
+                      >
+                        Save
+                      </Button>
+                      <Button
+                        type="button"
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 text-red-400 hover:text-red-600 hover:bg-red-50 shrink-0 mt-0.5"
@@ -1071,13 +1085,14 @@ export default function CommunicationPlan() {
                   </div>
                 ))}
               </div>
-              {/* Add new method */}
-              <div className="flex items-center gap-2 mt-2">
+              {/* Add new method — prominent row */}
+              <div className="flex items-center gap-2 mt-3 p-2 border border-dashed rounded-md bg-muted/20">
+                <Plus className="w-4 h-4 text-muted-foreground shrink-0" />
                 <Input
                   value={newMethodInput}
                   onChange={e => setNewMethodInput(e.target.value)}
-                  placeholder="Add new method type..."
-                  className="h-8 text-sm"
+                  placeholder="Type new method name and press Enter or click Add..."
+                  className="h-8 text-sm border-0 bg-transparent focus-visible:ring-0 px-0"
                   onKeyDown={e => {
                     if (e.key === "Enter" && newMethodInput.trim()) {
                       createMethodOption.mutate({ projectId, label: newMethodInput.trim() });
@@ -1088,8 +1103,8 @@ export default function CommunicationPlan() {
                 <Button
                   type="button"
                   size="sm"
-                  variant="outline"
-                  className="h-8 shrink-0"
+                  variant="default"
+                  className="h-8 shrink-0 gap-1"
                   disabled={!newMethodInput.trim() || createMethodOption.isPending}
                   onClick={() => {
                     if (newMethodInput.trim()) {
@@ -1099,28 +1114,10 @@ export default function CommunicationPlan() {
                   }}
                 >
                   <Plus className="w-3.5 h-3.5" />
+                  Add
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground">Hover over a method to reveal the remove (×) button.</p>
-            </div>
-
-            {/* ── Frequency ── */}
-            <div className="space-y-1.5">
-              <Label>Frequency</Label>
-              <Select
-                value={form.frequency || "__none__"}
-                onValueChange={(v) => setField("frequency", v === "__none__" ? "" : v)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select frequency..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">— None —</SelectItem>
-                  {FREQUENCY_OPTIONS.map((f) => (
-                    <SelectItem key={f} value={f}>{f}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <p className="text-xs text-muted-foreground">Hover a method checkbox to reveal the remove (×) button.</p>
             </div>
 
             {/* ── Notes ── */}
