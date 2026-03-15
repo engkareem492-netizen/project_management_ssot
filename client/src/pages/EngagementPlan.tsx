@@ -1093,6 +1093,7 @@ function EngagementAssessmentTab({
   const [historyTarget, setHistoryTarget] = useState<any>(null);
   const [editTarget, setEditTarget] = useState<any>(null);
   const [logTarget, setLogTarget] = useState<any>(null);
+  const [newGroupFor, setNewGroupFor] = useState<{ id: number; name: string } | null>(null);
 
   const syncMut = trpc.engagement.syncSubjects.useMutation({
     onSuccess: () => {
@@ -1165,6 +1166,15 @@ function EngagementAssessmentTab({
                             <Plus className="h-3.5 w-3.5" />
                             Log Assessment
                           </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 px-2 text-xs gap-1"
+                            onClick={() => setNewGroupFor({ id: s.id, name: s.fullName })}
+                          >
+                            <ListChecks className="h-3.5 w-3.5" />
+                            New Group
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -1209,6 +1219,15 @@ function EngagementAssessmentTab({
           onOpenChange={(v) => !v && setLogTarget(null)}
         />
       )}
+      {newGroupFor && (
+        <TaskGroupFormDialog
+          open={!!newGroupFor}
+          onOpenChange={(v) => !v && setNewGroupFor(null)}
+          projectId={projectId}
+          initialStakeholderId={newGroupFor.id}
+          initialStakeholderName={newGroupFor.name}
+        />
+      )}
     </div>
   );
 }
@@ -1220,11 +1239,15 @@ function TaskGroupFormDialog({
   onOpenChange,
   projectId,
   editGroup,
+  initialStakeholderId,
+  initialStakeholderName,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   projectId: number;
   editGroup?: any;
+  initialStakeholderId?: number;
+  initialStakeholderName?: string;
 }) {
   const utils = trpc.useUtils();
   const [form, setForm] = useState({
@@ -1275,7 +1298,7 @@ function TaskGroupFormDialog({
     if (editGroup) {
       updateMut.mutate({ id: editGroup.id, data: form });
     } else {
-      createMut.mutate({ projectId, ...form });
+      createMut.mutate({ projectId, ...form, initialStakeholderId });
     }
   };
 
@@ -1285,7 +1308,9 @@ function TaskGroupFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{editGroup ? "Edit Task Group" : "New Task Group"}</DialogTitle>
+          <DialogTitle>
+          {editGroup ? "Edit Task Group" : initialStakeholderName ? `New Group for ${initialStakeholderName}` : "New Task Group"}
+        </DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div>
@@ -1709,6 +1734,7 @@ function EngagementPlanTab({
   const [groupDialogOpen, setGroupDialogOpen] = useState(false);
   const [editGroup, setEditGroup] = useState<any>(null);
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
+  const [initialStakeholder, setInitialStakeholder] = useState<{ id: number; name: string } | null>(null);
 
   const { data: groups = [] } = trpc.engagement.listGroups.useQuery({ projectId });
 
@@ -1860,9 +1886,11 @@ function EngagementPlanTab({
 
       <TaskGroupFormDialog
         open={groupDialogOpen}
-        onOpenChange={setGroupDialogOpen}
+        onOpenChange={(v) => { setGroupDialogOpen(v); if (!v) setInitialStakeholder(null); }}
         projectId={projectId}
         editGroup={editGroup}
+        initialStakeholderId={initialStakeholder?.id}
+        initialStakeholderName={initialStakeholder?.name}
       />
     </div>
   );

@@ -35,15 +35,24 @@ export const engagementRouter = router({
       fromStatus: z.enum(FROM_STATUSES),
       toStatus: z.enum(ENGAGEMENT_STATUSES),
       color: z.string().optional(),
+      initialStakeholderId: z.number().optional(),
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new Error("DB unavailable");
-      const result = await db.insert(engagementTaskGroups).values(input);
+      const { initialStakeholderId, ...groupData } = input;
+      const result = await db.insert(engagementTaskGroups).values(groupData);
+      const newGroupId = result[0].insertId;
+      // Auto-assign initial stakeholder as subject if provided
+      if (initialStakeholderId) {
+        try {
+          await db.insert(engagementTaskSubjects).values({ taskGroupId: newGroupId, stakeholderId: initialStakeholderId });
+        } catch { /* duplicate — ignore */ }
+      }
       const rows = await db
         .select()
         .from(engagementTaskGroups)
-        .where(eq(engagementTaskGroups.id, result[0].insertId))
+        .where(eq(engagementTaskGroups.id, newGroupId))
         .limit(1);
       return rows[0];
     }),
