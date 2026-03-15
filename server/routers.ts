@@ -53,6 +53,8 @@ import { communicationPlanRouter } from "./routers/communicationPlan.router";
 import { commPlanOptionsRouter } from "./routers/commPlanOptions.router";
 import { rbsResourceTypesRouter } from "./routers/rbsResourceTypes.router";
 import { teamSkillsRouter } from "./routers/teamSkills.router";
+import { rbsNodesRouter } from "./routers/rbsNodes.router";
+import { projectWorkWeekRouter } from "./routers/projectWorkWeek.router";
 
 export const appRouter = router({
   system: systemRouter,
@@ -100,6 +102,8 @@ export const appRouter = router({
   commPlanOptions: commPlanOptionsRouter,
   rbsResourceTypes: rbsResourceTypesRouter,
   teamSkills: teamSkillsRouter,
+  rbsNodes: rbsNodesRouter,
+  projectWorkWeek: projectWorkWeekRouter,
   scopeItems: router({
     list: protectedProcedure
       .input(z.object({ projectId: z.number() }))
@@ -736,6 +740,9 @@ export const appRouter = router({
         recurringInterval: z.number().optional(),
         recurringEndDate: z.string().optional(),
         manHours: z.number().optional(),
+        subject: z.string().optional(),
+        subjectId: z.number().optional(),
+        taskCategory: z.enum(['task', 'communication']).optional(),
       }))
       .mutation(async ({ input }) => {
         try {
@@ -748,8 +755,11 @@ export const appRouter = router({
             }
           });
           
-          // Generate auto ID for task
-          const taskId = await db.getNextId('task', 'T', input.projectId);
+          // Use COMM prefix for communication tasks, T for regular tasks
+          const isCommTask = input.taskCategory === 'communication';
+          const taskId = isCommTask
+            ? await db.getNextId('commTask', 'COMM', input.projectId)
+            : await db.getNextId('task', 'T', input.projectId);
           await db.createTask({ ...cleanedInput, taskId, projectId: input.projectId });
           
           return { success: true, taskId };
@@ -808,6 +818,9 @@ export const appRouter = router({
           informedId: z.number().nullable().optional(),
           ownerId: z.number().nullable().optional(),
           manHours: z.union([z.number(), z.string()]).nullable().optional(),
+          subject: z.string().nullable().optional(),
+          subjectId: z.number().nullable().optional(),
+          taskCategory: z.enum(['task', 'communication']).optional(),
         }),
       }))
       .mutation(async ({ input, ctx }) => {

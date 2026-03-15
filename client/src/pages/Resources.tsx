@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { useProject } from "@/contexts/ProjectContext";
 import { Button } from "@/components/ui/button";
@@ -112,6 +112,9 @@ export default function Resources() {
   const [showRbsTypeDialog, setShowRbsTypeDialog] = useState(false);
   const [rbsTypeEditing, setRbsTypeEditing] = useState<any | null>(null);
   const [rbsTypeForm, setRbsTypeForm] = useState({ name: "", color: "#6366f1", description: "" });
+  // RBS Nodes state
+  const [rbsNodeForm, setRbsNodeForm] = useState({ code: '', name: '', resourceType: 'Human', parentId: '', description: '' });
+  const [rbsNodeExpanded, setRbsNodeExpanded] = useState<Record<number, boolean>>({});
 
   // Calendar state
   const [calStart, setCalStart] = useState(() => {
@@ -161,6 +164,15 @@ export default function Resources() {
   const seedRbsTypes = trpc.rbsResourceTypes.seedBuiltIn.useMutation({
     onSuccess: () => refetchRbsTypes(),
   });
+  const { data: rbsNodes = [], refetch: refetchRbsNodes } = trpc.rbsNodes.list.useQuery({ projectId }, { enabled });
+  const createRbsNode = trpc.rbsNodes.create.useMutation({
+    onSuccess: () => { refetchRbsNodes(); setRbsNodeForm({ code: '', name: '', resourceType: 'Human', parentId: '', description: '' }); toast.success('Node added'); },
+    onError: (e) => toast.error(e.message),
+  });
+  const deleteRbsNode = trpc.rbsNodes.delete.useMutation({
+    onSuccess: () => { refetchRbsNodes(); toast.success('Node deleted'); },
+  });
+
   const { data: calendarEntries = [], refetch: refetchCal } = trpc.teamSkills.listCalendar.useQuery(
     { projectId, stakeholderId: calStakeholderId ?? undefined, startDate: calStart, endDate: calEnd },
     { enabled }
@@ -638,7 +650,164 @@ export default function Resources() {
 
         {/* ─── RBS Tab ──────────────────────────────────────────────────── */}
         <TabsContent value="rbs" className="mt-0 space-y-4">
-          {/* Resource Type Management Panel */}
+          {/* ── RBS: Node Tree + Add Form (matches reference screenshot) ── */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+            {/* Left: Node Tree */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <TreeDeciduous className="w-4 h-4" />
+                    Resource Breakdown Structure
+                  </CardTitle>
+                  <Badge variant="outline">{(rbsNodes as any[]).length} nodes</Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {(rbsNodes as any[]).length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
+                    <TreeDeciduous className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                    <p className="text-sm">No RBS nodes defined yet.</p>
+                    <p className="text-xs mt-1">Use the form on the right to add your first node.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    {/* Root nodes (no parent) */}
+                    {(() => {
+                      const nodeMap: Record<number, any> = {};
+                      (rbsNodes as any[]).forEach(n => { nodeMap[n.id] = { ...n, children: [] }; });
+                      const roots: any[] = [];
+                      (rbsNodes as any[]).forEach(n => {
+                        if (n.parentId && nodeMap[n.parentId]) {
+                          nodeMap[n.parentId].children.push(nodeMap[n.id]);
+                        } else {
+                          roots.push(nodeMap[n.id]);
+                        }
+                      });
+                      const RBS_TYPE_COLORS: Record<string, string> = {
+                        Human: 'bg-blue-50 border-blue-200 text-blue-700',
+                        Equipment: 'bg-amber-50 border-amber-200 text-amber-700',
+                        Material: 'bg-green-50 border-green-200 text-green-700',
+                        Infrastructure: 'bg-purple-50 border-purple-200 text-purple-700',
+                        Software: 'bg-cyan-50 border-cyan-200 text-cyan-700',
+                        Financial: 'bg-rose-50 border-rose-200 text-rose-700',
+                      };
+                      const renderNode = (node: any, depth: number = 0): React.ReactNode => {
+                        const isExp = rbsNodeExpanded[node.id] !== false;
+                        const hasChildren = node.children.length > 0;
+                        const typeColor = RBS_TYPE_COLORS[node.resourceType] || 'bg-gray-50 border-gray-200 text-gray-700';
+                        return (
+                          <div key={node.id} style={{ marginLeft: depth * 16 }}>
+                            <div className="flex items-center gap-2 p-2 rounded-lg border bg-white hover:bg-gray-50 group">
+                              {hasChildren ? (
+                                <button onClick={() => setRbsNodeExpanded(p => ({ ...p, [node.id]: !isExp }))} className="shrink-0">
+                                  {isExp ? <ChevronDown className="w-3.5 h-3.5 text-gray-400" /> : <ChevronRight className="w-3.5 h-3.5 text-gray-400" />}
+                                </button>
+                              ) : <span className="w-3.5 h-3.5 shrink-0" />}
+                              <span className="font-mono text-xs text-gray-500 shrink-0">{node.code}</span>
+                              <span className="text-sm font-medium flex-1 truncate">{node.name}</span>
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded-full border font-medium shrink-0 ${typeColor}`}>{node.resourceType}</span>
+                              <button
+                                className="opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-600 shrink-0"
+                                onClick={() => deleteRbsNode.mutate({ id: node.id })}
+                                title="Delete node"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                            {isExp && hasChildren && (
+                              <div className="mt-1 space-y-1">
+                                {node.children.map((child: any) => renderNode(child, depth + 1))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      };
+                      return roots.map(r => renderNode(r));
+                    })()}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Right: Add Node Form */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Add RBS Node</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Code (e.g. R1.1)</Label>
+                    <Input
+                      placeholder="R1.1"
+                      value={rbsNodeForm.code}
+                      onChange={e => setRbsNodeForm(p => ({ ...p, code: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Name</Label>
+                    <Input
+                      placeholder="Node name"
+                      value={rbsNodeForm.name}
+                      onChange={e => setRbsNodeForm(p => ({ ...p, name: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Type</Label>
+                    <Select value={rbsNodeForm.resourceType} onValueChange={v => setRbsNodeForm(p => ({ ...p, resourceType: v }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {['Human','Equipment','Material','Infrastructure','Software','Financial'].map(t => (
+                          <SelectItem key={t} value={t}>{t}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Parent node (optional)</Label>
+                    <Select value={rbsNodeForm.parentId} onValueChange={v => setRbsNodeForm(p => ({ ...p, parentId: v }))}>
+                      <SelectTrigger><SelectValue placeholder="None (root)" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">None (root)</SelectItem>
+                        {(rbsNodes as any[]).map((n: any) => (
+                          <SelectItem key={n.id} value={String(n.id)}>{n.code} — {n.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Description (optional)</Label>
+                  <Input
+                    placeholder="Brief description..."
+                    value={rbsNodeForm.description}
+                    onChange={e => setRbsNodeForm(p => ({ ...p, description: e.target.value }))}
+                  />
+                </div>
+                <Button
+                  className="w-full bg-primary hover:bg-primary/90"
+                  disabled={!rbsNodeForm.code.trim() || !rbsNodeForm.name.trim() || createRbsNode.isPending}
+                  onClick={() => createRbsNode.mutate({
+                    projectId,
+                    code: rbsNodeForm.code.trim(),
+                    name: rbsNodeForm.name.trim(),
+                    resourceType: rbsNodeForm.resourceType,
+                    parentId: rbsNodeForm.parentId ? parseInt(rbsNodeForm.parentId) : undefined,
+                    description: rbsNodeForm.description || undefined,
+                  })}
+                >
+                  {createRbsNode.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+                  Add Node
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Resource Type Management Panel (kept for stakeholder classification) */}
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">

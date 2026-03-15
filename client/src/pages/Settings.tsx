@@ -1787,9 +1787,135 @@ export default function Settings() {
             </Card>
           )}
         </TabsContent>
-      </Tabs>
 
-      {/* ── Delete Project Dialog ── */}
+        {/* Work Calendar Configuration Tab */}
+        <TabsContent value="calendar-config" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                Work Week Calendar Configuration
+              </CardTitle>
+              <CardDescription>
+                Define the project's working days, hours, and end-of-week day. These settings affect default due dates for recurring tasks (weekly tasks default to end-of-week day, monthly tasks default to end-of-month).
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Working Days */}
+              <div className="space-y-3">
+                <Label className="text-sm font-semibold">Working Days</Label>
+                <div className="flex flex-wrap gap-2">
+                  {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((day, idx) => {
+                    const isSelected = wwForm.workDays.includes(idx);
+                    return (
+                      <button
+                        key={day}
+                        onClick={() => setWwForm((p: any) => ({
+                          ...p,
+                          workDays: isSelected
+                            ? p.workDays.filter((d: number) => d !== idx)
+                            : [...p.workDays, idx].sort()
+                        }))}
+                        className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                          isSelected
+                            ? 'bg-primary text-primary-foreground border-primary'
+                            : 'bg-white text-gray-600 border-gray-200 hover:border-primary/50'
+                        }`}
+                      >
+                        {day}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-muted-foreground">Currently selected: {wwForm.workDays.map((d: number) => ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d]).join(', ')}</p>
+              </div>
+
+              {/* End of Week Day */}
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold">End of Work Week</Label>
+                <p className="text-xs text-muted-foreground mb-2">Weekly recurring tasks will default their due date to this day.</p>
+                <div className="flex flex-wrap gap-2">
+                  {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((day, idx) => (
+                    <button
+                      key={day}
+                      onClick={() => setWwForm((p: any) => ({ ...p, endOfWeekDay: idx }))}
+                      className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                        wwForm.endOfWeekDay === idx
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-white text-gray-600 border-gray-200 hover:border-primary/50'
+                      }`}
+                    >
+                      {day}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">Current end-of-week: <strong>{['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][wwForm.endOfWeekDay]}</strong></p>
+              </div>
+
+              {/* Work Hours */}
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold">Work Hours</Label>
+                <div className="flex items-center gap-4">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Start Hour</Label>
+                    <Input
+                      type="number" min={0} max={23}
+                      value={wwForm.workStartHour}
+                      onChange={(e: any) => setWwForm((p: any) => ({ ...p, workStartHour: parseInt(e.target.value) || 8 }))}
+                      className="w-24"
+                    />
+                  </div>
+                  <span className="text-muted-foreground mt-5">to</span>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">End Hour</Label>
+                    <Input
+                      type="number" min={0} max={23}
+                      value={wwForm.workEndHour}
+                      onChange={(e: any) => setWwForm((p: any) => ({ ...p, workEndHour: parseInt(e.target.value) || 17 }))}
+                      className="w-24"
+                    />
+                  </div>
+                  <div className="mt-5 text-sm text-muted-foreground">
+                    = {wwForm.workEndHour - wwForm.workStartHour} working hours/day
+                  </div>
+                </div>
+              </div>
+
+              {/* Summary */}
+              <div className="bg-muted/40 rounded-lg p-4 border space-y-1">
+                <p className="text-sm font-medium">Summary</p>
+                <p className="text-xs text-muted-foreground">Work days: {wwForm.workDays.map((d: number) => ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d]).join(', ')}</p>
+                <p className="text-xs text-muted-foreground">Hours: {wwForm.workStartHour}:00 – {wwForm.workEndHour}:00 ({wwForm.workEndHour - wwForm.workStartHour}h/day)</p>
+                <p className="text-xs text-muted-foreground">End of week: <strong>{['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][wwForm.endOfWeekDay]}</strong></p>
+                <p className="text-xs text-muted-foreground">Weekly capacity: {wwForm.workDays.length * (wwForm.workEndHour - wwForm.workStartHour)} hours/week</p>
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => {
+                    if (currentProjectId) {
+                      localStorage.setItem(`workWeek_${currentProjectId}`, JSON.stringify(wwForm));
+                      setWwSaved(true);
+                      toast.success('Work calendar configuration saved');
+                      setTimeout(() => setWwSaved(false), 3000);
+                    }
+                  }}
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  {wwSaved ? 'Saved!' : 'Save Configuration'}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setWwForm({ workDays: [0,1,2,3,4], workStartHour: 8, workEndHour: 17, endOfWeekDay: 4 })}
+                >
+                  Reset to Default (Sun–Thu)
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+      </Tabs>
+      {/* ── Delete Project Dialog ── */}}
       <AlertDialog open={showDeleteProject} onOpenChange={setShowDeleteProject}>
         <AlertDialogContent>
           <AlertDialogHeader>

@@ -8,6 +8,7 @@ import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { renewRecurringTasks } from "../recurringTaskRenewal";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -66,3 +67,38 @@ async function startServer() {
 }
 
 startServer().catch(console.error);
+
+// ─── Nightly Recurring Task Renewal ─────────────────────────────────────────
+function msUntilNextRun(): number {
+  const now = new Date();
+  const next = new Date(now);
+  next.setHours(23, 59, 0, 0);
+  if (next <= now) next.setDate(next.getDate() + 1);
+  return next.getTime() - now.getTime();
+}
+
+function scheduleNightlyRenewal() {
+  // Run once at startup after 10s (let DB connect first)
+  setTimeout(async () => {
+    try {
+      const r = await renewRecurringTasks();
+      if (r.renewed > 0) console.log(`[RecurringTasks] Startup: renewed ${r.renewed} task(s).`);
+      if (r.errors.length) console.warn(`[RecurringTasks] Errors:`, r.errors);
+    } catch (e) { console.error(`[RecurringTasks] Startup error:`, e); }
+  }, 10_000);
+
+  // Nightly at 23:59
+  function scheduleNext() {
+    setTimeout(async () => {
+      try {
+        const r = await renewRecurringTasks();
+        console.log(`[RecurringTasks] Nightly: renewed ${r.renewed} task(s).`);
+        if (r.errors.length) console.warn(`[RecurringTasks] Errors:`, r.errors);
+      } catch (e) { console.error(`[RecurringTasks] Nightly error:`, e); }
+      scheduleNext();
+    }, msUntilNextRun());
+  }
+  scheduleNext();
+}
+
+scheduleNightlyRenewal();

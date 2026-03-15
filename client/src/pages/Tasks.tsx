@@ -150,15 +150,21 @@ export default function Tasks() {
     consultedId: undefined,
     informedId: undefined,
     ownerId: undefined,
+    subjectId: undefined,
     status: 'Not Started',
     priority: 'Medium',
     requirementId: '',
     issueId: '',
     dueDate: '',
     assignDate: new Date().toISOString().split('T')[0],
+    taskCategory: 'task' as 'task' | 'communication',
+    recurringType: 'none' as string,
   });
 
+  const [mainTab, setMainTab] = useState<'tasks' | 'communication'>('tasks');
   const { data: tasks, isLoading, refetch } = trpc.tasks.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
+  const commTasks = (tasks || []).filter((t: any) => t.taskCategory === 'communication' || (t.taskId || '').startsWith('COMM-'));
+  const regularTasks = (tasks || []).filter((t: any) => t.taskCategory !== 'communication' && !(t.taskId || '').startsWith('COMM-'));
 
   // Handle taskId query parameter from URL
   useEffect(() => {
@@ -841,6 +847,90 @@ export default function Tasks() {
           )}
         </div>
       </div>
+      {/* Main Tab Bar */}
+      <div className="flex border-b border-gray-200 bg-white rounded-t-xl overflow-hidden">
+        <button
+          className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 ${mainTab === 'tasks' ? 'border-primary text-primary bg-primary/5' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+          onClick={() => setMainTab('tasks')}
+        >
+          Tasks ({regularTasks.length})
+        </button>
+        <button
+          className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 ${mainTab === 'communication' ? 'border-orange-500 text-orange-600 bg-orange-50' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+          onClick={() => setMainTab('communication')}
+        >
+          Communication Tasks ({commTasks.length})
+        </button>
+      </div>
+
+      {mainTab === 'communication' ? (
+        <Card className="border-orange-100">
+          <CardContent className="pt-4">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-lg font-semibold text-orange-700">Communication Tasks</h2>
+                <p className="text-sm text-gray-500">Tasks generated from the Communication Plan (COMM- prefix)</p>
+              </div>
+              <Button onClick={() => { setNewTask((p: any) => ({ ...p, taskCategory: 'communication' })); setCreateDialogOpen(true); }} className="bg-orange-600 hover:bg-orange-700">
+                <Plus className="w-4 h-4 mr-2" />New COMM Task
+              </Button>
+            </div>
+            {commTasks.length === 0 ? (
+              <div className="text-center py-16 text-gray-400">
+                <RefreshCw className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                <p className="font-medium">No communication tasks yet</p>
+                <p className="text-sm mt-1">Tasks created from the Communication Plan will appear here</p>
+              </div>
+            ) : (
+              <div className="rounded-md border border-orange-100 overflow-hidden">
+                <Table className="w-full text-sm">
+                  <TableHeader>
+                    <TableRow className="bg-orange-50">
+                      <TableHead className="px-3 font-semibold text-orange-700">Task ID</TableHead>
+                      <TableHead className="px-3 font-semibold text-orange-700">Description</TableHead>
+                      <TableHead className="px-3 font-semibold text-orange-700">Subject</TableHead>
+                      <TableHead className="px-3 font-semibold text-orange-700">Responsible</TableHead>
+                      <TableHead className="px-3 font-semibold text-orange-700">Due Date</TableHead>
+                      <TableHead className="px-3 font-semibold text-orange-700">Recurring</TableHead>
+                      <TableHead className="px-3 font-semibold text-orange-700">Status</TableHead>
+                      <TableHead className="px-3 text-right font-semibold text-orange-700">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {commTasks.map((task: any) => (
+                      <TableRow key={task.id} className="hover:bg-orange-50/50">
+                        <TableCell className="px-3 py-2">
+                          <span className="font-mono text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded">{task.taskId}</span>
+                        </TableCell>
+                        <TableCell className="px-3 py-2 max-w-xs truncate">{task.description}</TableCell>
+                        <TableCell className="px-3 py-2 text-sm text-gray-600">{task.subject || '—'}</TableCell>
+                        <TableCell className="px-3 py-2 text-sm text-gray-600">{task.responsible || '—'}</TableCell>
+                        <TableCell className="px-3 py-2 text-sm">{task.dueDate ? formatDate(task.dueDate) : '—'}</TableCell>
+                        <TableCell className="px-3 py-2">
+                          {task.recurringType && task.recurringType !== 'none' ? (
+                            <Badge variant="outline" className="text-orange-600 border-orange-300 text-xs">
+                              <RefreshCw className="w-3 h-3 mr-1" />{task.recurringType}
+                            </Badge>
+                          ) : <span className="text-gray-400 text-xs">—</span>}
+                        </TableCell>
+                        <TableCell className="px-3 py-2">
+                          <Badge variant="secondary" className="text-xs">{task.status || 'Not Started'}</Badge>
+                        </TableCell>
+                        <TableCell className="px-3 py-2 text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button size="sm" variant="ghost" onClick={() => handleViewDetails(task)}><Eye className="w-4 h-4" /></Button>
+                            <Button size="sm" variant="ghost" className="text-destructive" onClick={() => { setDeletingId(task.id); setDeleteDialogOpen(true); }}><Trash2 className="w-4 h-4" /></Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
       <Card className="border-blue-100">
         <CardContent>
           <div className="flex items-center gap-4 mb-4">
@@ -1605,6 +1695,72 @@ export default function Tasks() {
                     projectId={currentProjectId || undefined}
                   />
                 </div>
+              </div>
+            </div>
+
+            {/* Subject & Task Category Section */}
+            <div className="space-y-4">
+              <h4 className="text-sm font-semibold border-b pb-2">Subject & Category</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Subject (Stakeholder)</Label>
+                  <SelectWithCreate
+                    type="stakeholder"
+                    value={newTask.subjectId?.toString() || ''}
+                    onValueChange={(value) => setNewTask({ ...newTask, subjectId: value ? parseInt(value) : undefined })}
+                    placeholder="Select subject stakeholder..."
+                    projectId={currentProjectId || undefined}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Task Category</Label>
+                  <Select
+                    value={newTask.taskCategory}
+                    onValueChange={(value) => setNewTask({ ...newTask, taskCategory: value as 'task' | 'communication' })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select category..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="task">Regular Task (T-)</SelectItem>
+                      <SelectItem value="communication">Communication Task (COMM-)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Recurring Schedule</Label>
+                <Select
+                  value={newTask.recurringType || 'none'}
+                  onValueChange={(value) => {
+                    // Auto-set default due date based on frequency
+                    let defaultDue = newTask.dueDate;
+                    if (value === 'daily') {
+                      defaultDue = new Date().toISOString().split('T')[0];
+                    } else if (value === 'weekly') {
+                      // End of current week = Thursday (Saudi work week)
+                      const d = new Date();
+                      const day = d.getDay(); // 0=Sun,1=Mon,...,4=Thu,5=Fri,6=Sat
+                      const daysUntilThu = (4 - day + 7) % 7 || 7;
+                      d.setDate(d.getDate() + daysUntilThu);
+                      defaultDue = d.toISOString().split('T')[0];
+                    } else if (value === 'monthly') {
+                      const d = new Date();
+                      defaultDue = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().split('T')[0];
+                    }
+                    setNewTask({ ...newTask, recurringType: value, dueDate: defaultDue });
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="None (one-time)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None (one-time)</SelectItem>
+                    <SelectItem value="daily">Daily (due: end of today)</SelectItem>
+                    <SelectItem value="weekly">Weekly (due: end of week — Thursday)</SelectItem>
+                    <SelectItem value="monthly">Monthly (due: end of month)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -3205,6 +3361,8 @@ export default function Tasks() {
           </div>
         </DialogContent>
       </Dialog>
+    </div>
+      )}
     </div>
   );
 }

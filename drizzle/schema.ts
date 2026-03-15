@@ -1635,3 +1635,60 @@ export const commPlanInputItems = mysqlTable("commPlanInputItems", {
 });
 export type CommPlanInputItem = typeof commPlanInputItems.$inferSelect;
 export type InsertCommPlanInputItem = typeof commPlanInputItems.$inferInsert;
+
+// ─── RBS Nodes ────────────────────────────────────────────────────────────────
+// Hierarchical nodes in the Resource Breakdown Structure tree.
+// Each node has a code (e.g. R1.1), name, resource type, optional parent, and description.
+export const rbsNodes = mysqlTable("rbsNodes", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  code: varchar("code", { length: 50 }).notNull(),           // e.g. "R1.1"
+  name: varchar("name", { length: 200 }).notNull(),
+  resourceType: varchar("resourceType", { length: 100 }),    // e.g. "Human", "Equipment"
+  parentId: int("parentId"),                                  // null = root node
+  description: text("description"),
+  sequence: int("sequence").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type RbsNode = typeof rbsNodes.$inferSelect;
+export type InsertRbsNode = typeof rbsNodes.$inferInsert;
+
+// ─── Task History (Recurring Task Snapshots) ──────────────────────────────────
+// When a recurring task is auto-renewed, its previous state is saved here.
+export const taskHistory = mysqlTable("taskHistory", {
+  id: int("id").autoincrement().primaryKey(),
+  taskId: int("taskId").notNull(),                           // FK to tasks.id
+  projectId: int("projectId").notNull(),
+  taskIdCode: varchar("taskIdCode", { length: 50 }),         // e.g. "COMM-0001"
+  description: text("description"),
+  status: varchar("status", { length: 100 }),
+  priority: varchar("priority", { length: 100 }),
+  responsible: varchar("responsible", { length: 200 }),
+  subject: varchar("subject", { length: 200 }),
+  dueDate: varchar("dueDate", { length: 50 }),
+  currentStatus: text("currentStatus"),
+  statusUpdate: text("statusUpdate"),
+  renewedAt: timestamp("renewedAt").defaultNow().notNull(),  // when the renewal happened
+  periodLabel: varchar("periodLabel", { length: 100 }),      // e.g. "Week of 2026-03-10"
+});
+export type TaskHistory = typeof taskHistory.$inferSelect;
+export type InsertTaskHistory = typeof taskHistory.$inferInsert;
+
+// ─── Project Work-Week Settings ───────────────────────────────────────────────
+// Per-project calendar configuration: which days are working days, work hours, etc.
+export const projectWorkWeek = mysqlTable("projectWorkWeek", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull().unique(),
+  // Working days: 0=Sun,1=Mon,2=Tue,3=Wed,4=Thu,5=Fri,6=Sat (comma-separated)
+  workingDays: varchar("workingDays", { length: 20 }).default("0,1,2,3,4").notNull(), // Sun-Thu default
+  workStartHour: int("workStartHour").default(8).notNull(),   // 8 = 8:00 AM
+  workEndHour: int("workEndHour").default(17).notNull(),       // 17 = 5:00 PM
+  hoursPerDay: decimal("hoursPerDay", { precision: 4, scale: 1 }).default("8.0").notNull(),
+  // End-of-week day for "weekly" recurring tasks (0-6, default 4 = Thursday)
+  weekEndDay: int("weekEndDay").default(4).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ProjectWorkWeek = typeof projectWorkWeek.$inferSelect;
+export type InsertProjectWorkWeek = typeof projectWorkWeek.$inferInsert;
