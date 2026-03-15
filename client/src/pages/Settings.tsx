@@ -106,6 +106,7 @@ export default function Settings() {
   const [copyLoading, setCopyLoading] = useState(false);
 
   // Work-week calendar configuration
+  const [wwSaved, setWwSaved] = useState(false);
   const [wwForm, setWwForm] = useState(() => {
     try {
       const saved = localStorage.getItem(`workWeek_${currentProjectId}`);
