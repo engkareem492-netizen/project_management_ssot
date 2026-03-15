@@ -1,0 +1,1 @@
+ALTER TABLE `communicationPlanEntries` ADD `acknowledgmentNeeded` boolean DEFAULT false;

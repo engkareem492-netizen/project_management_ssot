@@ -246,6 +246,20 @@
       "when": 1773539360047,
       "tag": "0034_wet_tomorrow_man",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "5",
+      "when": 1773540298412,
+      "tag": "0035_workable_monster_badoon",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "5",
+      "when": 1773540323745,
+      "tag": "0036_polite_scourge",
+      "breakpoints": true
     }
   ]
 }

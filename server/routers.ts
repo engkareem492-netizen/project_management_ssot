@@ -50,6 +50,8 @@ import { stakeholderPortalRouter } from "./routers/stakeholderPortal.router";
 import { engagementRouter } from "./routers/engagement.router";
 import { teamCharterRouter } from "./routers/teamCharter.router";
 import { communicationPlanRouter } from "./routers/communicationPlan.router";
+import { commPlanOptionsRouter } from "./routers/commPlanOptions.router";
+import { rbsResourceTypesRouter } from "./routers/rbsResourceTypes.router";
 import { teamSkillsRouter } from "./routers/teamSkills.router";
 
 export const appRouter = router({
@@ -95,6 +97,8 @@ export const appRouter = router({
   engagement: engagementRouter,
   teamCharter: teamCharterRouter,
   communicationPlan: communicationPlanRouter,
+  commPlanOptions: commPlanOptionsRouter,
+  rbsResourceTypes: rbsResourceTypesRouter,
   teamSkills: teamSkillsRouter,
   scopeItems: router({
     list: protectedProcedure
@@ -1456,13 +1460,20 @@ export const appRouter = router({
           communicationChannel: z.string().optional(),
           communicationMessage: z.string().optional(),
           communicationResponsible: z.string().optional(),
+          communicationResponsibleId: z.number().nullable().optional(),
           notes: z.string().optional(),
           costPerHour: z.string().optional().nullable(),
           costPerDay: z.string().optional().nullable(),
         }),
       }))
       .mutation(async ({ input }) => {
-        const result = await db.updateStakeholder(input.id, input.data);
+        // Resolve communicationResponsibleId to name if provided
+        const updateData: any = { ...input.data };
+        if (input.data.communicationResponsibleId) {
+          const resp = await db.getStakeholderById(input.data.communicationResponsibleId);
+          if (resp) updateData.communicationResponsible = resp.fullName ?? input.data.communicationResponsible;
+        }
+        const result = await db.updateStakeholder(input.id, updateData);
         return result;
       }),
 

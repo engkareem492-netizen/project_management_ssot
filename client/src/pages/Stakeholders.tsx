@@ -1341,6 +1341,7 @@ export default function Stakeholders() {
         desiredEngagementStatus: toEngagementStatus(formData.desiredEngagementStatus),
         costPerHour: formData.costPerHour || null,
         costPerDay: formData.costPerDay || null,
+        communicationResponsibleId: formData.communicationResponsibleId ?? null,
       },
     });
   };

@@ -175,6 +175,7 @@ export const communicationPlanRouter = router({
       escalationProcedures: z.string().optional(),
       responsibleStakeholderId: z.number().optional(),
       responsible: z.string().optional(),
+      acknowledgmentNeeded: z.boolean().optional(),
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
@@ -232,6 +233,7 @@ export const communicationPlanRouter = router({
         escalationProcedures: z.string().optional(),
         responsibleStakeholderId: z.number().nullable().optional(),
         responsible: z.string().nullable().optional(),
+        acknowledgmentNeeded: z.boolean().nullable().optional(),
       }),
     }))
     .mutation(async ({ input }) => {

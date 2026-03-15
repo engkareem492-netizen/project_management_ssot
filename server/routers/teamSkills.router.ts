@@ -233,6 +233,68 @@ export const teamSkillsRouter = router({
       }
     }),
 
+  // Upsert a range of dates at once (e.g. a week of leave)
+  upsertCalendarRange: protectedProcedure
+    .input(z.object({
+      stakeholderId: z.number(),
+      projectId: z.number(),
+      startDate: z.string(),
+      endDate: z.string(),
+      type: z.enum(["Working", "Leave", "Holiday", "Training"]),
+      availableHours: z.string().optional(),
+      notes: z.string().optional(),
+      skipWeekends: z.boolean().optional().default(true),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("DB unavailable");
+      const { eq, and } = await import("drizzle-orm");
+
+      // Build list of dates in range
+      const dates: string[] = [];
+      const current = new Date(input.startDate + "T00:00:00");
+      const end = new Date(input.endDate + "T00:00:00");
+      while (current <= end) {
+        const dow = current.getDay();
+        if (!input.skipWeekends || (dow !== 0 && dow !== 6)) {
+          dates.push(current.toISOString().split("T")[0]);
+        }
+        current.setDate(current.getDate() + 1);
+      }
+
+      const results = [];
+      for (const date of dates) {
+        const existing = await db.select().from(resourceCalendar).where(
+          and(
+            eq(resourceCalendar.stakeholderId, input.stakeholderId),
+            eq(resourceCalendar.date, date),
+          )
+        ).limit(1);
+
+        if (existing.length > 0) {
+          await db.update(resourceCalendar).set({
+            type: input.type,
+            availableHours: input.availableHours,
+            notes: input.notes,
+          }).where(eq(resourceCalendar.id, existing[0].id));
+          const rows = await db.select().from(resourceCalendar).where(eq(resourceCalendar.id, existing[0].id)).limit(1);
+          results.push(rows[0]);
+        } else {
+          const result = await db.insert(resourceCalendar).values({
+            stakeholderId: input.stakeholderId,
+            projectId: input.projectId,
+            date,
+            type: input.type,
+            availableHours: input.availableHours,
+            notes: input.notes,
+          });
+          const rows = await db.select().from(resourceCalendar).where(eq(resourceCalendar.id, result[0].insertId)).limit(1);
+          results.push(rows[0]);
+        }
+      }
+      return { count: results.length, dates };
+    }),
+
   deleteCalendarEntry: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {

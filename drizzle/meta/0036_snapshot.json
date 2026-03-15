@@ -1,8 +1,8 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "9b8f3244-68ec-4f68-b9e4-6590d237ffc6",
-  "prevId": "8476f9c6-88d0-4e41-9c9a-3a956e3e5386",
+  "id": "9c185b88-458a-4d63-9c84-aa26def96f97",
+  "prevId": "9b8f3244-68ec-4f68-b9e4-6590d237ffc6",
   "tables": {
     "actionItems": {
       "name": "actionItems",
@@ -1376,6 +1376,14 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
+        },
+        "acknowledgmentNeeded": {
+          "name": "acknowledgmentNeeded",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": false
         },
         "responsible": {
           "name": "responsible",

@@ -1521,6 +1521,7 @@ export const communicationPlanEntries = mysqlTable("communicationPlanEntries", {
   frequency: varchar("frequency", { length: 100 }),
   textNote: text("textNote"),
   escalationProcedures: text("escalationProcedures"),
+  acknowledgmentNeeded: boolean("acknowledgmentNeeded").default(false),
   responsible: varchar("responsible", { length: 200 }),
   responsibleStakeholderId: int("responsibleStakeholderId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -1542,3 +1543,58 @@ export const resourceCalendar = mysqlTable("resourceCalendar", {
 });
 export type ResourceCalendar = typeof resourceCalendar.$inferSelect;
 export type InsertResourceCalendar = typeof resourceCalendar.$inferInsert;
+
+// ─── Communication Plan: Role & Job Options ───────────────────────────────────
+// Managed dropdown options for "By Role" and "By Job" target types
+export const commPlanRoleOptions = mysqlTable("commPlanRoleOptions", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  label: varchar("label", { length: 200 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type CommPlanRoleOption = typeof commPlanRoleOptions.$inferSelect;
+export type InsertCommPlanRoleOption = typeof commPlanRoleOptions.$inferInsert;
+
+export const commPlanJobOptions = mysqlTable("commPlanJobOptions", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  label: varchar("label", { length: 200 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type CommPlanJobOption = typeof commPlanJobOptions.$inferSelect;
+export type InsertCommPlanJobOption = typeof commPlanJobOptions.$inferInsert;
+
+// ─── Communication Plan: Entry Enhancements ───────────────────────────────────
+// acknowledgmentNeeded stored on communicationPlanEntries (via ALTER)
+// communicationNeededItems — per-entry line items
+export const commPlanItems = mysqlTable("commPlanItems", {
+  id: int("id").autoincrement().primaryKey(),
+  entryId: int("entryId").notNull(),          // FK → communicationPlanEntries.id
+  projectId: int("projectId").notNull(),
+  description: text("description").notNull(), // what we need from/to stakeholder
+  commType: mysqlEnum("commType", ["Push", "Pull", "Interactive", "Other"]).default("Push").notNull(),
+  periodic: varchar("periodic", { length: 100 }), // e.g. Daily, Weekly, Per Meeting
+  sequence: int("sequence").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type CommPlanItem = typeof commPlanItems.$inferSelect;
+export type InsertCommPlanItem = typeof commPlanItems.$inferInsert;
+
+// ─── RBS Resource Types ───────────────────────────────────────────────────────
+// Custom resource type definitions for the Resource Breakdown Structure.
+// Built-in types (TeamMember, External, Stakeholder) always exist.
+// Users can add project-specific types here (e.g. Vendor, Consultant, System).
+export const rbsResourceTypes = mysqlTable("rbsResourceTypes", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  name: varchar("name", { length: 200 }).notNull(),       // e.g. "Vendor"
+  color: varchar("color", { length: 50 }),                // optional hex/tailwind color
+  description: text("description"),
+  isBuiltIn: boolean("isBuiltIn").default(false).notNull(), // true for the 3 defaults
+  sequence: int("sequence").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type RbsResourceType = typeof rbsResourceTypes.$inferSelect;
+export type InsertRbsResourceType = typeof rbsResourceTypes.$inferInsert;

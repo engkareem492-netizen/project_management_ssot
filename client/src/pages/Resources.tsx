@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import {
   Users, Loader2, Settings, BarChart2, Mail, Briefcase, UserCheck, UserX,
   LayoutGrid, ChevronRight, ChevronDown, CalendarDays, FileText,
-  TreeDeciduous, DollarSign, Clock, TrendingUp,
+  TreeDeciduous, DollarSign, Clock, TrendingUp, Plus, Pencil, Trash2,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
@@ -109,6 +109,9 @@ export default function Resources() {
 
   // RBS state
   const [rbsExpanded, setRbsExpanded] = useState<Record<string, boolean>>({ TeamMember: true, External: true, Stakeholder: true });
+  const [showRbsTypeDialog, setShowRbsTypeDialog] = useState(false);
+  const [rbsTypeEditing, setRbsTypeEditing] = useState<any | null>(null);
+  const [rbsTypeForm, setRbsTypeForm] = useState({ name: "", color: "#6366f1", description: "" });
 
   // Calendar state
   const [calStart, setCalStart] = useState(() => {
@@ -123,10 +126,14 @@ export default function Resources() {
   });
   const [calStakeholderId, setCalStakeholderId] = useState<number | null>(null);
   const [calEditDate, setCalEditDate] = useState<string | null>(null);
+  const [calEditEndDate, setCalEditEndDate] = useState<string | null>(null);
+  const [calEntryMode, setCalEntryMode] = useState<"single" | "range">("single");
   const [calEditStakeholder, setCalEditStakeholder] = useState<number | null>(null);
+  const [calEditStakeholderName, setCalEditStakeholderName] = useState<string>("");
   const [calEditType, setCalEditType] = useState<"Working" | "Leave" | "Holiday" | "Training">("Leave");
   const [calEditHours, setCalEditHours] = useState("0");
   const [calEditNotes, setCalEditNotes] = useState("");
+  const [calSkipWeekends, setCalSkipWeekends] = useState(true);
   const [showCalDialog, setShowCalDialog] = useState(false);
 
   // Resource Plan state
@@ -135,6 +142,20 @@ export default function Resources() {
   // ─── Queries ──────────────────────────────────────────────────────────────
   const { data: stakeholders = [], isLoading: stLoading } = trpc.stakeholders.list.useQuery({ projectId }, { enabled });
   const { data: tasks = [], isLoading: tasksLoading } = trpc.tasks.list.useQuery({ projectId }, { enabled });
+  const { data: rbsTypes = [], refetch: refetchRbsTypes } = trpc.rbsResourceTypes.list.useQuery({ projectId }, { enabled });
+
+  const createRbsType = trpc.rbsResourceTypes.create.useMutation({
+    onSuccess: () => { refetchRbsTypes(); setShowRbsTypeDialog(false); toast.success("Resource type created"); },
+  });
+  const updateRbsType = trpc.rbsResourceTypes.update.useMutation({
+    onSuccess: () => { refetchRbsTypes(); setShowRbsTypeDialog(false); toast.success("Resource type updated"); },
+  });
+  const deleteRbsType = trpc.rbsResourceTypes.delete.useMutation({
+    onSuccess: () => { refetchRbsTypes(); toast.success("Resource type deleted"); },
+  });
+  const seedRbsTypes = trpc.rbsResourceTypes.seedBuiltIn.useMutation({
+    onSuccess: () => refetchRbsTypes(),
+  });
   const { data: calendarEntries = [], refetch: refetchCal } = trpc.teamSkills.listCalendar.useQuery(
     { projectId, stakeholderId: calStakeholderId ?? undefined, startDate: calStart, endDate: calEnd },
     { enabled }
@@ -147,6 +168,14 @@ export default function Resources() {
       refetchCal();
       setShowCalDialog(false);
       toast.success("Calendar entry saved");
+    },
+  });
+
+  const upsertCalRange = trpc.teamSkills.upsertCalendarRange.useMutation({
+    onSuccess: (data) => {
+      refetchCal();
+      setShowCalDialog(false);
+      toast.success(`Calendar entries saved for ${data.count} day(s)`);
     },
   });
 
@@ -209,13 +238,17 @@ export default function Resources() {
   }, [stakeholders]);
 
   // ─── RBS Data ──────────────────────────────────────────────────────────────
+  // Merge built-in defaults with any DB-stored types
+  const allRbsTypeNames = useMemo(() => {
+    const fromDb = (rbsTypes as any[]).map((t: any) => t.name);
+    const defaults = ["TeamMember", "External", "Stakeholder"];
+    const merged = [...new Set([...defaults, ...fromDb])];
+    return merged;
+  }, [rbsTypes]);
+
   const rbsTree = useMemo(() => {
-    const groups: Record<string, { role: string; members: any[] }[]> = {
-      TeamMember: [],
-      External: [],
-      Stakeholder: [],
-    };
-    const roleMap: Record<string, Record<string, any[]>> = { TeamMember: {}, External: {}, Stakeholder: {} };
+    const roleMap: Record<string, Record<string, any[]>> = {};
+    allRbsTypeNames.forEach(name => { roleMap[name] = {}; });
 
     stakeholders.forEach((s: any) => {
       const cls = s.classification ?? (s.isInternalTeam ? "TeamMember" : "Stakeholder");
@@ -226,7 +259,40 @@ export default function Resources() {
     });
 
     return { roleMap };
-  }, [stakeholders]);
+  }, [stakeholders, allRbsTypeNames]);
+
+  function getRbsTypeColor(name: string): { bg: string; text: string; border: string } {
+    const found = (rbsTypes as any[]).find((t: any) => t.name === name);
+    if (found?.color) {
+      return { bg: `${found.color}15`, text: found.color, border: `${found.color}40` };
+    }
+    if (name === "TeamMember") return { bg: "#eff6ff", text: "#2563eb", border: "#bfdbfe" };
+    if (name === "External") return { bg: "#fff7ed", text: "#ea580c", border: "#fed7aa" };
+    if (name === "Stakeholder") return { bg: "#faf5ff", text: "#9333ea", border: "#e9d5ff" };
+    return { bg: "#f9fafb", text: "#374151", border: "#e5e7eb" };
+  }
+
+  function getRbsTypeLabel(name: string): string {
+    if (name === "TeamMember") return "Team Members";
+    if (name === "External") return "External Resources";
+    if (name === "Stakeholder") return "Stakeholders";
+    return name;
+  }
+
+  function openRbsTypeDialog(existing?: any) {
+    setRbsTypeEditing(existing ?? null);
+    setRbsTypeForm(existing ? { name: existing.name, color: existing.color ?? "#6366f1", description: existing.description ?? "" } : { name: "", color: "#6366f1", description: "" });
+    setShowRbsTypeDialog(true);
+  }
+
+  function saveRbsType() {
+    if (!rbsTypeForm.name.trim()) return;
+    if (rbsTypeEditing) {
+      updateRbsType.mutate({ id: rbsTypeEditing.id, name: rbsTypeForm.name, color: rbsTypeForm.color, description: rbsTypeForm.description });
+    } else {
+      createRbsType.mutate({ projectId, name: rbsTypeForm.name, color: rbsTypeForm.color, description: rbsTypeForm.description });
+    }
+  }
 
   // ─── Calendar Map ──────────────────────────────────────────────────────────
   const calendarMap = useMemo(() => {
@@ -280,25 +346,47 @@ export default function Resources() {
     setShowCapacityDialog(false);
   }
 
-  function openCalDialog(stakeholderId: number, date: string, existing?: any) {
+  function openCalDialog(stakeholderId: number, stakeholderName: string, date: string, existing?: any, mode: "single" | "range" = "single") {
     setCalEditStakeholder(stakeholderId);
+    setCalEditStakeholderName(stakeholderName);
     setCalEditDate(date);
+    setCalEditEndDate(date);
+    setCalEntryMode(mode);
     setCalEditType(existing?.type ?? "Leave");
     setCalEditHours(existing?.availableHours ?? "0");
     setCalEditNotes(existing?.notes ?? "");
+    setCalSkipWeekends(true);
     setShowCalDialog(true);
+  }
+
+  function openCalDialogForResource(stakeholderId: number, stakeholderName: string) {
+    const today = new Date().toISOString().split("T")[0];
+    openCalDialog(stakeholderId, stakeholderName, today, undefined, "range");
   }
 
   function saveCalEntry() {
     if (!calEditStakeholder || !calEditDate) return;
-    upsertCalEntry.mutate({
-      stakeholderId: calEditStakeholder,
-      projectId,
-      date: calEditDate,
-      type: calEditType,
-      availableHours: calEditHours,
-      notes: calEditNotes,
-    });
+    if (calEntryMode === "range" && calEditEndDate && calEditEndDate !== calEditDate) {
+      upsertCalRange.mutate({
+        stakeholderId: calEditStakeholder,
+        projectId,
+        startDate: calEditDate,
+        endDate: calEditEndDate,
+        type: calEditType,
+        availableHours: calEditHours,
+        notes: calEditNotes,
+        skipWeekends: calSkipWeekends,
+      });
+    } else {
+      upsertCalEntry.mutate({
+        stakeholderId: calEditStakeholder,
+        projectId,
+        date: calEditDate,
+        type: calEditType,
+        availableHours: calEditHours,
+        notes: calEditNotes,
+      });
+    }
   }
 
   if (!currentProjectId) {
@@ -502,42 +590,114 @@ export default function Resources() {
         </TabsContent>
 
         {/* ─── RBS Tab ──────────────────────────────────────────────────── */}
-        <TabsContent value="rbs" className="mt-0">
+        <TabsContent value="rbs" className="mt-0 space-y-4">
+          {/* Resource Type Management Panel */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <TreeDeciduous className="w-4 h-4" />
+                    Resource Types
+                  </CardTitle>
+                  <p className="text-xs text-muted-foreground mt-0.5">Define custom resource categories. These appear as classification options in stakeholder forms and as groups in the RBS tree.</p>
+                </div>
+                <Button size="sm" onClick={() => openRbsTypeDialog()}>
+                  <Plus className="w-3.5 h-3.5 mr-1.5" />
+                  Add Type
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-2">
+                {(["TeamMember", "External", "Stakeholder"] as const).map(name => {
+                  const colors = getRbsTypeColor(name);
+                  return (
+                    <div
+                      key={name}
+                      className="flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm font-medium"
+                      style={{ background: colors.bg, color: colors.text, borderColor: colors.border }}
+                    >
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ background: colors.text }} />
+                      {getRbsTypeLabel(name)}
+                      <span className="text-[10px] opacity-60 ml-0.5">(built-in)</span>
+                    </div>
+                  );
+                })}
+                {(rbsTypes as any[]).filter((t: any) => !t.isBuiltIn).map((t: any) => {
+                  const colors = getRbsTypeColor(t.name);
+                  return (
+                    <div
+                      key={t.id}
+                      className="flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm font-medium group"
+                      style={{ background: colors.bg, color: colors.text, borderColor: colors.border }}
+                    >
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ background: t.color ?? colors.text }} />
+                      {t.name}
+                      <button
+                        className="opacity-0 group-hover:opacity-100 transition-opacity ml-0.5 hover:text-blue-600"
+                        onClick={() => openRbsTypeDialog(t)}
+                        title="Edit"
+                      >
+                        <Pencil className="w-3 h-3" />
+                      </button>
+                      <button
+                        className="opacity-0 group-hover:opacity-100 transition-opacity hover:text-red-600"
+                        onClick={() => deleteRbsType.mutate({ id: t.id })}
+                        title="Delete"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  );
+                })}
+                {(rbsTypes as any[]).filter((t: any) => !t.isBuiltIn).length === 0 && (
+                  <p className="text-xs text-muted-foreground italic">No custom types yet. Click "Add Type" to create one.</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* RBS Tree */}
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <TreeDeciduous className="w-4 h-4" />
                 Resource Breakdown Structure
               </CardTitle>
-              <p className="text-xs text-muted-foreground">Hierarchical view of all resources organized by classification and role</p>
+              <p className="text-xs text-muted-foreground">Hierarchical view of all resources organized by type and role</p>
             </CardHeader>
             <CardContent>
               {isLoading ? (
                 <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
               ) : (
                 <div className="space-y-2">
-                  {/* Root node */}
                   <div className="flex items-center gap-2 p-2 bg-gray-100 rounded-lg font-semibold text-sm">
                     <Users className="w-4 h-4 text-gray-600" />
                     Project Resources ({stakeholders.length})
                   </div>
-                  {(["TeamMember", "External", "Stakeholder"] as const).map((cls) => {
+                  {allRbsTypeNames.map((cls) => {
                     const clsRoles = rbsTree.roleMap[cls] ?? {};
-                    const clsCount = Object.values(clsRoles).reduce((sum, arr) => sum + arr.length, 0);
+                    const clsCount = Object.values(clsRoles).reduce((sum: number, arr) => sum + (arr as any[]).length, 0);
                     if (clsCount === 0) return null;
-                    const isExpanded = rbsExpanded[cls];
-                    const clsLabel = cls === "TeamMember" ? "Team Members" : cls === "External" ? "External Resources" : "Stakeholders";
-                    const clsColor = cls === "TeamMember" ? "text-blue-600" : cls === "External" ? "text-orange-600" : "text-purple-600";
-                    const clsBg = cls === "TeamMember" ? "bg-blue-50 border-blue-200" : cls === "External" ? "bg-orange-50 border-orange-200" : "bg-purple-50 border-purple-200";
+                    const isExpanded = rbsExpanded[cls] ?? true;
+                    const colors = getRbsTypeColor(cls);
+                    const clsLabel = getRbsTypeLabel(cls);
                     return (
                       <div key={cls} className="ml-4">
                         <button
-                          className={`flex items-center gap-2 p-2 w-full text-left rounded-lg border ${clsBg} hover:opacity-80 transition-opacity`}
+                          className="flex items-center gap-2 p-2 w-full text-left rounded-lg border hover:opacity-80 transition-opacity"
+                          style={{ background: colors.bg, borderColor: colors.border }}
                           onClick={() => setRbsExpanded(prev => ({ ...prev, [cls]: !prev[cls] }))}
                         >
-                          {isExpanded ? <ChevronDown className="w-3.5 h-3.5 shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 shrink-0" />}
-                          <span className={`font-medium text-sm ${clsColor}`}>{clsLabel}</span>
-                          <Badge className={`text-[10px] ml-auto ${classificationBadge(cls)}`}>{clsCount}</Badge>
+                          {isExpanded ? <ChevronDown className="w-3.5 h-3.5 shrink-0" style={{ color: colors.text }} /> : <ChevronRight className="w-3.5 h-3.5 shrink-0" style={{ color: colors.text }} />}
+                          <span className="font-medium text-sm" style={{ color: colors.text }}>{clsLabel}</span>
+                          <span
+                            className="text-[10px] font-semibold ml-auto px-1.5 py-0.5 rounded-full"
+                            style={{ background: colors.text + "20", color: colors.text }}
+                          >
+                            {clsCount}
+                          </span>
                         </button>
                         {isExpanded && (
                           <div className="ml-6 mt-1 space-y-1">
@@ -553,11 +713,11 @@ export default function Resources() {
                                     {roleExpanded ? <ChevronDown className="w-3 h-3 shrink-0 text-muted-foreground" /> : <ChevronRight className="w-3 h-3 shrink-0 text-muted-foreground" />}
                                     <Briefcase className="w-3 h-3 text-muted-foreground" />
                                     <span className="text-sm">{role}</span>
-                                    <span className="text-xs text-muted-foreground ml-auto">({members.length})</span>
+                                    <span className="text-xs text-muted-foreground ml-auto">({(members as any[]).length})</span>
                                   </button>
                                   {roleExpanded && (
                                     <div className="ml-6 space-y-1">
-                                      {members.map((m: any) => {
+                                      {(members as any[]).map((m: any) => {
                                         const wl = workloadData.find(w => w.id === m.id);
                                         return (
                                           <div key={m.id} className="flex items-center gap-3 p-2 bg-white border border-gray-100 rounded-lg hover:border-gray-200">
@@ -657,39 +817,53 @@ export default function Resources() {
                       </tr>
                     </thead>
                     <tbody>
-                      {calStakeholders.map((s: any) => (
-                        <tr key={s.id} className="hover:bg-gray-50/50">
-                          <td className="p-2 border border-gray-200 font-medium whitespace-nowrap">
-                            <div>{s.fullName ?? s.name}</div>
-                            <div className="text-[10px] text-muted-foreground">{s.role || s.classification || ""}</div>
-                          </td>
-                          {calDates.map(date => {
-                            const entry = calendarMap[s.id]?.[date];
-                            const d = new Date(date + "T00:00:00");
-                            const isWeekend = d.getDay() === 0 || d.getDay() === 6;
-                            const cellCls = entry
-                              ? CAL_TYPE_COLORS[entry.type] ?? "bg-gray-100 text-gray-600 border-gray-200"
-                              : isWeekend ? "bg-gray-100 text-gray-300" : "";
-                            return (
-                              <td
-                                key={date}
-                                className={`p-1 border border-gray-200 text-center cursor-pointer hover:opacity-80 transition-opacity ${cellCls}`}
-                                onClick={() => openCalDialog(s.id, date, entry)}
-                                title={entry ? `${entry.type}${entry.notes ? " — " + entry.notes : ""}` : "Click to mark"}
-                              >
-                                {entry ? (
-                                  <div>
-                                    <div className="font-medium text-[10px]">{entry.type.slice(0, 3)}</div>
-                                    {entry.availableHours !== undefined && entry.availableHours !== "8.0" && (
-                                      <div className="text-[9px]">{entry.availableHours}h</div>
-                                    )}
-                                  </div>
-                                ) : isWeekend ? <span>—</span> : null}
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      ))}
+                      {calStakeholders.map((s: any) => {
+                        const sName = s.fullName ?? s.name ?? `Resource ${s.id}`;
+                        return (
+                          <tr key={s.id} className="hover:bg-gray-50/50">
+                            <td className="p-2 border border-gray-200 font-medium whitespace-nowrap">
+                              <div className="flex items-center gap-1.5">
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-sm truncate">{sName}</div>
+                                  <div className="text-[10px] text-muted-foreground">{s.role || s.classification || ""}</div>
+                                </div>
+                                <button
+                                  className="shrink-0 w-5 h-5 rounded-full bg-primary/10 hover:bg-primary/20 text-primary flex items-center justify-center transition-colors"
+                                  title={`Add calendar entry for ${sName}`}
+                                  onClick={() => openCalDialogForResource(s.id, sName)}
+                                >
+                                  <span className="text-xs font-bold leading-none">+</span>
+                                </button>
+                              </div>
+                            </td>
+                            {calDates.map(date => {
+                              const entry = calendarMap[s.id]?.[date];
+                              const d = new Date(date + "T00:00:00");
+                              const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+                              const cellCls = entry
+                                ? CAL_TYPE_COLORS[entry.type] ?? "bg-gray-100 text-gray-600 border-gray-200"
+                                : isWeekend ? "bg-gray-100 text-gray-300" : "";
+                              return (
+                                <td
+                                  key={date}
+                                  className={`p-1 border border-gray-200 text-center cursor-pointer hover:opacity-80 transition-opacity ${cellCls}`}
+                                  onClick={() => openCalDialog(s.id, sName, date, entry, "single")}
+                                  title={entry ? `${entry.type}${entry.notes ? " — " + entry.notes : ""}` : "Click to mark"}
+                                >
+                                  {entry ? (
+                                    <div>
+                                      <div className="font-medium text-[10px]">{entry.type.slice(0, 3)}</div>
+                                      {entry.availableHours !== undefined && entry.availableHours !== "8.0" && (
+                                        <div className="text-[9px]">{entry.availableHours}h</div>
+                                      )}
+                                    </div>
+                                  ) : isWeekend ? <span>—</span> : null}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -819,11 +993,81 @@ export default function Resources() {
 
       {/* ─── Calendar Entry Dialog ────────────────────────────────────────── */}
       <Dialog open={showCalDialog} onOpenChange={setShowCalDialog}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>Mark Day — {calEditDate}</DialogTitle></DialogHeader>
-          <div className="space-y-3 py-2">
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CalendarDays className="w-4 h-4" />
+              {calEntryMode === "range" ? "Add Calendar Entry" : `Mark Day — ${calEditDate}`}
+            </DialogTitle>
+            {calEditStakeholderName && (
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Resource: <span className="font-medium text-foreground">{calEditStakeholderName}</span>
+              </p>
+            )}
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+
+            {/* Mode toggle */}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setCalEntryMode("single")}
+                className={`flex-1 py-1.5 px-3 rounded-lg border text-sm font-medium transition-colors ${
+                  calEntryMode === "single" ? "bg-primary text-primary-foreground border-primary" : "bg-background border-border hover:bg-muted"
+                }`}
+              >
+                Single Day
+              </button>
+              <button
+                type="button"
+                onClick={() => setCalEntryMode("range")}
+                className={`flex-1 py-1.5 px-3 rounded-lg border text-sm font-medium transition-colors ${
+                  calEntryMode === "range" ? "bg-primary text-primary-foreground border-primary" : "bg-background border-border hover:bg-muted"
+                }`}
+              >
+                Date Range
+              </button>
+            </div>
+
+            {/* Date(s) */}
+            {calEntryMode === "single" ? (
+              <div className="space-y-1">
+                <Label>Date</Label>
+                <Input
+                  type="date"
+                  value={calEditDate ?? ""}
+                  onChange={e => { setCalEditDate(e.target.value); setCalEditEndDate(e.target.value); }}
+                />
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label>Start Date</Label>
+                  <Input type="date" value={calEditDate ?? ""} onChange={e => setCalEditDate(e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label>End Date</Label>
+                  <Input type="date" value={calEditEndDate ?? ""} onChange={e => setCalEditEndDate(e.target.value)} />
+                </div>
+              </div>
+            )}
+
+            {/* Skip weekends toggle (range only) */}
+            {calEntryMode === "range" && (
+              <label className="flex items-center gap-2 cursor-pointer text-sm select-none">
+                <input
+                  type="checkbox"
+                  checked={calSkipWeekends}
+                  onChange={e => setCalSkipWeekends(e.target.checked)}
+                  className="rounded"
+                />
+                Skip weekends
+              </label>
+            )}
+
+            {/* Type */}
             <div className="space-y-1">
-              <Label>Type</Label>
+              <Label>Entry Type</Label>
               <Select value={calEditType} onValueChange={v => setCalEditType(v as any)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -834,20 +1078,105 @@ export default function Resources() {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Available Hours */}
             <div className="space-y-1">
-              <Label>Available Hours</Label>
-              <Input type="number" min={0} max={24} step={0.5} value={calEditHours} onChange={e => setCalEditHours(e.target.value)} />
+              <Label>Available Hours {calEntryMode === "range" ? "(per day)" : ""}</Label>
+              <Input
+                type="number"
+                min={0}
+                max={24}
+                step={0.5}
+                value={calEditHours}
+                onChange={e => setCalEditHours(e.target.value)}
+                placeholder="e.g. 8"
+              />
             </div>
+
+            {/* Notes */}
             <div className="space-y-1">
               <Label>Notes</Label>
-              <Input value={calEditNotes} onChange={e => setCalEditNotes(e.target.value)} placeholder="Optional note" />
+              <Input value={calEditNotes} onChange={e => setCalEditNotes(e.target.value)} placeholder="Optional note (e.g. Annual leave, Public holiday)" />
             </div>
+
+            {/* Preview count for range */}
+            {calEntryMode === "range" && calEditDate && calEditEndDate && calEditDate <= calEditEndDate && (() => {
+              const start = new Date(calEditDate + "T00:00:00");
+              const end = new Date(calEditEndDate + "T00:00:00");
+              let count = 0;
+              const cur = new Date(start);
+              while (cur <= end) {
+                const dow = cur.getDay();
+                if (!calSkipWeekends || (dow !== 0 && dow !== 6)) count++;
+                cur.setDate(cur.getDate() + 1);
+              }
+              return (
+                <p className="text-xs text-muted-foreground bg-muted/40 rounded px-3 py-2">
+                  This will create/update <span className="font-semibold text-foreground">{count}</span> calendar entr{count === 1 ? "y" : "ies"}.
+                </p>
+              );
+            })()}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCalDialog(false)}>Cancel</Button>
-            <Button onClick={saveCalEntry} disabled={upsertCalEntry.isPending}>
-              {upsertCalEntry.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : null}
+            <Button onClick={saveCalEntry} disabled={upsertCalEntry.isPending || upsertCalRange.isPending}>
+              {(upsertCalEntry.isPending || upsertCalRange.isPending) ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : null}
               Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── RBS Type Dialog ──────────────────────────────────────────────── */}
+      <Dialog open={showRbsTypeDialog} onOpenChange={setShowRbsTypeDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{rbsTypeEditing ? "Edit Resource Type" : "Add Resource Type"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1">
+              <Label>Type Name <span className="text-red-500">*</span></Label>
+              <Input
+                value={rbsTypeForm.name}
+                onChange={e => setRbsTypeForm(f => ({ ...f, name: e.target.value }))}
+                placeholder="e.g. Vendor, Consultant, System"
+                disabled={rbsTypeEditing?.isBuiltIn}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Color</Label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={rbsTypeForm.color}
+                  onChange={e => setRbsTypeForm(f => ({ ...f, color: e.target.value }))}
+                  className="w-10 h-10 rounded cursor-pointer border border-border"
+                />
+                <Input
+                  value={rbsTypeForm.color}
+                  onChange={e => setRbsTypeForm(f => ({ ...f, color: e.target.value }))}
+                  placeholder="#6366f1"
+                  className="font-mono text-sm"
+                />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label>Description</Label>
+              <Input
+                value={rbsTypeForm.description}
+                onChange={e => setRbsTypeForm(f => ({ ...f, description: e.target.value }))}
+                placeholder="Optional description"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRbsTypeDialog(false)}>Cancel</Button>
+            <Button
+              onClick={saveRbsType}
+              disabled={!rbsTypeForm.name.trim() || createRbsType.isPending || updateRbsType.isPending}
+            >
+              {(createRbsType.isPending || updateRbsType.isPending) ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : null}
+              {rbsTypeEditing ? "Update" : "Create"}
             </Button>
           </DialogFooter>
         </DialogContent>

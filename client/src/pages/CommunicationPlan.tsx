@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { useProject } from "@/contexts/ProjectContext";
 import { Button } from "@/components/ui/button";
@@ -86,27 +86,43 @@ type TargetType = "stakeholder" | "role" | "job";
 // Types
 // ---------------------------------------------------------------------------
 
+type CommNeedItem = {
+  id?: number;          // DB id (if already saved)
+  localId: string;      // client-side key
+  description: string;
+  commType: "Push" | "Pull" | "Interactive" | "Other";
+  periodic: string;
+};
+
 type EntryFormData = {
   targetType: TargetType;
   targetValue: string;          // stakeholder id (string) | role string | job string
   informationNeeded: string;
+  acknowledgmentNeeded: boolean;
   preferredMethods: string[];
   frequency: string;
   textNote: string;
   escalationProcedures: string;
   responsibleStakeholderId: number | null;
+  commNeeded: CommNeedItem[];
 };
 
 const EMPTY_FORM: EntryFormData = {
   targetType: "stakeholder",
   targetValue: "",
   informationNeeded: "",
+  acknowledgmentNeeded: false,
   preferredMethods: [],
   frequency: "",
   textNote: "",
   escalationProcedures: "",
   responsibleStakeholderId: null,
+  commNeeded: [],
 };
+
+function makeLocalId() {
+  return Math.random().toString(36).slice(2);
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -214,6 +230,21 @@ export default function CommunicationPlan() {
     isLoading: entriesLoading,
     refetch,
   } = trpc.communicationPlan.list.useQuery({ projectId }, { enabled });
+
+  const { data: roleOptions = [], refetch: refetchRoles } =
+    trpc.commPlanOptions.roleOptions.list.useQuery({ projectId }, { enabled });
+  const { data: jobOptions = [], refetch: refetchJobs } =
+    trpc.commPlanOptions.jobOptions.list.useQuery({ projectId }, { enabled });
+
+  const createRoleOption = trpc.commPlanOptions.roleOptions.create.useMutation({ onSuccess: () => refetchRoles() });
+  const deleteRoleOption = trpc.commPlanOptions.roleOptions.delete.useMutation({ onSuccess: () => refetchRoles() });
+  const createJobOption = trpc.commPlanOptions.jobOptions.create.useMutation({ onSuccess: () => refetchJobs() });
+  const deleteJobOption = trpc.commPlanOptions.jobOptions.delete.useMutation({ onSuccess: () => refetchJobs() });
+  const bulkReplaceItems = trpc.commPlanOptions.items.bulkReplace.useMutation();
+
+  // ----- Inline add option state -----
+  const [newRoleInput, setNewRoleInput] = useState("");
+  const [newJobInput, setNewJobInput] = useState("");
 
   // ----- Mutations -----
   const createMut = trpc.communicationPlan.create.useMutation({
@@ -330,16 +361,20 @@ export default function CommunicationPlan() {
       targetType,
       targetValue,
       informationNeeded: entry.informationNeeded ?? "",
+      acknowledgmentNeeded: entry.acknowledgmentNeeded ?? false,
       preferredMethods: Array.isArray(entry.preferredMethods) ? entry.preferredMethods : [],
       frequency: entry.frequency ?? "",
       textNote: entry.textNote ?? "",
       escalationProcedures: entry.escalationProcedures ?? "",
       responsibleStakeholderId: entry.responsibleStakeholderId ?? null,
+      commNeeded: [],  // will be loaded async below
     });
+    // Load commNeeded items for this entry (they come from commPlanItems table)
+    // We'll fetch them via a separate query triggered by editing state
     setEntryDialogOpen(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.targetValue) {
       toast.error("Please select a target (Stakeholder, Role, or Job)");
       return;
@@ -356,6 +391,7 @@ export default function CommunicationPlan() {
       stakeholderId: form.targetType === "stakeholder" ? Number(form.targetValue) : undefined,
       role: form.targetType === "role" ? form.targetValue : undefined,
       informationNeeded: form.informationNeeded,
+      acknowledgmentNeeded: form.acknowledgmentNeeded,
       preferredMethods: form.preferredMethods,
       frequency: form.frequency || undefined,
       textNote: form.textNote || undefined,
@@ -366,11 +402,88 @@ export default function CommunicationPlan() {
         : undefined,
     };
 
+    const validItems = form.commNeeded.filter(i => i.description.trim());
+
     if (editing) {
-      updateMut.mutate({ id: editing.id, data: payload });
+      updateMut.mutate({ id: editing.id, data: payload }, {
+        onSuccess: async (entry: any) => {
+          if (validItems.length > 0) {
+            await bulkReplaceItems.mutateAsync({
+              entryId: editing.id,
+              projectId,
+              items: validItems.map((item, idx) => ({
+                description: item.description,
+                commType: item.commType,
+                periodic: item.periodic || undefined,
+                sequence: idx,
+              })),
+            });
+          }
+        }
+      });
     } else {
-      createMut.mutate({ projectId, ...payload });
+      createMut.mutate({ projectId, ...payload }, {
+        onSuccess: async (entry: any) => {
+          if (validItems.length > 0 && entry?.id) {
+            await bulkReplaceItems.mutateAsync({
+              entryId: entry.id,
+              projectId,
+              items: validItems.map((item, idx) => ({
+                description: item.description,
+                commType: item.commType,
+                periodic: item.periodic || undefined,
+                sequence: idx,
+              })),
+            });
+          }
+        }
+      });
     }
+  };
+
+  // ----- Load commNeeded items when editing -----
+  const { data: editingItems = [] } = trpc.commPlanOptions.items.listByEntry.useQuery(
+    { entryId: editing?.id ?? 0 },
+    { enabled: !!editing?.id && entryDialogOpen }
+  );
+
+  useEffect(() => {
+    if (editing && entryDialogOpen && Array.isArray(editingItems) && editingItems.length > 0) {
+      setForm(prev => ({
+        ...prev,
+        commNeeded: (editingItems as any[]).map((item: any) => ({
+          id: item.id,
+          localId: makeLocalId(),
+          description: item.description ?? "",
+          commType: item.commType ?? "Push",
+          periodic: item.periodic ?? "",
+        })),
+      }));
+    }
+  }, [editingItems, editing?.id]);
+
+  // ----- CommNeeded list helpers -----
+  const addCommNeedRow = () => {
+    setForm(prev => ({
+      ...prev,
+      commNeeded: [...prev.commNeeded, { localId: makeLocalId(), description: "", commType: "Push", periodic: "" }],
+    }));
+  };
+
+  const updateCommNeedRow = (localId: string, field: keyof CommNeedItem, value: string) => {
+    setForm(prev => ({
+      ...prev,
+      commNeeded: prev.commNeeded.map(item =>
+        item.localId === localId ? { ...item, [field]: value } : item
+      ),
+    }));
+  };
+
+  const removeCommNeedRow = (localId: string) => {
+    setForm(prev => ({
+      ...prev,
+      commNeeded: prev.commNeeded.filter(item => item.localId !== localId),
+    }));
   };
 
   // ----- Import dialog helpers -----
@@ -695,27 +808,68 @@ export default function CommunicationPlan() {
             {form.targetType === "role" && (
               <div className="space-y-1.5">
                 <Label>Role</Label>
-                {uniqueRoles.length > 0 ? (
-                  <Select
-                    value={form.targetValue || "__none__"}
-                    onValueChange={(v) => setField("targetValue", v === "__none__" ? "" : v)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select role..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">— Select role —</SelectItem>
-                      {uniqueRoles.map((r) => (
-                        <SelectItem key={r} value={r}>{r}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
+                <Select
+                  value={form.targetValue || "__none__"}
+                  onValueChange={(v) => setField("targetValue", v === "__none__" ? "" : v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select role..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">— Select role —</SelectItem>
+                    {(roleOptions as any[]).map((r: any) => (
+                      <SelectItem key={r.id} value={r.label}>
+                        <span className="flex items-center justify-between w-full gap-2">
+                          <span>{r.label}</span>
+                        </span>
+                      </SelectItem>
+                    ))}
+                    {uniqueRoles.filter(r => !(roleOptions as any[]).some((o: any) => o.label === r)).map((r) => (
+                      <SelectItem key={r} value={r}>{r}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <div className="flex items-center gap-2 mt-1">
                   <Input
-                    value={form.targetValue}
-                    onChange={(e) => setField("targetValue", e.target.value)}
-                    placeholder="Enter role (no roles found on stakeholders yet)"
+                    value={newRoleInput}
+                    onChange={e => setNewRoleInput(e.target.value)}
+                    placeholder="Add new role option..."
+                    className="h-8 text-sm"
+                    onKeyDown={e => {
+                      if (e.key === "Enter" && newRoleInput.trim()) {
+                        createRoleOption.mutate({ projectId, label: newRoleInput.trim() });
+                        setNewRoleInput("");
+                      }
+                    }}
                   />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 shrink-0"
+                    disabled={!newRoleInput.trim() || createRoleOption.isPending}
+                    onClick={() => {
+                      if (newRoleInput.trim()) {
+                        createRoleOption.mutate({ projectId, label: newRoleInput.trim() });
+                        setNewRoleInput("");
+                      }
+                    }}
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+                {(roleOptions as any[]).length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {(roleOptions as any[]).map((r: any) => (
+                      <span key={r.id} className="inline-flex items-center gap-1 bg-muted text-xs px-2 py-0.5 rounded-full">
+                        {r.label}
+                        <button
+                          type="button"
+                          className="text-muted-foreground hover:text-red-500 ml-0.5"
+                          onClick={() => deleteRoleOption.mutate({ id: r.id })}
+                        >×</button>
+                      </span>
+                    ))}
+                  </div>
                 )}
               </div>
             )}
@@ -723,27 +877,64 @@ export default function CommunicationPlan() {
             {form.targetType === "job" && (
               <div className="space-y-1.5">
                 <Label>Job Title</Label>
-                {uniqueJobs.length > 0 ? (
-                  <Select
-                    value={form.targetValue || "__none__"}
-                    onValueChange={(v) => setField("targetValue", v === "__none__" ? "" : v)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select job title..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">— Select job title —</SelectItem>
-                      {uniqueJobs.map((j) => (
-                        <SelectItem key={j} value={j}>{j}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
+                <Select
+                  value={form.targetValue || "__none__"}
+                  onValueChange={(v) => setField("targetValue", v === "__none__" ? "" : v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select job title..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">— Select job title —</SelectItem>
+                    {(jobOptions as any[]).map((j: any) => (
+                      <SelectItem key={j.id} value={j.label}>{j.label}</SelectItem>
+                    ))}
+                    {uniqueJobs.filter(j => !(jobOptions as any[]).some((o: any) => o.label === j)).map((j) => (
+                      <SelectItem key={j} value={j}>{j}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <div className="flex items-center gap-2 mt-1">
                   <Input
-                    value={form.targetValue}
-                    onChange={(e) => setField("targetValue", e.target.value)}
-                    placeholder="Enter job title (no jobs found on stakeholders yet)"
+                    value={newJobInput}
+                    onChange={e => setNewJobInput(e.target.value)}
+                    placeholder="Add new job option..."
+                    className="h-8 text-sm"
+                    onKeyDown={e => {
+                      if (e.key === "Enter" && newJobInput.trim()) {
+                        createJobOption.mutate({ projectId, label: newJobInput.trim() });
+                        setNewJobInput("");
+                      }
+                    }}
                   />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 shrink-0"
+                    disabled={!newJobInput.trim() || createJobOption.isPending}
+                    onClick={() => {
+                      if (newJobInput.trim()) {
+                        createJobOption.mutate({ projectId, label: newJobInput.trim() });
+                        setNewJobInput("");
+                      }
+                    }}
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+                {(jobOptions as any[]).length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {(jobOptions as any[]).map((j: any) => (
+                      <span key={j.id} className="inline-flex items-center gap-1 bg-muted text-xs px-2 py-0.5 rounded-full">
+                        {j.label}
+                        <button
+                          type="button"
+                          className="text-muted-foreground hover:text-red-500 ml-0.5"
+                          onClick={() => deleteJobOption.mutate({ id: j.id })}
+                        >×</button>
+                      </span>
+                    ))}
+                  </div>
                 )}
               </div>
             )}
@@ -757,6 +948,100 @@ export default function CommunicationPlan() {
                 onChange={(e) => setField("informationNeeded", e.target.value)}
                 placeholder="What information does this stakeholder/group need?"
               />
+            </div>
+
+            {/* ── Acknowledgment Needed ── */}
+            <div className="flex items-center gap-3 py-1">
+              <Checkbox
+                id="ack-needed"
+                checked={form.acknowledgmentNeeded}
+                onCheckedChange={(v) => setField("acknowledgmentNeeded", !!v)}
+              />
+              <label htmlFor="ack-needed" className="text-sm font-medium cursor-pointer select-none">
+                Acknowledgment Needed
+                <span className="text-muted-foreground font-normal ml-1.5 text-xs">
+                  (recipient must confirm receipt)
+                </span>
+              </label>
+            </div>
+
+            {/* ── Communication Needed List ── */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-semibold">Communication Needed</Label>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs gap-1"
+                  onClick={addCommNeedRow}
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Add Line
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                What we need from or need to communicate to this stakeholder/group.
+              </p>
+              {form.commNeeded.length === 0 ? (
+                <div className="border border-dashed rounded-md py-4 text-center text-xs text-muted-foreground">
+                  No communication items yet. Click "Add Line" to add one.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {form.commNeeded.map((item) => (
+                    <div key={item.localId} className="flex items-start gap-2 p-2 border rounded-md bg-muted/30">
+                      <div className="flex-1 space-y-1.5">
+                        <Input
+                          value={item.description}
+                          onChange={e => updateCommNeedRow(item.localId, "description", e.target.value)}
+                          placeholder="Describe what needs to be communicated..."
+                          className="h-8 text-sm"
+                        />
+                        <div className="flex items-center gap-2">
+                          <Select
+                            value={item.commType}
+                            onValueChange={v => updateCommNeedRow(item.localId, "commType", v)}
+                          >
+                            <SelectTrigger className="h-7 text-xs w-36">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Push">Push</SelectItem>
+                              <SelectItem value="Pull">Pull</SelectItem>
+                              <SelectItem value="Interactive">Interactive</SelectItem>
+                              <SelectItem value="Other">Other</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Select
+                            value={item.periodic || "__none__"}
+                            onValueChange={v => updateCommNeedRow(item.localId, "periodic", v === "__none__" ? "" : v)}
+                          >
+                            <SelectTrigger className="h-7 text-xs flex-1">
+                              <SelectValue placeholder="Periodic..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__none__">— No period —</SelectItem>
+                              {FREQUENCY_OPTIONS.map(f => (
+                                <SelectItem key={f} value={f}>{f}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-red-400 hover:text-red-600 hover:bg-red-50 shrink-0 mt-0.5"
+                        onClick={() => removeCommNeedRow(item.localId)}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* ── Preferred Methods ── */}

@@ -2,7 +2,7 @@
   "version": "5",
   "dialect": "mysql",
   "id": "b807d7f7-18d7-42b3-a4f0-1bee20adb624",
-  "prevId": "8476f9c6-88d0-4e41-9c9a-3a956e3e5386",
+  "prevId": "3a53d4ec-b801-49c4-8897-870348f30513",
   "tables": {
     "actionItems": {
       "name": "actionItems",
