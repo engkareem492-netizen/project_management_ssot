@@ -1241,17 +1241,7 @@ function EngagementAssessmentTab({
     return currentOk && desiredOk;
   });
 
-  const syncMut = trpc.engagement.syncSubjects.useMutation({
-    onSuccess: (data) => {
-      utils.engagement.listGroups.invalidate({ projectId });
-      utils.engagement.listSubjects.invalidate();
-      const msg = data?.addedSubjects || data?.addedCommTasks
-        ? `Synced: ${data.addedSubjects} subject(s) added, ${data.addedCommTasks} COMM task(s) created`
-        : "Sync complete — all subjects and COMM tasks are up to date";
-      toast.success(msg);
-    },
-    onError: (e) => toast.error(e.message),
-  });
+
 
   return (
     <div className="space-y-4">
@@ -1380,18 +1370,6 @@ function EngagementAssessmentTab({
           </CardContent>
         </Card>
       )}
-
-      <div className="flex justify-end">
-        <Button
-          variant="outline"
-          className="gap-2"
-          onClick={() => syncMut.mutate({ projectId })}
-          disabled={syncMut.isPending}
-        >
-          <RefreshCw className="h-4 w-4" />
-          Sync Task Groups
-        </Button>
-      </div>
 
       {historyTarget && (
         <HistoryDialog
@@ -1934,6 +1912,18 @@ function EngagementPlanTab({
 
   const { data: groups = [] } = trpc.engagement.listGroups.useQuery({ projectId });
 
+  const syncMut = trpc.engagement.syncSubjects.useMutation({
+    onSuccess: (data) => {
+      utils.engagement.listGroups.invalidate({ projectId });
+      utils.engagement.listSubjects.invalidate();
+      const msg = data?.addedSubjects || data?.addedCommTasks
+        ? `Synced: ${data.addedSubjects} subject(s) added, ${data.addedCommTasks} COMM task(s) created`
+        : "Sync complete — all subjects and COMM tasks are up to date";
+      toast.success(msg);
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
   const deleteGroupMut = trpc.engagement.deleteGroup.useMutation({
     onSuccess: (_, vars) => {
       utils.engagement.listGroups.invalidate({ projectId });
@@ -1951,17 +1941,30 @@ function EngagementPlanTab({
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-foreground">Task Groups</h3>
-          <Button
-            size="sm"
-            className="h-7 gap-1 text-xs"
-            onClick={() => {
-              setEditGroup(null);
-              setGroupDialogOpen(true);
-            }}
-          >
-            <Plus className="h-3.5 w-3.5" />
-            New Group
-          </Button>
+          <div className="flex items-center gap-1.5">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1 text-xs"
+              onClick={() => syncMut.mutate({ projectId })}
+              disabled={syncMut.isPending}
+              title="Sync subjects and create COMM tasks for matching stakeholders"
+            >
+              <RefreshCw className="h-3 w-3" />
+              Sync
+            </Button>
+            <Button
+              size="sm"
+              className="h-7 gap-1 text-xs"
+              onClick={() => {
+                setEditGroup(null);
+                setGroupDialogOpen(true);
+              }}
+            >
+              <Plus className="h-3.5 w-3.5" />
+              New Group
+            </Button>
+          </div>
         </div>
 
         {groups.length === 0 ? (

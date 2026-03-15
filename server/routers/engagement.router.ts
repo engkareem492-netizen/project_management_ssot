@@ -9,7 +9,28 @@ import {
   engagementStatusHistory,
   stakeholders,
   tasks,
+  projectCharter,
 } from "../../drizzle/schema";
+
+/** Fetch the Project Manager stakeholder for a project (from the charter). */
+async function getProjectManager(projectId: number): Promise<{ id: number; fullName: string } | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const charter = await db
+    .select({ projectManagerId: projectCharter.projectManagerId })
+    .from(projectCharter)
+    .where(eq(projectCharter.projectId, projectId))
+    .limit(1)
+    .then((r) => r[0]);
+  if (!charter?.projectManagerId) return null;
+  const pm = await db
+    .select({ id: stakeholders.id, fullName: stakeholders.fullName })
+    .from(stakeholders)
+    .where(eq(stakeholders.id, charter.projectManagerId))
+    .limit(1)
+    .then((r) => r[0]);
+  return pm ?? null;
+}
 
 const ENGAGEMENT_STATUSES = ["Unaware", "Resistant", "Neutral", "Supportive", "Leading"] as const;
 const FROM_STATUSES = ["Unaware", "Resistant", "Neutral", "Supportive", "Leading", "Any"] as const;
@@ -251,12 +272,15 @@ export const engagementRouter = router({
           .limit(1)
           .then((r) => r[0]);
 
-        const stakeholder = await db
+        const subject = await db
           .select()
           .from(stakeholders)
           .where(eq(stakeholders.id, input.stakeholderId))
           .limit(1)
           .then((r) => r[0]);
+
+        // Get the Project Manager — they are the responsible for all COMM tasks
+        const pm = group ? await getProjectManager(group.projectId) : null;
 
         const actionItems = await db
           .select()
@@ -273,12 +297,12 @@ export const engagementRouter = router({
               and(
                 eq(tasks.projectId, group.projectId),
                 eq(tasks.communicationStakeholderId, item.id),
-                eq(tasks.responsibleId, input.stakeholderId)
+                eq(tasks.responsibleId, pm?.id ?? input.stakeholderId)
               )
             )
             .limit(1);
 
-          // Only create if not already linked for this subject
+          // Only create if not already linked
           if (existing.length === 0) {
             const taskId = await getNextId("commTask", "COMM", group.projectId);
             const periodic = item.periodic;
@@ -289,10 +313,12 @@ export const engagementRouter = router({
             await createTask({
               projectId: group.projectId,
               taskId,
-              description: `[${group.name}] ${item.title}${stakeholder ? ` — ${stakeholder.fullName}` : ""}`,
+              // Description: [Group] Action Item — with Subject: Name
+              description: `[${group.name}] ${item.title}${subject ? ` — with ${subject.fullName}` : ""}`,
               status: "Open",
-              responsible: stakeholder?.fullName ?? undefined,
-              responsibleId: stakeholder?.id ?? undefined,
+              // Responsible = Project Manager (falls back to subject if no PM defined)
+              responsible: pm?.fullName ?? subject?.fullName ?? undefined,
+              responsibleId: pm?.id ?? subject?.id ?? undefined,
               recurringType: recurringType as any,
               recurringInterval: 1,
               communicationStakeholderId: item.id,
@@ -461,6 +487,9 @@ export const engagementRouter = router({
           .from(engagementTasks)
           .where(eq(engagementTasks.taskGroupId, group.id));
 
+        // Get the Project Manager for this group's project
+        const pm = await getProjectManager(group.projectId);
+
         for (const s of allStakeholders) {
           if (!s.currentEngagementStatus || !s.desiredEngagementStatus) continue;
           const fromMatch = group.fromStatus === "Any" || group.fromStatus === s.currentEngagementStatus;
@@ -468,15 +497,17 @@ export const engagementRouter = router({
           if (!fromMatch || !toMatch) continue;
 
           // Insert subject (ignore duplicate)
-          let inserted = false;
           try {
             await db.insert(engagementTaskSubjects).values({
               taskGroupId: group.id,
               stakeholderId: s.id,
             });
-            inserted = true;
             addedSubjects++;
           } catch { /* already exists — still create missing COMM tasks */ }
+
+          // Responsible = PM (falls back to subject if no PM defined)
+          const responsibleId = pm?.id ?? s.id;
+          const responsibleName = pm?.fullName ?? s.fullName;
 
           // Create COMM tasks for each action item (whether subject was new or existing)
           for (const item of actionItems) {
@@ -487,7 +518,7 @@ export const engagementRouter = router({
                 and(
                   eq(tasks.projectId, group.projectId),
                   eq(tasks.communicationStakeholderId, item.id),
-                  eq(tasks.responsibleId, s.id)
+                  eq(tasks.responsibleId, responsibleId)
                 )
               )
               .limit(1);
@@ -503,10 +534,10 @@ export const engagementRouter = router({
                 await createTask({
                   projectId: group.projectId,
                   taskId,
-                  description: `[${group.name}] ${item.title} — ${s.fullName}`,
+                  description: `[${group.name}] ${item.title} — with ${s.fullName}`,
                   status: "Open",
-                  responsible: s.fullName ?? undefined,
-                  responsibleId: s.id,
+                  responsible: responsibleName ?? undefined,
+                  responsibleId,
                   recurringType: recurringType as any,
                   recurringInterval: 1,
                   communicationStakeholderId: item.id,
