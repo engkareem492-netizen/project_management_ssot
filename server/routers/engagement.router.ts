@@ -356,12 +356,59 @@ export const engagementRouter = router({
         assessedBy: rest.assessedBy,
         assessmentDate: assessmentDate as any,
       });
+      // Auto-update the stakeholder's current or desired engagement status
+      try {
+        if (rest.statusType === "current") {
+          await db
+            .update(stakeholders)
+            .set({ currentEngagementStatus: rest.status as any })
+            .where(eq(stakeholders.id, rest.stakeholderId));
+        } else {
+          await db
+            .update(stakeholders)
+            .set({ desiredEngagementStatus: rest.status as any })
+            .where(eq(stakeholders.id, rest.stakeholderId));
+        }
+      } catch (e) {
+        console.error("Failed to sync stakeholder engagement status:", e);
+      }
       const rows = await db
         .select()
         .from(engagementStatusHistory)
         .where(eq(engagementStatusHistory.id, result[0].insertId))
         .limit(1);
       return rows[0];
+    }),
+
+  updateStatusHistory: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      statusType: z.enum(["current", "desired"]).optional(),
+      status: z.enum(["Unaware", "Resistant", "Neutral", "Supportive", "Leading"]).optional(),
+      assessedBy: z.string().optional(),
+      assessmentDate: z.string().optional(),
+      notes: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("DB unavailable");
+      const { id, ...data } = input;
+      await db.update(engagementStatusHistory).set(data as any).where(eq(engagementStatusHistory.id, id));
+      // If status changed, also update the stakeholder's live status
+      if (data.status) {
+        const rows = await db.select().from(engagementStatusHistory).where(eq(engagementStatusHistory.id, id)).limit(1);
+        if (rows[0]) {
+          const sType = data.statusType ?? rows[0].statusType;
+          try {
+            if (sType === "current") {
+              await db.update(stakeholders).set({ currentEngagementStatus: data.status as any }).where(eq(stakeholders.id, rows[0].stakeholderId));
+            } else {
+              await db.update(stakeholders).set({ desiredEngagementStatus: data.status as any }).where(eq(stakeholders.id, rows[0].stakeholderId));
+            }
+          } catch (e) { console.error(e); }
+        }
+      }
+      return { success: true };
     }),
 
   deleteStatusHistory: protectedProcedure

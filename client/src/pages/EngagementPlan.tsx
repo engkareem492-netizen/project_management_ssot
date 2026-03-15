@@ -806,6 +806,8 @@ function HistoryDialog({
   onOpenChange: (v: boolean) => void;
 }) {
   const utils = trpc.useUtils();
+  const [editingEntry, setEditingEntry] = useState<any>(null);
+  const [editForm, setEditForm] = useState({ statusType: "current", status: "", assessedBy: "", assessmentDate: "", notes: "" });
 
   const { data: history = [], isLoading } = trpc.engagement.listStatusHistory.useQuery(
     { stakeholderId: stakeholder?.id },
@@ -815,14 +817,49 @@ function HistoryDialog({
   const deleteMut = trpc.engagement.deleteStatusHistory.useMutation({
     onSuccess: () => {
       utils.engagement.listStatusHistory.invalidate({ stakeholderId: stakeholder.id });
+      utils.stakeholders.list.invalidate();
       toast.success("History entry deleted");
     },
     onError: (e) => toast.error(e.message),
   });
 
+  const updateMut = trpc.engagement.updateStatusHistory.useMutation({
+    onSuccess: () => {
+      utils.engagement.listStatusHistory.invalidate({ stakeholderId: stakeholder.id });
+      utils.stakeholders.list.invalidate();
+      toast.success("Assessment updated");
+      setEditingEntry(null);
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const openEdit = (entry: any) => {
+    setEditingEntry(entry);
+    setEditForm({
+      statusType: entry.statusType ?? "current",
+      status: entry.status ?? "",
+      assessedBy: entry.assessedBy ?? "",
+      assessmentDate: entry.assessmentDate ? String(entry.assessmentDate).substring(0, 10) : "",
+      notes: entry.notes ?? "",
+    });
+  };
+
+  const handleUpdate = () => {
+    if (!editForm.status) { toast.error("Status is required"); return; }
+    updateMut.mutate({
+      id: editingEntry.id,
+      statusType: editForm.statusType as "current" | "desired",
+      status: editForm.status as any,
+      assessedBy: editForm.assessedBy || undefined,
+      assessmentDate: editForm.assessmentDate || undefined,
+      notes: editForm.notes || undefined,
+    });
+  };
+
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <History className="h-4 w-4" />
@@ -841,36 +878,46 @@ function HistoryDialog({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Type</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Assessed By</TableHead>
-                <TableHead>Date</TableHead>
+                <TableHead className="w-20">Type</TableHead>
+                <TableHead className="w-28">Status</TableHead>
+                <TableHead className="w-28">Assessed By</TableHead>
+                <TableHead className="w-24">Date</TableHead>
                 <TableHead>Notes</TableHead>
-                <TableHead />
+                <TableHead className="w-16" />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {history.map((entry: any) => (
+              {(history as any[]).map((entry: any) => (
                 <TableRow key={entry.id}>
-                  <TableCell className="text-xs">{entry.statusType}</TableCell>
+                  <TableCell className="text-xs capitalize">{entry.statusType}</TableCell>
                   <TableCell>
                     <StatusBadge status={entry.status} />
                   </TableCell>
                   <TableCell className="text-sm">{entry.assessedBy ?? "—"}</TableCell>
-                  <TableCell className="text-sm">{formatDate(entry.assessmentDate)}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground max-w-[140px] truncate">
-                    {entry.notes ?? "—"}
+                  <TableCell className="text-sm whitespace-nowrap">
+                    {entry.assessmentDate
+                      ? new Date(String(entry.assessmentDate)).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+                      : "—"}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground max-w-[260px]">
+                    <span className="block whitespace-pre-wrap break-words">{entry.notes || "—"}</span>
                   </TableCell>
                   <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-destructive"
-                      onClick={() => deleteMut.mutate({ id: entry.id })}
-                      disabled={deleteMut.isPending}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(entry)} title="Edit">
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-destructive"
+                        onClick={() => deleteMut.mutate({ id: entry.id })}
+                        disabled={deleteMut.isPending}
+                        title="Delete"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -884,6 +931,56 @@ function HistoryDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    {/* Edit History Entry Dialog */}
+    <Dialog open={!!editingEntry} onOpenChange={(v) => !v && setEditingEntry(null)}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Edit Assessment Entry</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <div>
+            <Label>Status Type</Label>
+            <Select value={editForm.statusType} onValueChange={(v) => setEditForm({ ...editForm, statusType: v })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="current">Current</SelectItem>
+                <SelectItem value="desired">Desired</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Status *</Label>
+            <Select value={editForm.status || "__none__"} onValueChange={(v) => setEditForm({ ...editForm, status: v === "__none__" ? "" : v })}>
+              <SelectTrigger><SelectValue placeholder="Select status..." /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">— Select —</SelectItem>
+                {["Unaware", "Resistant", "Neutral", "Supportive", "Leading"].map((s) => (
+                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Assessed By</Label>
+            <Input value={editForm.assessedBy} onChange={(e) => setEditForm({ ...editForm, assessedBy: e.target.value })} placeholder="Name of assessor..." />
+          </div>
+          <div>
+            <Label>Assessment Date</Label>
+            <Input type="date" value={editForm.assessmentDate} onChange={(e) => setEditForm({ ...editForm, assessmentDate: e.target.value })} />
+          </div>
+          <div>
+            <Label>Notes</Label>
+            <Textarea value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} placeholder="Additional notes..." rows={3} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setEditingEntry(null)}>Cancel</Button>
+          <Button onClick={handleUpdate} disabled={updateMut.isPending}>Save Changes</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
 
@@ -1002,7 +1099,8 @@ function LogAssessmentDialog({
   const addMut = trpc.engagement.addStatusHistory.useMutation({
     onSuccess: () => {
       utils.engagement.listStatusHistory.invalidate({ stakeholderId: stakeholder.id });
-      toast.success("Assessment logged");
+      utils.stakeholders.list.invalidate();
+      toast.success("Assessment logged — status updated");
       onOpenChange(false);
       setForm({
         statusType: "current",
