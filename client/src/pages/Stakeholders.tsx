@@ -734,29 +734,6 @@ function StakeholderFormDialog({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label>Working Hours/Day</Label>
-                  <Input
-                    type="number"
-                    min="1"
-                    max="24"
-                    value={formData.workingHoursPerDay}
-                    onChange={(e) => set({ workingHoursPerDay: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Working Days/Week</Label>
-                  <Input
-                    type="number"
-                    min="1"
-                    max="7"
-                    value={formData.workingDaysPerWeek}
-                    onChange={(e) => set({ workingDaysPerWeek: parseInt(e.target.value) || 5 })}
-                  />
-                </div>
-              </div>
-
               <div className="flex items-center gap-3 pt-1">
                 <Switch
                   checked={formData.isPooledResource}
@@ -766,6 +743,33 @@ function StakeholderFormDialog({
               </div>
             </div>
           )}
+
+          {/* Work Schedule — available for all classifications */}
+          <div className="space-y-3 border-t pt-4">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Work Schedule</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Working Hours/Day</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  max="24"
+                  value={formData.workingHoursPerDay}
+                  onChange={(e) => set({ workingHoursPerDay: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Working Days/Week</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  max="7"
+                  value={formData.workingDaysPerWeek}
+                  onChange={(e) => set({ workingDaysPerWeek: parseInt(e.target.value) || 5 })}
+                />
+              </div>
+            </div>
+          </div>
 
           {/* External fields */}
           {formData.classification === "External" && (
@@ -1042,6 +1046,18 @@ function DetailPanel({
                     <p>${Number(stakeholder.costPerDay).toFixed(2)}</p>
                   </div>
                 )}
+              </div>
+              {stakeholder.isPooledResource && (
+                <Badge variant="outline" className="text-xs">Pooled Resource</Badge>
+              )}
+            </div>
+          )}
+
+          {/* Work Schedule — shown for all classifications */}
+          {(stakeholder.workingHoursPerDay != null || stakeholder.workingDaysPerWeek != null) && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Work Schedule</p>
+              <div className="grid grid-cols-2 gap-3 text-sm">
                 {stakeholder.workingHoursPerDay != null && (
                   <div>
                     <p className="text-muted-foreground text-xs">Hours/Day</p>
@@ -1055,9 +1071,6 @@ function DetailPanel({
                   </div>
                 )}
               </div>
-              {stakeholder.isPooledResource && (
-                <Badge variant="outline" className="text-xs">Pooled Resource</Badge>
-              )}
             </div>
           )}
 

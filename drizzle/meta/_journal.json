@@ -232,6 +232,20 @@
       "when": 1741600000000,
       "tag": "0032_new_modules",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "5",
+      "when": 1773539266122,
+      "tag": "0033_furry_white_tiger",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "5",
+      "when": 1773539360047,
+      "tag": "0034_wet_tomorrow_man",
+      "breakpoints": true
     }
   ]
 }

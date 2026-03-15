@@ -42,7 +42,6 @@ import {
   MessageSquare,
   Loader2,
 } from "lucide-react";
-import { StakeholderSelect } from "@/components/StakeholderSelect";
 import { EmptyState } from "@/components/EmptyState";
 
 // ---------------------------------------------------------------------------
@@ -81,30 +80,32 @@ const METHOD_COLORS: Record<string, string> = {
   "Video Call": "bg-teal-100 text-teal-800",
 };
 
+type TargetType = "stakeholder" | "role" | "job";
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
 type EntryFormData = {
-  stakeholderId: number | null;
-  role: string;
+  targetType: TargetType;
+  targetValue: string;          // stakeholder id (string) | role string | job string
   informationNeeded: string;
   preferredMethods: string[];
   frequency: string;
   textNote: string;
   escalationProcedures: string;
-  responsible: string;
+  responsibleStakeholderId: number | null;
 };
 
 const EMPTY_FORM: EntryFormData = {
-  stakeholderId: null,
-  role: "",
+  targetType: "stakeholder",
+  targetValue: "",
   informationNeeded: "",
   preferredMethods: [],
   frequency: "",
   textNote: "",
   escalationProcedures: "",
-  responsible: "",
+  responsibleStakeholderId: null,
 };
 
 // ---------------------------------------------------------------------------
@@ -123,7 +124,8 @@ function exportToCsv(entries: any[], stakeholders: any[]) {
   });
 
   const headers = [
-    "Stakeholder/Role",
+    "Target Type",
+    "Target",
     "Information Needed",
     "Preferred Methods",
     "Frequency",
@@ -133,27 +135,35 @@ function exportToCsv(entries: any[], stakeholders: any[]) {
   ];
 
   const rows = entries.map((e: any) => {
-    const stakeholderName = e.stakeholderId ? (stakeholderMap[e.stakeholderId] ?? "") : "";
-    const stakeholderRole =
-      stakeholderName && e.role
-        ? `${stakeholderName} (${e.role})`
-        : stakeholderName || e.role || "";
+    const targetTypeLabel =
+      e.targetType === "stakeholder" ? "Stakeholder" :
+      e.targetType === "role" ? "By Role" :
+      e.targetType === "job" ? "By Job" :
+      e.role ? "Role" : "Stakeholder";
+
+    const targetLabel =
+      e.targetType === "stakeholder"
+        ? (e.stakeholderId ? (stakeholderMap[e.stakeholderId] ?? e.targetValue ?? "") : (e.targetValue ?? ""))
+        : (e.targetValue ?? e.role ?? "");
+
+    const responsibleName = e.responsibleStakeholderId
+      ? (stakeholderMap[e.responsibleStakeholderId] ?? e.responsible ?? "")
+      : (e.responsible ?? "");
+
     const methods = Array.isArray(e.preferredMethods) ? e.preferredMethods.join("; ") : "";
     return [
-      stakeholderRole,
+      targetTypeLabel,
+      targetLabel,
       e.informationNeeded ?? "",
       methods,
       e.frequency ?? "",
       e.textNote ?? "",
       e.escalationProcedures ?? "",
-      e.responsible ?? "",
+      responsibleName,
     ].map((cell) => `"${String(cell).replace(/"/g, '""')}"`);
   });
 
-  const csvContent = [headers.map((h) => `"${h}"`).join(","), ...rows.map((r) => r.join(","))].join(
-    "\n"
-  );
-
+  const csvContent = [headers.map((h) => `"${h}"`).join(","), ...rows.map((r) => r.join(","))].join("\n");
   const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -167,11 +177,7 @@ function exportToCsv(entries: any[], stakeholders: any[]) {
 // Sub-components
 // ---------------------------------------------------------------------------
 
-interface MethodsBadgesProps {
-  methods: string[];
-}
-
-function MethodsBadges({ methods }: MethodsBadgesProps) {
+function MethodsBadges({ methods }: { methods: string[] }) {
   if (!methods || methods.length === 0)
     return <span className="text-muted-foreground text-xs">—</span>;
   return (
@@ -278,6 +284,23 @@ export default function CommunicationPlan() {
     return m;
   }, [stakeholders]);
 
+  // ----- Unique roles and jobs from all stakeholders -----
+  const uniqueRoles = useMemo(() => {
+    const roles = new Set<string>();
+    (stakeholders as any[]).forEach((s) => {
+      if (s.role) roles.add(s.role);
+    });
+    return Array.from(roles).sort();
+  }, [stakeholders]);
+
+  const uniqueJobs = useMemo(() => {
+    const jobs = new Set<string>();
+    (stakeholders as any[]).forEach((s) => {
+      if (s.job) jobs.add(s.job);
+    });
+    return Array.from(jobs).sort();
+  }, [stakeholders]);
+
   // ----- Open new / edit dialogs -----
   const openNew = () => {
     setEditing(null);
@@ -287,36 +310,64 @@ export default function CommunicationPlan() {
 
   const openEdit = (entry: any) => {
     setEditing(entry);
+    // Determine targetType and targetValue from stored data
+    let targetType: TargetType = "stakeholder";
+    let targetValue = "";
+
+    if (entry.targetType === "role") {
+      targetType = "role";
+      targetValue = entry.targetValue ?? entry.role ?? "";
+    } else if (entry.targetType === "job") {
+      targetType = "job";
+      targetValue = entry.targetValue ?? "";
+    } else {
+      // legacy or explicit stakeholder
+      targetType = "stakeholder";
+      targetValue = entry.stakeholderId ? String(entry.stakeholderId) : (entry.targetValue ?? "");
+    }
+
     setForm({
-      stakeholderId: entry.stakeholderId ?? null,
-      role: entry.role ?? "",
+      targetType,
+      targetValue,
       informationNeeded: entry.informationNeeded ?? "",
       preferredMethods: Array.isArray(entry.preferredMethods) ? entry.preferredMethods : [],
       frequency: entry.frequency ?? "",
       textNote: entry.textNote ?? "",
       escalationProcedures: entry.escalationProcedures ?? "",
-      responsible: entry.responsible ?? "",
+      responsibleStakeholderId: entry.responsibleStakeholderId ?? null,
     });
     setEntryDialogOpen(true);
   };
 
   const handleSave = () => {
-    if (!form.informationNeeded.trim() && !form.role.trim() && !form.stakeholderId) {
-      toast.error("Please fill in at least Stakeholder/Role and Information Needed");
+    if (!form.targetValue) {
+      toast.error("Please select a target (Stakeholder, Role, or Job)");
       return;
     }
-    const payload = {
-      stakeholderId: form.stakeholderId,
-      role: form.role || undefined,
+    if (!form.informationNeeded.trim()) {
+      toast.error("Please fill in Information Needed");
+      return;
+    }
+
+    // Build payload based on targetType
+    const payload: any = {
+      targetType: form.targetType,
+      targetValue: form.targetValue,
+      stakeholderId: form.targetType === "stakeholder" ? Number(form.targetValue) : undefined,
+      role: form.targetType === "role" ? form.targetValue : undefined,
       informationNeeded: form.informationNeeded,
       preferredMethods: form.preferredMethods,
       frequency: form.frequency || undefined,
       textNote: form.textNote || undefined,
       escalationProcedures: form.escalationProcedures || undefined,
-      responsible: form.responsible || undefined,
+      responsibleStakeholderId: form.responsibleStakeholderId ?? undefined,
+      responsible: form.responsibleStakeholderId
+        ? (stakeholderMap[form.responsibleStakeholderId]?.fullName ?? undefined)
+        : undefined,
     };
+
     if (editing) {
-      updateMut.mutate({ id: editing.id, ...payload });
+      updateMut.mutate({ id: editing.id, data: payload });
     } else {
       createMut.mutate({ projectId, ...payload });
     }
@@ -352,19 +403,19 @@ export default function CommunicationPlan() {
       .slice(0, 6);
   }, [entries]);
 
-  // ----- Stakeholder name resolution for table -----
-  const getStakeholderLabel = (entry: any): { primary: string; secondary?: string } => {
-    const stakeholderName =
-      entry.stakeholderId && stakeholderMap[entry.stakeholderId]
-        ? stakeholderMap[entry.stakeholderId].fullName
-        : null;
-    const role = entry.role || null;
-
-    if (stakeholderName && role) {
-      return { primary: stakeholderName, secondary: role };
+  // ----- Resolve display label for a table row -----
+  const getTargetLabel = (entry: any): { primary: string; secondary?: string } => {
+    if (entry.targetType === "role") {
+      return { primary: entry.targetValue ?? entry.role ?? "—", secondary: "By Role" };
     }
-    if (stakeholderName) return { primary: stakeholderName };
-    if (role) return { primary: role };
+    if (entry.targetType === "job") {
+      return { primary: entry.targetValue ?? "—", secondary: "By Job" };
+    }
+    // stakeholder (default/legacy)
+    const sid = entry.stakeholderId ?? (entry.targetValue ? Number(entry.targetValue) : null);
+    const s = sid ? stakeholderMap[sid] : null;
+    if (s) return { primary: s.fullName, secondary: s.role ?? s.job ?? undefined };
+    if (entry.role) return { primary: entry.role };
     return { primary: "—" };
   };
 
@@ -474,7 +525,7 @@ export default function CommunicationPlan() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-44">Stakeholder / Role</TableHead>
+                <TableHead className="w-44">Target</TableHead>
                 <TableHead className="w-52">Information Needed</TableHead>
                 <TableHead className="w-52">Preferred Methods</TableHead>
                 <TableHead className="w-28">Frequency</TableHead>
@@ -486,10 +537,13 @@ export default function CommunicationPlan() {
             </TableHeader>
             <TableBody>
               {(entries as any[]).map((entry: any) => {
-                const label = getStakeholderLabel(entry);
+                const label = getTargetLabel(entry);
+                const responsibleName = entry.responsibleStakeholderId
+                  ? (stakeholderMap[entry.responsibleStakeholderId]?.fullName ?? entry.responsible ?? "—")
+                  : (entry.responsible ?? "—");
                 return (
                   <TableRow key={entry.id}>
-                    {/* Stakeholder / Role */}
+                    {/* Target */}
                     <TableCell>
                       <div className="font-medium text-sm">{label.primary}</div>
                       {label.secondary && (
@@ -507,9 +561,7 @@ export default function CommunicationPlan() {
                     {/* Preferred Methods */}
                     <TableCell>
                       <MethodsBadges
-                        methods={
-                          Array.isArray(entry.preferredMethods) ? entry.preferredMethods : []
-                        }
+                        methods={Array.isArray(entry.preferredMethods) ? entry.preferredMethods : []}
                       />
                     </TableCell>
 
@@ -520,27 +572,21 @@ export default function CommunicationPlan() {
 
                     {/* Notes */}
                     <TableCell>
-                      <span
-                        className="text-sm text-muted-foreground"
-                        title={entry.textNote ?? ""}
-                      >
+                      <span className="text-sm text-muted-foreground" title={entry.textNote ?? ""}>
                         {truncate(entry.textNote ?? "", 55) || "—"}
                       </span>
                     </TableCell>
 
                     {/* Escalation Procedures */}
                     <TableCell>
-                      <span
-                        className="text-sm text-muted-foreground"
-                        title={entry.escalationProcedures ?? ""}
-                      >
+                      <span className="text-sm text-muted-foreground" title={entry.escalationProcedures ?? ""}>
                         {truncate(entry.escalationProcedures ?? "", 55) || "—"}
                       </span>
                     </TableCell>
 
                     {/* Responsible */}
                     <TableCell>
-                      <span className="text-sm">{entry.responsible || "—"}</span>
+                      <span className="text-sm">{responsibleName}</span>
                     </TableCell>
 
                     {/* Actions */}
@@ -584,41 +630,126 @@ export default function CommunicationPlan() {
             <DialogTitle>{editing ? "Edit Entry" : "Add Communication Plan Entry"}</DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4 py-1">
-            {/* Stakeholder */}
-            <div>
-              <Label>Stakeholder (optional)</Label>
-              <StakeholderSelect
-                stakeholders={stakeholders as any[]}
-                value={
-                  form.stakeholderId && stakeholderMap[form.stakeholderId]
-                    ? stakeholderMap[form.stakeholderId].fullName
-                    : ""
-                }
-                onValueChange={(name) => {
-                  const found = (stakeholders as any[]).find((s) => s.fullName === name);
-                  setField("stakeholderId", found ? found.id : null);
-                }}
-                placeholder="Select stakeholder..."
-                projectId={projectId}
-              />
+          <div className="space-y-5 py-1">
+
+            {/* ── Target Type selector ── */}
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold">Target Type</Label>
+              <div className="flex gap-2">
+                {(["stakeholder", "role", "job"] as TargetType[]).map((type) => {
+                  const labels: Record<TargetType, string> = {
+                    stakeholder: "Stakeholder",
+                    role: "By Role",
+                    job: "By Job",
+                  };
+                  const active = form.targetType === type;
+                  return (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => {
+                        setField("targetType", type);
+                        setField("targetValue", "");
+                      }}
+                      className={`flex-1 py-2 px-3 rounded-lg border text-sm font-medium transition-colors ${
+                        active
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-background text-foreground border-border hover:bg-muted"
+                      }`}
+                    >
+                      {labels[type]}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
-            {/* Role / Group Label */}
-            <div>
-              <Label>Role / Group Label (optional)</Label>
-              <Input
-                value={form.role}
-                onChange={(e) => setField("role", e.target.value)}
-                placeholder="e.g. Executive Sponsors, QA Team..."
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Used when no stakeholder is selected, or as an additional label.
-              </p>
-            </div>
+            {/* ── Conditional target value ── */}
+            {form.targetType === "stakeholder" && (
+              <div className="space-y-1.5">
+                <Label>Stakeholder</Label>
+                <Select
+                  value={form.targetValue || "__none__"}
+                  onValueChange={(v) => setField("targetValue", v === "__none__" ? "" : v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select stakeholder..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">— Select stakeholder —</SelectItem>
+                    {(stakeholders as any[]).map((s: any) => (
+                      <SelectItem key={s.id} value={String(s.id)}>
+                        <span className="font-medium">{s.fullName}</span>
+                        {(s.role || s.job) && (
+                          <span className="text-muted-foreground ml-1.5 text-xs">
+                            {[s.role, s.job].filter(Boolean).join(" · ")}
+                          </span>
+                        )}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
-            {/* Information Needed */}
-            <div>
+            {form.targetType === "role" && (
+              <div className="space-y-1.5">
+                <Label>Role</Label>
+                {uniqueRoles.length > 0 ? (
+                  <Select
+                    value={form.targetValue || "__none__"}
+                    onValueChange={(v) => setField("targetValue", v === "__none__" ? "" : v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select role..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">— Select role —</SelectItem>
+                      {uniqueRoles.map((r) => (
+                        <SelectItem key={r} value={r}>{r}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input
+                    value={form.targetValue}
+                    onChange={(e) => setField("targetValue", e.target.value)}
+                    placeholder="Enter role (no roles found on stakeholders yet)"
+                  />
+                )}
+              </div>
+            )}
+
+            {form.targetType === "job" && (
+              <div className="space-y-1.5">
+                <Label>Job Title</Label>
+                {uniqueJobs.length > 0 ? (
+                  <Select
+                    value={form.targetValue || "__none__"}
+                    onValueChange={(v) => setField("targetValue", v === "__none__" ? "" : v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select job title..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">— Select job title —</SelectItem>
+                      {uniqueJobs.map((j) => (
+                        <SelectItem key={j} value={j}>{j}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input
+                    value={form.targetValue}
+                    onChange={(e) => setField("targetValue", e.target.value)}
+                    placeholder="Enter job title (no jobs found on stakeholders yet)"
+                  />
+                )}
+              </div>
+            )}
+
+            {/* ── Information Needed ── */}
+            <div className="space-y-1.5">
               <Label>Information Needed</Label>
               <Textarea
                 rows={3}
@@ -628,10 +759,10 @@ export default function CommunicationPlan() {
               />
             </div>
 
-            {/* Preferred Methods */}
-            <div>
+            {/* ── Preferred Methods ── */}
+            <div className="space-y-1.5">
               <Label>Preferred Methods</Label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-1.5">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-1">
                 {PREFERRED_METHODS_OPTIONS.map((method) => (
                   <label
                     key={method}
@@ -647,8 +778,8 @@ export default function CommunicationPlan() {
               </div>
             </div>
 
-            {/* Frequency */}
-            <div>
+            {/* ── Frequency ── */}
+            <div className="space-y-1.5">
               <Label>Frequency</Label>
               <Select
                 value={form.frequency || "__none__"}
@@ -660,16 +791,14 @@ export default function CommunicationPlan() {
                 <SelectContent>
                   <SelectItem value="__none__">— None —</SelectItem>
                   {FREQUENCY_OPTIONS.map((f) => (
-                    <SelectItem key={f} value={f}>
-                      {f}
-                    </SelectItem>
+                    <SelectItem key={f} value={f}>{f}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
-            {/* Notes */}
-            <div>
+            {/* ── Notes ── */}
+            <div className="space-y-1.5">
               <Label>Notes</Label>
               <Textarea
                 rows={3}
@@ -679,8 +808,8 @@ export default function CommunicationPlan() {
               />
             </div>
 
-            {/* Escalation Procedures */}
-            <div>
+            {/* ── Escalation Procedures ── */}
+            <div className="space-y-1.5">
               <Label>Escalation Procedures</Label>
               <Textarea
                 rows={3}
@@ -690,14 +819,32 @@ export default function CommunicationPlan() {
               />
             </div>
 
-            {/* Responsible */}
-            <div>
+            {/* ── Responsible (stakeholder dropdown) ── */}
+            <div className="space-y-1.5">
               <Label>Responsible</Label>
-              <Input
-                value={form.responsible}
-                onChange={(e) => setField("responsible", e.target.value)}
-                placeholder="Who is responsible for this communication?"
-              />
+              <Select
+                value={form.responsibleStakeholderId != null ? String(form.responsibleStakeholderId) : "__none__"}
+                onValueChange={(v) =>
+                  setField("responsibleStakeholderId", v === "__none__" ? null : Number(v))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select responsible person..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">— Not assigned —</SelectItem>
+                  {(stakeholders as any[]).map((s: any) => (
+                    <SelectItem key={s.id} value={String(s.id)}>
+                      <span className="font-medium">{s.fullName}</span>
+                      {(s.role || s.job) && (
+                        <span className="text-muted-foreground ml-1.5 text-xs">
+                          {[s.role, s.job].filter(Boolean).join(" · ")}
+                        </span>
+                      )}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 

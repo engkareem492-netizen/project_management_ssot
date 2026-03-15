@@ -1513,6 +1513,8 @@ export const communicationPlanEntries = mysqlTable("communicationPlanEntries", {
   id: int("id").autoincrement().primaryKey(),
   projectId: int("projectId").notNull(),
   stakeholderId: int("stakeholderId"),
+  targetType: mysqlEnum("targetType", ["stakeholder", "role", "job"]),
+  targetValue: varchar("targetValue", { length: 300 }),
   role: varchar("role", { length: 200 }),
   informationNeeded: text("informationNeeded"),
   preferredMethods: json("preferredMethods").$type<string[]>(),
@@ -1520,6 +1522,7 @@ export const communicationPlanEntries = mysqlTable("communicationPlanEntries", {
   textNote: text("textNote"),
   escalationProcedures: text("escalationProcedures"),
   responsible: varchar("responsible", { length: 200 }),
+  responsibleStakeholderId: int("responsibleStakeholderId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
