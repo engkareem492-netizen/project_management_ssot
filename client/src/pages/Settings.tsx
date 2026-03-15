@@ -105,6 +105,15 @@ export default function Settings() {
   });
   const [copyLoading, setCopyLoading] = useState(false);
 
+  // Work-week calendar configuration
+  const [wwForm, setWwForm] = useState(() => {
+    try {
+      const saved = localStorage.getItem(`workWeek_${currentProjectId}`);
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return { workDays: [0, 1, 2, 3, 4], workStartHour: 8, workEndHour: 17, endOfWeekDay: 4 };
+  });
+
   const projectQuery = trpc.projects.list.useQuery();
   const currentProject = projectQuery.data?.find(p => p.id === currentProjectId);
   const isCreator = user && currentProject?.createdBy === user.id;
