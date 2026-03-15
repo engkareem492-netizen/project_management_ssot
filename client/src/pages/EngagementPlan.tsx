@@ -586,103 +586,189 @@ function StakeholderAnalysisTab({
 
       {/* Stakeholder Detail Sheet */}
       <Sheet open={!!selectedStakeholder} onOpenChange={(v) => !v && setSelectedStakeholder(null)}>
-        <SheetContent className="w-[380px] sm:w-[480px] overflow-y-auto">
+        <SheetContent className="w-[400px] sm:w-[480px] overflow-y-auto p-0">
           {selectedStakeholder && (
             <>
-              <SheetHeader className="mb-4">
-                <SheetTitle className="flex items-center gap-3">
-                  <div
-                    className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0"
-                    style={{ backgroundColor: getStrategyColor(selectedStakeholder.engagementStrategy) }}
-                  >
-                    {getInitials(selectedStakeholder.fullName)}
-                  </div>
-                  <div>
-                    <div className="text-base font-semibold leading-tight">{selectedStakeholder.fullName}</div>
-                    {selectedStakeholder.position && (
-                      <div className="text-sm text-muted-foreground">{selectedStakeholder.position}</div>
+              {/* Hero Header */}
+              <div
+                className="px-6 pt-8 pb-6"
+                style={{ background: `linear-gradient(135deg, ${getStrategyColor(selectedStakeholder.engagementStrategy)}22 0%, ${getStrategyColor(selectedStakeholder.engagementStrategy)}08 100%)`, borderBottom: `3px solid ${getStrategyColor(selectedStakeholder.engagementStrategy)}` }}
+              >
+                <SheetHeader>
+                  <SheetTitle asChild>
+                    <div className="flex items-start gap-4">
+                      <div
+                        className="w-14 h-14 rounded-2xl flex items-center justify-center text-white text-lg font-bold shrink-0 shadow-md"
+                        style={{ backgroundColor: getStrategyColor(selectedStakeholder.engagementStrategy) }}
+                      >
+                        {getInitials(selectedStakeholder.fullName)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-lg font-bold leading-tight text-foreground">{selectedStakeholder.fullName}</div>
+                        {selectedStakeholder.position && (
+                          <div className="text-sm text-muted-foreground mt-0.5">{selectedStakeholder.position}</div>
+                        )}
+                        {selectedStakeholder.job && (
+                          <div className="text-xs text-muted-foreground">{selectedStakeholder.job}</div>
+                        )}
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {selectedStakeholder.classification && (
+                            <Badge variant="secondary" className="text-xs">{selectedStakeholder.classification}</Badge>
+                          )}
+                          {selectedStakeholder.engagementStrategy && (
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${getStrategyBadgeClass(selectedStakeholder.engagementStrategy)}`}>
+                              {selectedStakeholder.engagementStrategy}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </SheetTitle>
+                </SheetHeader>
+              </div>
+
+              <div className="px-6 py-5 space-y-5 text-sm">
+
+                {/* Identity */}
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Identity</p>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-0.5">Role</p>
+                      <p className="font-medium">{selectedStakeholder.role || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-0.5">Department</p>
+                      <p className="font-medium">{selectedStakeholder.department || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-0.5">Organisation</p>
+                      <p className="font-medium">{selectedStakeholder.organisation || "—"}</p>
+                    </div>
+                    {selectedStakeholder.job && (
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-0.5">Job Title</p>
+                        <p className="font-medium">{selectedStakeholder.job}</p>
+                      </div>
                     )}
                   </div>
-                </SheetTitle>
-              </SheetHeader>
-
-              <div className="space-y-4 text-sm">
-                {/* Classification & Role */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">Classification</p>
-                    <Badge variant="secondary">{selectedStakeholder.classification ?? "—"}</Badge>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">Role</p>
-                    <p className="font-medium">{selectedStakeholder.role ?? "—"}</p>
-                  </div>
                 </div>
 
-                {/* Department & Organisation */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">Department</p>
-                    <p>{selectedStakeholder.department ?? "—"}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">Organisation</p>
-                    <p>{selectedStakeholder.organisation ?? "—"}</p>
-                  </div>
-                </div>
+                <div className="border-t" />
 
                 {/* Contact */}
                 {(selectedStakeholder.email || selectedStakeholder.phone) && (
-                  <div>
-                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">Contact</p>
-                    {selectedStakeholder.email && <p className="text-blue-600">{selectedStakeholder.email}</p>}
-                    {selectedStakeholder.phone && <p>{selectedStakeholder.phone}</p>}
-                  </div>
+                  <>
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Contact</p>
+                      <div className="space-y-1.5">
+                        {selectedStakeholder.email && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-muted-foreground text-xs w-12">Email</span>
+                            <a href={`mailto:${selectedStakeholder.email}`} className="text-blue-600 hover:underline truncate">{selectedStakeholder.email}</a>
+                          </div>
+                        )}
+                        {selectedStakeholder.phone && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-muted-foreground text-xs w-12">Phone</span>
+                            <span>{selectedStakeholder.phone}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="border-t" />
+                  </>
                 )}
 
                 {/* Engagement */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">Current Status</p>
-                    <StatusBadge status={selectedStakeholder.currentEngagementStatus} />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">Desired Status</p>
-                    <StatusBadge status={selectedStakeholder.desiredEngagementStatus} />
-                  </div>
-                </div>
-
-                {/* Strategy */}
                 <div>
-                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">Engagement Strategy</p>
-                  {selectedStakeholder.engagementStrategy ? (
-                    <span
-                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${getStrategyBadgeClass(selectedStakeholder.engagementStrategy)}`}
-                    >
-                      {selectedStakeholder.engagementStrategy}
-                    </span>
-                  ) : <span className="text-muted-foreground">—</span>}
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Engagement</p>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-3 mb-3">
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Current Status</p>
+                      <StatusBadge status={selectedStakeholder.currentEngagementStatus} />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Desired Status</p>
+                      <StatusBadge status={selectedStakeholder.desiredEngagementStatus} />
+                    </div>
+                  </div>
+
+                  {/* Power / Interest bars */}
+                  <div className="space-y-2">
+                    <div>
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="text-muted-foreground">Power Level</span>
+                        <span className="font-semibold">{selectedStakeholder.powerLevel ?? 0} / 5</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-muted overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{ width: `${((selectedStakeholder.powerLevel ?? 0) / 5) * 100}%`, backgroundColor: getStrategyColor(selectedStakeholder.engagementStrategy) }}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="text-muted-foreground">Interest Level</span>
+                        <span className="font-semibold">{selectedStakeholder.interestLevel ?? 0} / 5</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-muted overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{ width: `${((selectedStakeholder.interestLevel ?? 0) / 5) * 100}%`, backgroundColor: getStrategyColor(selectedStakeholder.engagementStrategy) }}
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
-                {/* Power / Interest */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">Power Level</p>
-                    <p className="font-semibold text-base">{selectedStakeholder.powerLevel ?? "—"} / 5</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">Interest Level</p>
-                    <p className="font-semibold text-base">{selectedStakeholder.interestLevel ?? "—"} / 5</p>
-                  </div>
-                </div>
+                <div className="border-t" />
+
+                {/* Communication */}
+                {(selectedStakeholder.communicationFrequency || selectedStakeholder.communicationChannel || selectedStakeholder.communicationMessage || selectedStakeholder.communicationResponsible) && (
+                  <>
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Communication</p>
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                        {selectedStakeholder.communicationFrequency && (
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-0.5">Frequency</p>
+                            <p className="font-medium">{selectedStakeholder.communicationFrequency}</p>
+                          </div>
+                        )}
+                        {selectedStakeholder.communicationChannel && (
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-0.5">Channel</p>
+                            <p className="font-medium">{selectedStakeholder.communicationChannel}</p>
+                          </div>
+                        )}
+                        {selectedStakeholder.communicationResponsible && (
+                          <div className="col-span-2">
+                            <p className="text-xs text-muted-foreground mb-0.5">Responsible</p>
+                            <p className="font-medium">{selectedStakeholder.communicationResponsible}</p>
+                          </div>
+                        )}
+                        {selectedStakeholder.communicationMessage && (
+                          <div className="col-span-2">
+                            <p className="text-xs text-muted-foreground mb-0.5">Key Message</p>
+                            <p className="text-muted-foreground italic">"{selectedStakeholder.communicationMessage}"</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="border-t" />
+                  </>
+                )}
 
                 {/* Notes */}
                 {selectedStakeholder.notes && (
                   <div>
-                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">Notes</p>
-                    <p className="text-sm text-muted-foreground whitespace-pre-line">{selectedStakeholder.notes}</p>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2">Notes</p>
+                    <p className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed bg-muted/50 rounded-lg p-3">{selectedStakeholder.notes}</p>
                   </div>
                 )}
+
               </div>
             </>
           )}
@@ -1564,13 +1650,15 @@ function TaskGroupPanel({
                 className="flex items-center gap-1 pr-1"
               >
                 {s.fullName ?? s.stakeholderName ?? "Unknown"}
-                <button
-                  type="button"
-                  className="ml-1 hover:text-destructive"
-                  onClick={() => removeSubjectMut.mutate({ id: s.id })}
+                <span
+                  role="button"
+                  tabIndex={0}
+                  className="ml-1 cursor-pointer hover:text-destructive"
+                  onClick={(e) => { e.stopPropagation(); removeSubjectMut.mutate({ taskGroupId: group.id, stakeholderId: s.stakeholderId ?? s.id }); }}
+                  onKeyDown={(e) => e.key === 'Enter' && removeSubjectMut.mutate({ taskGroupId: group.id, stakeholderId: s.stakeholderId ?? s.id })}
                 >
                   <X className="h-3 w-3" />
-                </button>
+                </span>
               </Badge>
             ))}
 
