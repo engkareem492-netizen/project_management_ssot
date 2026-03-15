@@ -1,10 +1,20 @@
-import { useState } from "react";
+/**
+ * KanbanBoard — reusable drag-and-drop board component
+ * Uses @dnd-kit/core + @dnd-kit/sortable
+ *
+ * Props:
+ *   columns    — ordered list of { id, label, color } defining the columns
+ *   items      — flat list of cards; each must have { id, columnId, ...rest }
+ *   renderCard — render function for a single card given (item, isDragging)
+ *   onMove     — called when a card is dropped: (itemId, newColumnId)
+ *   isLoading  — show skeleton state
+ */
 import {
   DndContext,
-  DragOverlay,
-  DragStartEvent,
   DragEndEvent,
   DragOverEvent,
+  DragOverlay,
+  DragStartEvent,
   PointerSensor,
   useSensor,
   useSensors,
@@ -12,172 +22,195 @@ import {
 } from "@dnd-kit/core";
 import {
   SortableContext,
+  useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { useDroppable } from "@dnd-kit/core";
-import KanbanCard, { KanbanCardDisplay } from "./KanbanCard";
-import { cn } from "@/lib/utils";
+import { CSS } from "@dnd-kit/utilities";
+import { useState, useMemo } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 
-interface KanbanColumnDef {
+export interface KanbanColumn {
   id: string;
   label: string;
-  color?: string;
+  color?: string; // tailwind bg class e.g. "bg-blue-500"
+  textColor?: string; // tailwind text class
 }
 
-interface KanbanItem {
-  id: number;
-  columnId: string;
-  title: string;
-  subtitle?: string;
-  priority?: string;
-  dueDate?: string;
-  assignee?: string;
-  badges?: { label: string; color?: string }[];
+export interface KanbanItem {
+  id: number | string;
+  columnId: string; // maps to KanbanColumn.id
+  [key: string]: unknown;
 }
 
 interface KanbanBoardProps {
-  columns: KanbanColumnDef[];
+  columns: KanbanColumn[];
   items: KanbanItem[];
-  onItemMove: (itemId: number, newColumnId: string) => void;
+  renderCard: (item: KanbanItem, isDragging?: boolean) => React.ReactNode;
+  onMove: (itemId: number | string, newColumnId: string) => void;
   isLoading?: boolean;
+  wipLimits?: Record<string, number>; // columnId → max items
 }
 
-function DroppableColumn({
-  column,
-  items,
-  isOver,
+/* ── Sortable card wrapper ── */
+function SortableCard({
+  item,
+  renderCard,
 }: {
-  column: KanbanColumnDef;
-  items: KanbanItem[];
-  isOver: boolean;
+  item: KanbanItem;
+  renderCard: (item: KanbanItem, isDragging?: boolean) => React.ReactNode;
 }) {
-  const { setNodeRef } = useDroppable({ id: `col-${column.id}` });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: item.id });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+    cursor: "grab",
+  };
 
   return (
-    <div
-      ref={setNodeRef}
-      className={cn(
-        "flex flex-col rounded-xl border min-w-[260px] max-w-[300px] flex-shrink-0 transition-colors",
-        isOver
-          ? "border-blue-400 bg-blue-50 dark:bg-blue-950/30"
-          : "border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-900"
-      )}
-      style={{ minHeight: 200 }}
-    >
-      {/* Column header */}
-      <div className="flex items-center justify-between px-3 py-2.5 border-b border-gray-200 dark:border-zinc-700">
-        <div className="flex items-center gap-2">
-          {column.color && (
-            <div
-              className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-              style={{ backgroundColor: column.color }}
-            />
-          )}
-          <span className="text-sm font-semibold text-gray-700 dark:text-zinc-200">
-            {column.label}
-          </span>
-        </div>
-        <span className="text-xs bg-gray-200 dark:bg-zinc-700 text-gray-600 dark:text-zinc-300 rounded-full px-2 py-0.5 font-medium">
-          {items.length}
-        </span>
-      </div>
-
-      {/* Cards */}
-      <div className="flex flex-col gap-2 p-2 flex-1">
-        <SortableContext
-          items={items.map((i) => `card-${i.id}`)}
-          strategy={verticalListSortingStrategy}
-        >
-          {items.map((item) => (
-            <KanbanCard key={item.id} {...item} />
-          ))}
-        </SortableContext>
-        {items.length === 0 && (
-          <div
-            className={cn(
-              "flex-1 rounded-lg border-2 border-dashed flex items-center justify-center text-xs text-gray-400 dark:text-zinc-600 p-4",
-              isOver ? "border-blue-300" : "border-gray-200 dark:border-zinc-700"
-            )}
-          >
-            Drop here
-          </div>
-        )}
-      </div>
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+      {renderCard(item, isDragging)}
     </div>
   );
 }
 
-export default function KanbanBoard({
+/* ── Column ── */
+function KanbanColumn({
+  column,
+  items,
+  renderCard,
+  wipLimit,
+}: {
+  column: KanbanColumn;
+  items: KanbanItem[];
+  renderCard: (item: KanbanItem, isDragging?: boolean) => React.ReactNode;
+  wipLimit?: number;
+}) {
+  const isOverLimit = wipLimit !== undefined && items.length > wipLimit;
+
+  return (
+    <div className="flex flex-col min-w-[260px] max-w-[300px] flex-shrink-0 bg-muted/40 rounded-xl border border-border/60 overflow-hidden">
+      {/* Column header */}
+      <div className={`flex items-center justify-between px-3 py-2.5 border-b border-border/60 ${column.color ?? "bg-muted/60"}`}>
+        <span className={`text-sm font-semibold truncate ${column.textColor ?? "text-foreground"}`}>
+          {column.label}
+        </span>
+        <Badge
+          variant="secondary"
+          className={`text-xs ml-2 flex-shrink-0 ${isOverLimit ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" : ""}`}
+        >
+          {items.length}{wipLimit !== undefined ? `/${wipLimit}` : ""}
+        </Badge>
+      </div>
+      {/* Cards */}
+      <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+        <div className="flex flex-col gap-2 p-2 min-h-[120px] flex-1 overflow-y-auto max-h-[calc(100vh-280px)]">
+          {items.map((item) => (
+            <SortableCard key={item.id} item={item} renderCard={renderCard} />
+          ))}
+          {items.length === 0 && (
+            <div className="flex items-center justify-center h-20 text-xs text-muted-foreground border-2 border-dashed border-border/40 rounded-lg">
+              Drop here
+            </div>
+          )}
+        </div>
+      </SortableContext>
+    </div>
+  );
+}
+
+/* ── Main Board ── */
+export function KanbanBoard({
   columns,
   items,
-  onItemMove,
+  renderCard,
+  onMove,
   isLoading,
+  wipLimits,
 }: KanbanBoardProps) {
   const [activeItem, setActiveItem] = useState<KanbanItem | null>(null);
-  const [overColumnId, setOverColumnId] = useState<string | null>(null);
+  /* local shadow state for instant visual feedback */
+  const [localItems, setLocalItems] = useState<KanbanItem[]>(items);
+
+  /* sync when server data changes */
+  useMemo(() => {
+    setLocalItems(items);
+  }, [items]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
 
+  const itemsByColumn = useMemo(() => {
+    const map: Record<string, KanbanItem[]> = {};
+    for (const col of columns) map[col.id] = [];
+    for (const item of localItems) {
+      const colId = item.columnId;
+      if (map[colId]) map[colId].push(item);
+      else {
+        /* unknown status → put in first column */
+        map[columns[0]?.id ?? ""]?.push({ ...item, columnId: columns[0]?.id ?? "" });
+      }
+    }
+    return map;
+  }, [localItems, columns]);
+
   function handleDragStart(event: DragStartEvent) {
-    const cardIdStr = event.active.id as string;
-    // id format: "card-{itemId}"
-    const itemId = parseInt(cardIdStr.replace("card-", ""), 10);
-    const found = items.find((i) => i.id === itemId);
+    const found = localItems.find((i) => i.id === event.active.id);
     setActiveItem(found ?? null);
   }
 
   function handleDragOver(event: DragOverEvent) {
-    const { over } = event;
-    if (!over) {
-      setOverColumnId(null);
-      return;
-    }
+    const { active, over } = event;
+    if (!over) return;
+
+    const activeId = active.id;
     const overId = over.id as string;
-    if (overId.startsWith("col-")) {
-      setOverColumnId(overId.replace("col-", ""));
-    } else if (overId.startsWith("card-")) {
-      // dragging over a card — find which column that card belongs to
-      const targetItemId = parseInt(overId.replace("card-", ""), 10);
-      const targetItem = items.find((i) => i.id === targetItemId);
-      if (targetItem) setOverColumnId(targetItem.columnId);
-    } else {
-      setOverColumnId(null);
-    }
+
+    /* find which column the over target belongs to */
+    const overColumn = columns.find((c) => c.id === overId);
+    const overItem = localItems.find((i) => i.id === overId);
+    const targetColumnId = overColumn?.id ?? overItem?.columnId;
+
+    if (!targetColumnId) return;
+
+    setLocalItems((prev) =>
+      prev.map((item) =>
+        item.id === activeId ? { ...item, columnId: targetColumnId } : item
+      )
+    );
   }
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     setActiveItem(null);
-    setOverColumnId(null);
-
-    if (!over || !activeItem) return;
+    if (!over) return;
 
     const overId = over.id as string;
-    let targetColumnId: string | null = null;
+    const overColumn = columns.find((c) => c.id === overId);
+    const overItem = localItems.find((i) => i.id === overId);
+    const targetColumnId = overColumn?.id ?? overItem?.columnId;
 
-    if (overId.startsWith("col-")) {
-      targetColumnId = overId.replace("col-", "");
-    } else if (overId.startsWith("card-")) {
-      const targetItemId = parseInt(overId.replace("card-", ""), 10);
-      const targetItem = items.find((i) => i.id === targetItemId);
-      if (targetItem) targetColumnId = targetItem.columnId;
-    }
+    if (!targetColumnId) return;
 
-    if (targetColumnId && targetColumnId !== activeItem.columnId) {
-      onItemMove(activeItem.id, targetColumnId);
-    }
+    const movedItem = localItems.find((i) => i.id === active.id);
+    if (!movedItem || movedItem.columnId === targetColumnId) return;
+
+    onMove(active.id, targetColumnId);
   }
 
   if (isLoading) {
     return (
-      <div className="flex gap-4 overflow-x-auto pb-4 pt-1 px-1">
-        {[1, 2, 3, 4].map((n) => (
-          <div
-            key={n}
-            className="min-w-[260px] h-48 bg-gray-100 dark:bg-zinc-800 rounded-xl animate-pulse"
-          />
+      <div className="flex gap-4 p-4 overflow-x-auto">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="min-w-[260px] space-y-2">
+            <Skeleton className="h-10 w-full rounded-xl" />
+            <Skeleton className="h-24 w-full rounded-lg" />
+            <Skeleton className="h-24 w-full rounded-lg" />
+          </div>
         ))}
       </div>
     );
@@ -191,23 +224,22 @@ export default function KanbanBoard({
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex gap-4 overflow-x-auto pb-4 pt-1 px-1">
-        {columns.map((col) => {
-          const colItems = items.filter((i) => i.columnId === col.id);
-          return (
-            <DroppableColumn
-              key={col.id}
-              column={col}
-              items={colItems}
-              isOver={overColumnId === col.id}
-            />
-          );
-        })}
+      <div className="flex gap-4 p-4 overflow-x-auto pb-6">
+        {columns.map((col) => (
+          <KanbanColumn
+            key={col.id}
+            column={col}
+            items={itemsByColumn[col.id] ?? []}
+            renderCard={renderCard}
+            wipLimit={wipLimits?.[col.id]}
+          />
+        ))}
       </div>
-
       <DragOverlay>
         {activeItem ? (
-          <KanbanCardDisplay {...activeItem} isDragging />
+          <div className="opacity-90 rotate-1 shadow-2xl">
+            {renderCard(activeItem, true)}
+          </div>
         ) : null}
       </DragOverlay>
     </DndContext>
