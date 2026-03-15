@@ -132,6 +132,11 @@ export default function Resources() {
   const [calEditStakeholderName, setCalEditStakeholderName] = useState<string>("");
   const [calEditType, setCalEditType] = useState<"Working" | "Leave" | "Holiday" | "Training">("Leave");
   const [calEditHours, setCalEditHours] = useState("0");
+  // Holiday stakeholder assignment
+  const [calHolidayScope, setCalHolidayScope] = useState<"all" | "selected">("all");
+  const [calHolidayStakeholderIds, setCalHolidayStakeholderIds] = useState<number[]>([]);
+  // Stakeholder task summary popup
+  const [taskSummaryStakeholder, setTaskSummaryStakeholder] = useState<any | null>(null);
   const [calEditNotes, setCalEditNotes] = useState("");
   const [calSkipWeekends, setCalSkipWeekends] = useState(true);
   const [showCalDialog, setShowCalDialog] = useState(false);
@@ -352,8 +357,11 @@ export default function Resources() {
     setCalEditDate(date);
     setCalEditEndDate(date);
     setCalEntryMode(mode);
-    setCalEditType(existing?.type ?? "Leave");
-    setCalEditHours(existing?.availableHours ?? "0");
+    const entryType = existing?.type ?? "Leave";
+    setCalEditType(entryType);
+    setCalEditHours(existing?.availableHours ?? (entryType === "Working" || entryType === "Training" ? "8" : "0"));
+    setCalHolidayScope("all");
+    setCalHolidayStakeholderIds([]);
     setCalEditNotes(existing?.notes ?? "");
     setCalSkipWeekends(true);
     setShowCalDialog(true);
@@ -365,28 +373,53 @@ export default function Resources() {
   }
 
   function saveCalEntry() {
-    if (!calEditStakeholder || !calEditDate) return;
-    if (calEntryMode === "range" && calEditEndDate && calEditEndDate !== calEditDate) {
-      upsertCalRange.mutate({
-        stakeholderId: calEditStakeholder,
-        projectId,
-        startDate: calEditDate,
-        endDate: calEditEndDate,
-        type: calEditType,
-        availableHours: calEditHours,
-        notes: calEditNotes,
-        skipWeekends: calSkipWeekends,
-      });
+    if (!calEditDate) return;
+
+    // Determine which stakeholders to apply the entry to
+    let targetIds: number[] = [];
+    if (calEditType === "Holiday") {
+      if (calHolidayScope === "all") {
+        targetIds = (stakeholders as any[]).map((s: any) => s.id);
+      } else {
+        targetIds = calHolidayStakeholderIds;
+      }
+      if (targetIds.length === 0) { toast.error("Select at least one stakeholder for this holiday"); return; }
     } else {
-      upsertCalEntry.mutate({
-        stakeholderId: calEditStakeholder,
-        projectId,
-        date: calEditDate,
-        type: calEditType,
-        availableHours: calEditHours,
-        notes: calEditNotes,
-      });
+      if (!calEditStakeholder) return;
+      targetIds = [calEditStakeholder];
     }
+
+    const savePromises = targetIds.map(sid => {
+      if (calEntryMode === "range" && calEditEndDate && calEditEndDate !== calEditDate) {
+        return upsertCalRange.mutateAsync({
+          stakeholderId: sid,
+          projectId,
+          startDate: calEditDate!,
+          endDate: calEditEndDate,
+          type: calEditType,
+          availableHours: calEditHours,
+          notes: calEditNotes,
+          skipWeekends: calSkipWeekends,
+        });
+      } else {
+        return upsertCalEntry.mutateAsync({
+          stakeholderId: sid,
+          projectId,
+          date: calEditDate!,
+          type: calEditType,
+          availableHours: calEditHours,
+          notes: calEditNotes,
+        });
+      }
+    });
+
+    Promise.all(savePromises).then(() => {
+      refetchCal();
+      setShowCalDialog(false);
+      toast.success(calEditType === "Holiday" && targetIds.length > 1
+        ? `Holiday applied to ${targetIds.length} stakeholders`
+        : "Calendar entry saved");
+    }).catch(e => toast.error(e.message ?? "Failed to save"));
   }
 
   if (!currentProjectId) {
@@ -565,10 +598,15 @@ export default function Resources() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {stakeholders.map((s: any) => {
                 const name = s.fullName ?? s.name ?? `Stakeholder ${s.id}`;
-                const assignedCount = workloadData.find(w => w.name === name)?.totalAssigned ?? 0;
+                const wl = workloadData.find(w => w.name === name);
+                const assignedCount = wl?.totalAssigned ?? 0;
                 const cls = s.classification ?? (s.isInternalTeam ? "TeamMember" : "Stakeholder");
                 return (
-                  <div key={s.id} className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-sm transition-shadow">
+                  <div
+                    key={s.id}
+                    className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow cursor-pointer"
+                    onClick={() => setTaskSummaryStakeholder({ s, wl, name })}
+                  >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -579,9 +617,18 @@ export default function Resources() {
                         {s.email && <div className="flex items-center gap-1 mt-0.5 text-xs text-muted-foreground"><Mail className="w-3 h-3" />{s.email}</div>}
                         {s.department && <div className="text-xs text-muted-foreground mt-0.5">{s.department}</div>}
                       </div>
-                      <div className="text-right shrink-0"><div className="text-xl font-bold">{assignedCount}</div><div className="text-[10px] text-muted-foreground">tasks</div></div>
+                      <div className="text-right shrink-0">
+                        <div className="text-xl font-bold">{assignedCount}</div>
+                        <div className="text-[10px] text-muted-foreground">tasks</div>
+                      </div>
                     </div>
                     {s.engagementStrategy && <div className="mt-2"><Badge variant="outline" className="text-[10px]">{s.engagementStrategy}</Badge></div>}
+                    {assignedCount > 0 && (
+                      <div className="mt-2 flex gap-2 text-[10px] text-muted-foreground">
+                        {wl && wl.thisWeek > 0 && <span className="bg-blue-50 text-blue-600 rounded px-1.5 py-0.5">{wl.thisWeek} this week</span>}
+                        {wl && wl.nextWeek > 0 && <span className="bg-muted rounded px-1.5 py-0.5">{wl.nextWeek} next week</span>}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -1068,7 +1115,13 @@ export default function Resources() {
             {/* Type */}
             <div className="space-y-1">
               <Label>Entry Type</Label>
-              <Select value={calEditType} onValueChange={v => setCalEditType(v as any)}>
+              <Select value={calEditType} onValueChange={v => {
+                const t = v as "Working" | "Leave" | "Holiday" | "Training";
+                setCalEditType(t);
+                // Auto-set sensible default hours when type changes
+                if (t === "Leave" || t === "Holiday") setCalEditHours("0");
+                else if (t === "Working" || t === "Training") setCalEditHours("8");
+              }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Working">Working</SelectItem>
@@ -1078,6 +1131,51 @@ export default function Resources() {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Holiday stakeholder assignment */}
+            {calEditType === "Holiday" && (
+              <div className="space-y-2">
+                <Label>Apply Holiday To</Label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setCalHolidayScope("all"); setCalHolidayStakeholderIds([]); }}
+                    className={`flex-1 py-1.5 px-3 rounded-lg border text-sm font-medium transition-colors ${
+                      calHolidayScope === "all" ? "bg-primary text-primary-foreground border-primary" : "bg-background border-border hover:bg-muted"
+                    }`}
+                  >
+                    All Stakeholders
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCalHolidayScope("selected")}
+                    className={`flex-1 py-1.5 px-3 rounded-lg border text-sm font-medium transition-colors ${
+                      calHolidayScope === "selected" ? "bg-primary text-primary-foreground border-primary" : "bg-background border-border hover:bg-muted"
+                    }`}
+                  >
+                    Select Specific
+                  </button>
+                </div>
+                {calHolidayScope === "selected" && (
+                  <div className="border rounded-md divide-y max-h-40 overflow-y-auto">
+                    {(stakeholders as any[]).map((s: any) => (
+                      <label key={s.id} className="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-muted/50 text-sm">
+                        <input
+                          type="checkbox"
+                          className="rounded"
+                          checked={calHolidayStakeholderIds.includes(s.id)}
+                          onChange={() => setCalHolidayStakeholderIds(prev =>
+                            prev.includes(s.id) ? prev.filter(x => x !== s.id) : [...prev, s.id]
+                          )}
+                        />
+                        <span className="font-medium">{s.fullName ?? s.name}</span>
+                        {s.role && <span className="text-xs text-muted-foreground ml-1">{s.role}</span>}
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Available Hours */}
             <div className="space-y-1">
@@ -1181,6 +1279,89 @@ export default function Resources() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ─── Task Summary Popup ──────────────────────────────────────────── */}
+      {taskSummaryStakeholder && (() => {
+        const { s, wl, name } = taskSummaryStakeholder;
+        const stTasks = (tasks as any[]).filter((t: any) => t.responsible === name || t.responsible === s.fullName || t.responsible === s.name);
+        const byStatus: Record<string, any[]> = {};
+        stTasks.forEach((t: any) => {
+          const st = t.status ?? "Unknown";
+          if (!byStatus[st]) byStatus[st] = [];
+          byStatus[st].push(t);
+        });
+        const statusColors: Record<string, string> = {
+          "Completed": "bg-green-100 text-green-700",
+          "In Progress": "bg-blue-100 text-blue-700",
+          "Not Started": "bg-gray-100 text-gray-600",
+          "On Hold": "bg-yellow-100 text-yellow-700",
+          "Cancelled": "bg-red-100 text-red-600",
+        };
+        const cls = s.classification ?? (s.isInternalTeam ? "TeamMember" : "Stakeholder");
+        return (
+          <Dialog open={!!taskSummaryStakeholder} onOpenChange={() => setTaskSummaryStakeholder(null)}>
+            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Users className="w-4 h-4" />
+                  {name} — Task Summary
+                </DialogTitle>
+                <div className="flex items-center gap-2 flex-wrap text-sm text-muted-foreground mt-1">
+                  {s.role && <span className="flex items-center gap-1"><Briefcase className="w-3 h-3" />{s.role}</span>}
+                  <Badge className={`text-[10px] px-1 py-0 ${classificationBadge(cls)}`}>{cls}</Badge>
+                  {s.department && <span>{s.department}</span>}
+                </div>
+              </DialogHeader>
+              <div className="space-y-4 py-2">
+                <div className="grid grid-cols-4 gap-3">
+                  <div className="bg-muted/40 rounded-lg p-3 text-center">
+                    <div className="text-2xl font-bold">{stTasks.length}</div>
+                    <div className="text-[10px] text-muted-foreground">Total</div>
+                  </div>
+                  <div className="bg-blue-50 rounded-lg p-3 text-center">
+                    <div className="text-2xl font-bold text-blue-600">{wl?.thisWeek ?? 0}</div>
+                    <div className="text-[10px] text-muted-foreground">This Week</div>
+                  </div>
+                  <div className="bg-muted/40 rounded-lg p-3 text-center">
+                    <div className="text-2xl font-bold">{wl?.nextWeek ?? 0}</div>
+                    <div className="text-[10px] text-muted-foreground">Next Week</div>
+                  </div>
+                  <div className="bg-green-50 rounded-lg p-3 text-center">
+                    <div className="text-2xl font-bold text-green-600">{byStatus["Completed"]?.length ?? 0}</div>
+                    <div className="text-[10px] text-muted-foreground">Completed</div>
+                  </div>
+                </div>
+                {stTasks.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-6">No tasks assigned to this stakeholder.</p>
+                ) : (
+                  Object.entries(byStatus).map(([status, statusTasks]) => (
+                    <div key={status}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${statusColors[status] ?? "bg-muted text-muted-foreground"}`}>{status}</span>
+                        <span className="text-xs text-muted-foreground">{statusTasks.length} task{statusTasks.length !== 1 ? "s" : ""}</span>
+                      </div>
+                      <div className="space-y-1.5">
+                        {statusTasks.map((t: any) => (
+                          <div key={t.id ?? t.taskId} className="flex items-start justify-between gap-3 bg-muted/30 rounded-lg px-3 py-2">
+                            <div className="min-w-0">
+                              <div className="text-sm font-medium truncate">{t.description ?? t.taskId}</div>
+                              {t.taskId && <div className="text-[10px] text-muted-foreground">{t.taskId}</div>}
+                            </div>
+                            <div className="shrink-0 text-right">
+                              {t.dueDate && <div className="text-[10px] text-muted-foreground">{new Date(t.dueDate).toLocaleDateString()}</div>}
+                              {t.priority && <Badge variant="outline" className="text-[10px] px-1 py-0 mt-0.5">{t.priority}</Badge>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
     </div>
   );
 }
