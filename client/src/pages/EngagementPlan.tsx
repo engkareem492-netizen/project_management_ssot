@@ -1,4 +1,15 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
+import {
+  DndContext,
+  DragOverlay,
+  useDraggable,
+  useDroppable,
+  type DragEndEvent,
+  type DragStartEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
 import { trpc } from "@/lib/trpc";
 import { useProject } from "@/contexts/ProjectContext";
 import { Button } from "@/components/ui/button";
@@ -166,152 +177,294 @@ function StatusBadge({ status }: { status: string | null | undefined }) {
 
 // ─── Tab 1: Stakeholder Analysis ─────────────────────────────────────────────
 
-function StakeholderAnalysisTab({
+// ─── Draggable Stakeholder Token ─────────────────────────────────────────────
+
+function DraggableToken({ stakeholder, isDragging }: { stakeholder: any; isDragging?: boolean }) {
+  const { attributes, listeners, setNodeRef, transform } = useDraggable({
+    id: String(stakeholder.id),
+    data: { stakeholder },
+  });
+  const color = getStrategyColor(stakeholder.engagementStrategy);
+  const style = transform
+    ? { transform: `translate3d(${transform.x}px,${transform.y}px,0)`, zIndex: 50 }
+    : undefined;
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ ...style, backgroundColor: color, opacity: isDragging ? 0.4 : 1 }}
+      {...listeners}
+      {...attributes}
+      className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-bold shadow-md border-2 border-white cursor-grab active:cursor-grabbing select-none transition-opacity"
+      title={stakeholder.fullName}
+    >
+      {getInitials(stakeholder.fullName)}
+    </div>
+  );
+}
+
+// ─── Droppable Cell ───────────────────────────────────────────────────────────
+
+function DroppableCell({
+  power,
+  interest,
+  children,
+  isOver,
+}: {
+  power: number;
+  interest: number;
+  children: React.ReactNode;
+  isOver: boolean;
+}) {
+  const { setNodeRef } = useDroppable({ id: `cell-${power}-${interest}` });
+  // Quadrant color
+  const qColor =
+    power >= 3 && interest >= 3 ? "bg-red-50"
+    : power >= 3 && interest < 3 ? "bg-orange-50"
+    : power < 3 && interest >= 3 ? "bg-blue-50"
+    : "bg-gray-50";
+  return (
+    <div
+      ref={setNodeRef}
+      className={`relative flex flex-wrap items-center justify-center gap-1 p-1 border border-dashed border-muted-foreground/20 transition-colors ${
+        isOver ? "ring-2 ring-primary ring-inset bg-primary/10" : qColor
+      }`}
+      style={{ minHeight: 52 }}
+    >
+      {children}
+    </div>
+  );
+}
+
+// ─── Power/Interest Map ───────────────────────────────────────────────────────
+
+function PowerInterestMap({
   stakeholders,
+  onUpdate,
 }: {
   stakeholders: any[];
+  onUpdate: (id: number, power: number, interest: number) => void;
 }) {
-  // Group stakeholders by (powerLevel, interestLevel) for overlap detection
-  const bubbleGroups = useMemo(() => {
-    const groups: Record<string, any[]> = {};
-    for (const s of stakeholders) {
-      const power = s.powerLevel ?? 3;
-      const interest = s.interestLevel ?? 3;
-      const key = `${power}-${interest}`;
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(s);
-    }
-    return groups;
-  }, [stakeholders]);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
+  // Optimistic local overrides: stakeholderId -> { power, interest }
+  const [localPos, setLocalPos] = useState<Record<number, { power: number; interest: number }>>({});
 
-  // Bubble positioning: powerLevel 1-5, interestLevel 1-5
-  // Map to % within the 400x400 grid area (leave 10% padding on each side)
-  function toXPercent(interest: number) {
-    return 10 + ((interest - 1) / 4) * 80;
-  }
-  function toYPercent(power: number) {
-    // High power = top, so invert
-    return 10 + ((5 - power) / 4) * 80;
-  }
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } })
+  );
+
+  // Merge server data with local optimistic overrides
+  const resolvedStakeholders = useMemo(() => {
+    return stakeholders.map((s) => ({
+      ...s,
+      powerLevel: localPos[s.id]?.power ?? s.powerLevel ?? 3,
+      interestLevel: localPos[s.id]?.interest ?? s.interestLevel ?? 3,
+    }));
+  }, [stakeholders, localPos]);
+
+  // Build cell map: `${power}-${interest}` -> stakeholders[]
+  const cellMap = useMemo(() => {
+    const map: Record<string, any[]> = {};
+    for (const s of resolvedStakeholders) {
+      const key = `${s.powerLevel}-${s.interestLevel}`;
+      if (!map[key]) map[key] = [];
+      map[key].push(s);
+    }
+    return map;
+  }, [resolvedStakeholders]);
+
+  const activeStakeholder = useMemo(
+    () => resolvedStakeholders.find((s) => String(s.id) === activeId),
+    [activeId, resolvedStakeholders]
+  );
+
+  const handleDragStart = (e: DragStartEvent) => {
+    setActiveId(String(e.active.id));
+  };
+
+  const handleDragOver = (e: any) => {
+    setOverId(e.over?.id ?? null);
+  };
+
+  const handleDragEnd = (e: DragEndEvent) => {
+    setActiveId(null);
+    setOverId(null);
+    if (!e.over) return;
+    const cellId = String(e.over.id);
+    if (!cellId.startsWith("cell-")) return;
+    const [, p, i] = cellId.split("-");
+    const newPower = parseInt(p);
+    const newInterest = parseInt(i);
+    const stakeholderId = parseInt(String(e.active.id));
+    // Optimistic update
+    setLocalPos((prev) => ({ ...prev, [stakeholderId]: { power: newPower, interest: newInterest } }));
+    // Persist to server
+    onUpdate(stakeholderId, newPower, newInterest);
+  };
+
+  // Grid: rows = power 5 (top) → 1 (bottom), cols = interest 1 (left) → 5 (right)
+  const powers = [5, 4, 3, 2, 1];
+  const interests = [1, 2, 3, 4, 5];
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-      {/* Bubble Map */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Power / Interest Map</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="relative w-full" style={{ paddingBottom: "100%" }}>
-            <div className="absolute inset-0">
-              {/* Quadrant backgrounds */}
-              <div className="absolute inset-0 grid grid-cols-2 grid-rows-2 pointer-events-none">
-                <div className="bg-orange-50 border-r border-b border-dashed border-muted-foreground/30 flex items-start justify-start p-2">
-                  <span className="text-xs text-orange-400 font-medium">Keep Satisfied</span>
-                </div>
-                <div className="bg-red-50 border-b border-dashed border-muted-foreground/30 flex items-start justify-end p-2">
-                  <span className="text-xs text-red-400 font-medium">Manage Closely</span>
-                </div>
-                <div className="bg-gray-50 border-r border-dashed border-muted-foreground/30 flex items-end justify-start p-2">
-                  <span className="text-xs text-gray-400 font-medium">Monitor</span>
-                </div>
-                <div className="bg-blue-50 flex items-end justify-end p-2">
-                  <span className="text-xs text-blue-400 font-medium">Keep Informed</span>
-                </div>
-              </div>
+    <div className="space-y-3">
+      {/* Axis label: Interest (top) */}
+      <div className="flex items-center gap-2">
+        <div className="w-8 shrink-0" />
+        <div className="flex-1 flex justify-between text-xs text-muted-foreground px-1">
+          <span>Low Interest →</span>
+          <span>← High Interest</span>
+        </div>
+      </div>
 
-              {/* Axis labels */}
-              <div className="absolute bottom-0 left-0 right-0 flex justify-between px-2 pb-0.5 pointer-events-none">
-                <span className="text-xs text-muted-foreground">Low Interest</span>
-                <span className="text-xs text-muted-foreground">High Interest</span>
-              </div>
-              <div className="absolute top-0 bottom-0 left-0 flex flex-col justify-between py-2 pl-0.5 pointer-events-none">
-                <span className="text-xs text-muted-foreground [writing-mode:vertical-rl] rotate-180">
-                  High Power
-                </span>
-                <span className="text-xs text-muted-foreground [writing-mode:vertical-rl] rotate-180">
-                  Low Power
-                </span>
-              </div>
+      <div className="flex gap-2">
+        {/* Axis label: Power (left, vertical) */}
+        <div className="flex flex-col justify-between items-center w-7 shrink-0 py-1">
+          <span className="text-[10px] text-muted-foreground [writing-mode:vertical-rl] rotate-180 leading-none">High Power</span>
+          <span className="text-[10px] text-muted-foreground [writing-mode:vertical-rl] rotate-180 leading-none">Low Power</span>
+        </div>
 
-              {/* Stakeholder bubbles */}
-              {Object.entries(bubbleGroups).map(([key, group]) => {
-                const first = group[0];
-                const power = first.powerLevel ?? 3;
-                const interest = first.interestLevel ?? 3;
-                const x = toXPercent(interest);
-                const y = toYPercent(power);
-                const color = getStrategyColor(first.engagementStrategy);
-                const hasMultiple = group.length > 1;
+        {/* Grid */}
+        <DndContext
+          sensors={sensors}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
+          onDragEnd={handleDragEnd}
+        >
+          <div className="flex-1">
+            {/* Interest column headers */}
+            <div className="grid mb-0.5" style={{ gridTemplateColumns: `repeat(5, 1fr)` }}>
+              {interests.map((i) => (
+                <div key={i} className="text-center text-[10px] font-semibold text-muted-foreground">{i}</div>
+              ))}
+            </div>
 
-                return (
-                  <div
-                    key={key}
-                    className="absolute transform -translate-x-1/2 -translate-y-1/2"
-                    style={{ left: `${x}%`, top: `${y}%` }}
-                  >
-                    {hasMultiple ? (
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <button
-                            className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-md cursor-pointer hover:opacity-90 transition-opacity border-2 border-white"
-                            style={{ backgroundColor: color }}
-                            title={`${group.length} stakeholders here`}
-                          >
-                            {group.length}
-                          </button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-48 p-2">
-                          <p className="text-xs font-semibold text-muted-foreground mb-1">
-                            Stakeholders at this position
-                          </p>
-                          <ul className="space-y-1">
-                            {group.map((s: any) => (
-                              <li key={s.id} className="text-sm flex items-center gap-2">
-                                <span
-                                  className="w-5 h-5 rounded-full inline-flex items-center justify-center text-white text-[10px] font-bold shrink-0"
-                                  style={{ backgroundColor: getStrategyColor(s.engagementStrategy) }}
-                                >
-                                  {getInitials(s.fullName)}
-                                </span>
-                                {s.fullName}
-                              </li>
-                            ))}
-                          </ul>
-                        </PopoverContent>
-                      </Popover>
-                    ) : (
-                      <div
-                        className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-md border-2 border-white"
-                        style={{ backgroundColor: color }}
-                        title={first.fullName}
-                      >
-                        {getInitials(first.fullName)}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+            {/* Cells */}
+            <div className="grid" style={{ gridTemplateColumns: `repeat(5, 1fr)`, gridTemplateRows: `repeat(5, 1fr)` }}>
+              {powers.map((power) =>
+                interests.map((interest) => {
+                  const key = `${power}-${interest}`;
+                  const cellTokens = cellMap[key] ?? [];
+                  const cellDropId = `cell-${power}-${interest}`;
+                  return (
+                    <DroppableCell
+                      key={key}
+                      power={power}
+                      interest={interest}
+                      isOver={overId === cellDropId}
+                    >
+                      {cellTokens.map((s) => (
+                        <DraggableToken
+                          key={s.id}
+                          stakeholder={s}
+                          isDragging={String(s.id) === activeId}
+                        />
+                      ))}
+                    </DroppableCell>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Power row labels on the right */}
+            <div className="flex justify-between mt-1 px-0.5">
+              {interests.map((i) => (
+                <div key={i} className="flex-1" />
+              ))}
             </div>
           </div>
 
-          {/* Legend */}
-          <div className="mt-3 flex flex-wrap gap-2">
-            {[
-              { label: "Manage Closely", color: "#ef4444" },
-              { label: "Keep Satisfied", color: "#f97316" },
-              { label: "Keep Informed", color: "#3b82f6" },
-              { label: "Monitor", color: "#9ca3af" },
-            ].map((item) => (
-              <span key={item.label} className="flex items-center gap-1 text-xs text-muted-foreground">
-                <span
-                  className="w-3 h-3 rounded-full inline-block"
-                  style={{ backgroundColor: item.color }}
-                />
-                {item.label}
-              </span>
-            ))}
-          </div>
+          {/* Drag overlay */}
+          <DragOverlay>
+            {activeStakeholder ? (
+              <div
+                className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-bold shadow-xl border-2 border-white cursor-grabbing scale-110"
+                style={{ backgroundColor: getStrategyColor(activeStakeholder.engagementStrategy) }}
+              >
+                {getInitials(activeStakeholder.fullName)}
+              </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
+      </div>
+
+      {/* Power row labels */}
+      <div className="flex gap-2">
+        <div className="w-7 shrink-0" />
+        <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(5, 1fr)` }}>
+          {powers.map((p) => (
+            <div key={p} className="text-center text-[10px] text-muted-foreground font-semibold">{p}</div>
+          ))}
+        </div>
+      </div>
+
+      {/* Quadrant legend */}
+      <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1">
+        {[
+          { label: "Manage Closely", color: "#ef4444", hint: "High Power, High Interest" },
+          { label: "Keep Satisfied", color: "#f97316", hint: "High Power, Low Interest" },
+          { label: "Keep Informed", color: "#3b82f6", hint: "Low Power, High Interest" },
+          { label: "Monitor", color: "#9ca3af", hint: "Low Power, Low Interest" },
+        ].map((item) => (
+          <span key={item.label} className="flex items-center gap-1.5 text-xs text-muted-foreground" title={item.hint}>
+            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+            {item.label}
+          </span>
+        ))}
+      </div>
+
+      <p className="text-xs text-muted-foreground/60 italic">Drag a stakeholder token to change their Power &amp; Interest position</p>
+    </div>
+  );
+}
+
+// ─── Stakeholder Analysis Tab ─────────────────────────────────────────────────
+
+function StakeholderAnalysisTab({
+  stakeholders,
+  projectId,
+}: {
+  stakeholders: any[];
+  projectId: number;
+}) {
+  const utils = trpc.useUtils();
+  const updateMut = trpc.stakeholders.update.useMutation({
+    onSuccess: () => {
+      utils.stakeholders.list.invalidate();
+    },
+    onError: (e) => toast.error(`Failed to update position: ${e.message}`),
+  });
+
+  const handlePositionUpdate = useCallback(
+    (id: number, power: number, interest: number) => {
+      // Compute new engagement strategy based on quadrant
+      const strategy =
+        power >= 3 && interest >= 3 ? "Manage Closely"
+        : power >= 3 && interest < 3 ? "Keep Satisfied"
+        : power < 3 && interest >= 3 ? "Keep Informed"
+        : "Monitor";
+      updateMut.mutate({
+        id,
+        data: { powerLevel: power, interestLevel: interest, engagementStrategy: strategy },
+      });
+    },
+    [updateMut]
+  );
+
+  return (
+    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+      {/* Drag-and-Drop Power/Interest Map */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Power / Interest Map</CardTitle>
+          <p className="text-xs text-muted-foreground">Drag stakeholders to update their position</p>
+        </CardHeader>
+        <CardContent>
+          {stakeholders.length === 0 ? (
+            <EmptyState icon={Users} title="No stakeholders yet" description="Add stakeholders to see the map." />
+          ) : (
+            <PowerInterestMap stakeholders={stakeholders} onUpdate={handlePositionUpdate} />
+          )}
         </CardContent>
       </Card>
 
@@ -508,8 +661,10 @@ function EditStatusDialog({
     if (!stakeholder) return;
     updateMut.mutate({
       id: stakeholder.id,
-      currentEngagementStatus: currentStatus || undefined,
-      desiredEngagementStatus: desiredStatus || undefined,
+      data: {
+        currentEngagementStatus: currentStatus || undefined,
+        desiredEngagementStatus: desiredStatus || undefined,
+      },
     });
   };
 
@@ -870,7 +1025,7 @@ function TaskGroupFormDialog({
       return;
     }
     if (editGroup) {
-      updateMut.mutate({ id: editGroup.id, ...form });
+      updateMut.mutate({ id: editGroup.id, data: form });
     } else {
       createMut.mutate({ projectId, ...form });
     }
@@ -1024,7 +1179,7 @@ function TaskFormDialog({
       return;
     }
     if (editTask) {
-      updateMut.mutate({ id: editTask.id, ...form, dueDate: form.dueDate || undefined });
+      updateMut.mutate({ id: editTask.id, data: { ...form, dueDate: form.dueDate || undefined } });
     } else {
       createMut.mutate({ taskGroupId, ...form, dueDate: form.dueDate || undefined });
     }
@@ -1502,6 +1657,11 @@ export default function EngagementPlan() {
     { enabled: !!currentProjectId }
   );
 
+  // Only true Stakeholders (not Team Members or External) for engagement tabs
+  const engagementStakeholders = stakeholders.filter(
+    (s) => s.classification === "Stakeholder"
+  );
+
   if (!currentProjectId) {
     return (
       <div className="p-6">
@@ -1543,19 +1703,19 @@ export default function EngagementPlan() {
           </TabsList>
 
           <TabsContent value="analysis">
-            <StakeholderAnalysisTab stakeholders={stakeholders} />
+            <StakeholderAnalysisTab stakeholders={stakeholders} projectId={currentProjectId} />
           </TabsContent>
 
           <TabsContent value="assessment">
             <EngagementAssessmentTab
-              stakeholders={stakeholders}
+              stakeholders={engagementStakeholders}
               projectId={currentProjectId}
             />
           </TabsContent>
 
           <TabsContent value="plan">
             <EngagementPlanTab
-              stakeholders={stakeholders}
+              stakeholders={engagementStakeholders}
               projectId={currentProjectId}
             />
           </TabsContent>
