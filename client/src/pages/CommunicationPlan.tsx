@@ -720,101 +720,108 @@ export default function CommunicationPlan() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(entries as any[]).map((entry: any) => {
-                const label = getTargetLabel(entry);
-                const responsibleName = entry.responsibleStakeholderId
-                  ? (stakeholderMap[entry.responsibleStakeholderId]?.fullName ?? entry.responsible ?? "—")
-                  : (entry.responsible ?? "—");
-                const entryItems = (allCommItems as any[]).filter((i: any) => i.entryId === entry.id);
-                if (entryItems.length === 0) {
-                  return (
-                    <TableRow key={entry.id} className="border-b">
-                      <TableCell className="align-top border-r">
-                        <div className="font-medium text-sm">{label.primary}</div>
-                        {label.secondary && (
-                          <div className="text-xs text-muted-foreground mt-0.5">{label.secondary}</div>
+              {(() => {
+                const rows: React.ReactNode[] = [];
+                (entries as any[]).forEach((entry: any) => {
+                  const label = getTargetLabel(entry);
+                  const responsibleName = entry.responsibleStakeholderId
+                    ? (stakeholderMap[entry.responsibleStakeholderId]?.fullName ?? entry.responsible ?? "—")
+                    : (entry.responsible ?? "—");
+                  const entryItems = (allCommItems as any[]).filter((i: any) => i.entryId === entry.id);
+                  if (entryItems.length === 0) {
+                    rows.push(
+                      <TableRow key={entry.id} className="border-b">
+                        <TableCell className="align-top border-r">
+                          <div className="font-medium text-sm">{label.primary}</div>
+                          {label.secondary && (
+                            <div className="text-xs text-muted-foreground mt-0.5">{label.secondary}</div>
+                          )}
+                        </TableCell>
+                        <TableCell className="align-top border-r">
+                          <p className="text-sm whitespace-pre-wrap break-words max-w-[200px]">
+                            {entry.informationNeeded || "—"}
+                          </p>
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground italic" colSpan={3}>
+                          No communication lines added
+                        </TableCell>
+                        <TableCell className="align-top">
+                          <MethodsBadges methods={Array.isArray(entry.preferredMethods) ? entry.preferredMethods : []} />
+                        </TableCell>
+                        <TableCell className="align-top">
+                          <span className="text-sm">{responsibleName}</span>
+                        </TableCell>
+                        <TableCell className="text-right align-top">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(entry)} title="Edit">
+                              <Pencil className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => deleteMut.mutate({ id: entry.id })} title="Delete" disabled={deleteMut.isPending}>
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                    return;
+                  }
+                  entryItems.forEach((item: any, idx: number) => {
+                    rows.push(
+                      <TableRow key={`${entry.id}-${item.id ?? idx}`} className={idx < entryItems.length - 1 ? "border-b-0" : "border-b"}>
+                        {idx === 0 && (
+                          <TableCell rowSpan={entryItems.length} className="align-top border-r bg-muted/20">
+                            <div className="font-medium text-sm">{label.primary}</div>
+                            {label.secondary && (
+                              <div className="text-xs text-muted-foreground mt-0.5">{label.secondary}</div>
+                            )}
+                          </TableCell>
                         )}
-                      </TableCell>
-                      <TableCell className="align-top border-r">
-                        <p className="text-sm whitespace-pre-wrap break-words max-w-[200px]">
-                          {entry.informationNeeded || "—"}
-                        </p>
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground italic" colSpan={3}>
-                        No communication lines added
-                      </TableCell>
-                      <TableCell className="align-top">
-                        <MethodsBadges methods={Array.isArray(entry.preferredMethods) ? entry.preferredMethods : []} />
-                      </TableCell>
-                      <TableCell className="align-top">
-                        <span className="text-sm">{responsibleName}</span>
-                      </TableCell>
-                      <TableCell className="text-right align-top">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(entry)} title="Edit">
-                            <Pencil className="w-3.5 h-3.5" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => deleteMut.mutate({ id: entry.id })} title="Delete" disabled={deleteMut.isPending}>
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                }
-                return entryItems.map((item: any, idx: number) => (
-                  <TableRow key={`${entry.id}-${item.id}`} className={idx < entryItems.length - 1 ? "border-b-0" : "border-b"}>
-                    {idx === 0 && (
-                      <TableCell rowSpan={entryItems.length} className="align-top border-r bg-muted/20">
-                        <div className="font-medium text-sm">{label.primary}</div>
-                        {label.secondary && (
-                          <div className="text-xs text-muted-foreground mt-0.5">{label.secondary}</div>
+                        {idx === 0 && (
+                          <TableCell rowSpan={entryItems.length} className="align-top border-r bg-muted/20">
+                            <p className="text-sm whitespace-pre-wrap break-words max-w-[200px]">
+                              {entry.informationNeeded || "—"}
+                            </p>
+                          </TableCell>
                         )}
-                      </TableCell>
-                    )}
-                    {idx === 0 && (
-                      <TableCell rowSpan={entryItems.length} className="align-top border-r bg-muted/20">
-                        <p className="text-sm whitespace-pre-wrap break-words max-w-[200px]">
-                          {entry.informationNeeded || "—"}
-                        </p>
-                      </TableCell>
-                    )}
-                    <TableCell className="align-middle py-2">
-                      <span className="text-sm font-medium">{item.description || "—"}</span>
-                    </TableCell>
-                    <TableCell className="align-middle py-2">
-                      <span className="text-xs px-1.5 py-0.5 rounded bg-secondary text-secondary-foreground">
-                        {item.commType || "—"}
-                      </span>
-                    </TableCell>
-                    <TableCell className="align-middle py-2">
-                      <span className="text-sm text-muted-foreground">{item.periodic || "—"}</span>
-                    </TableCell>
-                    {idx === 0 && (
-                      <TableCell rowSpan={entryItems.length} className="align-top bg-muted/20">
-                        <MethodsBadges methods={Array.isArray(entry.preferredMethods) ? entry.preferredMethods : []} />
-                      </TableCell>
-                    )}
-                    {idx === 0 && (
-                      <TableCell rowSpan={entryItems.length} className="align-top bg-muted/20">
-                        <span className="text-sm">{responsibleName}</span>
-                      </TableCell>
-                    )}
-                    {idx === 0 && (
-                      <TableCell rowSpan={entryItems.length} className="text-right align-top bg-muted/20">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(entry)} title="Edit">
-                            <Pencil className="w-3.5 h-3.5" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => deleteMut.mutate({ id: entry.id })} title="Delete" disabled={deleteMut.isPending}>
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    )}
-                  </TableRow>
-                ));
-              })}
+                        <TableCell className="align-middle py-2">
+                          <span className="text-sm font-medium">{item.description || "—"}</span>
+                        </TableCell>
+                        <TableCell className="align-middle py-2">
+                          <span className="text-xs px-1.5 py-0.5 rounded bg-secondary text-secondary-foreground">
+                            {item.commType || "—"}
+                          </span>
+                        </TableCell>
+                        <TableCell className="align-middle py-2">
+                          <span className="text-sm text-muted-foreground">{item.periodic || "—"}</span>
+                        </TableCell>
+                        {idx === 0 && (
+                          <TableCell rowSpan={entryItems.length} className="align-top bg-muted/20">
+                            <MethodsBadges methods={Array.isArray(entry.preferredMethods) ? entry.preferredMethods : []} />
+                          </TableCell>
+                        )}
+                        {idx === 0 && (
+                          <TableCell rowSpan={entryItems.length} className="align-top bg-muted/20">
+                            <span className="text-sm">{responsibleName}</span>
+                          </TableCell>
+                        )}
+                        {idx === 0 && (
+                          <TableCell rowSpan={entryItems.length} className="text-right align-top bg-muted/20">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(entry)} title="Edit">
+                                <Pencil className="w-3.5 h-3.5" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => deleteMut.mutate({ id: entry.id })} title="Delete" disabled={deleteMut.isPending}>
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    );
+                  });
+                });
+                return rows;
+              })()}
             </TableBody>
           </Table>
         </div>
