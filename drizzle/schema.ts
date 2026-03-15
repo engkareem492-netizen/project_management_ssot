@@ -1623,3 +1623,15 @@ export const commPlanMethodOptions = mysqlTable("commPlanMethodOptions", {
 });
 export type CommPlanMethodOption = typeof commPlanMethodOptions.$inferSelect;
 export type InsertCommPlanMethodOption = typeof commPlanMethodOptions.$inferInsert;
+
+// ─── Communication Plan Input Items (Inputs Needed from Stakeholder) ──────────
+export const commPlanInputItems = mysqlTable("commPlanInputItems", {
+  id: int("id").autoincrement().primaryKey(),
+  entryId: int("entryId").notNull(),
+  projectId: int("projectId").notNull(),
+  description: varchar("description", { length: 500 }).notNull(),
+  sequence: int("sequence").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type CommPlanInputItem = typeof commPlanInputItems.$inferSelect;
+export type InsertCommPlanInputItem = typeof commPlanInputItems.$inferInsert;

@@ -8,6 +8,7 @@ import {
   commPlanItems,
   stakeholderPositionOptions,
   commPlanMethodOptions,
+  commPlanInputItems,
 } from "../../drizzle/schema";
 
 // ─── Role Options ─────────────────────────────────────────────────────────────
@@ -350,6 +351,55 @@ const methodOptionsRouter = router({
     }),
 });
 
+// ─── Input Items (Inputs Needed from Stakeholder) ────────────────────────────
+const inputItemsRouter = router({
+  listByEntry: protectedProcedure
+    .input(z.object({ entryId: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+      return await db
+        .select()
+        .from(commPlanInputItems)
+        .where(eq(commPlanInputItems.entryId, input.entryId))
+        .orderBy(commPlanInputItems.sequence, commPlanInputItems.createdAt);
+    }),
+
+  bulkReplace: protectedProcedure
+    .input(
+      z.object({
+        entryId: z.number(),
+        projectId: z.number(),
+        items: z.array(
+          z.object({
+            description: z.string(),
+            sequence: z.number(),
+          })
+        ),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("DB unavailable");
+      await db.delete(commPlanInputItems).where(eq(commPlanInputItems.entryId, input.entryId));
+      if (input.items.length > 0) {
+        await db.insert(commPlanInputItems).values(
+          input.items.map((item) => ({
+            entryId: input.entryId,
+            projectId: input.projectId,
+            description: item.description,
+            sequence: item.sequence,
+          }))
+        );
+      }
+      return await db
+        .select()
+        .from(commPlanInputItems)
+        .where(eq(commPlanInputItems.entryId, input.entryId))
+        .orderBy(commPlanInputItems.sequence);
+    }),
+});
+
 // ─── Combined export ──────────────────────────────────────────────────────────
 export const commPlanOptionsRouter = router({
   roleOptions: roleOptionsRouter,
@@ -357,4 +407,5 @@ export const commPlanOptionsRouter = router({
   items: commPlanItemsRouter,
   positionOptions: positionOptionsRouter,
   methodOptions: methodOptionsRouter,
+  inputItems: inputItemsRouter,
 });

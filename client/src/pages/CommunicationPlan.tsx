@@ -83,6 +83,12 @@ type CommNeedItem = {
   periodic: string;
 };
 
+type InputNeededItem = {
+  id?: number;
+  localId: string;
+  description: string;
+};
+
 type EntryFormData = {
   targetType: TargetType;
   targetValue: string;          // stakeholder id (string) | role string | job string
@@ -94,6 +100,7 @@ type EntryFormData = {
   escalationProcedures: string;
   responsibleStakeholderId: number | null;
   commNeeded: CommNeedItem[];
+  inputNeeded: InputNeededItem[];
 };
 
 const EMPTY_FORM: EntryFormData = {
@@ -107,6 +114,7 @@ const EMPTY_FORM: EntryFormData = {
   escalationProcedures: "",
   responsibleStakeholderId: null,
   commNeeded: [],
+  inputNeeded: [],
 };
 
 function makeLocalId() {
@@ -234,6 +242,7 @@ export default function CommunicationPlan() {
   const createMethodOption = trpc.commPlanOptions.methodOptions.create.useMutation({ onSuccess: () => refetchMethods() });
   const deleteMethodOption = trpc.commPlanOptions.methodOptions.delete.useMutation({ onSuccess: () => refetchMethods() });
   const bulkReplaceItems = trpc.commPlanOptions.items.bulkReplace.useMutation();
+  const bulkReplaceInputItems = trpc.commPlanOptions.inputItems.bulkReplace.useMutation();
 
   // ----- Inline add option state -----
   const [newRoleInput, setNewRoleInput] = useState("");
@@ -397,6 +406,7 @@ export default function CommunicationPlan() {
     };
 
     const validItems = form.commNeeded.filter(i => i.description.trim());
+    const validInputItems = form.inputNeeded.filter(i => i.description.trim());
 
     if (editing) {
       updateMut.mutate({ id: editing.id, data: payload }, {
@@ -413,6 +423,14 @@ export default function CommunicationPlan() {
               })),
             });
           }
+          await bulkReplaceInputItems.mutateAsync({
+            entryId: editing.id,
+            projectId,
+            items: validInputItems.map((item, idx) => ({
+              description: item.description,
+              sequence: idx,
+            })),
+          });
         }
       });
     } else {
@@ -430,6 +448,16 @@ export default function CommunicationPlan() {
               })),
             });
           }
+          if (entry?.id) {
+            await bulkReplaceInputItems.mutateAsync({
+              entryId: entry.id,
+              projectId,
+              items: validInputItems.map((item, idx) => ({
+                description: item.description,
+                sequence: idx,
+              })),
+            });
+          }
         }
       });
     }
@@ -437,6 +465,12 @@ export default function CommunicationPlan() {
 
   // ----- Load commNeeded items when editing -----
   const { data: editingItems = [] } = trpc.commPlanOptions.items.listByEntry.useQuery(
+    { entryId: editing?.id ?? 0 },
+    { enabled: !!editing?.id && entryDialogOpen }
+  );
+
+  // ----- Load inputNeeded items when editing -----
+  const { data: editingInputItems = [] } = trpc.commPlanOptions.inputItems.listByEntry.useQuery(
     { entryId: editing?.id ?? 0 },
     { enabled: !!editing?.id && entryDialogOpen }
   );
@@ -455,6 +489,19 @@ export default function CommunicationPlan() {
       }));
     }
   }, [editingItems, editing?.id]);
+
+  useEffect(() => {
+    if (editing && entryDialogOpen && Array.isArray(editingInputItems) && editingInputItems.length > 0) {
+      setForm(prev => ({
+        ...prev,
+        inputNeeded: (editingInputItems as any[]).map((item: any) => ({
+          id: item.id,
+          localId: makeLocalId(),
+          description: item.description ?? "",
+        })),
+      }));
+    }
+  }, [editingInputItems, editing?.id]);
 
   // ----- CommNeeded list helpers -----
   const addCommNeedRow = () => {
@@ -477,6 +524,30 @@ export default function CommunicationPlan() {
     setForm(prev => ({
       ...prev,
       commNeeded: prev.commNeeded.filter(item => item.localId !== localId),
+    }));
+  };
+
+  // ----- InputNeeded list helpers -----
+  const addInputNeedRow = () => {
+    setForm(prev => ({
+      ...prev,
+      inputNeeded: [...prev.inputNeeded, { localId: makeLocalId(), description: "" }],
+    }));
+  };
+
+  const updateInputNeedRow = (localId: string, value: string) => {
+    setForm(prev => ({
+      ...prev,
+      inputNeeded: prev.inputNeeded.map(item =>
+        item.localId === localId ? { ...item, description: value } : item
+      ),
+    }));
+  };
+
+  const removeInputNeedRow = (localId: string) => {
+    setForm(prev => ({
+      ...prev,
+      inputNeeded: prev.inputNeeded.filter(item => item.localId !== localId),
     }));
   };
 
@@ -1043,6 +1114,67 @@ export default function CommunicationPlan() {
                         size="icon"
                         className="h-8 w-8 text-red-400 hover:text-red-600 hover:bg-red-50 shrink-0 mt-0.5"
                         onClick={() => removeCommNeedRow(item.localId)}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* ── Inputs Needed from Stakeholder ── */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-semibold">Inputs Needed from Stakeholder</Label>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs gap-1"
+                  onClick={addInputNeedRow}
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Add Line
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Information, approvals, or data we need to receive from this stakeholder/group.
+              </p>
+              {form.inputNeeded.length === 0 ? (
+                <div className="border border-dashed rounded-md py-4 text-center text-xs text-muted-foreground">
+                  No inputs listed yet. Click "Add Line" to add one.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {form.inputNeeded.map((item) => (
+                    <div key={item.localId} className="flex items-center gap-2 p-2 border rounded-md bg-muted/30">
+                      <Input
+                        value={item.description}
+                        onChange={e => updateInputNeedRow(item.localId, e.target.value)}
+                        placeholder="Describe the input needed from this stakeholder..."
+                        className="h-8 text-sm flex-1"
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        className="h-8 text-xs shrink-0 px-2 font-medium"
+                        title="Mark line as saved"
+                        onClick={() => {
+                          if (item.description.trim()) {
+                            toast.success("Line noted — click Update to persist all changes");
+                          }
+                        }}
+                      >
+                        Save
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-red-400 hover:text-red-600 hover:bg-red-50 shrink-0"
+                        onClick={() => removeInputNeedRow(item.localId)}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </Button>
