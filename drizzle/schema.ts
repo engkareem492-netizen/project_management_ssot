@@ -163,6 +163,7 @@ export const stakeholders = mysqlTable("stakeholders", {
   communicationChannel: varchar("communicationChannel", { length: 100 }),
   communicationMessage: text("communicationMessage"),
   communicationResponsible: varchar("communicationResponsible", { length: 200 }),
+  communicationResponsibleId: int("communicationResponsibleId"),
   notes: text("notes"),
   // Cost / billing rate
   costPerHour: decimal("costPerHour", { precision: 10, scale: 2 }),
