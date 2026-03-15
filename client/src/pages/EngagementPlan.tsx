@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { useProject } from "@/contexts/ProjectContext";
 import { Button } from "@/components/ui/button";
@@ -191,6 +191,11 @@ function PowerInterestMap({
 }) {
   const [localPos, setLocalPos] = useState<Record<number, { power: number; interest: number }>>({});
   const [tooltip, setTooltip] = useState<{ s: any; x: number; y: number } | null>(null);
+  const [search, setSearch] = useState("");
+  // drag state
+  const [draggingId, setDraggingId] = useState<number | null>(null);
+  const [dragPos, setDragPos] = useState<{ cx: number; cy: number } | null>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
 
   const resolvedStakeholders = useMemo(() => {
     return stakeholders.map((s) => ({
@@ -201,16 +206,31 @@ function PowerInterestMap({
   }, [stakeholders, localPos]);
 
   // SVG dimensions
-  const W = 600;
-  const H = 460;
-  const PAD = { top: 36, right: 24, bottom: 52, left: 52 };
+  const W = 900;
+  const H = 660;
+  const PAD = { top: 52, right: 32, bottom: 68, left: 68 };
   const plotW = W - PAD.left - PAD.right;
   const plotH = H - PAD.top - PAD.bottom;
 
-  // Map power (1-5) and interest (1-5) to SVG coords
-  // interest → x (1=left, 5=right), power → y (1=bottom, 5=top)
+  // Convert SVG coords to power/interest values (clamped 1-5)
   const toX = (interest: number) => PAD.left + ((interest - 1) / 4) * plotW;
   const toY = (power: number) => PAD.top + ((5 - power) / 4) * plotH;
+  const fromSvgCoords = (svgX: number, svgY: number) => {
+    const interest = Math.round(Math.min(5, Math.max(1, 1 + ((svgX - PAD.left) / plotW) * 4)));
+    const power = Math.round(Math.min(5, Math.max(1, 5 - ((svgY - PAD.top) / plotH) * 4)));
+    return { power, interest };
+  };
+
+  // Get SVG point from pointer event
+  const getSvgPoint = useCallback((e: React.PointerEvent | PointerEvent) => {
+    const svg = svgRef.current;
+    if (!svg) return null;
+    const pt = svg.createSVGPoint();
+    pt.x = e.clientX;
+    pt.y = e.clientY;
+    const svgP = pt.matrixTransform(svg.getScreenCTM()!.inverse());
+    return { x: svgP.x, y: svgP.y };
+  }, []);
 
   // Cluster offset for overlapping bubbles
   const clustered = useMemo(() => {
@@ -226,7 +246,7 @@ function PowerInterestMap({
       const baseCy = toY(group[0].powerLevel);
       group.forEach((s, idx) => {
         const angle = (idx / group.length) * 2 * Math.PI;
-        const r = group.length > 1 ? 18 : 0;
+        const r = group.length > 1 ? 28 : 0;
         result.push({
           s,
           cx: baseCx + r * Math.cos(angle),
@@ -237,6 +257,50 @@ function PowerInterestMap({
     return result;
   }, [resolvedStakeholders]);
 
+  // Search filter
+  const trimmedSearch = search.trim().toLowerCase();
+  const isFiltered = trimmedSearch.length > 0;
+  const matchedIds = useMemo(() => {
+    if (!isFiltered) return null;
+    return new Set(
+      resolvedStakeholders
+        .filter((s) => s.fullName.toLowerCase().includes(trimmedSearch))
+        .map((s) => s.id)
+    );
+  }, [isFiltered, trimmedSearch, resolvedStakeholders]);
+
+  // Pointer drag handlers
+  const handlePointerDown = useCallback((e: React.PointerEvent, sId: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const pt = getSvgPoint(e);
+    if (!pt) return;
+    setDraggingId(sId);
+    setDragPos({ cx: pt.x, cy: pt.y });
+    setTooltip(null);
+    (e.target as Element).setPointerCapture(e.pointerId);
+  }, [getSvgPoint]);
+
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (draggingId === null) return;
+    const pt = getSvgPoint(e);
+    if (!pt) return;
+    // Clamp to plot area
+    const cx = Math.min(PAD.left + plotW, Math.max(PAD.left, pt.x));
+    const cy = Math.min(PAD.top + plotH, Math.max(PAD.top, pt.y));
+    setDragPos({ cx, cy });
+  }, [draggingId, getSvgPoint, PAD.left, PAD.top, plotW, plotH]);
+
+  const handlePointerUp = useCallback((e: React.PointerEvent) => {
+    if (draggingId === null || !dragPos) return;
+    const { power, interest } = fromSvgCoords(dragPos.cx, dragPos.cy);
+    // Optimistic update
+    setLocalPos((prev) => ({ ...prev, [draggingId]: { power, interest } }));
+    onUpdate(draggingId, power, interest);
+    setDraggingId(null);
+    setDragPos(null);
+  }, [draggingId, dragPos, fromSvgCoords, onUpdate]);
+
   const quadrants = [
     { label: "Keep Satisfied",  x: PAD.left,           y: PAD.top,           w: plotW/2, h: plotH/2, fill: "#fff7ed", stroke: "#f97316", textColor: "#c2410c" },
     { label: "Manage Closely",  x: PAD.left + plotW/2, y: PAD.top,           w: plotW/2, h: plotH/2, fill: "#fef2f2", stroke: "#ef4444", textColor: "#b91c1c" },
@@ -246,37 +310,49 @@ function PowerInterestMap({
 
   return (
     <div className="space-y-3">
+      {/* Search bar */}
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1 max-w-xs">
+          <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx={11} cy={11} r={8}/><path d="m21 21-4.35-4.35"/></svg>
+          <input
+            type="text"
+            placeholder="Search stakeholder…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-8 pr-8 py-1.5 text-sm border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary/40"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+        {isFiltered && matchedIds && (
+          <span className="text-xs text-muted-foreground">
+            {matchedIds.size === 0 ? "No match" : `${matchedIds.size} found`}
+          </span>
+        )}
+      </div>
+
       <div className="w-full overflow-x-auto">
         <svg
+          ref={svgRef}
           viewBox={`0 0 ${W} ${H}`}
-          className="w-full"
-          style={{ minWidth: 320, maxHeight: 480 }}
+          className="w-full select-none"
+          style={{ minWidth: 480, maxHeight: 700, touchAction: "none" }}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerLeave={handlePointerUp}
         >
           {/* Quadrant backgrounds */}
           {quadrants.map((q) => (
             <g key={q.label}>
-              <rect x={q.x} y={q.y} width={q.w} height={q.h} fill={q.fill} stroke={q.stroke} strokeWidth={1.5} strokeDasharray="4 2" rx={4} />
-              {/* Quadrant label */}
-              <text
-                x={q.x + q.w / 2}
-                y={q.y + 22}
-                textAnchor="middle"
-                fontSize={13}
-                fontWeight="700"
-                fill={q.textColor}
-                opacity={0.85}
-              >
-                {q.label}
-              </text>
-              {/* Sub-hint */}
-              <text
-                x={q.x + q.w / 2}
-                y={q.y + 37}
-                textAnchor="middle"
-                fontSize={9.5}
-                fill={q.textColor}
-                opacity={0.55}
-              >
+              <rect x={q.x} y={q.y} width={q.w} height={q.h} fill={q.fill} stroke={q.stroke} strokeWidth={2} strokeDasharray="6 3" rx={6} />
+              <text x={q.x + q.w / 2} y={q.y + 30} textAnchor="middle" fontSize={17} fontWeight="700" fill={q.textColor} opacity={0.85}>{q.label}</text>
+              <text x={q.x + q.w / 2} y={q.y + 50} textAnchor="middle" fontSize={12} fill={q.textColor} opacity={0.55}>
                 {q.label === "Keep Satisfied" && "High Power · Low Interest"}
                 {q.label === "Manage Closely" && "High Power · High Interest"}
                 {q.label === "Monitor" && "Low Power · Low Interest"}
@@ -286,91 +362,92 @@ function PowerInterestMap({
           ))}
 
           {/* Divider lines */}
-          <line x1={PAD.left + plotW/2} y1={PAD.top} x2={PAD.left + plotW/2} y2={PAD.top + plotH} stroke="#64748b" strokeWidth={2} strokeDasharray="6 3" opacity={0.5} />
-          <line x1={PAD.left} y1={PAD.top + plotH/2} x2={PAD.left + plotW} y2={PAD.top + plotH/2} stroke="#64748b" strokeWidth={2} strokeDasharray="6 3" opacity={0.5} />
+          <line x1={PAD.left + plotW/2} y1={PAD.top} x2={PAD.left + plotW/2} y2={PAD.top + plotH} stroke="#64748b" strokeWidth={2.5} strokeDasharray="8 4" opacity={0.6} />
+          <line x1={PAD.left} y1={PAD.top + plotH/2} x2={PAD.left + plotW} y2={PAD.top + plotH/2} stroke="#64748b" strokeWidth={2.5} strokeDasharray="8 4" opacity={0.6} />
 
-          {/* Y-axis label: Power */}
-          <text
-            x={14}
-            y={PAD.top + plotH / 2}
-            textAnchor="middle"
-            fontSize={11}
-            fontWeight="600"
-            fill="#64748b"
-            transform={`rotate(-90, 14, ${PAD.top + plotH / 2})`}
-          >
-            POWER
-          </text>
-          {/* Y-axis ticks */}
+          {/* Y-axis label */}
+          <text x={18} y={PAD.top + plotH / 2} textAnchor="middle" fontSize={14} fontWeight="700" fill="#64748b" transform={`rotate(-90, 18, ${PAD.top + plotH / 2})`}>POWER</text>
           {[1,2,3,4,5].map((p) => (
             <g key={p}>
-              <line x1={PAD.left - 5} y1={toY(p)} x2={PAD.left} y2={toY(p)} stroke="#94a3b8" strokeWidth={1} />
-              <text x={PAD.left - 8} y={toY(p) + 4} textAnchor="end" fontSize={9} fill="#94a3b8">{p}</text>
+              <line x1={PAD.left - 6} y1={toY(p)} x2={PAD.left} y2={toY(p)} stroke="#94a3b8" strokeWidth={1.5} />
+              <text x={PAD.left - 10} y={toY(p) + 5} textAnchor="end" fontSize={12} fill="#64748b" fontWeight="500">{p}</text>
             </g>
           ))}
 
-          {/* X-axis label: Interest */}
-          <text
-            x={PAD.left + plotW / 2}
-            y={H - 8}
-            textAnchor="middle"
-            fontSize={11}
-            fontWeight="600"
-            fill="#64748b"
-          >
-            INTEREST
-          </text>
-          {/* X-axis ticks */}
+          {/* X-axis label */}
+          <text x={PAD.left + plotW / 2} y={H - 10} textAnchor="middle" fontSize={14} fontWeight="700" fill="#64748b">INTEREST</text>
           {[1,2,3,4,5].map((i) => (
             <g key={i}>
-              <line x1={toX(i)} y1={PAD.top + plotH} x2={toX(i)} y2={PAD.top + plotH + 5} stroke="#94a3b8" strokeWidth={1} />
-              <text x={toX(i)} y={PAD.top + plotH + 16} textAnchor="middle" fontSize={9} fill="#94a3b8">{i}</text>
+              <line x1={toX(i)} y1={PAD.top + plotH} x2={toX(i)} y2={PAD.top + plotH + 6} stroke="#94a3b8" strokeWidth={1.5} />
+              <text x={toX(i)} y={PAD.top + plotH + 20} textAnchor="middle" fontSize={12} fill="#64748b" fontWeight="500">{i}</text>
             </g>
           ))}
 
           {/* Stakeholder bubbles */}
-          {clustered.map(({ s, cx, cy }) => {
+          {clustered.map(({ s, cx: baseCx, cy: baseCy }) => {
+            const isDragging = draggingId === s.id;
+            const cx = isDragging && dragPos ? dragPos.cx : baseCx;
+            const cy = isDragging && dragPos ? dragPos.cy : baseCy;
             const color = getStrategyColor(s.engagementStrategy);
             const initials = getInitials(s.fullName);
+
+            // Search filter logic
+            const isMatch = !isFiltered || (matchedIds?.has(s.id) ?? false);
+            const dimmed = isFiltered && !isMatch;
+
             return (
               <g
                 key={s.id}
-                style={{ cursor: "pointer" }}
-                onClick={() => onStakeholderClick?.(s)}
-                onMouseEnter={(e) => setTooltip({ s, x: cx, y: cy })}
+                style={{ cursor: isDragging ? "grabbing" : "grab" }}
+                opacity={dimmed ? 0.15 : 1}
+                onPointerDown={(e) => !dimmed && handlePointerDown(e, s.id)}
+                onClick={() => {
+                  if (!isDragging && !dimmed) onStakeholderClick?.(s);
+                }}
+                onMouseEnter={() => !isDragging && !dimmed && setTooltip({ s, x: cx, y: cy })}
                 onMouseLeave={() => setTooltip(null)}
               >
-                {/* Shadow */}
-                <circle cx={cx + 2} cy={cy + 2} r={18} fill="rgba(0,0,0,0.12)" />
+                {/* Drop shadow */}
+                <circle cx={cx + 3} cy={cy + 3} r={24} fill="rgba(0,0,0,0.13)" style={{ pointerEvents: "none" }} />
+                {/* Glow ring when dragging */}
+                {isDragging && <circle cx={cx} cy={cy} r={30} fill="none" stroke={color} strokeWidth={3} opacity={0.4} style={{ pointerEvents: "none" }} />}
+                {/* Highlight ring for search match */}
+                {isFiltered && isMatch && !isDragging && (
+                  <circle cx={cx} cy={cy} r={30} fill="none" stroke={color} strokeWidth={3} opacity={0.6} style={{ pointerEvents: "none" }} />
+                )}
                 {/* Main bubble */}
-                <circle cx={cx} cy={cy} r={18} fill={color} stroke="white" strokeWidth={2.5} />
+                <circle cx={cx} cy={cy} r={24} fill={color} stroke="white" strokeWidth={3} />
                 {/* Initials */}
-                <text
-                  x={cx}
-                  y={cy + 4}
-                  textAnchor="middle"
-                  fontSize={10}
-                  fontWeight="700"
-                  fill="white"
-                  style={{ pointerEvents: "none", userSelect: "none" }}
-                >
-                  {initials}
-                </text>
+                <text x={cx} y={cy + 5} textAnchor="middle" fontSize={13} fontWeight="700" fill="white" style={{ pointerEvents: "none", userSelect: "none" }}>{initials}</text>
               </g>
             );
           })}
 
-          {/* Tooltip */}
-          {tooltip && (() => {
-            const tx = Math.min(tooltip.x + 24, W - 130);
-            const ty = Math.max(tooltip.y - 40, PAD.top + 4);
+          {/* Drag position indicator lines */}
+          {draggingId !== null && dragPos && (() => {
+            const { power, interest } = fromSvgCoords(dragPos.cx, dragPos.cy);
             return (
-              <g>
-                <rect x={tx} y={ty} width={120} height={36} rx={6} fill="#1e293b" opacity={0.92} />
-                <text x={tx + 8} y={ty + 14} fontSize={10} fontWeight="700" fill="white">{tooltip.s.fullName}</text>
-                <text x={tx + 8} y={ty + 27} fontSize={9} fill="#94a3b8">
-                  {tooltip.s.engagementStrategy ?? "—"}
-                </text>
+              <g style={{ pointerEvents: "none" }}>
+                <line x1={dragPos.cx} y1={PAD.top + plotH} x2={dragPos.cx} y2={dragPos.cy} stroke="#64748b" strokeWidth={1} strokeDasharray="4 3" opacity={0.5} />
+                <line x1={PAD.left} y1={dragPos.cy} x2={dragPos.cx} y2={dragPos.cy} stroke="#64748b" strokeWidth={1} strokeDasharray="4 3" opacity={0.5} />
+                <rect x={dragPos.cx - 28} y={PAD.top + plotH + 6} width={56} height={18} rx={4} fill="#1e293b" opacity={0.8} />
+                <text x={dragPos.cx} y={PAD.top + plotH + 18} textAnchor="middle" fontSize={10} fill="white" fontWeight="600">I: {interest}</text>
+                <rect x={PAD.left - 44} y={dragPos.cy - 9} width={36} height={18} rx={4} fill="#1e293b" opacity={0.8} />
+                <text x={PAD.left - 26} y={dragPos.cy + 4} textAnchor="middle" fontSize={10} fill="white" fontWeight="600">P: {power}</text>
+              </g>
+            );
+          })()}
+
+          {/* Tooltip */}
+          {!draggingId && tooltip && (() => {
+            const tx = Math.min(tooltip.x + 28, W - 160);
+            const ty = Math.max(tooltip.y - 50, PAD.top + 4);
+            return (
+              <g style={{ pointerEvents: "none" }}>
+                <rect x={tx} y={ty} width={160} height={50} rx={7} fill="#1e293b" opacity={0.93} />
+                <text x={tx + 10} y={ty + 18} fontSize={12} fontWeight="700" fill="white">{tooltip.s.fullName}</text>
+                <text x={tx + 10} y={ty + 33} fontSize={11} fill="#94a3b8">{tooltip.s.engagementStrategy ?? "—"}</text>
+                <text x={tx + 10} y={ty + 46} fontSize={10} fill="#64748b">P:{tooltip.s.powerLevel ?? "?"} · I:{tooltip.s.interestLevel ?? "?"}</text>
               </g>
             );
           })()}
@@ -392,7 +469,7 @@ function PowerInterestMap({
           </span>
         ))}
       </div>
-      <p className="text-xs text-muted-foreground/60 italic">Click a bubble to view stakeholder details · Set Power &amp; Interest values in the Stakeholder Register</p>
+      <p className="text-xs text-muted-foreground/60 italic">Drag a bubble to reposition · Click to view details · Search to highlight a stakeholder</p>
     </div>
   );
 }
