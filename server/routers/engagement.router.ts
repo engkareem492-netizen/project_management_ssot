@@ -174,8 +174,14 @@ export const engagementRouter = router({
       const db = await getDb();
       if (!db) return [];
       return await db
-        .select()
+        .select({
+          id: engagementTaskSubjects.id,
+          taskGroupId: engagementTaskSubjects.taskGroupId,
+          stakeholderId: engagementTaskSubjects.stakeholderId,
+          fullName: stakeholders.fullName,
+        })
         .from(engagementTaskSubjects)
+        .leftJoin(stakeholders, eq(engagementTaskSubjects.stakeholderId, stakeholders.id))
         .where(eq(engagementTaskSubjects.taskGroupId, input.taskGroupId));
     }),
 

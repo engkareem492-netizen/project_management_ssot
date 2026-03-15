@@ -7,6 +7,7 @@ import {
   commPlanJobOptions,
   commPlanItems,
   stakeholderPositionOptions,
+  commPlanMethodOptions,
 } from "../../drizzle/schema";
 
 // ─── Role Options ─────────────────────────────────────────────────────────────
@@ -285,10 +286,75 @@ const positionOptionsRouter = router({
     }),
 });
 
+// ─── Method Options ──────────────────────────────────────────────────────────
+const DEFAULT_METHODS = ["Email", "Meeting", "Phone", "Slack", "Teams", "Report", "Newsletter", "Video Call"];
+
+const methodOptionsRouter = router({
+  list: protectedProcedure
+    .input(z.object({ projectId: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+      const rows = await db
+        .select()
+        .from(commPlanMethodOptions)
+        .where(eq(commPlanMethodOptions.projectId, input.projectId))
+        .orderBy(commPlanMethodOptions.sequence, commPlanMethodOptions.label);
+      // Seed defaults if no rows exist for this project
+      if (rows.length === 0) {
+        await db.insert(commPlanMethodOptions).values(
+          DEFAULT_METHODS.map((label, i) => ({
+            projectId: input.projectId,
+            label,
+            isDefault: true,
+            sequence: i,
+          }))
+        );
+        return await db
+          .select()
+          .from(commPlanMethodOptions)
+          .where(eq(commPlanMethodOptions.projectId, input.projectId))
+          .orderBy(commPlanMethodOptions.sequence, commPlanMethodOptions.label);
+      }
+      return rows;
+    }),
+
+  create: protectedProcedure
+    .input(z.object({ projectId: z.number(), label: z.string().min(1) }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("DB unavailable");
+      const result = await db.insert(commPlanMethodOptions).values({
+        projectId: input.projectId,
+        label: input.label,
+        isDefault: false,
+        sequence: 99,
+      });
+      const rows = await db
+        .select()
+        .from(commPlanMethodOptions)
+        .where(eq(commPlanMethodOptions.id, (result as any)[0]?.insertId))
+        .limit(1);
+      return rows[0];
+    }),
+
+  delete: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("DB unavailable");
+      await db
+        .delete(commPlanMethodOptions)
+        .where(eq(commPlanMethodOptions.id, input.id));
+      return { success: true };
+    }),
+});
+
 // ─── Combined export ──────────────────────────────────────────────────────────
 export const commPlanOptionsRouter = router({
   roleOptions: roleOptionsRouter,
   jobOptions: jobOptionsRouter,
   items: commPlanItemsRouter,
   positionOptions: positionOptionsRouter,
+  methodOptions: methodOptionsRouter,
 });

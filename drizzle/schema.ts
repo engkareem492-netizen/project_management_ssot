@@ -1609,3 +1609,17 @@ export const stakeholderPositionOptions = mysqlTable("stakeholderPositionOptions
 });
 export type StakeholderPositionOption = typeof stakeholderPositionOptions.$inferSelect;
 export type InsertStakeholderPositionOption = typeof stakeholderPositionOptions.$inferInsert;
+
+// ─── Communication Plan Method Options ────────────────────────────────────────
+// Managed list of preferred communication method types (e.g. Email, Meeting).
+// Seeded with defaults on first use; users can add/remove per project.
+export const commPlanMethodOptions = mysqlTable("commPlanMethodOptions", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  label: varchar("label", { length: 200 }).notNull(),
+  isDefault: boolean("isDefault").default(false).notNull(),
+  sequence: int("sequence").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type CommPlanMethodOption = typeof commPlanMethodOptions.$inferSelect;
+export type InsertCommPlanMethodOption = typeof commPlanMethodOptions.$inferInsert;

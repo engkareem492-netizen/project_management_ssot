@@ -48,17 +48,6 @@ import { EmptyState } from "@/components/EmptyState";
 // Constants
 // ---------------------------------------------------------------------------
 
-const PREFERRED_METHODS_OPTIONS = [
-  "Email",
-  "Meeting",
-  "Phone",
-  "Slack",
-  "Teams",
-  "Report",
-  "Newsletter",
-  "Video Call",
-];
-
 const FREQUENCY_OPTIONS = [
   "Daily",
   "Weekly",
@@ -235,16 +224,21 @@ export default function CommunicationPlan() {
     trpc.commPlanOptions.roleOptions.list.useQuery({ projectId }, { enabled });
   const { data: jobOptions = [], refetch: refetchJobs } =
     trpc.commPlanOptions.jobOptions.list.useQuery({ projectId }, { enabled });
+  const { data: methodOptions = [], refetch: refetchMethods } =
+    trpc.commPlanOptions.methodOptions.list.useQuery({ projectId }, { enabled });
 
   const createRoleOption = trpc.commPlanOptions.roleOptions.create.useMutation({ onSuccess: () => refetchRoles() });
   const deleteRoleOption = trpc.commPlanOptions.roleOptions.delete.useMutation({ onSuccess: () => refetchRoles() });
   const createJobOption = trpc.commPlanOptions.jobOptions.create.useMutation({ onSuccess: () => refetchJobs() });
   const deleteJobOption = trpc.commPlanOptions.jobOptions.delete.useMutation({ onSuccess: () => refetchJobs() });
+  const createMethodOption = trpc.commPlanOptions.methodOptions.create.useMutation({ onSuccess: () => refetchMethods() });
+  const deleteMethodOption = trpc.commPlanOptions.methodOptions.delete.useMutation({ onSuccess: () => refetchMethods() });
   const bulkReplaceItems = trpc.commPlanOptions.items.bulkReplace.useMutation();
 
   // ----- Inline add option state -----
   const [newRoleInput, setNewRoleInput] = useState("");
   const [newJobInput, setNewJobInput] = useState("");
+  const [newMethodInput, setNewMethodInput] = useState("");
 
   // ----- Mutations -----
   const createMut = trpc.communicationPlan.create.useMutation({
@@ -1046,21 +1040,68 @@ export default function CommunicationPlan() {
 
             {/* ── Preferred Methods ── */}
             <div className="space-y-1.5">
-              <Label>Preferred Methods</Label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-1">
-                {PREFERRED_METHODS_OPTIONS.map((method) => (
-                  <label
-                    key={method}
-                    className="flex items-center gap-2 cursor-pointer text-sm select-none"
-                  >
-                    <Checkbox
-                      checked={form.preferredMethods.includes(method)}
-                      onCheckedChange={() => toggleMethod(method)}
-                    />
-                    {method}
-                  </label>
+              <div className="flex items-center justify-between">
+                <Label>Preferred Methods</Label>
+              </div>
+              {/* Dynamic checkboxes from DB */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-1">
+                {(methodOptions as any[]).map((m: any) => (
+                  <div key={m.id} className="flex items-center gap-1.5 group">
+                    <label className="flex items-center gap-2 cursor-pointer text-sm select-none flex-1">
+                      <Checkbox
+                        checked={form.preferredMethods.includes(m.label)}
+                        onCheckedChange={() => toggleMethod(m.label)}
+                      />
+                      {m.label}
+                    </label>
+                    <button
+                      type="button"
+                      title="Remove method"
+                      className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-500 transition-opacity text-xs leading-none"
+                      onClick={() => {
+                        deleteMethodOption.mutate({ id: m.id });
+                        // Also uncheck if currently selected
+                        if (form.preferredMethods.includes(m.label)) {
+                          toggleMethod(m.label);
+                        }
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
                 ))}
               </div>
+              {/* Add new method */}
+              <div className="flex items-center gap-2 mt-2">
+                <Input
+                  value={newMethodInput}
+                  onChange={e => setNewMethodInput(e.target.value)}
+                  placeholder="Add new method type..."
+                  className="h-8 text-sm"
+                  onKeyDown={e => {
+                    if (e.key === "Enter" && newMethodInput.trim()) {
+                      createMethodOption.mutate({ projectId, label: newMethodInput.trim() });
+                      setNewMethodInput("");
+                    }
+                  }}
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8 shrink-0"
+                  disabled={!newMethodInput.trim() || createMethodOption.isPending}
+                  onClick={() => {
+                    if (newMethodInput.trim()) {
+                      createMethodOption.mutate({ projectId, label: newMethodInput.trim() });
+                      setNewMethodInput("");
+                    }
+                  }}
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">Hover over a method to reveal the remove (×) button.</p>
             </div>
 
             {/* ── Frequency ── */}
