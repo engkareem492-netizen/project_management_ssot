@@ -319,6 +319,8 @@ export const engagementRouter = router({
               // Responsible = Project Manager (falls back to subject if no PM defined)
               responsible: pm?.fullName ?? subject?.fullName ?? undefined,
               responsibleId: pm?.id ?? subject?.id ?? undefined,
+              // Subject = the stakeholder this communication is about
+              subject: subject?.fullName ?? undefined,
               recurringType: recurringType as any,
               recurringInterval: 1,
               communicationStakeholderId: item.id,
@@ -538,6 +540,8 @@ export const engagementRouter = router({
                   status: "Open",
                   responsible: responsibleName ?? undefined,
                   responsibleId,
+                  // Subject = the stakeholder this communication is about
+                  subject: s.fullName ?? undefined,
                   recurringType: recurringType as any,
                   recurringInterval: 1,
                   communicationStakeholderId: item.id,
