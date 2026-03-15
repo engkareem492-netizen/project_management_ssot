@@ -1430,10 +1430,8 @@ export const engagementTasks = mysqlTable("engagementTasks", {
   projectId: int("projectId").notNull(),
   title: varchar("title", { length: 300 }).notNull(),
   description: text("description"),
-  responsibleId: int("responsibleId"), // stakeholder id of the person responsible
-  dueDate: date("dueDate"),
-  status: mysqlEnum("engTaskStatus", ["Pending", "In Progress", "Done", "Cancelled"]).default("Pending").notNull(),
-  priority: mysqlEnum("engTaskPriority", ["Low", "Medium", "High"]).default("Medium").notNull(),
+  periodic: varchar("periodic", { length: 100 }), // e.g. Daily, Weekly, Monthly, Per Meeting
+  sequence: int("sequence").default(0).notNull(), // order within the task group
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

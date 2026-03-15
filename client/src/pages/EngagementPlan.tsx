@@ -61,6 +61,18 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { StakeholderSelect } from "@/components/StakeholderSelect";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { EmptyState } from "@/components/EmptyState";
 import { formatDate } from "@/lib/dateUtils";
 
@@ -179,7 +191,15 @@ function StatusBadge({ status }: { status: string | null | undefined }) {
 
 // ─── Draggable Stakeholder Token ─────────────────────────────────────────────
 
-function DraggableToken({ stakeholder, isDragging }: { stakeholder: any; isDragging?: boolean }) {
+function DraggableToken({
+  stakeholder,
+  isDragging,
+  onStakeholderClick,
+}: {
+  stakeholder: any;
+  isDragging?: boolean;
+  onStakeholderClick?: (s: any) => void;
+}) {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: String(stakeholder.id),
     data: { stakeholder },
@@ -189,16 +209,33 @@ function DraggableToken({ stakeholder, isDragging }: { stakeholder: any; isDragg
     ? { transform: `translate3d(${transform.x}px,${transform.y}px,0)`, zIndex: 50 }
     : undefined;
   return (
-    <div
-      ref={setNodeRef}
-      style={{ ...style, backgroundColor: color, opacity: isDragging ? 0.4 : 1 }}
-      {...listeners}
-      {...attributes}
-      className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-bold shadow-md border-2 border-white cursor-grab active:cursor-grabbing select-none transition-opacity"
-      title={stakeholder.fullName}
-    >
-      {getInitials(stakeholder.fullName)}
-    </div>
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div
+            ref={setNodeRef}
+            style={{ ...style, backgroundColor: color, opacity: isDragging ? 0.4 : 1 }}
+            {...listeners}
+            {...attributes}
+            className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-bold shadow-md border-2 border-white cursor-grab active:cursor-grabbing select-none transition-opacity"
+            onClick={(e) => {
+              // Only fire click if not dragging
+              if (!transform && onStakeholderClick) {
+                e.stopPropagation();
+                onStakeholderClick(stakeholder);
+              }
+            }}
+          >
+            {getInitials(stakeholder.fullName)}
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="text-xs max-w-[180px]">
+          <p className="font-semibold">{stakeholder.fullName}</p>
+          {stakeholder.position && <p className="text-muted-foreground">{stakeholder.position}</p>}
+          {stakeholder.role && <p className="text-muted-foreground">{stakeholder.role}</p>}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
 
@@ -240,9 +277,11 @@ function DroppableCell({
 function PowerInterestMap({
   stakeholders,
   onUpdate,
+  onStakeholderClick,
 }: {
   stakeholders: any[];
   onUpdate: (id: number, power: number, interest: number) => void;
+  onStakeholderClick?: (s: any) => void;
 }) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
@@ -358,6 +397,7 @@ function PowerInterestMap({
                           key={s.id}
                           stakeholder={s}
                           isDragging={String(s.id) === activeId}
+                          onStakeholderClick={onStakeholderClick}
                         />
                       ))}
                     </DroppableCell>
@@ -428,6 +468,14 @@ function StakeholderAnalysisTab({
   projectId: number;
 }) {
   const utils = trpc.useUtils();
+  const [selectedStakeholder, setSelectedStakeholder] = useState<any>(null);
+
+  // Only show true Stakeholders (not Team Members or External)
+  const mapStakeholders = useMemo(
+    () => stakeholders.filter((s) => s.classification === "Stakeholder"),
+    [stakeholders]
+  );
+
   const updateMut = trpc.stakeholders.update.useMutation({
     onSuccess: () => {
       utils.stakeholders.list.invalidate();
@@ -437,7 +485,6 @@ function StakeholderAnalysisTab({
 
   const handlePositionUpdate = useCallback(
     (id: number, power: number, interest: number) => {
-      // Compute new engagement strategy based on quadrant
       const strategy =
         power >= 3 && interest >= 3 ? "Manage Closely"
         : power >= 3 && interest < 3 ? "Keep Satisfied"
@@ -452,81 +499,196 @@ function StakeholderAnalysisTab({
   );
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-      {/* Drag-and-Drop Power/Interest Map */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Power / Interest Map</CardTitle>
-          <p className="text-xs text-muted-foreground">Drag stakeholders to update their position</p>
-        </CardHeader>
-        <CardContent>
-          {stakeholders.length === 0 ? (
-            <EmptyState icon={Users} title="No stakeholders yet" description="Add stakeholders to see the map." />
-          ) : (
-            <PowerInterestMap stakeholders={stakeholders} onUpdate={handlePositionUpdate} />
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Engagement Matrix Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Engagement Matrix</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          {stakeholders.length === 0 ? (
-            <div className="p-6">
-              <EmptyState
-                icon={Users}
-                title="No stakeholders yet"
-                description="Add stakeholders to populate the matrix."
+    <>
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        {/* Drag-and-Drop Power/Interest Map */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Power / Interest Map</CardTitle>
+            <p className="text-xs text-muted-foreground">Drag to reposition · Click a bubble to view details</p>
+          </CardHeader>
+          <CardContent>
+            {mapStakeholders.length === 0 ? (
+              <EmptyState icon={Users} title="No stakeholders yet" description="Add stakeholders to see the map." />
+            ) : (
+              <PowerInterestMap
+                stakeholders={mapStakeholders}
+                onUpdate={handlePositionUpdate}
+                onStakeholderClick={setSelectedStakeholder}
               />
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Current</TableHead>
-                    <TableHead>Desired</TableHead>
-                    <TableHead>Strategy</TableHead>
-                    <TableHead className="text-center">Power</TableHead>
-                    <TableHead className="text-center">Interest</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {stakeholders.map((s) => (
-                    <TableRow key={s.id}>
-                      <TableCell className="font-medium text-sm">{s.fullName}</TableCell>
-                      <TableCell>
-                        <StatusBadge status={s.currentEngagementStatus} />
-                      </TableCell>
-                      <TableCell>
-                        <StatusBadge status={s.desiredEngagementStatus} />
-                      </TableCell>
-                      <TableCell>
-                        {s.engagementStrategy ? (
-                          <span
-                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${getStrategyBadgeClass(s.engagementStrategy)}`}
-                          >
-                            {s.engagementStrategy}
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground text-xs">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-center text-sm">{s.powerLevel ?? "—"}</TableCell>
-                      <TableCell className="text-center text-sm">{s.interestLevel ?? "—"}</TableCell>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Engagement Matrix Table — Stakeholders only */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Engagement Matrix</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            {mapStakeholders.length === 0 ? (
+              <div className="p-6">
+                <EmptyState
+                  icon={Users}
+                  title="No stakeholders yet"
+                  description="Add stakeholders to populate the matrix."
+                />
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Current</TableHead>
+                      <TableHead>Desired</TableHead>
+                      <TableHead>Strategy</TableHead>
+                      <TableHead className="text-center">Power</TableHead>
+                      <TableHead className="text-center">Interest</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {mapStakeholders.map((s) => (
+                      <TableRow
+                        key={s.id}
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => setSelectedStakeholder(s)}
+                      >
+                        <TableCell className="font-medium text-sm">{s.fullName}</TableCell>
+                        <TableCell>
+                          <StatusBadge status={s.currentEngagementStatus} />
+                        </TableCell>
+                        <TableCell>
+                          <StatusBadge status={s.desiredEngagementStatus} />
+                        </TableCell>
+                        <TableCell>
+                          {s.engagementStrategy ? (
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${getStrategyBadgeClass(s.engagementStrategy)}`}
+                            >
+                              {s.engagementStrategy}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center text-sm">{s.powerLevel ?? "—"}</TableCell>
+                        <TableCell className="text-center text-sm">{s.interestLevel ?? "—"}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Stakeholder Detail Sheet */}
+      <Sheet open={!!selectedStakeholder} onOpenChange={(v) => !v && setSelectedStakeholder(null)}>
+        <SheetContent className="w-[380px] sm:w-[480px] overflow-y-auto">
+          {selectedStakeholder && (
+            <>
+              <SheetHeader className="mb-4">
+                <SheetTitle className="flex items-center gap-3">
+                  <div
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0"
+                    style={{ backgroundColor: getStrategyColor(selectedStakeholder.engagementStrategy) }}
+                  >
+                    {getInitials(selectedStakeholder.fullName)}
+                  </div>
+                  <div>
+                    <div className="text-base font-semibold leading-tight">{selectedStakeholder.fullName}</div>
+                    {selectedStakeholder.position && (
+                      <div className="text-sm text-muted-foreground">{selectedStakeholder.position}</div>
+                    )}
+                  </div>
+                </SheetTitle>
+              </SheetHeader>
+
+              <div className="space-y-4 text-sm">
+                {/* Classification & Role */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">Classification</p>
+                    <Badge variant="secondary">{selectedStakeholder.classification ?? "—"}</Badge>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">Role</p>
+                    <p className="font-medium">{selectedStakeholder.role ?? "—"}</p>
+                  </div>
+                </div>
+
+                {/* Department & Organisation */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">Department</p>
+                    <p>{selectedStakeholder.department ?? "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">Organisation</p>
+                    <p>{selectedStakeholder.organisation ?? "—"}</p>
+                  </div>
+                </div>
+
+                {/* Contact */}
+                {(selectedStakeholder.email || selectedStakeholder.phone) && (
+                  <div>
+                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">Contact</p>
+                    {selectedStakeholder.email && <p className="text-blue-600">{selectedStakeholder.email}</p>}
+                    {selectedStakeholder.phone && <p>{selectedStakeholder.phone}</p>}
+                  </div>
+                )}
+
+                {/* Engagement */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">Current Status</p>
+                    <StatusBadge status={selectedStakeholder.currentEngagementStatus} />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">Desired Status</p>
+                    <StatusBadge status={selectedStakeholder.desiredEngagementStatus} />
+                  </div>
+                </div>
+
+                {/* Strategy */}
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">Engagement Strategy</p>
+                  {selectedStakeholder.engagementStrategy ? (
+                    <span
+                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${getStrategyBadgeClass(selectedStakeholder.engagementStrategy)}`}
+                    >
+                      {selectedStakeholder.engagementStrategy}
+                    </span>
+                  ) : <span className="text-muted-foreground">—</span>}
+                </div>
+
+                {/* Power / Interest */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">Power Level</p>
+                    <p className="font-semibold text-base">{selectedStakeholder.powerLevel ?? "—"} / 5</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">Interest Level</p>
+                    <p className="font-semibold text-base">{selectedStakeholder.interestLevel ?? "—"} / 5</p>
+                  </div>
+                </div>
+
+                {/* Notes */}
+                {selectedStakeholder.notes && (
+                  <div>
+                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">Notes</p>
+                    <p className="text-sm text-muted-foreground whitespace-pre-line">{selectedStakeholder.notes}</p>
+                  </div>
+                )}
+              </div>
+            </>
           )}
-        </CardContent>
-      </Card>
-    </div>
+        </SheetContent>
+      </Sheet>
+    </>
   );
 }
 
@@ -1115,29 +1277,27 @@ function TaskGroupFormDialog({
 
 // ─── Task Form Dialog ─────────────────────────────────────────────────────────
 
+const PERIODIC_OPTIONS = ["One-time", "Daily", "Weekly", "Bi-weekly", "Monthly", "Quarterly", "Per Meeting", "As Needed"];
+
 function TaskFormDialog({
   open,
   onOpenChange,
   taskGroupId,
   editTask,
-  stakeholders,
   projectId,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   taskGroupId: number;
   editTask?: any;
-  stakeholders: any[];
   projectId: number;
 }) {
   const utils = trpc.useUtils();
   const [form, setForm] = useState({
     title: "",
     description: "",
-    responsible: "",
-    dueDate: "",
-    status: "Pending",
-    priority: "Medium",
+    periodic: "One-time",
+    sequence: 0,
   });
 
   useMemo(() => {
@@ -1145,20 +1305,18 @@ function TaskFormDialog({
       setForm({
         title: editTask.title ?? "",
         description: editTask.description ?? "",
-        responsible: editTask.responsible ?? "",
-        dueDate: editTask.dueDate ?? "",
-        status: editTask.status ?? "Pending",
-        priority: editTask.priority ?? "Medium",
+        periodic: editTask.periodic ?? "One-time",
+        sequence: editTask.sequence ?? 0,
       });
     } else {
-      setForm({ title: "", description: "", responsible: "", dueDate: "", status: "Pending", priority: "Medium" });
+      setForm({ title: "", description: "", periodic: "One-time", sequence: 0 });
     }
   }, [editTask, open]);
 
   const createMut = trpc.engagement.createTask.useMutation({
     onSuccess: () => {
       utils.engagement.listTasks.invalidate({ taskGroupId });
-      toast.success("Task created");
+      toast.success("Action item created");
       onOpenChange(false);
     },
     onError: (e) => toast.error(e.message),
@@ -1167,7 +1325,7 @@ function TaskFormDialog({
   const updateMut = trpc.engagement.updateTask.useMutation({
     onSuccess: () => {
       utils.engagement.listTasks.invalidate({ taskGroupId });
-      toast.success("Task updated");
+      toast.success("Action item updated");
       onOpenChange(false);
     },
     onError: (e) => toast.error(e.message),
@@ -1179,9 +1337,9 @@ function TaskFormDialog({
       return;
     }
     if (editTask) {
-      updateMut.mutate({ id: editTask.id, data: { ...form, dueDate: form.dueDate || undefined } });
+      updateMut.mutate({ id: editTask.id, data: { title: form.title, description: form.description || undefined, periodic: form.periodic || undefined, sequence: form.sequence } });
     } else {
-      createMut.mutate({ taskGroupId, ...form, dueDate: form.dueDate || undefined });
+      createMut.mutate({ taskGroupId, projectId, title: form.title, description: form.description || undefined, periodic: form.periodic || undefined, sequence: form.sequence });
     }
   };
 
@@ -1191,7 +1349,7 @@ function TaskFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{editTask ? "Edit Task" : "Add Task"}</DialogTitle>
+          <DialogTitle>{editTask ? "Edit Action Item" : "Add Action Item"}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div>
@@ -1199,7 +1357,7 @@ function TaskFormDialog({
             <Input
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
-              placeholder="Task title..."
+              placeholder="Action item title..."
             />
           </div>
           <div>
@@ -1207,61 +1365,40 @@ function TaskFormDialog({
             <Textarea
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
-              placeholder="Task description..."
-              rows={2}
-            />
-          </div>
-          <div>
-            <Label>Responsible</Label>
-            <StakeholderSelect
-              stakeholders={stakeholders}
-              value={form.responsible}
-              onValueChange={(v) => setForm({ ...form, responsible: v })}
-              projectId={projectId}
-              placeholder="Select responsible..."
-            />
-          </div>
-          <div>
-            <Label>Due Date</Label>
-            <Input
-              type="date"
-              value={form.dueDate}
-              onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
+              placeholder="Describe the action or instruction..."
+              rows={3}
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>Status</Label>
-              <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
+              <Label>Periodic</Label>
+              <Select value={form.periodic} onValueChange={(v) => setForm({ ...form, periodic: v })}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {TASK_STATUSES.map((s) => (
-                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                  {PERIODIC_OPTIONS.map((p) => (
+                    <SelectItem key={p} value={p}>{p}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label>Priority</Label>
-              <Select value={form.priority} onValueChange={(v) => setForm({ ...form, priority: v })}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {TASK_PRIORITIES.map((p) => (
-                    <SelectItem key={p} value={p}>{p}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Sequence #</Label>
+              <Input
+                type="number"
+                min={0}
+                value={form.sequence}
+                onChange={(e) => setForm({ ...form, sequence: parseInt(e.target.value) || 0 })}
+                placeholder="0"
+              />
             </div>
           </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button onClick={handleSave} disabled={isPending}>
-            {editTask ? "Save Changes" : "Add Task"}
+            {editTask ? "Save Changes" : "Add Action Item"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -1319,7 +1456,7 @@ function TaskGroupPanel({
       {/* Tasks */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between py-3">
-          <CardTitle className="text-sm font-semibold">Tasks</CardTitle>
+          <CardTitle className="text-sm font-semibold">Action Items</CardTitle>
           <Button
             size="sm"
             className="h-7 gap-1 text-xs"
@@ -1329,7 +1466,7 @@ function TaskGroupPanel({
             }}
           >
             <Plus className="h-3.5 w-3.5" />
-            Add Task
+            Add Item
           </Button>
         </CardHeader>
         <CardContent className="p-0">
@@ -1337,9 +1474,9 @@ function TaskGroupPanel({
             <div className="py-8">
               <EmptyState
                 icon={ListChecks}
-                title="No tasks yet"
-                description="Add tasks to this engagement group."
-                actionLabel="Add Task"
+                title="No action items yet"
+                description="Add instructional or action items to this engagement group."
+                actionLabel="Add Item"
                 onAction={() => {
                   setEditTask(null);
                   setTaskDialogOpen(true);
@@ -1351,33 +1488,28 @@ function TaskGroupPanel({
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-8 text-center">#</TableHead>
                     <TableHead>Title</TableHead>
-                    <TableHead>Responsible</TableHead>
-                    <TableHead>Due Date</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Priority</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead>Periodic</TableHead>
                     <TableHead />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {tasks.map((task: any) => (
+                  {tasks
+                    .slice()
+                    .sort((a: any, b: any) => (a.sequence ?? 0) - (b.sequence ?? 0))
+                    .map((task: any) => (
                     <TableRow key={task.id}>
+                      <TableCell className="text-center text-xs text-muted-foreground font-mono">{task.sequence ?? 0}</TableCell>
                       <TableCell className="font-medium text-sm">{task.title}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{task.responsible ?? "—"}</TableCell>
-                      <TableCell className="text-sm">{formatDate(task.dueDate)}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">{task.description ?? "—"}</TableCell>
                       <TableCell>
-                        <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getTaskStatusBadgeClass(task.status)}`}
-                        >
-                          {task.status}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getTaskPriorityBadgeClass(task.priority)}`}
-                        >
-                          {task.priority}
-                        </span>
+                        {task.periodic ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                            {task.periodic}
+                          </span>
+                        ) : <span className="text-muted-foreground text-xs">—</span>}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
@@ -1472,7 +1604,6 @@ function TaskGroupPanel({
         onOpenChange={setTaskDialogOpen}
         taskGroupId={group.id}
         editTask={editTask}
-        stakeholders={stakeholders}
         projectId={projectId}
       />
     </div>

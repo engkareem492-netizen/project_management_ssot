@@ -92,7 +92,7 @@ export const engagementRouter = router({
         .select()
         .from(engagementTasks)
         .where(eq(engagementTasks.taskGroupId, input.taskGroupId))
-        .orderBy(engagementTasks.createdAt);
+        .orderBy(engagementTasks.sequence, engagementTasks.createdAt);
     }),
 
   listAllTasks: protectedProcedure
@@ -113,15 +113,20 @@ export const engagementRouter = router({
       projectId: z.number(),
       title: z.string(),
       description: z.string().optional(),
-      responsibleId: z.number().optional(),
-      dueDate: z.string().optional(),
-      status: z.enum(["Pending", "In Progress", "Done", "Cancelled"]).optional(),
-      priority: z.enum(["Low", "Medium", "High"]).optional(),
+      periodic: z.string().optional(),
+      sequence: z.number().optional(),
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new Error("DB unavailable");
-      const result = await db.insert(engagementTasks).values(input);
+      const result = await db.insert(engagementTasks).values({
+        taskGroupId: input.taskGroupId,
+        projectId: input.projectId,
+        title: input.title,
+        description: input.description,
+        periodic: input.periodic,
+        sequence: input.sequence ?? 0,
+      });
       const rows = await db.select().from(engagementTasks).where(eq(engagementTasks.id, result[0].insertId)).limit(1);
       return rows[0];
     }),
@@ -131,11 +136,9 @@ export const engagementRouter = router({
       id: z.number(),
       data: z.object({
         title: z.string().optional(),
-        description: z.string().optional(),
-        responsibleId: z.number().nullable().optional(),
-        dueDate: z.string().nullable().optional(),
-        status: z.enum(["Pending", "In Progress", "Done", "Cancelled"]).optional(),
-        priority: z.enum(["Low", "Medium", "High"]).optional(),
+        description: z.string().nullable().optional(),
+        periodic: z.string().nullable().optional(),
+        sequence: z.number().optional(),
       }),
     }))
     .mutation(async ({ input }) => {
