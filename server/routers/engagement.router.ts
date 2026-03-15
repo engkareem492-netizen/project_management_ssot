@@ -392,18 +392,29 @@ export const engagementRouter = router({
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new Error("DB unavailable");
-      const { id, ...data } = input;
-      await db.update(engagementStatusHistory).set(data as any).where(eq(engagementStatusHistory.id, id));
+      const { id, assessmentDate, ...rest } = input;
+      // Build update object using explicit Drizzle schema fields to avoid column name mismatch
+      const updateData: Record<string, any> = {};
+      if (rest.statusType !== undefined) updateData.statusType = rest.statusType;
+      if (rest.status !== undefined) updateData.status = rest.status;
+      if (rest.assessedBy !== undefined) updateData.assessedBy = rest.assessedBy;
+      if (rest.notes !== undefined) updateData.notes = rest.notes;
+      if (assessmentDate !== undefined) {
+        // Ensure YYYY-MM-DD format — strip any time/timezone suffix
+        const isoMatch = assessmentDate.match(/(\d{4}-\d{2}-\d{2})/);
+        updateData.assessmentDate = isoMatch ? isoMatch[1] : assessmentDate;
+      }
+      await db.update(engagementStatusHistory).set(updateData).where(eq(engagementStatusHistory.id, id));
       // If status changed, also update the stakeholder's live status
-      if (data.status) {
+      if (rest.status) {
         const rows = await db.select().from(engagementStatusHistory).where(eq(engagementStatusHistory.id, id)).limit(1);
         if (rows[0]) {
-          const sType = data.statusType ?? rows[0].statusType;
+          const sType = rest.statusType ?? rows[0].statusType;
           try {
             if (sType === "current") {
-              await db.update(stakeholders).set({ currentEngagementStatus: data.status as any }).where(eq(stakeholders.id, rows[0].stakeholderId));
+              await db.update(stakeholders).set({ currentEngagementStatus: rest.status as any }).where(eq(stakeholders.id, rows[0].stakeholderId));
             } else {
-              await db.update(stakeholders).set({ desiredEngagementStatus: data.status as any }).where(eq(stakeholders.id, rows[0].stakeholderId));
+              await db.update(stakeholders).set({ desiredEngagementStatus: rest.status as any }).where(eq(stakeholders.id, rows[0].stakeholderId));
             }
           } catch (e) { console.error(e); }
         }

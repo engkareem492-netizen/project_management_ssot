@@ -835,11 +835,20 @@ function HistoryDialog({
 
   const openEdit = (entry: any) => {
     setEditingEntry(entry);
+    // Extract YYYY-MM-DD from assessmentDate regardless of format (Date object, ISO string, or other)
+    let isoDate = "";
+    if (entry.assessmentDate) {
+      const raw = entry.assessmentDate instanceof Date
+        ? entry.assessmentDate.toISOString()
+        : String(entry.assessmentDate);
+      const match = raw.match(/(\d{4}-\d{2}-\d{2})/);
+      isoDate = match ? match[1] : "";
+    }
     setEditForm({
       statusType: entry.statusType ?? "current",
       status: entry.status ?? "",
       assessedBy: entry.assessedBy ?? "",
-      assessmentDate: entry.assessmentDate ? String(entry.assessmentDate).substring(0, 10) : "",
+      assessmentDate: isoDate,
       notes: entry.notes ?? "",
     });
   };
@@ -896,7 +905,17 @@ function HistoryDialog({
                   <TableCell className="text-sm">{entry.assessedBy ?? "—"}</TableCell>
                   <TableCell className="text-sm whitespace-nowrap">
                     {entry.assessmentDate
-                      ? new Date(String(entry.assessmentDate)).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+                      ? (() => {
+                          const raw = entry.assessmentDate instanceof Date
+                            ? entry.assessmentDate.toISOString()
+                            : String(entry.assessmentDate);
+                          const m = raw.match(/(\d{4})-(\d{2})-(\d{2})/);
+                          if (m) {
+                            const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+                            return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+                          }
+                          return raw;
+                        })()
                       : "—"}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground max-w-[260px]">
