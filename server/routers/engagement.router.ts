@@ -1,13 +1,14 @@
 import { protectedProcedure, router } from "../_core/trpc";
 import { z } from "zod";
 import { eq, and } from "drizzle-orm";
-import { getDb } from "../db";
+import { getDb, createTask, getNextId } from "../db";
 import {
   engagementTaskGroups,
   engagementTasks,
   engagementTaskSubjects,
   engagementStatusHistory,
   stakeholders,
+  tasks,
 } from "../../drizzle/schema";
 
 const ENGAGEMENT_STATUSES = ["Unaware", "Resistant", "Neutral", "Supportive", "Leading"] as const;
@@ -136,8 +137,54 @@ export const engagementRouter = router({
         periodic: input.periodic,
         sequence: input.sequence ?? 0,
       });
-      const rows = await db.select().from(engagementTasks).where(eq(engagementTasks.id, result[0].insertId)).limit(1);
-      return rows[0];
+      const newItemId = result[0].insertId;
+      const rows = await db.select().from(engagementTasks).where(eq(engagementTasks.id, newItemId)).limit(1);
+      const newItem = rows[0];
+
+      // Auto-create COMM- tasks for all existing subjects in this group
+      try {
+        const group = await db
+          .select()
+          .from(engagementTaskGroups)
+          .where(eq(engagementTaskGroups.id, input.taskGroupId))
+          .limit(1)
+          .then((r) => r[0]);
+
+        const subjects = await db
+          .select({
+            stakeholderId: engagementTaskSubjects.stakeholderId,
+            fullName: stakeholders.fullName,
+          })
+          .from(engagementTaskSubjects)
+          .leftJoin(stakeholders, eq(engagementTaskSubjects.stakeholderId, stakeholders.id))
+          .where(eq(engagementTaskSubjects.taskGroupId, input.taskGroupId));
+
+        const periodic = input.periodic;
+        const recurringType = periodic === "Daily" ? "daily"
+          : periodic === "Weekly" ? "weekly"
+          : periodic === "Monthly" ? "monthly"
+          : "none";
+
+        for (const subj of subjects) {
+          if (!group) continue;
+          const taskId = await getNextId("commTask", "COMM", input.projectId);
+          await createTask({
+            projectId: input.projectId,
+            taskId,
+            description: `[${group.name}] ${input.title}${subj.fullName ? ` — ${subj.fullName}` : ""}`,
+            status: "Open",
+            responsible: subj.fullName ?? undefined,
+            responsibleId: subj.stakeholderId ?? undefined,
+            recurringType: recurringType as any,
+            recurringInterval: 1,
+            communicationStakeholderId: newItemId,
+          } as any);
+        }
+      } catch (e) {
+        console.error("[engagement.createTask] Failed to auto-create COMM tasks:", e);
+      }
+
+      return newItem;
     }),
 
   updateTask: protectedProcedure
@@ -194,6 +241,68 @@ export const engagementRouter = router({
       try {
         await db.insert(engagementTaskSubjects).values(input);
       } catch { /* duplicate — ignore */ }
+
+      // Auto-create COMM- tasks in the main tasks table for each engagement action item in this group
+      try {
+        const group = await db
+          .select()
+          .from(engagementTaskGroups)
+          .where(eq(engagementTaskGroups.id, input.taskGroupId))
+          .limit(1)
+          .then((r) => r[0]);
+
+        const stakeholder = await db
+          .select()
+          .from(stakeholders)
+          .where(eq(stakeholders.id, input.stakeholderId))
+          .limit(1)
+          .then((r) => r[0]);
+
+        const actionItems = await db
+          .select()
+          .from(engagementTasks)
+          .where(eq(engagementTasks.taskGroupId, input.taskGroupId));
+
+        for (const item of actionItems) {
+          if (!group) continue;
+          // Check if a COMM task already exists for this subject + action item combo
+          const existing = await db
+            .select()
+            .from(tasks)
+            .where(
+              and(
+                eq(tasks.projectId, group.projectId),
+                eq(tasks.communicationStakeholderId, item.id)
+              )
+            )
+            .limit(1);
+
+          // Only create if not already linked
+          if (existing.length === 0) {
+            const taskId = await getNextId("commTask", "COMM", group.projectId);
+            const periodic = item.periodic;
+            const recurringType = periodic === "Daily" ? "daily"
+              : periodic === "Weekly" ? "weekly"
+              : periodic === "Monthly" ? "monthly"
+              : "none";
+            await createTask({
+              projectId: group.projectId,
+              taskId,
+              description: `[${group.name}] ${item.title}${stakeholder ? ` — ${stakeholder.fullName}` : ""}`,
+              status: "Open",
+              responsible: stakeholder?.fullName ?? undefined,
+              responsibleId: stakeholder?.id ?? undefined,
+              recurringType: recurringType as any,
+              recurringInterval: 1,
+              communicationStakeholderId: item.id,
+            } as any);
+          }
+        }
+      } catch (e) {
+        // Non-fatal: log but don't fail the subject add
+        console.error("[addSubject] Failed to auto-create COMM tasks:", e);
+      }
+
       return { success: true };
     }),
 
@@ -237,7 +346,16 @@ export const engagementRouter = router({
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new Error("DB unavailable");
-      const result = await db.insert(engagementStatusHistory).values(input);
+      const { assessmentDate, ...rest } = input;
+      const result = await db.insert(engagementStatusHistory).values({
+        stakeholderId: rest.stakeholderId,
+        projectId: rest.projectId,
+        statusType: rest.statusType,
+        status: rest.status,
+        notes: rest.notes,
+        assessedBy: rest.assessedBy,
+        assessmentDate: assessmentDate as any,
+      });
       const rows = await db
         .select()
         .from(engagementStatusHistory)

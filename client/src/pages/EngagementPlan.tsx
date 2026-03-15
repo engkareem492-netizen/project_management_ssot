@@ -446,7 +446,7 @@ function PowerInterestMap({
               <g style={{ pointerEvents: "none" }}>
                 <rect x={tx} y={ty} width={160} height={50} rx={7} fill="#1e293b" opacity={0.93} />
                 <text x={tx + 10} y={ty + 18} fontSize={12} fontWeight="700" fill="white">{tooltip.s.fullName}</text>
-                <text x={tx + 10} y={ty + 33} fontSize={11} fill="#94a3b8">{tooltip.s.engagementStrategy ?? "—"}</text>
+                <text x={tx + 10} y={ty + 33} fontSize={11} fill="#94a3b8">{[tooltip.s.position, tooltip.s.role].filter(Boolean).join(" · ") || "—"}</text>
                 <text x={tx + 10} y={ty + 46} fontSize={10} fill="#64748b">P:{tooltip.s.powerLevel ?? "?"} · I:{tooltip.s.interestLevel ?? "?"}</text>
               </g>
             );
@@ -981,16 +981,18 @@ function EditStatusDialog({
 
 function LogAssessmentDialog({
   stakeholder,
+  projectId,
   open,
   onOpenChange,
 }: {
   stakeholder: any;
+  projectId: number;
   open: boolean;
   onOpenChange: (v: boolean) => void;
 }) {
   const utils = trpc.useUtils();
   const [form, setForm] = useState({
-    statusType: "Current",
+    statusType: "current",
     status: "",
     assessedBy: "",
     assessmentDate: new Date().toISOString().split("T")[0],
@@ -1003,7 +1005,7 @@ function LogAssessmentDialog({
       toast.success("Assessment logged");
       onOpenChange(false);
       setForm({
-        statusType: "Current",
+        statusType: "current",
         status: "",
         assessedBy: "",
         assessmentDate: new Date().toISOString().split("T")[0],
@@ -1020,10 +1022,11 @@ function LogAssessmentDialog({
     }
     addMut.mutate({
       stakeholderId: stakeholder.id,
-      statusType: form.statusType,
-      status: form.status,
+      projectId,
+      statusType: form.statusType as "current" | "desired",
+      status: form.status as any,
       assessedBy: form.assessedBy || undefined,
-      assessmentDate: form.assessmentDate || undefined,
+      assessmentDate: form.assessmentDate || new Date().toISOString().split("T")[0],
       notes: form.notes || undefined,
     });
   };
@@ -1042,8 +1045,8 @@ function LogAssessmentDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Current">Current</SelectItem>
-                <SelectItem value="Desired">Desired</SelectItem>
+                <SelectItem value="current">Current</SelectItem>
+                <SelectItem value="desired">Desired</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -1231,6 +1234,7 @@ function EngagementAssessmentTab({
       {logTarget && (
         <LogAssessmentDialog
           stakeholder={logTarget}
+          projectId={projectId}
           open={!!logTarget}
           onOpenChange={(v) => !v && setLogTarget(null)}
         />
