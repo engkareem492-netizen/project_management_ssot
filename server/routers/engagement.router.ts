@@ -265,19 +265,20 @@ export const engagementRouter = router({
 
         for (const item of actionItems) {
           if (!group) continue;
-          // Check if a COMM task already exists for this subject + action item combo
+          // Check if a COMM task already exists for this specific subject + action item combo
           const existing = await db
             .select()
             .from(tasks)
             .where(
               and(
                 eq(tasks.projectId, group.projectId),
-                eq(tasks.communicationStakeholderId, item.id)
+                eq(tasks.communicationStakeholderId, item.id),
+                eq(tasks.responsibleId, input.stakeholderId)
               )
             )
             .limit(1);
 
-          // Only create if not already linked
+          // Only create if not already linked for this subject
           if (existing.length === 0) {
             const taskId = await getNextId("commTask", "COMM", group.projectId);
             const periodic = item.periodic;
@@ -433,7 +434,7 @@ export const engagementRouter = router({
 
   // ─── Auto-sync subjects from stakeholder status ─────────────────────────────
   // When a stakeholder's current+desired status matches a task group's from+to,
-  // they should automatically be added as subjects.
+  // they should automatically be added as subjects and get COMM tasks created.
   syncSubjects: protectedProcedure
     .input(z.object({ projectId: z.number() }))
     .mutation(async ({ input }) => {
@@ -450,21 +451,75 @@ export const engagementRouter = router({
         .from(stakeholders)
         .where(eq(stakeholders.projectId, input.projectId));
 
+      let addedSubjects = 0;
+      let addedCommTasks = 0;
+
       for (const group of groups) {
+        // Fetch action items for this group
+        const actionItems = await db
+          .select()
+          .from(engagementTasks)
+          .where(eq(engagementTasks.taskGroupId, group.id));
+
         for (const s of allStakeholders) {
           if (!s.currentEngagementStatus || !s.desiredEngagementStatus) continue;
           const fromMatch = group.fromStatus === "Any" || group.fromStatus === s.currentEngagementStatus;
           const toMatch = group.toStatus === s.desiredEngagementStatus;
-          if (fromMatch && toMatch) {
-            try {
-              await db.insert(engagementTaskSubjects).values({
-                taskGroupId: group.id,
-                stakeholderId: s.id,
-              });
-            } catch { /* already exists */ }
+          if (!fromMatch || !toMatch) continue;
+
+          // Insert subject (ignore duplicate)
+          let inserted = false;
+          try {
+            await db.insert(engagementTaskSubjects).values({
+              taskGroupId: group.id,
+              stakeholderId: s.id,
+            });
+            inserted = true;
+            addedSubjects++;
+          } catch { /* already exists — still create missing COMM tasks */ }
+
+          // Create COMM tasks for each action item (whether subject was new or existing)
+          for (const item of actionItems) {
+            const existing = await db
+              .select()
+              .from(tasks)
+              .where(
+                and(
+                  eq(tasks.projectId, group.projectId),
+                  eq(tasks.communicationStakeholderId, item.id),
+                  eq(tasks.responsibleId, s.id)
+                )
+              )
+              .limit(1);
+
+            if (existing.length === 0) {
+              try {
+                const taskId = await getNextId("commTask", "COMM", group.projectId);
+                const periodic = item.periodic;
+                const recurringType = periodic === "Daily" ? "daily"
+                  : periodic === "Weekly" ? "weekly"
+                  : periodic === "Monthly" ? "monthly"
+                  : "none";
+                await createTask({
+                  projectId: group.projectId,
+                  taskId,
+                  description: `[${group.name}] ${item.title} — ${s.fullName}`,
+                  status: "Open",
+                  responsible: s.fullName ?? undefined,
+                  responsibleId: s.id,
+                  recurringType: recurringType as any,
+                  recurringInterval: 1,
+                  communicationStakeholderId: item.id,
+                } as any);
+                addedCommTasks++;
+              } catch (e) {
+                console.error("[syncSubjects] Failed to create COMM task:", e);
+              }
+            }
           }
         }
       }
-      return { success: true };
+
+      return { success: true, addedSubjects, addedCommTasks };
     }),
 });

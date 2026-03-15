@@ -1242,10 +1242,13 @@ function EngagementAssessmentTab({
   });
 
   const syncMut = trpc.engagement.syncSubjects.useMutation({
-    onSuccess: () => {
+    onSuccess: (data) => {
       utils.engagement.listGroups.invalidate({ projectId });
       utils.engagement.listSubjects.invalidate();
-      toast.success("Task groups synced with stakeholder statuses");
+      const msg = data?.addedSubjects || data?.addedCommTasks
+        ? `Synced: ${data.addedSubjects} subject(s) added, ${data.addedCommTasks} COMM task(s) created`
+        : "Sync complete — all subjects and COMM tasks are up to date";
+      toast.success(msg);
     },
     onError: (e) => toast.error(e.message),
   });
