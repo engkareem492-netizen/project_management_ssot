@@ -807,10 +807,14 @@ export const appRouter = router({
           consultedId: z.number().nullable().optional(),
           informedId: z.number().nullable().optional(),
           ownerId: z.number().nullable().optional(),
-          manHours: z.number().nullable().optional(),
+          manHours: z.union([z.number(), z.string()]).nullable().optional(),
         }),
       }))
       .mutation(async ({ input, ctx }) => {
+        // Convert manHours to string for decimal DB column
+        if (input.data.manHours !== undefined && input.data.manHours !== null) {
+          (input.data as any).manHours = String(input.data.manHours);
+        }
         const current = await db.getTaskByTaskId(input.taskId);
         if (!current) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Task not found' });
@@ -834,7 +838,7 @@ export const appRouter = router({
           }
         }
 
-        await db.updateTask(input.id, input.data);
+        await db.updateTask(input.id, input.data as any);
 
         if (Object.keys(changedFields).length > 0) {
           await db.createActionLog({
@@ -1466,14 +1470,57 @@ export const appRouter = router({
           costPerDay: z.string().optional().nullable(),
         }),
       }))
-      .mutation(async ({ input }) => {
-        // Resolve communicationResponsibleId to name if provided
-        const updateData: any = { ...input.data };
+      .mutation(async ({ input, ctx }) => {
+        // Resolve communicationResponsibleId to name
+        let updateData: any = { ...input.data };
         if (input.data.communicationResponsibleId) {
           const resp = await db.getStakeholderById(input.data.communicationResponsibleId);
-          if (resp) updateData.communicationResponsible = resp.fullName ?? input.data.communicationResponsible;
+          if (resp) updateData.communicationResponsible = resp.fullName ?? updateData.communicationResponsible;
         }
         const result = await db.updateStakeholder(input.id, updateData);
+        // Upsert recurring communication task (deduplication: one task per stakeholder)
+        const freq = input.data.communicationFrequency;
+        const respId = input.data.communicationResponsibleId;
+        if (freq && freq !== 'None' && respId) {
+          const stakeholder = await db.getStakeholderById(input.id);
+          const freqMap: Record<string, 'daily' | 'weekly' | 'monthly'> = {
+            Daily: 'daily', Weekly: 'weekly', 'Bi-weekly': 'weekly',
+            Monthly: 'monthly', Quarterly: 'monthly',
+          };
+          const intervalMap: Record<string, number> = {
+            Daily: 1, Weekly: 1, 'Bi-weekly': 2, Monthly: 1, Quarterly: 3,
+          };
+          const recurringType = freqMap[freq] ?? 'weekly';
+          const recurringInterval = intervalMap[freq] ?? 1;
+          const newDesc = `Communicate with ${stakeholder?.fullName ?? 'Stakeholder'} (${freq} via ${input.data.communicationChannel ?? stakeholder?.communicationChannel ?? 'TBD'})`;
+          const dbConn = await getDb();
+          const existingCommTask = dbConn ? await dbConn.select().from(tasks)
+            .where(and(eq(tasks.projectId, stakeholder?.projectId ?? 1), eq(tasks.communicationStakeholderId, input.id)))
+            .limit(1) : [];
+          if (existingCommTask.length > 0) {
+            // Update existing communication task instead of creating a duplicate
+            await dbConn!.update(tasks).set({
+              description: newDesc,
+              responsibleId: respId,
+              responsible: updateData.communicationResponsible ?? undefined,
+              recurringType,
+              recurringInterval,
+            }).where(eq(tasks.id, existingCommTask[0].id));
+          } else {
+            const taskId = await db.getNextId('task', 'T', stakeholder?.projectId ?? 1);
+            await db.createTask({
+              projectId: stakeholder?.projectId ?? 1,
+              taskId,
+              description: newDesc,
+              responsibleId: respId,
+              responsible: updateData.communicationResponsible ?? undefined,
+              recurringType,
+              recurringInterval,
+              status: 'Open',
+              communicationStakeholderId: input.id,
+            } as any);
+          }
+        }
         return result;
       }),
 
