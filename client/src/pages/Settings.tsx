@@ -1915,7 +1915,7 @@ export default function Settings() {
         </TabsContent>
 
       </Tabs>
-      {/* ── Delete Project Dialog ── */}}
+      {/* ── Delete Project Dialog ── */}
       <AlertDialog open={showDeleteProject} onOpenChange={setShowDeleteProject}>
         <AlertDialogContent>
           <AlertDialogHeader>
