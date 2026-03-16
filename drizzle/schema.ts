@@ -153,6 +153,8 @@ export const stakeholders = mysqlTable("stakeholders", {
   workingDaysPerWeek: int("workingDaysPerWeek").default(5),
   // External-specific: manager is another stakeholder
   stakeholderManagerId: int("stakeholderManagerId"),
+  // External-specific: which external party/organisation this person belongs to
+  externalPartyId: int("externalPartyId"),
   // Stakeholder engagement tracking
   powerLevel: int("powerLevel").default(3),       // 1-5
   interestLevel: int("interestLevel").default(3),  // 1-5
@@ -1729,3 +1731,16 @@ export const llDropdownOptions = mysqlTable("llDropdownOptions", {
 });
 export type LlDropdownOption = typeof llDropdownOptions.$inferSelect;
 export type InsertLlDropdownOption = typeof llDropdownOptions.$inferInsert;
+
+// ─── External Parties ─────────────────────────────────────────────────────────
+// Stores per-project external party organisations (contractors, vendors, etc.)
+export const externalParties = mysqlTable("externalParties", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  name: varchar("name", { length: 200 }).notNull(),
+  description: text("description"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ExternalParty = typeof externalParties.$inferSelect;
+export type InsertExternalParty = typeof externalParties.$inferInsert;

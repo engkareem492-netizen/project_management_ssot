@@ -54,6 +54,7 @@ type StakeholderFormData = {
   workingHoursPerDay: string;
   workingDaysPerWeek: number;
   stakeholderManagerId: number | null;
+  externalPartyId: number | null;
   powerLevel: number;
   interestLevel: number;
   engagementStrategy: string;
@@ -83,6 +84,7 @@ const EMPTY_FORM: StakeholderFormData = {
   workingHoursPerDay: "8",
   workingDaysPerWeek: 5,
   stakeholderManagerId: null,
+  externalPartyId: null,
   powerLevel: 3,
   interestLevel: 3,
   engagementStrategy: "Manage Closely", // default: power=3, interest=3 → Manage Closely (Mendelow)
@@ -852,6 +854,65 @@ function StakeholderFormDialog({
             <div className="space-y-3 border-t pt-4">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">External Details</p>
 
+              {/* External Party */}
+              <div className="space-y-2">
+                <Label>External Party</Label>
+                <div className="flex gap-2">
+                  <Select
+                    value={formData.externalPartyId != null ? String(formData.externalPartyId) : ""}
+                    onValueChange={(v) => set({ externalPartyId: v ? parseInt(v) : null })}
+                  >
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Select party..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">— None —</SelectItem>
+                      {externalParties.map((p: any) => (
+                        <SelectItem key={p.id} value={String(p.id)}>
+                          {p.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    title="Add new party"
+                    onClick={() => setIsAddingParty(true)}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+                {/* Inline add party */}
+                {isAddingParty && (
+                  <div className="flex gap-2 mt-1">
+                    <Input
+                      autoFocus
+                      placeholder="New party name..."
+                      value={newPartyName}
+                      onChange={(e) => setNewPartyName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && newPartyName.trim() && currentProjectId) {
+                          createPartyMutation.mutate({ projectId: currentProjectId, name: newPartyName.trim() });
+                        }
+                        if (e.key === "Escape") { setIsAddingParty(false); setNewPartyName(""); }
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={!newPartyName.trim() || createPartyMutation.isPending}
+                      onClick={() => {
+                        if (newPartyName.trim() && currentProjectId)
+                          createPartyMutation.mutate({ projectId: currentProjectId, name: newPartyName.trim() });
+                      }}
+                    >Add</Button>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => { setIsAddingParty(false); setNewPartyName(""); }}>Cancel</Button>
+                  </div>
+                )}
+              </div>
+
               <div className="space-y-2">
                 <Label>Stakeholder Manager</Label>
                 <Select
@@ -1296,6 +1357,8 @@ export default function Stakeholders() {
   const [selectedStakeholder, setSelectedStakeholder] = useState<any>(null);
   const [kpiDialogOpen, setKpiDialogOpen] = useState(false);
   const [formData, setFormData] = useState<StakeholderFormData>(EMPTY_FORM);
+  const [newPartyName, setNewPartyName] = useState("");
+  const [isAddingParty, setIsAddingParty] = useState(false);
 
   const utils = trpc.useUtils();
 
@@ -1336,6 +1399,28 @@ export default function Stakeholders() {
     },
   });
 
+  // External Parties
+  const { data: externalParties = [] } = trpc.externalParties.list.useQuery(
+    { projectId: currentProjectId! },
+    { enabled: !!currentProjectId }
+  );
+  const createPartyMutation = trpc.externalParties.create.useMutation({
+    onSuccess: (newParty) => {
+      utils.externalParties.list.invalidate();
+      setFormData((prev) => ({ ...prev, externalPartyId: newParty.id }));
+      setNewPartyName("");
+      setIsAddingParty(false);
+      toast.success("Party created");
+    },
+    onError: (e) => toast.error(`Failed: ${e.message}`),
+  });
+  const deletePartyMutation = trpc.externalParties.delete.useMutation({
+    onSuccess: () => {
+      utils.externalParties.list.invalidate();
+      toast.success("Party deleted");
+    },
+  });
+
   function getStakeholderClassification(s: any): Classification {
     if (s.classification) return s.classification as Classification;
     return s.isInternalTeam ? "TeamMember" : "Stakeholder";
@@ -1357,6 +1442,7 @@ export default function Stakeholders() {
       workingHoursPerDay: s.workingHoursPerDay != null ? String(s.workingHoursPerDay) : "8",
       workingDaysPerWeek: s.workingDaysPerWeek ?? 5,
       stakeholderManagerId: s.stakeholderManagerId ?? null,
+      externalPartyId: s.externalPartyId ?? null,
       powerLevel: s.powerLevel ?? 3,
       interestLevel: s.interestLevel ?? 3,
       engagementStrategy: s.engagementStrategy || "",
@@ -1401,10 +1487,10 @@ export default function Stakeholders() {
       desiredEngagementStatus: toEngagementStatus(formData.desiredEngagementStatus),
       costPerHour: formData.costPerHour || undefined,
       costPerDay: formData.costPerDay || undefined,
-      communicationResponsibleId: formData.communicationResponsibleId ?? undefined,
+       communicationResponsibleId: formData.communicationResponsibleId ?? undefined,
+      externalPartyId: formData.externalPartyId ?? undefined,
     });
   };
-
   const handleUpdate = () => {
     if (!selectedStakeholder) return;
     if (!formData.fullName.trim()) { toast.error("Full name is required"); return; }
@@ -1418,6 +1504,7 @@ export default function Stakeholders() {
         costPerHour: formData.costPerHour || null,
         costPerDay: formData.costPerDay || null,
         communicationResponsibleId: formData.communicationResponsibleId ?? null,
+        externalPartyId: formData.externalPartyId ?? null,
       },
     });
   };

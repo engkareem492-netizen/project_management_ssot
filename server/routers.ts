@@ -57,6 +57,7 @@ import { rbsNodesRouter } from "./routers/rbsNodes.router";
 import { projectWorkWeekRouter } from "./routers/projectWorkWeek.router";
 import { eefRouter } from "./routers/eef.router";
 import { llDropdownRouter } from "./routers/llDropdown.router";
+import { externalPartiesRouter } from "./routers/externalParties.router";
 
 export const appRouter = router({
   system: systemRouter,
@@ -108,6 +109,7 @@ export const appRouter = router({
   projectWorkWeek: projectWorkWeekRouter,
   eef: eefRouter,
   llDropdown: llDropdownRouter,
+  externalParties: externalPartiesRouter,
   scopeItems: router({
     list: protectedProcedure
       .input(z.object({ projectId: z.number() }))
@@ -1396,6 +1398,7 @@ export const appRouter = router({
         workingHoursPerDay: z.string().optional(),
         workingDaysPerWeek: z.number().optional(),
         stakeholderManagerId: z.number().nullable().optional(),
+        externalPartyId: z.number().nullable().optional(),
         powerLevel: z.number().min(1).max(5).optional(),
         interestLevel: z.number().min(1).max(5).optional(),
         engagementStrategy: z.string().optional(),
@@ -1472,6 +1475,7 @@ export const appRouter = router({
           workingHoursPerDay: z.string().optional(),
           workingDaysPerWeek: z.number().optional(),
           stakeholderManagerId: z.number().nullable().optional(),
+          externalPartyId: z.number().nullable().optional(),
           powerLevel: z.number().min(1).max(5).optional(),
           interestLevel: z.number().min(1).max(5).optional(),
           engagementStrategy: z.string().optional(),
