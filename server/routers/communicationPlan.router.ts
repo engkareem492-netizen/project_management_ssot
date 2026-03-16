@@ -312,11 +312,12 @@ export const communicationPlanRouter = router({
         .from(communicationPlanEntries)
         .where(eq(communicationPlanEntries.projectId, input.projectId));
 
-      const stakeholderEntries = allEntries.filter(e => e.targetType === "stakeholder");
+      let stakeholderEntries = allEntries.filter(e => e.targetType === "stakeholder");
       const roleEntries = allEntries.filter(e => e.targetType === "role");
       const jobEntries = allEntries.filter(e => e.targetType === "job");
 
-      if (stakeholderEntries.length === 0) return { synced: 0, itemsAdded: 0 };
+      // If there are no role/job plans at all, nothing to sync
+      if (roleEntries.length === 0 && jobEntries.length === 0) return { synced: 0, itemsAdded: 0, created: 0 };
 
       // Load all stakeholders for this project
       const projectStakeholders = await db
@@ -325,6 +326,74 @@ export const communicationPlanRouter = router({
         .where(eq(stakeholders.projectId, input.projectId));
 
       const stakeholderMap = new Map(projectStakeholders.map(s => [s.id, s]));
+
+      // ── Auto-create missing stakeholder cards ──────────────────────────────
+      // Build set of stakeholder IDs that already have a card
+      const existingCardSids = new Set(
+        stakeholderEntries
+          .map(e => e.stakeholderId ?? (e.targetValue ? Number(e.targetValue) : null))
+          .filter((id): id is number => !!id)
+      );
+
+      let created = 0;
+      for (const s of projectStakeholders) {
+        if (existingCardSids.has(s.id)) continue;
+
+        // Check if this stakeholder matches any role or job plan
+        const hasRoleMatch = roleEntries.some(re =>
+          re.targetValue && s.role &&
+          re.targetValue.trim().toLowerCase() === s.role.trim().toLowerCase()
+        );
+        const hasJobMatch = jobEntries.some(je =>
+          je.targetValue && s.job &&
+          je.targetValue.trim().toLowerCase() === s.job.trim().toLowerCase()
+        );
+
+        if (!hasRoleMatch && !hasJobMatch) continue;
+
+        // Create a new stakeholder card seeded from the stakeholder's own comm fields
+        const insertResult = await db.insert(communicationPlanEntries).values({
+          projectId: input.projectId,
+          stakeholderId: s.id,
+          targetType: "stakeholder",
+          targetValue: String(s.id),
+          role: s.role ?? undefined,
+          preferredMethods: s.communicationChannel ? [s.communicationChannel] : [],
+          frequency: s.communicationFrequency ?? undefined,
+          textNote: s.communicationMessage ?? undefined,
+          responsible: s.communicationResponsible ?? undefined,
+          responsibleStakeholderId: s.communicationResponsibleId ?? undefined,
+        });
+        const newEntryId: number = (insertResult as any)[0]?.insertId ?? (insertResult as any).insertId;
+
+        // Auto-create recurring task if frequency is set
+        if (s.communicationFrequency && s.communicationFrequency !== "As needed" && s.communicationFrequency !== "Ad hoc") {
+          const responsibleName = s.communicationResponsible ?? await resolveStakeholderName(s.communicationResponsibleId ?? null);
+          await upsertLinkedTask({
+            projectId: input.projectId,
+            commPlanEntryId: newEntryId,
+            targetType: "stakeholder",
+            targetValue: String(s.id),
+            targetName: s.fullName,
+            frequency: s.communicationFrequency,
+            preferredMethods: s.communicationChannel ? [s.communicationChannel] : [],
+            responsibleStakeholderId: s.communicationResponsibleId ?? null,
+            responsibleName,
+          });
+        }
+
+        existingCardSids.add(s.id);
+        created++;
+      }
+
+      // Reload stakeholder entries to include the newly created ones
+      if (created > 0) {
+        const refreshed = await db
+          .select()
+          .from(communicationPlanEntries)
+          .where(eq(communicationPlanEntries.projectId, input.projectId));
+        stakeholderEntries = refreshed.filter(e => e.targetType === "stakeholder");
+      }
 
       // Load all commPlanItems and commPlanInputItems for role and job entries
       const roleJobEntryIds = [...roleEntries, ...jobEntries].map(e => e.id);
@@ -422,7 +491,7 @@ export const communicationPlanRouter = router({
         synced++;
       }
 
-      return { synced, itemsAdded };
+      return { synced, itemsAdded, created };
     }),
 
   // Bulk import from stakeholder communication fields

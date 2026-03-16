@@ -448,7 +448,11 @@ export default function CommunicationPlan() {
   });
   const syncMut = trpc.communicationPlan.syncFromRoleAndPosition.useMutation({
     onSuccess: (data) => {
-      toast.success(`Sync complete: ${data.synced} stakeholder(s) updated, ${data.itemsAdded} item(s) added`);
+      const parts: string[] = [];
+      if (data.created > 0) parts.push(`${data.created} card(s) created`);
+      if (data.synced > 0) parts.push(`${data.synced} stakeholder(s) updated`);
+      if (data.itemsAdded > 0) parts.push(`${data.itemsAdded} item(s) added`);
+      toast.success(parts.length > 0 ? `Sync complete: ${parts.join(", ")}` : "Sync complete: nothing to update");
       refetch();
       refetchAllItems();
     },
