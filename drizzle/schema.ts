@@ -1716,3 +1716,16 @@ export const eefFactors = mysqlTable("eefFactors", {
 });
 export type EefFactor = typeof eefFactors.$inferSelect;
 export type InsertEefFactor = typeof eefFactors.$inferInsert;
+
+// ─── Lessons Learned Dropdown Options ────────────────────────────────────────
+// Stores per-project customizable options for Category, Impact, Status, Phase
+export const llDropdownOptions = mysqlTable("llDropdownOptions", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  fieldType: varchar("fieldType", { length: 50 }).notNull(),  // "category" | "impact" | "status" | "phase"
+  value: varchar("value", { length: 200 }).notNull(),
+  sortOrder: int("sortOrder").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type LlDropdownOption = typeof llDropdownOptions.$inferSelect;
+export type InsertLlDropdownOption = typeof llDropdownOptions.$inferInsert;

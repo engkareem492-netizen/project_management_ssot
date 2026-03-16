@@ -10,18 +10,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Loader2, Plus, Pencil, Trash2, BookMarked, Search, ThumbsUp, TrendingUp, Lightbulb } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, BookMarked, Search, ThumbsUp, TrendingUp, Lightbulb, Settings2, X, Check } from "lucide-react";
 import { StakeholderSelect } from "@/components/StakeholderSelect";
 
-const CATEGORY_COLORS: Record<string, string> = {
-  Technical: "bg-blue-100 text-blue-800",
-  Process: "bg-green-100 text-green-800",
-  People: "bg-purple-100 text-purple-800",
-  Commercial: "bg-yellow-100 text-yellow-800",
-  Risk: "bg-red-100 text-red-800",
-  Communication: "bg-orange-100 text-orange-800",
-  Other: "bg-gray-100 text-gray-700",
-};
+// Fallback badge colors for dynamic category values
+const CAT_PALETTE = [
+  "bg-blue-100 text-blue-800",
+  "bg-green-100 text-green-800",
+  "bg-purple-100 text-purple-800",
+  "bg-yellow-100 text-yellow-800",
+  "bg-red-100 text-red-800",
+  "bg-orange-100 text-orange-800",
+  "bg-gray-100 text-gray-700",
+  "bg-teal-100 text-teal-800",
+  "bg-pink-100 text-pink-800",
+  "bg-indigo-100 text-indigo-800",
+];
+
+function getCatColor(cat: string, allCats: string[]) {
+  const idx = allCats.indexOf(cat);
+  return CAT_PALETTE[idx % CAT_PALETTE.length] ?? "bg-gray-100 text-gray-700";
+}
 
 const IMPACT_COLORS: Record<string, string> = {
   High: "bg-red-100 text-red-800",
@@ -29,20 +38,190 @@ const IMPACT_COLORS: Record<string, string> = {
   Low: "bg-gray-100 text-gray-700",
 };
 
+function getImpactColor(impact: string) {
+  return IMPACT_COLORS[impact] ?? "bg-gray-100 text-gray-700";
+}
+
 const EMPTY_FORM = {
   title: "",
-  category: "Process" as "Technical" | "Process" | "People" | "Commercial" | "Risk" | "Communication" | "Other",
+  category: "",
   phase: "",
   whatWentWell: "",
   whatToImprove: "",
   recommendation: "",
-  impact: "Medium" as "Low" | "Medium" | "High",
+  impact: "",
   owner: "",
   dateRecorded: "",
-  status: "Draft" as "Draft" | "Reviewed" | "Approved" | "Archived",
+  status: "",
   linkedDocumentId: null as number | null,
 };
 
+type FieldType = "category" | "impact" | "status" | "phase";
+
+// ─── Manage Dropdown Options Dialog ─────────────────────────────────────────
+function ManageOptionsDialog({
+  open,
+  onClose,
+  fieldType,
+  label,
+  projectId,
+}: {
+  open: boolean;
+  onClose: () => void;
+  fieldType: FieldType;
+  label: string;
+  projectId: number;
+}) {
+  const utils = trpc.useUtils();
+  const { data: rows = [], refetch } = trpc.llDropdown.listByType.useQuery(
+    { projectId, fieldType },
+    { enabled: open }
+  );
+  const addMut = trpc.llDropdown.add.useMutation({
+    onSuccess: () => { refetch(); utils.llDropdown.list.invalidate(); setNewVal(""); toast.success("Option added"); },
+  });
+  const updateMut = trpc.llDropdown.update.useMutation({
+    onSuccess: () => { refetch(); utils.llDropdown.list.invalidate(); setEditingId(null); toast.success("Option updated"); },
+  });
+  const deleteMut = trpc.llDropdown.delete.useMutation({
+    onSuccess: () => { refetch(); utils.llDropdown.list.invalidate(); toast.success("Option removed"); },
+  });
+
+  const [newVal, setNewVal] = useState("");
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editVal, setEditVal] = useState("");
+
+  const startEdit = (id: number, val: string) => { setEditingId(id); setEditVal(val); };
+  const confirmEdit = (id: number) => { if (editVal.trim()) updateMut.mutate({ id, value: editVal.trim() }); };
+
+  return (
+    <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Manage {label} Options</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          {/* Existing options */}
+          <div className="space-y-2 max-h-64 overflow-y-auto">
+            {rows.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-4">No options yet. Add one below.</p>
+            )}
+            {rows.map((row) => (
+              <div key={row.id} className="flex items-center gap-2 group">
+                {editingId === row.id ? (
+                  <>
+                    <Input
+                      className="flex-1 h-8 text-sm"
+                      value={editVal}
+                      onChange={e => setEditVal(e.target.value)}
+                      onKeyDown={e => { if (e.key === "Enter") confirmEdit(row.id); if (e.key === "Escape") setEditingId(null); }}
+                      autoFocus
+                    />
+                    <Button size="icon" variant="ghost" className="h-7 w-7 text-green-600" onClick={() => confirmEdit(row.id)} disabled={updateMut.isPending}>
+                      <Check className="w-3 h-3" />
+                    </Button>
+                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditingId(null)}>
+                      <X className="w-3 h-3" />
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <span className="flex-1 text-sm px-2 py-1 rounded border border-transparent group-hover:border-border bg-muted/30">{row.value}</span>
+                    <Button size="icon" variant="ghost" className="h-7 w-7 opacity-0 group-hover:opacity-100" onClick={() => startEdit(row.id, row.value)}>
+                      <Pencil className="w-3 h-3" />
+                    </Button>
+                    <Button size="icon" variant="ghost" className="h-7 w-7 opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-700" onClick={() => deleteMut.mutate({ id: row.id })} disabled={deleteMut.isPending}>
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Add new */}
+          <div className="flex gap-2 pt-2 border-t">
+            <Input
+              className="flex-1 h-8 text-sm"
+              placeholder={`New ${label.toLowerCase()} option...`}
+              value={newVal}
+              onChange={e => setNewVal(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter" && newVal.trim()) addMut.mutate({ projectId, fieldType, value: newVal.trim() }); }}
+            />
+            <Button
+              size="sm"
+              onClick={() => { if (newVal.trim()) addMut.mutate({ projectId, fieldType, value: newVal.trim() }); }}
+              disabled={!newVal.trim() || addMut.isPending}
+            >
+              {addMut.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+              Add
+            </Button>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Done</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Dynamic Dropdown with Manage Button ─────────────────────────────────────
+function DynamicSelect({
+  label,
+  fieldType,
+  value,
+  options,
+  placeholder,
+  onChange,
+  projectId,
+}: {
+  label: string;
+  fieldType: FieldType;
+  value: string;
+  options: string[];
+  placeholder?: string;
+  onChange: (v: string) => void;
+  projectId: number;
+}) {
+  const [manageOpen, setManageOpen] = useState(false);
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1">
+        <Label>{label}</Label>
+        <button
+          type="button"
+          className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+          onClick={() => setManageOpen(true)}
+          title={`Manage ${label} options`}
+        >
+          <Settings2 className="w-3 h-3" />
+          Manage
+        </button>
+      </div>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger><SelectValue placeholder={placeholder ?? `Select ${label.toLowerCase()}`} /></SelectTrigger>
+        <SelectContent>
+          {options.map(opt => (
+            <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+          ))}
+          {options.length === 0 && (
+            <div className="px-3 py-2 text-xs text-muted-foreground">No options yet — click Manage to add</div>
+          )}
+        </SelectContent>
+      </Select>
+      <ManageOptionsDialog
+        open={manageOpen}
+        onClose={() => setManageOpen(false)}
+        fieldType={fieldType}
+        label={label}
+        projectId={projectId}
+      />
+    </div>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
 export default function LessonsLearned() {
   const { currentProjectId } = useProject();
   const projectId = currentProjectId!;
@@ -51,6 +230,12 @@ export default function LessonsLearned() {
   const { data: lessons = [], isLoading, refetch } = trpc.lessonsLearned.list.useQuery({ projectId }, { enabled });
   const { data: stakeholders = [] } = trpc.stakeholders.list.useQuery({ projectId }, { enabled });
   const { data: allDocuments = [] } = trpc.documents.list.useQuery({ projectId }, { enabled });
+  const { data: dropdownOptions } = trpc.llDropdown.list.useQuery({ projectId }, { enabled });
+
+  const categories = dropdownOptions?.category ?? ["Technical", "Process", "People", "Commercial", "Risk", "Communication", "Other"];
+  const impacts = dropdownOptions?.impact ?? ["Low", "Medium", "High"];
+  const statuses = dropdownOptions?.status ?? ["Draft", "Reviewed", "Approved", "Archived"];
+  const phases = dropdownOptions?.phase ?? ["Initiation", "Planning", "Execution", "Closure"];
 
   const create = trpc.lessonsLearned.create.useMutation({ onSuccess: () => { toast.success("Lesson recorded"); refetch(); setOpen(false); } });
   const update = trpc.lessonsLearned.update.useMutation({ onSuccess: () => { toast.success("Updated"); refetch(); setOpen(false); } });
@@ -63,15 +248,30 @@ export default function LessonsLearned() {
   const [catFilter, setCatFilter] = useState("all");
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
-  const openNew = () => { setEditing(null); setForm({ ...EMPTY_FORM }); setOpen(true); };
+  const openNew = () => {
+    setEditing(null);
+    setForm({
+      ...EMPTY_FORM,
+      category: categories[0] ?? "",
+      impact: impacts.find(i => i === "Medium") ?? impacts[0] ?? "",
+      status: statuses.find(s => s === "Draft") ?? statuses[0] ?? "",
+    });
+    setOpen(true);
+  };
+
   const openEdit = (l: any) => {
     setEditing(l);
     setForm({
-      title: l.title ?? "", category: l.category ?? "Process", phase: l.phase ?? "",
-      whatWentWell: l.whatWentWell ?? "", whatToImprove: l.whatToImprove ?? "",
-      recommendation: l.recommendation ?? "", impact: l.impact ?? "Medium",
-      owner: l.owner ?? "", dateRecorded: l.dateRecorded ? l.dateRecorded.substring(0, 10) : "",
-      status: l.status ?? "Draft",
+      title: l.title ?? "",
+      category: l.category ?? categories[0] ?? "",
+      phase: l.phase ?? "",
+      whatWentWell: l.whatWentWell ?? "",
+      whatToImprove: l.whatToImprove ?? "",
+      recommendation: l.recommendation ?? "",
+      impact: l.impact ?? impacts[0] ?? "",
+      owner: l.owner ?? "",
+      dateRecorded: l.dateRecorded ? l.dateRecorded.substring(0, 10) : "",
+      status: l.status ?? statuses[0] ?? "",
       linkedDocumentId: l.linkedDocumentId ?? null,
     });
     setOpen(true);
@@ -115,7 +315,11 @@ export default function LessonsLearned() {
       {/* Category Summary */}
       <div className="flex flex-wrap gap-2">
         {Object.entries(byCat).map(([cat, count]) => (
-          <Badge key={cat} className={CATEGORY_COLORS[cat] + " border-0 cursor-pointer text-sm"} onClick={() => setCatFilter(catFilter === cat ? "all" : cat)}>
+          <Badge
+            key={cat}
+            className={getCatColor(cat, categories) + " border-0 cursor-pointer text-sm"}
+            onClick={() => setCatFilter(catFilter === cat ? "all" : cat)}
+          >
             {cat}: {count}
           </Badge>
         ))}
@@ -131,7 +335,7 @@ export default function LessonsLearned() {
           <SelectTrigger className="w-44"><SelectValue placeholder="All Categories" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Categories</SelectItem>
-            {["Technical", "Process", "People", "Commercial", "Risk", "Communication", "Other"].map(c => (
+            {categories.map(c => (
               <SelectItem key={c} value={c}>{c}</SelectItem>
             ))}
           </SelectContent>
@@ -153,10 +357,10 @@ export default function LessonsLearned() {
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <span className="font-mono text-xs text-muted-foreground">{lesson.lessonId}</span>
-                      <Badge className={CATEGORY_COLORS[lesson.category] + " border-0 text-xs"}>{lesson.category}</Badge>
-                      <Badge className={IMPACT_COLORS[lesson.impact ?? "Medium"] + " border-0 text-xs"}>{lesson.impact} Impact</Badge>
+                      <Badge className={getCatColor(lesson.category, categories) + " border-0 text-xs"}>{lesson.category}</Badge>
+                      <Badge className={getImpactColor(lesson.impact ?? "") + " border-0 text-xs"}>{lesson.impact} Impact</Badge>
                       <Badge variant="outline" className="text-xs">{lesson.status}</Badge>
                       {lesson.phase && <Badge variant="outline" className="text-xs">{lesson.phase}</Badge>}
                     </div>
@@ -204,7 +408,7 @@ export default function LessonsLearned() {
         </div>
       )}
 
-      {/* Dialog */}
+      {/* Create / Edit Dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -216,48 +420,41 @@ export default function LessonsLearned() {
               <Input value={form.title} onChange={e => set("title", e.target.value)} placeholder="Brief title..." />
             </div>
             <div className="grid grid-cols-3 gap-3">
-              <div>
-                <Label>Category</Label>
-                <Select value={form.category} onValueChange={v => set("category", v)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {["Technical", "Process", "People", "Commercial", "Risk", "Communication", "Other"].map(c => (
-                      <SelectItem key={c} value={c}>{c}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Impact</Label>
-                <Select value={form.impact} onValueChange={v => set("impact", v)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {["Low", "Medium", "High"].map(i => <SelectItem key={i} value={i}>{i}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Status</Label>
-                <Select value={form.status} onValueChange={v => set("status", v)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {["Draft", "Reviewed", "Approved", "Archived"].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
+              <DynamicSelect
+                label="Category"
+                fieldType="category"
+                value={form.category}
+                options={categories}
+                onChange={v => set("category", v)}
+                projectId={projectId}
+              />
+              <DynamicSelect
+                label="Impact"
+                fieldType="impact"
+                value={form.impact}
+                options={impacts}
+                onChange={v => set("impact", v)}
+                projectId={projectId}
+              />
+              <DynamicSelect
+                label="Status"
+                fieldType="status"
+                value={form.status}
+                options={statuses}
+                onChange={v => set("status", v)}
+                projectId={projectId}
+              />
             </div>
             <div className="grid grid-cols-3 gap-3">
-              <div>
-                <Label>Phase</Label>
-                <Select value={form.phase || ""} onValueChange={v => set("phase", v)}>
-                  <SelectTrigger><SelectValue placeholder="Select phase" /></SelectTrigger>
-                  <SelectContent>
-                    {["Initiation", "Planning", "Execution", "Closure", "Explore", "Realize", "Deploy"].map(p => (
-                      <SelectItem key={p} value={p}>{p}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <DynamicSelect
+                label="Phase"
+                fieldType="phase"
+                value={form.phase}
+                options={phases}
+                placeholder="Select phase"
+                onChange={v => set("phase", v)}
+                projectId={projectId}
+              />
               <div>
                 <Label>Owner</Label>
                 <StakeholderSelect

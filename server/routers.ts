@@ -56,6 +56,7 @@ import { teamSkillsRouter } from "./routers/teamSkills.router";
 import { rbsNodesRouter } from "./routers/rbsNodes.router";
 import { projectWorkWeekRouter } from "./routers/projectWorkWeek.router";
 import { eefRouter } from "./routers/eef.router";
+import { llDropdownRouter } from "./routers/llDropdown.router";
 
 export const appRouter = router({
   system: systemRouter,
@@ -106,6 +107,7 @@ export const appRouter = router({
   rbsNodes: rbsNodesRouter,
   projectWorkWeek: projectWorkWeekRouter,
   eef: eefRouter,
+  llDropdown: llDropdownRouter,
   scopeItems: router({
     list: protectedProcedure
       .input(z.object({ projectId: z.number() }))
