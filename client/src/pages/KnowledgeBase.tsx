@@ -197,7 +197,7 @@ export default function KnowledgeBase() {
       updateMutation.mutate({ ...data, id: editingEntry.id });
     } else {
       createMutation.mutate(data);
-    }}
+    }
   };
 
   const handleEdit = (entry: any) => {
