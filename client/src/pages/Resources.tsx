@@ -13,6 +13,7 @@ import {
   Users, Loader2, Settings, BarChart2, Mail, Briefcase, UserCheck, UserX,
   LayoutGrid, ChevronRight, ChevronDown, CalendarDays, FileText,
   TreeDeciduous, DollarSign, Clock, TrendingUp, Plus, Pencil, Trash2,
+  ArrowUp, ArrowDown, Check, X, FolderTree, Cpu, Wrench, Package, Server, Banknote,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
@@ -115,6 +116,9 @@ export default function Resources() {
   // RBS Nodes state
   const [rbsNodeForm, setRbsNodeForm] = useState({ code: '', name: '', resourceType: 'Human', parentId: '__root__', description: '' });
   const [rbsNodeExpanded, setRbsNodeExpanded] = useState<Record<number, boolean>>({});
+  const [rbsEditingNodeId, setRbsEditingNodeId] = useState<number | null>(null);
+  const [rbsEditForm, setRbsEditForm] = useState({ code: '', name: '', resourceType: 'Human', description: '' });
+  const [rbsAddChildParentId, setRbsAddChildParentId] = useState<number | null>(null);
 
   // Calendar state
   const [calStart, setCalStart] = useState(() => {
@@ -174,6 +178,10 @@ export default function Resources() {
   });
   const deleteRbsNode = trpc.rbsNodes.delete.useMutation({
     onSuccess: () => { refetchRbsNodes(); toast.success('Node deleted'); },
+  });
+  const updateRbsNode = trpc.rbsNodes.update.useMutation({
+    onSuccess: () => { refetchRbsNodes(); setRbsEditingNodeId(null); toast.success('Node updated'); },
+    onError: (e) => toast.error(e.message),
   });
 
   const { data: calendarEntries = [], refetch: refetchCal } = trpc.teamSkills.listCalendar.useQuery(
@@ -372,13 +380,15 @@ export default function Resources() {
     setShowCapacityDialog(false);
   }
 
-  function openCalDialog(stakeholderId: number, stakeholderName: string, date: string, existing?: any, mode: "single" | "range" = "single") {
+  function openCalDialog(stakeholderId: number | null, stakeholderName: string, date: string, existing?: any, mode: "single" | "range" = "single") {
     setCalEditStakeholder(stakeholderId);
     setCalEditStakeholderName(stakeholderName);
     setCalEditDate(date);
     setCalEditEndDate(date);
     setCalEntryMode(mode);
-    const entryType = existing?.type ?? "Leave";
+    // When opening at general level (null stakeholder) default to Holiday; otherwise Leave
+    const defaultType = stakeholderId === null ? "Holiday" : "Leave";
+    const entryType = existing?.type ?? defaultType;
     setCalEditType(entryType);
     setCalEditHours(existing?.availableHours ?? (entryType === "Working" || entryType === "Training" ? "8" : "0"));
     setCalHolidayScope("all");
@@ -397,8 +407,13 @@ export default function Resources() {
     if (!calEditDate) return;
 
     // Determine which stakeholders to apply the entry to
+    // Holiday at general level (calEditStakeholder === null) → apply to all / selected
+    // Holiday at stakeholder level (calEditStakeholder !== null) → treat as personal Leave
     let targetIds: number[] = [];
-    if (calEditType === "Holiday") {
+    let effectiveType = calEditType;
+
+    if (calEditType === "Holiday" && calEditStakeholder === null) {
+      // General holiday — applies to all or selected
       if (calHolidayScope === "all") {
         targetIds = (stakeholders as any[]).map((s: any) => s.id);
       } else {
@@ -406,6 +421,8 @@ export default function Resources() {
       }
       if (targetIds.length === 0) { toast.error("Select at least one stakeholder for this holiday"); return; }
     } else {
+      // Stakeholder-level entry: Holiday becomes Leave (personal)
+      if (calEditType === "Holiday") effectiveType = "Leave";
       if (!calEditStakeholder) return;
       targetIds = [calEditStakeholder];
     }
@@ -417,7 +434,7 @@ export default function Resources() {
           projectId,
           startDate: calEditDate!,
           endDate: calEditEndDate,
-          type: calEditType,
+          type: effectiveType,
           availableHours: calEditHours,
           notes: calEditNotes,
           skipWeekends: calSkipWeekends,
@@ -427,7 +444,7 @@ export default function Resources() {
           stakeholderId: sid,
           projectId,
           date: calEditDate!,
-          type: calEditType,
+          type: effectiveType,
           availableHours: calEditHours,
           notes: calEditNotes,
         });
@@ -685,229 +702,351 @@ export default function Resources() {
 
         {/* ─── RBS Tab ──────────────────────────────────────────────────── */}
         <TabsContent value="rbs" className="mt-0 space-y-4">
-          {/* ── RBS: Node Tree + Add Form (matches reference screenshot) ── */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* ── RBS: Professional Hierarchy Builder ── */}
+          {(() => {
+            const RBS_TYPE_META: Record<string, { label: string; icon: React.ReactNode; bg: string; text: string; border: string }> = {
+              Human:          { label: 'Human',          icon: <Users className="w-3 h-3" />,    bg: '#eff6ff', text: '#1d4ed8', border: '#bfdbfe' },
+              Equipment:      { label: 'Equipment',      icon: <Wrench className="w-3 h-3" />,   bg: '#fffbeb', text: '#b45309', border: '#fde68a' },
+              Material:       { label: 'Material',       icon: <Package className="w-3 h-3" />,  bg: '#f0fdf4', text: '#15803d', border: '#bbf7d0' },
+              Infrastructure: { label: 'Infrastructure', icon: <Server className="w-3 h-3" />,   bg: '#faf5ff', text: '#7e22ce', border: '#e9d5ff' },
+              Software:       { label: 'Software',       icon: <Cpu className="w-3 h-3" />,      bg: '#ecfeff', text: '#0e7490', border: '#a5f3fc' },
+              Financial:      { label: 'Financial',      icon: <Banknote className="w-3 h-3" />, bg: '#fff1f2', text: '#be123c', border: '#fecdd3' },
+            };
+            const getMeta = (type: string) => RBS_TYPE_META[type] ?? { label: type, icon: <FolderTree className="w-3 h-3" />, bg: '#f9fafb', text: '#374151', border: '#e5e7eb' };
 
-            {/* Left: Node Tree */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <TreeDeciduous className="w-4 h-4" />
-                    Resource Breakdown Structure
-                  </CardTitle>
-                  <Badge variant="outline">{(rbsNodes as any[]).length} nodes</Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {(rbsNodes as any[]).length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
-                    <TreeDeciduous className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                    <p className="text-sm">No RBS nodes defined yet.</p>
-                    <p className="text-xs mt-1">Use the form on the right to add your first node.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-1">
-                    {/* Root nodes (no parent) */}
-                    {(() => {
-                      const nodeMap: Record<number, any> = {};
-                      (rbsNodes as any[]).forEach(n => { nodeMap[n.id] = { ...n, children: [] }; });
-                      const roots: any[] = [];
-                      (rbsNodes as any[]).forEach(n => {
-                        if (n.parentId && nodeMap[n.parentId]) {
-                          nodeMap[n.parentId].children.push(nodeMap[n.id]);
-                        } else {
-                          roots.push(nodeMap[n.id]);
-                        }
-                      });
-                      const RBS_TYPE_COLORS: Record<string, string> = {
-                        Human: 'bg-blue-50 border-blue-200 text-blue-700',
-                        Equipment: 'bg-amber-50 border-amber-200 text-amber-700',
-                        Material: 'bg-green-50 border-green-200 text-green-700',
-                        Infrastructure: 'bg-purple-50 border-purple-200 text-purple-700',
-                        Software: 'bg-cyan-50 border-cyan-200 text-cyan-700',
-                        Financial: 'bg-rose-50 border-rose-200 text-rose-700',
-                      };
-                      const renderNode = (node: any, depth: number = 0): React.ReactNode => {
-                        const isExp = rbsNodeExpanded[node.id] !== false;
-                        const hasChildren = node.children.length > 0;
-                        const typeColor = RBS_TYPE_COLORS[node.resourceType] || 'bg-gray-50 border-gray-200 text-gray-700';
-                        return (
-                          <div key={node.id} style={{ marginLeft: depth * 16 }}>
-                            <div className="flex items-center gap-2 p-2 rounded-lg border bg-white hover:bg-gray-50 group">
-                              {hasChildren ? (
-                                <button onClick={() => setRbsNodeExpanded(p => ({ ...p, [node.id]: !isExp }))} className="shrink-0">
-                                  {isExp ? <ChevronDown className="w-3.5 h-3.5 text-gray-400" /> : <ChevronRight className="w-3.5 h-3.5 text-gray-400" />}
-                                </button>
-                              ) : <span className="w-3.5 h-3.5 shrink-0" />}
-                              <span className="font-mono text-xs text-gray-500 shrink-0">{node.code}</span>
-                              <span className="text-sm font-medium flex-1 truncate">{node.name}</span>
-                              <span className={`text-[10px] px-1.5 py-0.5 rounded-full border font-medium shrink-0 ${typeColor}`}>{node.resourceType}</span>
-                              <button
-                                className="opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-600 shrink-0"
-                                onClick={() => deleteRbsNode.mutate({ id: node.id })}
-                                title="Delete node"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
+            // Build tree
+            const nodeMap: Record<number, any> = {};
+            (rbsNodes as any[]).forEach(n => { nodeMap[n.id] = { ...n, children: [] }; });
+            const roots: any[] = [];
+            (rbsNodes as any[]).forEach(n => {
+              if (n.parentId && nodeMap[n.parentId]) nodeMap[n.parentId].children.push(nodeMap[n.id]);
+              else roots.push(nodeMap[n.id]);
+            });
+            // Sort children by sequence then code
+            const sortNodes = (arr: any[]) => arr.sort((a, b) => (a.sequence ?? 0) - (b.sequence ?? 0) || a.code.localeCompare(b.code));
+            const sortTree = (nodes: any[]) => { sortNodes(nodes); nodes.forEach(n => sortTree(n.children)); };
+            sortTree(roots);
+
+            const renderNode = (node: any, depth: number, siblings: any[], idx: number): React.ReactNode => {
+              const isExp = rbsNodeExpanded[node.id] !== false;
+              const hasChildren = node.children.length > 0;
+              const meta = getMeta(node.resourceType);
+              const isEditing = rbsEditingNodeId === node.id;
+              const isAddingChild = rbsAddChildParentId === node.id;
+
+              return (
+                <div key={node.id}>
+                  {/* Node row */}
+                  <div
+                    className={`group flex items-start gap-0 ${
+                      depth > 0 ? 'ml-6 border-l-2 border-gray-200 pl-4' : ''
+                    }`}
+                  >
+                    <div className={`flex-1 rounded-xl border transition-all ${
+                      isEditing ? 'border-primary shadow-sm bg-primary/5' : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm'
+                    } mb-1.5`}>
+
+                      {isEditing ? (
+                        /* ─ Inline Edit Mode ─ */
+                        <div className="p-3 space-y-2">
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Code</Label>
+                              <Input className="h-7 text-xs mt-0.5" value={rbsEditForm.code} onChange={e => setRbsEditForm(p => ({ ...p, code: e.target.value }))} />
                             </div>
-                            {isExp && hasChildren && (
-                              <div className="mt-1 space-y-1">
-                                {node.children.map((child: any) => renderNode(child, depth + 1))}
-                              </div>
-                            )}
+                            <div>
+                              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Name</Label>
+                              <Input className="h-7 text-xs mt-0.5" value={rbsEditForm.name} onChange={e => setRbsEditForm(p => ({ ...p, name: e.target.value }))} />
+                            </div>
                           </div>
-                        );
-                      };
-                      return roots.map(r => renderNode(r));
-                    })()}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Type</Label>
+                              <Select value={rbsEditForm.resourceType} onValueChange={v => setRbsEditForm(p => ({ ...p, resourceType: v }))}>
+                                <SelectTrigger className="h-7 text-xs mt-0.5"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  {Object.keys(RBS_TYPE_META).map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Description</Label>
+                              <Input className="h-7 text-xs mt-0.5" value={rbsEditForm.description} onChange={e => setRbsEditForm(p => ({ ...p, description: e.target.value }))} placeholder="Optional" />
+                            </div>
+                          </div>
+                          <div className="flex gap-2 pt-1">
+                            <Button size="sm" className="h-7 text-xs gap-1" onClick={() => updateRbsNode.mutate({ id: node.id, code: rbsEditForm.code.trim(), name: rbsEditForm.name.trim(), resourceType: rbsEditForm.resourceType, description: rbsEditForm.description || undefined })} disabled={!rbsEditForm.code.trim() || !rbsEditForm.name.trim() || updateRbsNode.isPending}>
+                              {updateRbsNode.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />} Save
+                            </Button>
+                            <Button size="sm" variant="ghost" className="h-7 text-xs gap-1" onClick={() => setRbsEditingNodeId(null)}>
+                              <X className="w-3 h-3" /> Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        /* ─ View Mode ─ */
+                        <div className="flex items-center gap-2 px-3 py-2">
+                          {/* Expand toggle */}
+                          {hasChildren ? (
+                            <button onClick={() => setRbsNodeExpanded(p => ({ ...p, [node.id]: !isExp }))} className="shrink-0 text-gray-400 hover:text-gray-600">
+                              {isExp ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                            </button>
+                          ) : <span className="w-3.5 shrink-0" />}
 
-            {/* Right: Add Node Form */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Add RBS Node</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Code (e.g. R1.1)</Label>
-                    <Input
-                      placeholder="R1.1"
-                      value={rbsNodeForm.code}
-                      onChange={e => setRbsNodeForm(p => ({ ...p, code: e.target.value }))}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Name</Label>
-                    <Input
-                      placeholder="Node name"
-                      value={rbsNodeForm.name}
-                      onChange={e => setRbsNodeForm(p => ({ ...p, name: e.target.value }))}
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Type</Label>
-                    <Select value={rbsNodeForm.resourceType} onValueChange={v => setRbsNodeForm(p => ({ ...p, resourceType: v }))}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {['Human','Equipment','Material','Infrastructure','Software','Financial'].map(t => (
-                          <SelectItem key={t} value={t}>{t}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Parent node (optional)</Label>
-                    <Select value={rbsNodeForm.parentId} onValueChange={v => setRbsNodeForm(p => ({ ...p, parentId: v }))}>
-                      <SelectTrigger><SelectValue placeholder="None (root)" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__root__">None (root)</SelectItem>
-                        {(rbsNodes as any[]).map((n: any) => (
-                          <SelectItem key={n.id} value={String(n.id)}>{n.code} — {n.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Description (optional)</Label>
-                  <Input
-                    placeholder="Brief description..."
-                    value={rbsNodeForm.description}
-                    onChange={e => setRbsNodeForm(p => ({ ...p, description: e.target.value }))}
-                  />
-                </div>
-                <Button
-                  className="w-full bg-primary hover:bg-primary/90"
-                  disabled={!rbsNodeForm.code.trim() || !rbsNodeForm.name.trim() || createRbsNode.isPending}
-                  onClick={() => createRbsNode.mutate({
-                    projectId,
-                    code: rbsNodeForm.code.trim(),
-                    name: rbsNodeForm.name.trim(),
-                    resourceType: rbsNodeForm.resourceType,
-                    parentId: (rbsNodeForm.parentId && rbsNodeForm.parentId !== '__root__') ? parseInt(rbsNodeForm.parentId) : undefined,
-                    description: rbsNodeForm.description || undefined,
-                  })}
-                >
-                  {createRbsNode.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
-                  Add Node
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
+                          {/* Type icon */}
+                          <span className="shrink-0 w-5 h-5 rounded flex items-center justify-center" style={{ background: meta.bg, color: meta.text }}>
+                            {meta.icon}
+                          </span>
 
-          {/* Resource Type Management Panel (kept for stakeholder classification) */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <TreeDeciduous className="w-4 h-4" />
-                    Resource Types
-                  </CardTitle>
-                  <p className="text-xs text-muted-foreground mt-0.5">Define custom resource categories. These appear as classification options in stakeholder forms and as groups in the RBS tree.</p>
+                          {/* Code + Name */}
+                          <span className="font-mono text-[11px] text-muted-foreground shrink-0 w-12 truncate">{node.code}</span>
+                          <span className="text-sm font-semibold flex-1 truncate">{node.name}</span>
+
+                          {/* Type badge */}
+                          <span className="text-[10px] px-2 py-0.5 rounded-full border font-medium shrink-0" style={{ background: meta.bg, color: meta.text, borderColor: meta.border }}>
+                            {meta.label}
+                          </span>
+
+                          {/* Children count */}
+                          {hasChildren && (
+                            <span className="text-[10px] text-muted-foreground shrink-0">{node.children.length} sub</span>
+                          )}
+
+                          {/* Action buttons (visible on hover) */}
+                          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                            {/* Move up */}
+                            {idx > 0 && (
+                              <button className="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700"
+                                title="Move up"
+                                onClick={() => updateRbsNode.mutate({ id: node.id, sequence: (siblings[idx - 1].sequence ?? idx - 1) - 1 })}>
+                                <ArrowUp className="w-3 h-3" />
+                              </button>
+                            )}
+                            {/* Move down */}
+                            {idx < siblings.length - 1 && (
+                              <button className="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700"
+                                title="Move down"
+                                onClick={() => updateRbsNode.mutate({ id: node.id, sequence: (siblings[idx + 1].sequence ?? idx + 1) + 1 })}>
+                                <ArrowDown className="w-3 h-3" />
+                              </button>
+                            )}
+                            {/* Add child */}
+                            <button className="w-6 h-6 flex items-center justify-center rounded hover:bg-green-50 text-gray-400 hover:text-green-600"
+                              title="Add child node"
+                              onClick={() => {
+                                setRbsAddChildParentId(node.id);
+                                setRbsNodeExpanded(p => ({ ...p, [node.id]: true }));
+                                setRbsNodeForm({ code: node.code + '.', name: '', resourceType: node.resourceType || 'Human', parentId: String(node.id), description: '' });
+                              }}>
+                              <Plus className="w-3 h-3" />
+                            </button>
+                            {/* Edit */}
+                            <button className="w-6 h-6 flex items-center justify-center rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600"
+                              title="Edit node"
+                              onClick={() => {
+                                setRbsEditingNodeId(node.id);
+                                setRbsEditForm({ code: node.code, name: node.name, resourceType: node.resourceType || 'Human', description: node.description || '' });
+                              }}>
+                              <Pencil className="w-3 h-3" />
+                            </button>
+                            {/* Delete */}
+                            <button className="w-6 h-6 flex items-center justify-center rounded hover:bg-red-50 text-gray-400 hover:text-red-600"
+                              title="Delete node"
+                              onClick={() => { if (confirm(`Delete "${node.name}"?`)) deleteRbsNode.mutate({ id: node.id }); }}>
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Add-child inline form */}
+                      {isAddingChild && (
+                        <div className="border-t px-3 py-3 bg-green-50/50 space-y-2">
+                          <p className="text-xs font-medium text-green-700">Add child under <span className="font-mono">{node.code}</span></p>
+                          <div className="grid grid-cols-2 gap-2">
+                            <Input className="h-7 text-xs" placeholder="Code e.g. R1.1" value={rbsNodeForm.code} onChange={e => setRbsNodeForm(p => ({ ...p, code: e.target.value }))} />
+                            <Input className="h-7 text-xs" placeholder="Name" value={rbsNodeForm.name} onChange={e => setRbsNodeForm(p => ({ ...p, name: e.target.value }))} />
+                          </div>
+                          <Select value={rbsNodeForm.resourceType} onValueChange={v => setRbsNodeForm(p => ({ ...p, resourceType: v }))}>
+                            <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                            <SelectContent>{Object.keys(RBS_TYPE_META).map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                          </Select>
+                          <div className="flex gap-2">
+                            <Button size="sm" className="h-7 text-xs gap-1" disabled={!rbsNodeForm.code.trim() || !rbsNodeForm.name.trim() || createRbsNode.isPending}
+                              onClick={() => createRbsNode.mutate({ projectId, code: rbsNodeForm.code.trim(), name: rbsNodeForm.name.trim(), resourceType: rbsNodeForm.resourceType, parentId: node.id, description: rbsNodeForm.description || undefined })}>
+                              {createRbsNode.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />} Add
+                            </Button>
+                            <Button size="sm" variant="ghost" className="h-7 text-xs gap-1" onClick={() => setRbsAddChildParentId(null)}>
+                              <X className="w-3 h-3" /> Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Children */}
+                  {isExp && hasChildren && (
+                    <div className="space-y-0">
+                      {node.children.map((child: any, ci: number) => renderNode(child, depth + 1, node.children, ci))}
+                    </div>
+                  )}
                 </div>
-                <Button size="sm" onClick={() => openRbsTypeDialog()}>
-                  <Plus className="w-3.5 h-3.5 mr-1.5" />
-                  Add Type
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {(["TeamMember", "External", "Stakeholder"] as const).map(name => {
-                  const colors = getRbsTypeColor(name);
-                  return (
-                    <div
-                      key={name}
-                      className="flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm font-medium"
-                      style={{ background: colors.bg, color: colors.text, borderColor: colors.border }}
-                    >
-                      <span className="w-2 h-2 rounded-full shrink-0" style={{ background: colors.text }} />
-                      {getRbsTypeLabel(name)}
-                      <span className="text-[10px] opacity-60 ml-0.5">(built-in)</span>
-                    </div>
-                  );
-                })}
-                {(rbsTypes as any[]).filter((t: any) => !t.isBuiltIn).map((t: any) => {
-                  const colors = getRbsTypeColor(t.name);
-                  return (
-                    <div
-                      key={t.id}
-                      className="flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm font-medium group"
-                      style={{ background: colors.bg, color: colors.text, borderColor: colors.border }}
-                    >
-                      <span className="w-2 h-2 rounded-full shrink-0" style={{ background: t.color ?? colors.text }} />
-                      {t.name}
-                      <button
-                        className="opacity-0 group-hover:opacity-100 transition-opacity ml-0.5 hover:text-blue-600"
-                        onClick={() => openRbsTypeDialog(t)}
-                        title="Edit"
+              );
+            };
+
+            return (
+              <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+                {/* Left 2/3: Tree */}
+                <div className="xl:col-span-2">
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <CardTitle className="text-base flex items-center gap-2">
+                            <FolderTree className="w-4 h-4" />
+                            Resource Breakdown Structure
+                          </CardTitle>
+                          <p className="text-xs text-muted-foreground mt-0.5">Build your project resource hierarchy from scratch. Hover any node to edit, add children, or reorder.</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-xs">{(rbsNodes as any[]).length} nodes</Badge>
+                          {(rbsNodes as any[]).length > 0 && (
+                            <Button size="sm" variant="ghost" className="text-xs h-7 gap-1 text-muted-foreground"
+                              onClick={() => setRbsNodeExpanded({})}>
+                              Expand All
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      {roots.length === 0 ? (
+                        <div className="text-center py-16 text-muted-foreground border-2 border-dashed rounded-xl">
+                          <FolderTree className="w-10 h-10 mx-auto mb-3 opacity-20" />
+                          <p className="text-sm font-medium">No RBS nodes yet</p>
+                          <p className="text-xs mt-1 opacity-70">Use the form on the right to add your first root node.</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-0">
+                          {roots.map((r, i) => renderNode(r, 0, roots, i))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Right 1/3: Add Root Node + Resource Types */}
+                <div className="space-y-4">
+                  {/* Add Root Node */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <Plus className="w-4 h-4" />
+                        Add Root Node
+                      </CardTitle>
+                      <p className="text-xs text-muted-foreground">Root nodes are top-level categories in the RBS hierarchy.</p>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Code</Label>
+                          <Input className="h-8 text-sm mt-0.5" placeholder="R1" value={rbsNodeForm.code} onChange={e => setRbsNodeForm(p => ({ ...p, code: e.target.value }))} />
+                        </div>
+                        <div>
+                          <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Name</Label>
+                          <Input className="h-8 text-sm mt-0.5" placeholder="Human Resources" value={rbsNodeForm.name} onChange={e => setRbsNodeForm(p => ({ ...p, name: e.target.value }))} />
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Resource Type</Label>
+                        <Select value={rbsNodeForm.resourceType} onValueChange={v => setRbsNodeForm(p => ({ ...p, resourceType: v }))}>
+                          <SelectTrigger className="h-8 text-sm mt-0.5"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {Object.entries(RBS_TYPE_META).map(([k, v]) => (
+                              <SelectItem key={k} value={k}>
+                                <span className="flex items-center gap-2">{v.icon} {v.label}</span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Description (optional)</Label>
+                        <Input className="h-8 text-sm mt-0.5" placeholder="Brief description..." value={rbsNodeForm.description} onChange={e => setRbsNodeForm(p => ({ ...p, description: e.target.value }))} />
+                      </div>
+                      <Button
+                        className="w-full"
+                        size="sm"
+                        disabled={!rbsNodeForm.code.trim() || !rbsNodeForm.name.trim() || createRbsNode.isPending}
+                        onClick={() => createRbsNode.mutate({
+                          projectId,
+                          code: rbsNodeForm.code.trim(),
+                          name: rbsNodeForm.name.trim(),
+                          resourceType: rbsNodeForm.resourceType,
+                          parentId: (rbsNodeForm.parentId && rbsNodeForm.parentId !== '__root__') ? parseInt(rbsNodeForm.parentId) : undefined,
+                          description: rbsNodeForm.description || undefined,
+                        })}
                       >
-                        <Pencil className="w-3 h-3" />
-                      </button>
-                      <button
-                        className="opacity-0 group-hover:opacity-100 transition-opacity hover:text-red-600"
-                        onClick={() => deleteRbsType.mutate({ id: t.id })}
-                        title="Delete"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    </div>
-                  );
-                })}
-                {(rbsTypes as any[]).filter((t: any) => !t.isBuiltIn).length === 0 && (
-                  <p className="text-xs text-muted-foreground italic">No custom types yet. Click "Add Type" to create one.</p>
-                )}
+                        {createRbsNode.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+                        Add Root Node
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  {/* Resource Types */}
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <CardTitle className="text-sm flex items-center gap-2">
+                            <TreeDeciduous className="w-4 h-4" />
+                            Resource Types
+                          </CardTitle>
+                          <p className="text-xs text-muted-foreground mt-0.5">Classification groups for stakeholders.</p>
+                        </div>
+                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => openRbsTypeDialog()}>
+                          <Plus className="w-3 h-3 mr-1" /> Add
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-1.5">
+                        {(["TeamMember", "External", "Stakeholder"] as const).map(name => {
+                          const colors = getRbsTypeColor(name);
+                          return (
+                            <div key={name} className="flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium"
+                              style={{ background: colors.bg, color: colors.text, borderColor: colors.border }}>
+                              <span className="w-2 h-2 rounded-full shrink-0" style={{ background: colors.text }} />
+                              {getRbsTypeLabel(name)}
+                              <span className="text-[10px] opacity-50 ml-auto">(built-in)</span>
+                            </div>
+                          );
+                        })}
+                        {(rbsTypes as any[]).filter((t: any) => !t.isBuiltIn).map((t: any) => {
+                          const colors = getRbsTypeColor(t.name);
+                          return (
+                            <div key={t.id} className="flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium group"
+                              style={{ background: colors.bg, color: colors.text, borderColor: colors.border }}>
+                              <span className="w-2 h-2 rounded-full shrink-0" style={{ background: t.color ?? colors.text }} />
+                              {t.name}
+                              <div className="ml-auto flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button className="hover:text-blue-600" onClick={() => openRbsTypeDialog(t)} title="Edit"><Pencil className="w-3 h-3" /></button>
+                                <button className="hover:text-red-600" onClick={() => deleteRbsType.mutate({ id: t.id })} title="Delete"><Trash2 className="w-3 h-3" /></button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {(rbsTypes as any[]).filter((t: any) => !t.isBuiltIn).length === 0 && (
+                          <p className="text-xs text-muted-foreground italic">No custom types yet.</p>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
               </div>
-            </CardContent>
-          </Card>
+            );
+          })()}
 
           {/* RBS Tree */}
           <Card>
@@ -1044,6 +1183,16 @@ export default function Resources() {
                     <span key={type} className={`px-2 py-1 rounded border ${cls}`}>{type}</span>
                   ))}
                 </div>
+                {/* General holiday button — only at all-resources level */}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5 text-blue-700 border-blue-300 hover:bg-blue-50"
+                  onClick={() => openCalDialog(null, "", new Date().toISOString().split("T")[0], undefined, "range")}
+                >
+                  <CalendarDays className="w-3.5 h-3.5" />
+                  Add Holiday
+                </Button>
               </div>
 
               {/* Calendar Grid */}
@@ -1250,13 +1399,19 @@ export default function Resources() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <CalendarDays className="w-4 h-4" />
-              {calEntryMode === "range" ? "Add Calendar Entry" : `Mark Day — ${calEditDate}`}
+              {calEditStakeholder === null
+                ? "Add General Holiday"
+                : calEntryMode === "range" ? "Add Calendar Entry" : `Mark Day — ${calEditDate}`}
             </DialogTitle>
-            {calEditStakeholderName && (
+            {calEditStakeholder === null ? (
+              <p className="text-sm text-muted-foreground mt-0.5">
+                This holiday will be applied to <strong>all resources</strong> (or selected ones below).
+              </p>
+            ) : calEditStakeholderName ? (
               <p className="text-sm text-muted-foreground mt-0.5">
                 Resource: <span className="font-medium text-foreground">{calEditStakeholderName}</span>
               </p>
-            )}
+            ) : null}
           </DialogHeader>
           <div className="space-y-4 py-2">
 
@@ -1321,6 +1476,12 @@ export default function Resources() {
             {/* Type */}
             <div className="space-y-1">
               <Label>Entry Type</Label>
+              {/* Holiday is only available at general level (no specific stakeholder) */}
+              {calEditStakeholder !== null && calEditType === "Holiday" && (
+                <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+                  Holiday entered for a specific resource will be saved as <strong>Leave</strong>.
+                </p>
+              )}
               <Select value={calEditType} onValueChange={v => {
                 const t = v as "Working" | "Leave" | "Holiday" | "Training";
                 setCalEditType(t);
@@ -1332,7 +1493,10 @@ export default function Resources() {
                 <SelectContent>
                   <SelectItem value="Working">Working</SelectItem>
                   <SelectItem value="Leave">Leave</SelectItem>
-                  <SelectItem value="Holiday">Holiday</SelectItem>
+                  {/* Holiday only makes sense at general level */}
+                  {calEditStakeholder === null && (
+                    <SelectItem value="Holiday">Holiday (applies to all)</SelectItem>
+                  )}
                   <SelectItem value="Training">Training</SelectItem>
                 </SelectContent>
               </Select>
