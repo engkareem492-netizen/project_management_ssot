@@ -2,7 +2,7 @@ import { protectedProcedure, router } from "../_core/trpc";
 import { z } from "zod";
 import { eq, and } from "drizzle-orm";
 import { getDb, createTask, getNextId } from "../db";
-import { communicationPlanEntries, tasks, stakeholders } from "../../drizzle/schema";
+import { communicationPlanEntries, tasks, stakeholders, commPlanItems, commPlanInputItems } from "../../drizzle/schema";
 
 // ---------------------------------------------------------------------------
 // Frequency → recurring task mapping
@@ -296,6 +296,133 @@ export const communicationPlanRouter = router({
         .where(eq(communicationPlanEntries.id, input.id));
 
       return { success: true };
+    }),
+
+  // ─── Sync: merge By Role + By Position plans into each stakeholder entry ───
+  syncFromRoleAndPosition: protectedProcedure
+    .input(z.object({ projectId: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("DB unavailable");
+      const { inArray } = await import("drizzle-orm");
+
+      // Load all entries for this project
+      const allEntries = await db
+        .select()
+        .from(communicationPlanEntries)
+        .where(eq(communicationPlanEntries.projectId, input.projectId));
+
+      const stakeholderEntries = allEntries.filter(e => e.targetType === "stakeholder");
+      const roleEntries = allEntries.filter(e => e.targetType === "role");
+      const jobEntries = allEntries.filter(e => e.targetType === "job");
+
+      if (stakeholderEntries.length === 0) return { synced: 0, itemsAdded: 0 };
+
+      // Load all stakeholders for this project
+      const projectStakeholders = await db
+        .select()
+        .from(stakeholders)
+        .where(eq(stakeholders.projectId, input.projectId));
+
+      const stakeholderMap = new Map(projectStakeholders.map(s => [s.id, s]));
+
+      // Load all commPlanItems and commPlanInputItems for role and job entries
+      const roleJobEntryIds = [...roleEntries, ...jobEntries].map(e => e.id);
+      const sourceItems = roleJobEntryIds.length > 0
+        ? await db.select().from(commPlanItems).where(inArray(commPlanItems.entryId, roleJobEntryIds))
+        : [];
+      const sourceInputItems = roleJobEntryIds.length > 0
+        ? await db.select().from(commPlanInputItems).where(inArray(commPlanInputItems.entryId, roleJobEntryIds))
+        : [];
+
+      let synced = 0;
+      let itemsAdded = 0;
+
+      for (const entry of stakeholderEntries) {
+        const sid = entry.stakeholderId ?? (entry.targetValue ? Number(entry.targetValue) : null);
+        if (!sid) continue;
+        const stakeholder = stakeholderMap.get(sid);
+        if (!stakeholder) continue;
+
+        // Find matching role entries (match stakeholder.role to entry.targetValue)
+        const matchingRoleEntries = roleEntries.filter(re =>
+          re.targetValue && stakeholder.role &&
+          re.targetValue.trim().toLowerCase() === stakeholder.role.trim().toLowerCase()
+        );
+
+        // Find matching job/position entries (match stakeholder.job to entry.targetValue)
+        const matchingJobEntries = jobEntries.filter(je =>
+          je.targetValue && stakeholder.job &&
+          je.targetValue.trim().toLowerCase() === stakeholder.job.trim().toLowerCase()
+        );
+
+        const matchingEntries = [...matchingRoleEntries, ...matchingJobEntries];
+        if (matchingEntries.length === 0) continue;
+
+        // Get existing items for this stakeholder entry to avoid duplicates
+        const existingItems = await db
+          .select()
+          .from(commPlanItems)
+          .where(eq(commPlanItems.entryId, entry.id));
+        const existingDescriptions = new Set(
+          existingItems.map(i => i.description?.trim().toLowerCase()).filter(Boolean)
+        );
+
+        const existingInputItems = await db
+          .select()
+          .from(commPlanInputItems)
+          .where(eq(commPlanInputItems.entryId, entry.id));
+        const existingInputDescriptions = new Set(
+          existingInputItems.map(i => i.description?.trim().toLowerCase()).filter(Boolean)
+        );
+
+        for (const matchEntry of matchingEntries) {
+          // Copy commPlanItems
+          const itemsToCopy = sourceItems.filter(i => i.entryId === matchEntry.id);
+          for (const item of itemsToCopy) {
+            const desc = item.description?.trim().toLowerCase();
+            if (desc && existingDescriptions.has(desc)) continue;
+            await db.insert(commPlanItems).values({
+              entryId: entry.id,
+              projectId: input.projectId,
+              description: item.description,
+              commType: item.commType,
+              periodic: item.periodic ?? undefined,
+              sequence: item.sequence,
+            });
+            if (desc) existingDescriptions.add(desc);
+            itemsAdded++;
+          }
+
+          // Merge preferredMethods (union)
+          const srcMethods: string[] = (matchEntry.preferredMethods as string[]) ?? [];
+          const curMethods: string[] = (entry.preferredMethods as string[]) ?? [];
+          const merged = Array.from(new Set([...curMethods, ...srcMethods]));
+          if (merged.length !== curMethods.length) {
+            await db
+              .update(communicationPlanEntries)
+              .set({ preferredMethods: merged })
+              .where(eq(communicationPlanEntries.id, entry.id));
+          }
+
+          // Copy commPlanInputItems
+          const inputItemsToCopy = sourceInputItems.filter(i => i.entryId === matchEntry.id);
+          for (const item of inputItemsToCopy) {
+            const desc = item.description?.trim().toLowerCase();
+            if (desc && existingInputDescriptions.has(desc)) continue;
+            await db.insert(commPlanInputItems).values({
+              entryId: entry.id,
+              projectId: input.projectId,
+              description: item.description,
+              sequence: item.sequence,
+            });
+            if (desc) existingInputDescriptions.add(desc);
+          }
+        }
+        synced++;
+      }
+
+      return { synced, itemsAdded };
     }),
 
   // Bulk import from stakeholder communication fields

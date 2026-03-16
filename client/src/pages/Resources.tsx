@@ -113,7 +113,7 @@ export default function Resources() {
   const [rbsTypeEditing, setRbsTypeEditing] = useState<any | null>(null);
   const [rbsTypeForm, setRbsTypeForm] = useState({ name: "", color: "#6366f1", description: "" });
   // RBS Nodes state
-  const [rbsNodeForm, setRbsNodeForm] = useState({ code: '', name: '', resourceType: 'Human', parentId: '', description: '' });
+  const [rbsNodeForm, setRbsNodeForm] = useState({ code: '', name: '', resourceType: 'Human', parentId: '__root__', description: '' });
   const [rbsNodeExpanded, setRbsNodeExpanded] = useState<Record<number, boolean>>({});
 
   // Calendar state
@@ -166,7 +166,7 @@ export default function Resources() {
   });
   const { data: rbsNodes = [], refetch: refetchRbsNodes } = trpc.rbsNodes.list.useQuery({ projectId }, { enabled });
   const createRbsNode = trpc.rbsNodes.create.useMutation({
-    onSuccess: () => { refetchRbsNodes(); setRbsNodeForm({ code: '', name: '', resourceType: 'Human', parentId: '', description: '' }); toast.success('Node added'); },
+    onSuccess: () => { refetchRbsNodes(); setRbsNodeForm({ code: '', name: '', resourceType: 'Human', parentId: '__root__', description: '' }); toast.success('Node added'); },
     onError: (e) => toast.error(e.message),
   });
   const deleteRbsNode = trpc.rbsNodes.delete.useMutation({
@@ -201,6 +201,7 @@ export default function Resources() {
     return stakeholders.map((s: any) => {
       const name = s.fullName ?? s.name ?? `Stakeholder ${s.id}`;
       const assigned = tasks.filter((t: any) => t.responsible === name || t.responsible === s.fullName || t.responsible === s.name);
+      const nonCommAssigned = assigned.filter((t: any) => !t.communicationStakeholderId).length;
       const thisWeek = assigned.filter((t: any) => isInWeek(t.dueDate, 0)).length;
       const nextWeek = assigned.filter((t: any) => isInWeek(t.dueDate, 1)).length;
       const next2 = assigned.filter((t: any) => isInWeek(t.dueDate, 2)).length;
@@ -219,6 +220,7 @@ export default function Resources() {
         classification: s.classification ?? (s.isInternalTeam ? "TeamMember" : "Stakeholder"),
         department: s.department ?? "",
         totalAssigned: assigned.length,
+        nonCommAssigned,
         thisWeek, nextWeek, next2, next3, next4,
         capacity: cap,
         hourlyRate,
@@ -772,7 +774,7 @@ export default function Resources() {
                     <Select value={rbsNodeForm.parentId} onValueChange={v => setRbsNodeForm(p => ({ ...p, parentId: v }))}>
                       <SelectTrigger><SelectValue placeholder="None (root)" /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">None (root)</SelectItem>
+                        <SelectItem value="__root__">None (root)</SelectItem>
                         {(rbsNodes as any[]).map((n: any) => (
                           <SelectItem key={n.id} value={String(n.id)}>{n.code} — {n.name}</SelectItem>
                         ))}
@@ -796,7 +798,7 @@ export default function Resources() {
                     code: rbsNodeForm.code.trim(),
                     name: rbsNodeForm.name.trim(),
                     resourceType: rbsNodeForm.resourceType,
-                    parentId: rbsNodeForm.parentId ? parseInt(rbsNodeForm.parentId) : undefined,
+                    parentId: (rbsNodeForm.parentId && rbsNodeForm.parentId !== '__root__') ? parseInt(rbsNodeForm.parentId) : undefined,
                     description: rbsNodeForm.description || undefined,
                   })}
                 >
@@ -1142,6 +1144,7 @@ export default function Resources() {
                           <TableHead className="text-right">Rate ($/hr)</TableHead>
                           <TableHead className="text-right">Capacity (hrs/{planViewMode === "weekly" ? "wk" : "mo"})</TableHead>
                           <TableHead className="text-right">Tasks (total)</TableHead>
+                          <TableHead className="text-right">Non-COMM Tasks</TableHead>
                           <TableHead className="text-right">Est. Hours Used</TableHead>
                           <TableHead className="text-right">Utilization</TableHead>
                           <TableHead className="text-right">Unused Hours</TableHead>
@@ -1170,6 +1173,7 @@ export default function Resources() {
                               <TableCell className="text-right">{r.hourlyRate > 0 ? `$${r.hourlyRate.toFixed(0)}` : "—"}</TableCell>
                               <TableCell className="text-right font-medium">{capacityHrs.toFixed(0)}h</TableCell>
                               <TableCell className="text-right">{r.totalAssigned}</TableCell>
+                              <TableCell className="text-right">{(r as any).nonCommAssigned ?? 0}</TableCell>
                               <TableCell className="text-right">{estUsed.toFixed(0)}h</TableCell>
                               <TableCell className={`text-right font-semibold ${utilColor}`}>{util}%</TableCell>
                               <TableCell className="text-right text-muted-foreground">{unused.toFixed(0)}h</TableCell>

@@ -46,6 +46,7 @@ import {
   UserCheck,
   Building2,
   Info,
+  RefreshCw,
 } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 
@@ -445,6 +446,14 @@ export default function CommunicationPlan() {
     onSuccess: () => { toast.success("Stakeholders imported"); refetch(); setImportDialogOpen(false); setSelectedStakeholderIds([]); },
     onError: (e) => toast.error(e.message),
   });
+  const syncMut = trpc.communicationPlan.syncFromRoleAndPosition.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Sync complete: ${data.synced} stakeholder(s) updated, ${data.itemsAdded} item(s) added`);
+      refetch();
+      refetchAllItems();
+    },
+    onError: (e) => toast.error(e.message),
+  });
 
   // ----- Dialog state -----
   const [entryDialogOpen, setEntryDialogOpen] = useState(false);
@@ -707,6 +716,15 @@ export default function CommunicationPlan() {
         <div className="flex items-center gap-2 shrink-0">
           <Button variant="outline" onClick={() => { setSelectedStakeholderIds([]); setImportDialogOpen(true); }}>
             <Upload className="w-4 h-4 mr-2" /> Import from Stakeholders
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => syncMut.mutate({ projectId })}
+            disabled={syncMut.isPending}
+            title="Merge By Role and By Position plans into each stakeholder's plan"
+          >
+            {syncMut.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+            Sync Role/Position
           </Button>
           <Button variant="outline" onClick={() => exportToCsv(entries as any[], stakeholders as any[])} title="Export to CSV">
             <Download className="w-4 h-4 mr-2" /> Export CSV
