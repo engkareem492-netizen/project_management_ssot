@@ -597,6 +597,24 @@ function StakeholderFormDialog({
     setFormData(next);
   };
 
+  // External parties — owned by the dialog so it is self-contained
+  const [isAddingParty, setIsAddingParty] = useState(false);
+  const [newPartyName, setNewPartyName] = useState("");
+  const { data: externalParties = [] } = trpc.externalParties.list.useQuery(
+    { projectId: currentProjectId! },
+    { enabled: !!currentProjectId }
+  );
+  const createPartyMutation = trpc.externalParties.create.useMutation({
+    onSuccess: (newParty: any) => {
+      utils.externalParties.list.invalidate();
+      set({ externalPartyId: newParty.id });
+      setNewPartyName("");
+      setIsAddingParty(false);
+      toast.success("Party created");
+    },
+    onError: (e: any) => toast.error(`Failed: ${e.message}`),
+  });
+
   // Position options
   const { data: positionOptions = [] } = trpc.commPlanOptions.positionOptions.list.useQuery(
     { projectId: currentProjectId! },
@@ -1370,9 +1388,6 @@ export default function Stakeholders() {
   const [selectedStakeholder, setSelectedStakeholder] = useState<any>(null);
   const [kpiDialogOpen, setKpiDialogOpen] = useState(false);
   const [formData, setFormData] = useState<StakeholderFormData>(EMPTY_FORM);
-  const [newPartyName, setNewPartyName] = useState("");
-  const [isAddingParty, setIsAddingParty] = useState(false);
-
   const utils = trpc.useUtils();
 
   const { data: stakeholders = [], isLoading } = trpc.stakeholders.list.useQuery(
@@ -1409,28 +1424,6 @@ export default function Stakeholders() {
       setDetailOpen(false);
       setSelectedStakeholder(null);
       toast.success("Stakeholder deleted");
-    },
-  });
-
-  // External Parties
-  const { data: externalParties = [] } = trpc.externalParties.list.useQuery(
-    { projectId: currentProjectId! },
-    { enabled: !!currentProjectId }
-  );
-  const createPartyMutation = trpc.externalParties.create.useMutation({
-    onSuccess: (newParty) => {
-      utils.externalParties.list.invalidate();
-      setFormData((prev) => ({ ...prev, externalPartyId: newParty.id }));
-      setNewPartyName("");
-      setIsAddingParty(false);
-      toast.success("Party created");
-    },
-    onError: (e) => toast.error(`Failed: ${e.message}`),
-  });
-  const deletePartyMutation = trpc.externalParties.delete.useMutation({
-    onSuccess: () => {
-      utils.externalParties.list.invalidate();
-      toast.success("Party deleted");
     },
   });
 
