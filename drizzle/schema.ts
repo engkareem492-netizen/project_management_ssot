@@ -1654,6 +1654,13 @@ export const rbsNodes = mysqlTable("rbsNodes", {
   parentId: int("parentId"),                                  // null = root node
   description: text("description"),
   sequence: int("sequence").default(0).notNull(),
+  // Extended resource metadata
+  stakeholderId: int("stakeholderId"),                        // links to stakeholders.id if this node IS a stakeholder
+  unit: varchar("unit", { length: 50 }),                     // e.g. "Person", "Machine", "License"
+  quantity: varchar("quantity", { length: 50 }),              // e.g. "1", "3"
+  costRate: varchar("costRate", { length: 50 }),              // cost per unit
+  availability: varchar("availability", { length: 20 }),     // e.g. "100%", "50%"
+  isLeaf: int("isLeaf").default(0).notNull(),                // 1 = actual resource (leaf), 0 = category node
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
