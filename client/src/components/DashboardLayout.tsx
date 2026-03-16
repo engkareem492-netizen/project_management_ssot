@@ -82,6 +82,7 @@ import {
   ClipboardList,
   UserCog,
   Gauge,
+  FolderTree,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import {
@@ -121,8 +122,17 @@ const menuItems: MenuItem[] = [
   { icon: Target, label: "Goals & OKRs", path: "/goals" },
   { icon: Clock, label: "Time Tracking", path: "/time-tracking" },
   { icon: Ticket, label: "SLA Tickets", path: "/sla-tickets" },
-  { icon: Scroll, label: "Project Charter", path: "/charter" },
-  { icon: Flag, label: "Milestones", path: "/milestones" },
+  {
+    icon: FolderTree,
+    label: "Planning",
+    path: "__planning__",
+    children: [
+      { icon: Scroll, label: "Project Charter", path: "/charter" },
+      { icon: FolderTree, label: "WBS", path: "/wbs" },
+      { icon: Crosshair, label: "Scope Items", path: "/scope" },
+      { icon: Flag, label: "Main Milestones", path: "/milestones" },
+    ],
+  },
   { icon: FileText, label: "Requirements", path: "/requirements" },
   {
     icon: CheckSquare,
@@ -169,7 +179,6 @@ const menuItems: MenuItem[] = [
   { icon: CalendarRange, label: "Calendar", path: "/calendar" },
   { icon: DollarSign, label: "Budget", path: "/budget" },
   { icon: FlaskConical, label: "Test Cases", path: "/test-cases" },
-  { icon: Crosshair, label: "Scope Items", path: "/scope" },
   { icon: Layers, label: "Traceability Matrix", path: "/traceability" },
   { icon: FileBarChart, label: "Periodic Report", path: "/periodic-report" },
   { icon: SettingsIcon, label: "Settings", path: "/settings" },

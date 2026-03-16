@@ -1744,3 +1744,23 @@ export const externalParties = mysqlTable("externalParties", {
 });
 export type ExternalParty = typeof externalParties.$inferSelect;
 export type InsertExternalParty = typeof externalParties.$inferInsert;
+
+// ─── WBS Nodes ────────────────────────────────────────────────────────────────
+// Work Breakdown Structure hierarchy — each node can be linked to a Task
+export const wbsNodes = mysqlTable("wbsNodes", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  code: varchar("code", { length: 50 }).notNull(),          // e.g. "1.1.2"
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  parentId: int("parentId"),                                  // null = root node
+  sequence: int("sequence").default(0).notNull(),
+  deliverable: varchar("deliverable", { length: 255 }),      // deliverable/output label
+  responsible: varchar("responsible", { length: 255 }),
+  status: mysqlEnum("status", ["Not Started", "In Progress", "Complete", "On Hold"]).default("Not Started"),
+  linkedTaskId: int("linkedTaskId"),                          // FK → tasks.id
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type WbsNode = typeof wbsNodes.$inferSelect;
+export type InsertWbsNode = typeof wbsNodes.$inferInsert;

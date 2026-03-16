@@ -40,7 +40,7 @@ const EMPTY_FORM = {
   title: "", description: "", dueDate: "", completedDate: "",
   phase: "", owner: "", ragStatus: "Green" as "Green" | "Amber" | "Red",
   status: "Upcoming" as "Upcoming" | "In Progress" | "Achieved" | "Missed" | "Deferred",
-  notes: "",
+  notes: "", linkedTaskId: "" as string,
 };
 
 export default function Milestones() {
@@ -50,6 +50,7 @@ export default function Milestones() {
 
   const { data: milestones = [], isLoading, refetch } = trpc.milestones.list.useQuery({ projectId }, { enabled });
   const { data: stakeholders = [] } = trpc.stakeholders.list.useQuery({ projectId }, { enabled });
+  const { data: tasks = [] } = trpc.tasks.list.useQuery({ projectId }, { enabled });
 
   const create = trpc.milestones.create.useMutation({ onSuccess: () => { toast.success("Milestone created"); refetch(); setOpen(false); } });
   const update = trpc.milestones.update.useMutation({ onSuccess: () => { toast.success("Milestone updated"); refetch(); setOpen(false); } });
@@ -68,16 +69,18 @@ export default function Milestones() {
       completedDate: m.completedDate ? m.completedDate.substring(0, 10) : "",
       phase: m.phase ?? "", owner: m.owner ?? "",
       ragStatus: m.ragStatus ?? "Green", status: m.status ?? "Upcoming", notes: m.notes ?? "",
+      linkedTaskId: m.linkedTaskId ? String(m.linkedTaskId) : "",
     });
     setOpen(true);
   };
 
   const handleSave = () => {
     if (!form.title.trim()) return toast.error("Title is required");
+    const linkedTaskId = form.linkedTaskId ? parseInt(form.linkedTaskId) : undefined;
     if (editing) {
       update.mutate({ id: editing.id, ...form, dueDate: form.dueDate || undefined, completedDate: form.completedDate || undefined });
     } else {
-      create.mutate({ projectId, ...form, dueDate: form.dueDate || undefined });
+      create.mutate({ projectId, ...form, dueDate: form.dueDate || undefined, linkedDeliverableIds: linkedTaskId ? [String(linkedTaskId)] : [] });
     }
   };
 
@@ -140,6 +143,7 @@ export default function Milestones() {
                 <TableHead>Phase</TableHead>
                 <TableHead>Due Date</TableHead>
                 <TableHead>Owner</TableHead>
+                <TableHead>Linked Task</TableHead>
                 <TableHead>RAG</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="w-20"></TableHead>
@@ -159,6 +163,13 @@ export default function Milestones() {
                       {isOverdue && <span className="ml-1 text-xs">(Overdue)</span>}
                     </TableCell>
                     <TableCell>{m.owner || "—"}</TableCell>
+                    <TableCell>
+                      {m.linkedDeliverableIds && m.linkedDeliverableIds.length > 0 ? (
+                        <Badge variant="outline" className="text-[10px] text-blue-700 border-blue-200 bg-blue-50">
+                          {(tasks as any[]).find((t: any) => String(t.id) === m.linkedDeliverableIds[0])?.taskId ?? m.linkedDeliverableIds[0]}
+                        </Badge>
+                      ) : "—"}
+                    </TableCell>
                     <TableCell>
                       <Badge className={RAG_COLORS[m.ragStatus ?? "Green"] + " border-0"}>{m.ragStatus ?? "Green"}</Badge>
                     </TableCell>
@@ -255,6 +266,18 @@ export default function Milestones() {
             <div>
               <Label>Notes</Label>
               <Textarea rows={2} value={form.notes} onChange={e => set("notes", e.target.value)} />
+            </div>
+            <div>
+              <Label>Linked Task</Label>
+              <Select value={form.linkedTaskId || "__none__"} onValueChange={v => set("linkedTaskId", v === "__none__" ? "" : v)}>
+                <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">None</SelectItem>
+                  {(tasks as any[]).map((t: any) => (
+                    <SelectItem key={t.id} value={String(t.id)}>{t.taskId} — {(t.description ?? "").slice(0, 50)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <DialogFooter>

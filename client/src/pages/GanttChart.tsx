@@ -169,6 +169,9 @@ export default function GanttChart() {
   const { data: dependencies = [] } = trpc.taskDependencies.list.useQuery(
     { projectId }, { enabled: !!projectId }
   );
+  const { data: projectMilestones = [] } = trpc.milestones.list.useQuery(
+    { projectId }, { enabled: !!projectId }
+  );
 
   const isLoading = ganttLoading || tasksLoading;
 
@@ -257,6 +260,35 @@ export default function GanttChart() {
     const totalDays = Math.max(30, daysBetween(minDate, maxDate));
     const todayOffset = Math.max(0, Math.min(totalDays, daysBetween(minDate, today)));
 
+    // Inject milestone rows from the milestones table
+    const milestoneRows = (projectMilestones as any[]).map((m: any) => {
+      const dueDate = m.dueDate ? (m.dueDate instanceof Date ? m.dueDate : new Date(m.dueDate)) : null;
+      const startOffset = dueDate ? Math.max(0, daysBetween(minDate, dueDate)) : 0;
+      return {
+        id: `ms-${m.id}`,
+        taskId: m.milestoneId,
+        description: `◆ ${m.title}`,
+        status: m.status,
+        priority: null,
+        responsible: m.owner ?? null,
+        assignDate: dueDate ? dueDate.toISOString().slice(0, 10) : null,
+        dueDate: dueDate ? dueDate.toISOString().slice(0, 10) : null,
+        startParsed: dueDate,
+        endParsed: dueDate,
+        wbs: "",
+        parentTaskId: null,
+        duration: 0,
+        isMilestone: true,
+        isParent: false,
+        isCritical: false,
+        barStart: startOffset,
+        barDuration: 0,
+        depth: 0,
+        _isMilestoneRow: true,
+        ragStatus: m.ragStatus,
+      };
+    });
+
     const rows = sorted.map((t) => {
       const start = t.startParsed ?? t.endParsed ?? today;
       const end = t.endParsed ?? t.startParsed ?? today;
@@ -293,8 +325,11 @@ export default function GanttChart() {
       };
     });
 
-    return { rows, minDate, maxDate, totalDays, todayOffset };
-  }, [allTasks, wbsMap, successorSet]);
+    // Merge milestone rows at the top (before task rows)
+    const allRows = [...milestoneRows, ...rows];
+
+    return { rows: allRows, minDate, maxDate, totalDays, todayOffset };
+  }, [allTasks, wbsMap, successorSet, projectMilestones]);
 
   // Generate timeline headers based on zoom
   const timelineHeaders = useMemo(() => {

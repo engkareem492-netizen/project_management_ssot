@@ -201,6 +201,11 @@ export default function ScopeItems() {
     { enabled: !!currentProjectId }
   );
 
+  const { data: allRequirements = [] } = trpc.requirements.list.useQuery(
+    { projectId: currentProjectId! },
+    { enabled: !!currentProjectId }
+  );
+
   // Detail / expand
   const [selectedItem, setSelectedItem] = useState<ScopeItem | null>(null);
 
@@ -464,6 +469,25 @@ export default function ScopeItems() {
                   <p className="text-muted-foreground whitespace-pre-wrap">{selectedItem.notes}</p>
                 </div>
               )}
+              {/* Linked Requirements */}
+              {(() => {
+                const linked = (allRequirements as any[]).filter((r: any) => r.scopeItemId === selectedItem.id);
+                if (linked.length === 0) return null;
+                return (
+                  <div>
+                    <p className="font-medium mb-1.5 text-xs uppercase tracking-wide text-muted-foreground">Linked Requirements ({linked.length})</p>
+                    <div className="flex flex-col gap-1">
+                      {linked.map((r: any) => (
+                        <div key={r.id} className="flex items-center gap-2 text-xs bg-muted/50 rounded px-2 py-1">
+                          <span className="font-mono text-muted-foreground shrink-0">{r.idCode}</span>
+                          <span className="truncate">{r.description ?? '—'}</span>
+                          {r.status && <Badge className="text-[10px] ml-auto shrink-0" variant="outline">{r.status}</Badge>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
               <div className="flex gap-2 pt-2">
                 <Button variant="outline" size="sm" onClick={() => { openEdit(selectedItem); setSelectedItem(null); }}>
                   <Pencil className="h-3.5 w-3.5 mr-1" /> Edit

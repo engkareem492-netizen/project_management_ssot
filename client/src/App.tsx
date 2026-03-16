@@ -53,6 +53,7 @@ import SlaTickets from "./pages/SlaTickets";
 import EngagementPlan from "./pages/EngagementPlan";
 import CommunicationPlan from "./pages/CommunicationPlan";
 import TeamCharter from "./pages/TeamCharter";
+import WBS from "./pages/WBS";
 
 function Router() {
   return (
@@ -268,6 +269,9 @@ function Router() {
         <DashboardLayout>
           <TeamCharter />
         </DashboardLayout>
+      </Route>
+      <Route path={"/wbs"}>
+        <WBS />
       </Route>
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
