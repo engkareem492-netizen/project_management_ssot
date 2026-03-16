@@ -1,6 +1,6 @@
 import { protectedProcedure, router } from "../_core/trpc";
 import { z } from "zod";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import { getDb, createTask, getNextId } from "../db";
 import {
   engagementTaskGroups,
@@ -233,6 +233,47 @@ export const engagementRouter = router({
       if (!db) throw new Error("DB unavailable");
       await db.delete(engagementTasks).where(eq(engagementTasks.id, input.id));
       return { success: true };
+    }),
+
+  // ─── Status Trends (last 2 current logs per stakeholder) ─────────────────────
+  getStatusTrends: protectedProcedure
+    .input(z.object({ projectId: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return {};
+      const STATUS_ORDER = ["Unaware", "Resistant", "Neutral", "Supportive", "Leading"];
+      // Fetch all "current" history entries for the project, newest first
+      const rows = await db
+        .select()
+        .from(engagementStatusHistory)
+        .where(
+          and(
+            eq(engagementStatusHistory.projectId, input.projectId),
+            eq(engagementStatusHistory.statusType, "current")
+          )
+        )
+        .orderBy(desc(engagementStatusHistory.assessmentDate), desc(engagementStatusHistory.id));
+      // Group by stakeholderId, keep last 2 entries per stakeholder
+      const seen: Record<number, string[]> = {};
+      for (const row of rows) {
+        const sid = row.stakeholderId;
+        if (!seen[sid]) seen[sid] = [];
+        if (seen[sid].length < 2) seen[sid].push(row.status);
+      }
+      const result: Record<number, { trend: "up" | "down" | "same" | "none"; prevStatus: string; currStatus: string }> = {};
+      for (const [sidStr, statuses] of Object.entries(seen)) {
+        const sid = Number(sidStr);
+        if (statuses.length < 2) {
+          result[sid] = { trend: "none", prevStatus: statuses[0] ?? "", currStatus: statuses[0] ?? "" };
+          continue;
+        }
+        const [curr, prev] = statuses; // newest first
+        const currIdx = STATUS_ORDER.indexOf(curr);
+        const prevIdx = STATUS_ORDER.indexOf(prev);
+        const trend = currIdx > prevIdx ? "up" : currIdx < prevIdx ? "down" : "same";
+        result[sid] = { trend, prevStatus: prev, currStatus: curr };
+      }
+      return result;
     }),
 
   // ─── Subjects ─────────────────────────────────────────────────────────────────

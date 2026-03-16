@@ -48,6 +48,9 @@ import {
   RefreshCw,
   X,
   ChevronRight,
+  TrendingUp,
+  TrendingDown,
+  Minus,
 } from "lucide-react";
 import { StakeholderSelect } from "@/components/StakeholderSelect";
 import {
@@ -818,6 +821,7 @@ function HistoryDialog({
     onSuccess: () => {
       utils.engagement.listStatusHistory.invalidate({ stakeholderId: stakeholder.id });
       utils.stakeholders.list.invalidate();
+      if (stakeholder?.projectId) utils.engagement.getStatusTrends.invalidate({ projectId: stakeholder.projectId });
       toast.success("History entry deleted");
     },
     onError: (e) => toast.error(e.message),
@@ -827,6 +831,7 @@ function HistoryDialog({
     onSuccess: () => {
       utils.engagement.listStatusHistory.invalidate({ stakeholderId: stakeholder.id });
       utils.stakeholders.list.invalidate();
+      if (stakeholder?.projectId) utils.engagement.getStatusTrends.invalidate({ projectId: stakeholder.projectId });
       toast.success("Assessment updated");
       setEditingEntry(null);
     },
@@ -1119,6 +1124,7 @@ function LogAssessmentDialog({
     onSuccess: () => {
       utils.engagement.listStatusHistory.invalidate({ stakeholderId: stakeholder.id });
       utils.stakeholders.list.invalidate();
+      utils.engagement.getStatusTrends.invalidate({ projectId });
       toast.success("Assessment logged — status updated");
       onOpenChange(false);
       setForm({
@@ -1235,6 +1241,12 @@ function EngagementAssessmentTab({
 
   const ENGAGEMENT_STATUSES = ["Unaware", "Resistant", "Neutral", "Supportive", "Leading"];
 
+  // Fetch trend data for all stakeholders in this project
+  const { data: trends = {} } = trpc.engagement.getStatusTrends.useQuery(
+    { projectId },
+    { staleTime: 30_000 }
+  );
+
   const filteredStakeholders = stakeholders.filter((s) => {
     const currentOk = filterCurrent === "all" || s.currentEngagementStatus === filterCurrent || (filterCurrent === "none" && !s.currentEngagementStatus);
     const desiredOk = filterDesired === "all" || s.desiredEngagementStatus === filterDesired || (filterDesired === "none" && !s.desiredEngagementStatus);
@@ -1301,6 +1313,7 @@ function EngagementAssessmentTab({
                     <TableHead>Stakeholder</TableHead>
                     <TableHead>Role</TableHead>
                     <TableHead>Current Status</TableHead>
+                    <TableHead className="text-center w-24">Trend</TableHead>
                     <TableHead>Desired Status</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
@@ -1308,16 +1321,57 @@ function EngagementAssessmentTab({
                 <TableBody>
                   {filteredStakeholders.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-sm text-muted-foreground">
+                      <TableCell colSpan={6} className="text-center py-8 text-sm text-muted-foreground">
                         No stakeholders match the selected filters.
                       </TableCell>
                     </TableRow>
-                  ) : filteredStakeholders.map((s) => (
+                  ) : filteredStakeholders.map((s) => {
+                    const trendInfo = (trends as any)[s.id];
+                    const trend = trendInfo?.trend as "up" | "down" | "same" | "none" | undefined;
+                    return (
                     <TableRow key={s.id}>
                       <TableCell className="font-medium text-sm">{s.fullName}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{s.role ?? "—"}</TableCell>
                       <TableCell>
                         <StatusBadge status={s.currentEngagementStatus} />
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-flex items-center justify-center">
+                                {trend === "up" && (
+                                  <span className="inline-flex items-center gap-1 text-emerald-600 font-semibold text-xs">
+                                    <TrendingUp className="h-4 w-4" />
+                                    <span>Improved</span>
+                                  </span>
+                                )}
+                                {trend === "down" && (
+                                  <span className="inline-flex items-center gap-1 text-red-600 font-semibold text-xs">
+                                    <TrendingDown className="h-4 w-4" />
+                                    <span>Degraded</span>
+                                  </span>
+                                )}
+                                {trend === "same" && (
+                                  <span className="inline-flex items-center gap-1 text-green-600 font-semibold text-xs">
+                                    <Minus className="h-4 w-4" />
+                                    <span>Stable</span>
+                                  </span>
+                                )}
+                                {(!trend || trend === "none") && (
+                                  <span className="text-muted-foreground text-xs">—</span>
+                                )}
+                              </span>
+                            </TooltipTrigger>
+                            {trendInfo && trend !== "none" && (
+                              <TooltipContent side="top" className="text-xs">
+                                {trend === "up" && `${trendInfo.prevStatus} → ${trendInfo.currStatus}`}
+                                {trend === "down" && `${trendInfo.prevStatus} → ${trendInfo.currStatus}`}
+                                {trend === "same" && `No change (${trendInfo.currStatus})`}
+                              </TooltipContent>
+                            )}
+                          </Tooltip>
+                        </TooltipProvider>
                       </TableCell>
                       <TableCell>
                         <StatusBadge status={s.desiredEngagementStatus} />
@@ -1363,7 +1417,8 @@ function EngagementAssessmentTab({
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  );
+                  })}
                 </TableBody>
               </Table>
             </div>
