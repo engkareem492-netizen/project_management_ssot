@@ -147,6 +147,9 @@ export default function Resources() {
   // Resource Plan state
   const [planViewMode, setPlanViewMode] = useState<"weekly" | "monthly">("weekly");
 
+  // Heatmap filter state
+  const [heatmapTypeFilter, setHeatmapTypeFilter] = useState<"all" | "TeamMember" | "External" | "Stakeholder">("all");
+
   // ─── Queries ──────────────────────────────────────────────────────────────
   const { data: stakeholders = [], isLoading: stLoading } = trpc.stakeholders.list.useQuery({ projectId }, { enabled });
   const { data: tasks = [], isLoading: tasksLoading } = trpc.tasks.list.useQuery({ projectId }, { enabled });
@@ -318,7 +321,11 @@ export default function Resources() {
     const map: Record<string, Record<string, any>> = {};
     calendarEntries.forEach((e: any) => {
       if (!map[e.stakeholderId]) map[e.stakeholderId] = {};
-      map[e.stakeholderId][e.date] = e;
+      // Normalize date: MySQL date field comes back as a JS Date object via superjson
+      const dateKey = e.date instanceof Date
+        ? e.date.toISOString().split("T")[0]
+        : String(e.date).split("T")[0];
+      map[e.stakeholderId][dateKey] = e;
     });
     return map;
   }, [calendarEntries]);
@@ -549,8 +556,31 @@ export default function Resources() {
               <h3 className="font-semibold text-sm">Workload Heatmap</h3>
               <p className="text-xs text-muted-foreground mt-0.5">Utilization per team member across the next 12 weeks</p>
             </div>
+            {/* Type filter */}
+            <div className="flex items-center gap-2 mb-4 flex-wrap">
+              <span className="text-xs text-muted-foreground font-medium">Show:</span>
+              {(["all", "TeamMember", "External", "Stakeholder"] as const).map(t => (
+                <button
+                  key={t}
+                  onClick={() => setHeatmapTypeFilter(t)}
+                  className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                    heatmapTypeFilter === t
+                      ? t === "TeamMember" ? "bg-blue-100 text-blue-700 border-blue-300"
+                        : t === "External" ? "bg-orange-100 text-orange-700 border-orange-300"
+                        : t === "Stakeholder" ? "bg-purple-100 text-purple-700 border-purple-300"
+                        : "bg-primary text-primary-foreground border-primary"
+                      : "bg-background text-muted-foreground border-border hover:border-muted-foreground"
+                  }`}
+                >
+                  {t === "all" ? "All" : t === "TeamMember" ? "Team Members" : t}
+                </button>
+              ))}
+            </div>
+
             <WorkloadHeatmap
-              resources={workloadData.map((w) => {
+              resources={workloadData
+                .filter(w => heatmapTypeFilter === "all" || w.classification === heatmapTypeFilter)
+                .map((w) => {
                 const weeklyData = [0,1,2,3,4,5,6,7,8,9,10,11].map((weekOffset) => {
                   const start = new Date();
                   start.setHours(0,0,0,0);
@@ -564,6 +594,9 @@ export default function Resources() {
                 return { id: w.id, name: w.name, weeklyData };
               })}
             />
+            {workloadData.filter(w => heatmapTypeFilter === "all" || w.classification === heatmapTypeFilter).length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-6">No resources match the selected filter.</p>
+            )}
           </Card>
         </TabsContent>
 

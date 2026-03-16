@@ -1107,124 +1107,142 @@ function DetailPanel({
 
   const classification: Classification = stakeholder.classification || (stakeholder.isInternalTeam ? "TeamMember" : "Stakeholder");
 
+  const clsColors: Record<string, { bg: string; text: string; dot: string }> = {
+    TeamMember: { bg: "bg-blue-50", text: "text-blue-700", dot: "bg-blue-500" },
+    External:   { bg: "bg-orange-50", text: "text-orange-700", dot: "bg-orange-500" },
+    Stakeholder:{ bg: "bg-purple-50", text: "text-purple-700", dot: "bg-purple-500" },
+  };
+  const clr = clsColors[classification] ?? clsColors.Stakeholder;
+
+  function SectionLabel({ label }: { label: string }) {
+    return (
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{label}</span>
+        <div className="flex-1 h-px bg-border" />
+      </div>
+    );
+  }
+
+  function InfoRow({ label, value }: { label: string; value?: string | number | null }) {
+    if (!value && value !== 0) return null;
+    return (
+      <div className="flex flex-col gap-0.5">
+        <span className="text-[10px] text-muted-foreground uppercase tracking-wide">{label}</span>
+        <span className="text-sm font-medium text-foreground">{value}</span>
+      </div>
+    );
+  }
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-[420px] sm:w-[480px] overflow-y-auto">
-        <SheetHeader className="pb-4">
-          <SheetTitle className="flex items-center gap-2 text-base">
-            {stakeholder.fullName}
-            {getClassificationBadge(classification)}
-          </SheetTitle>
-        </SheetHeader>
+      <SheetContent className="w-[440px] sm:w-[480px] overflow-y-auto p-0">
+        {/* ── Header banner ── */}
+        <div className={`${clr.bg} px-6 pt-8 pb-5 relative`}>
+          <button
+            onClick={() => onOpenChange(false)}
+            className="absolute top-4 right-4 w-7 h-7 rounded-full bg-white/70 hover:bg-white flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <span className="text-base leading-none">&times;</span>
+          </button>
 
-        <div className="space-y-5">
-          {/* Basic info */}
-          <div className="space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Contact</p>
-            {stakeholder.email && (
-              <div className="flex items-center gap-2 text-sm">
-                <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
-                <span>{stakeholder.email}</span>
-              </div>
+          {/* Avatar circle */}
+          <div className={`w-14 h-14 rounded-full ${clr.dot} flex items-center justify-center text-white text-xl font-bold mb-3 shadow-sm`}>
+            {stakeholder.fullName?.charAt(0)?.toUpperCase() ?? "?"}
+          </div>
+
+          <h2 className="text-lg font-bold text-foreground leading-tight">{stakeholder.fullName}</h2>
+
+          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+            {getClassificationBadge(classification)}
+            {stakeholder.position && (
+              <span className="text-xs text-muted-foreground">{stakeholder.position}</span>
             )}
-            {stakeholder.phone && (
-              <div className="flex items-center gap-2 text-sm">
-                <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
-                <span>{stakeholder.phone}</span>
-              </div>
+            {stakeholder.department && (
+              <span className="text-xs text-muted-foreground">· {stakeholder.department}</span>
             )}
           </div>
 
-          {/* Position info */}
-          <div className="space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Position</p>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              {stakeholder.department && (
-                <div>
-                  <p className="text-muted-foreground text-xs">Department</p>
-                  <p>{stakeholder.department}</p>
-                </div>
+          {/* Quick contact row */}
+          {(stakeholder.email || stakeholder.phone) && (
+            <div className="flex items-center gap-4 mt-3">
+              {stakeholder.email && (
+                <a href={`mailto:${stakeholder.email}`} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                  <Mail className="h-3.5 w-3.5" />
+                  {stakeholder.email}
+                </a>
               )}
-              {stakeholder.position && (
-                <div>
-                  <p className="text-muted-foreground text-xs">Position</p>
-                  <p>{stakeholder.position}</p>
-                </div>
-              )}
-              {stakeholder.job && (
-                <div>
-                  <p className="text-muted-foreground text-xs">Job</p>
-                  <p>{stakeholder.job}</p>
-                </div>
-              )}
-              {stakeholder.role && (
-                <div>
-                  <p className="text-muted-foreground text-xs">Role</p>
-                  <p>{stakeholder.role}</p>
-                </div>
+              {stakeholder.phone && (
+                <a href={`tel:${stakeholder.phone}`} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                  <Phone className="h-3.5 w-3.5" />
+                  {stakeholder.phone}
+                </a>
               )}
             </div>
-          </div>
+          )}
+        </div>
 
-          {/* Team Member details */}
-          {classification === "TeamMember" && (
-            <div className="space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Team Member Details</p>
-              <div className="grid grid-cols-2 gap-3 text-sm">
+        {/* ── Body ── */}
+        <div className="px-6 py-5 space-y-6">
+
+          {/* Position & Role */}
+          {(stakeholder.job || stakeholder.role || stakeholder.position || stakeholder.department) && (
+            <div>
+              <SectionLabel label="Position & Role" />
+              <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                <InfoRow label="Position" value={stakeholder.position} />
+                <InfoRow label="Role" value={stakeholder.role} />
+                <InfoRow label="Job Title" value={stakeholder.job} />
+                <InfoRow label="Department" value={stakeholder.department} />
+              </div>
+            </div>
+          )}
+
+          {/* Work Schedule */}
+          {(stakeholder.workingHoursPerDay != null || stakeholder.workingDaysPerWeek != null) && (
+            <div>
+              <SectionLabel label="Work Schedule" />
+              <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                <InfoRow label="Hours / Day" value={stakeholder.workingHoursPerDay} />
+                <InfoRow label="Days / Week" value={stakeholder.workingDaysPerWeek} />
+              </div>
+            </div>
+          )}
+
+          {/* Team Member cost details */}
+          {classification === "TeamMember" && (stakeholder.costPerHour != null || stakeholder.costPerDay != null || stakeholder.isPooledResource) && (
+            <div>
+              <SectionLabel label="Cost & Resource" />
+              <div className="grid grid-cols-2 gap-x-6 gap-y-3">
                 {stakeholder.costPerHour != null && (
-                  <div>
-                    <p className="text-muted-foreground text-xs">Cost/Hour</p>
-                    <p>${Number(stakeholder.costPerHour).toFixed(2)}</p>
-                  </div>
+                  <InfoRow label="Cost / Hour" value={`$${Number(stakeholder.costPerHour).toFixed(2)}`} />
                 )}
                 {stakeholder.costPerDay != null && (
-                  <div>
-                    <p className="text-muted-foreground text-xs">Cost/Day</p>
-                    <p>${Number(stakeholder.costPerDay).toFixed(2)}</p>
-                  </div>
+                  <InfoRow label="Cost / Day" value={`$${Number(stakeholder.costPerDay).toFixed(2)}`} />
                 )}
               </div>
               {stakeholder.isPooledResource && (
-                <Badge variant="outline" className="text-xs">Pooled Resource</Badge>
+                <Badge variant="outline" className="text-xs mt-2">Pooled Resource</Badge>
               )}
             </div>
           )}
 
-          {/* Work Schedule — shown for all classifications */}
-          {(stakeholder.workingHoursPerDay != null || stakeholder.workingDaysPerWeek != null) && (
-            <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Work Schedule</p>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                {stakeholder.workingHoursPerDay != null && (
-                  <div>
-                    <p className="text-muted-foreground text-xs">Hours/Day</p>
-                    <p>{stakeholder.workingHoursPerDay}</p>
-                  </div>
-                )}
-                {stakeholder.workingDaysPerWeek != null && (
-                  <div>
-                    <p className="text-muted-foreground text-xs">Days/Week</p>
-                    <p>{stakeholder.workingDaysPerWeek}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+          {/* Engagement */}
+          {(stakeholder.currentEngagementStatus || stakeholder.desiredEngagementStatus ||
+            stakeholder.powerLevel != null || stakeholder.interestLevel != null ||
+            stakeholder.engagementStrategy) && (
+            <div>
+              <SectionLabel label="Engagement" />
 
-          {/* Stakeholder engagement details */}
-          {classification === "Stakeholder" && (
-            <div className="space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Engagement</p>
-
+              {/* Current → Desired status arrow */}
               {(stakeholder.currentEngagementStatus || stakeholder.desiredEngagementStatus) && (
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-2 mb-3 flex-wrap">
                   {stakeholder.currentEngagementStatus && (
                     <Badge className={`text-xs border ${getEngagementStatusBadgeClass(stakeholder.currentEngagementStatus)}`}>
                       {stakeholder.currentEngagementStatus}
                     </Badge>
                   )}
                   {stakeholder.currentEngagementStatus && stakeholder.desiredEngagementStatus && (
-                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                    <MoveRight className="h-3.5 w-3.5 text-muted-foreground" />
                   )}
                   {stakeholder.desiredEngagementStatus && (
                     <Badge className={`text-xs border ${getEngagementStatusBadgeClass(stakeholder.desiredEngagementStatus)}`}>
@@ -1234,52 +1252,58 @@ function DetailPanel({
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div>
-                  <p className="text-muted-foreground text-xs">Power Level</p>
-                  <p>{stakeholder.powerLevel ?? "—"}/5</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-xs">Interest Level</p>
-                  <p>{stakeholder.interestLevel ?? "—"}/5</p>
-                </div>
+              {/* Power / Interest as visual bars */}
+              <div className="grid grid-cols-2 gap-x-6 gap-y-3 mb-3">
+                {stakeholder.powerLevel != null && (
+                  <div>
+                    <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Power Level</span>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      {[1,2,3,4,5].map(i => (
+                        <div key={i} className={`h-2 w-full rounded-sm ${i <= (stakeholder.powerLevel ?? 0) ? "bg-primary" : "bg-muted"}`} />
+                      ))}
+                      <span className="text-xs font-semibold ml-1">{stakeholder.powerLevel}/5</span>
+                    </div>
+                  </div>
+                )}
+                {stakeholder.interestLevel != null && (
+                  <div>
+                    <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Interest Level</span>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      {[1,2,3,4,5].map(i => (
+                        <div key={i} className={`h-2 w-full rounded-sm ${i <= (stakeholder.interestLevel ?? 0) ? "bg-primary" : "bg-muted"}`} />
+                      ))}
+                      <span className="text-xs font-semibold ml-1">{stakeholder.interestLevel}/5</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {stakeholder.engagementStrategy && (
                 <div>
-                  <p className="text-muted-foreground text-xs">Strategy</p>
-                  <Badge className={`text-xs border mt-1 ${getEngagementBadgeClass(stakeholder.engagementStrategy)}`}>
-                    {stakeholder.engagementStrategy}
-                  </Badge>
-                </div>
-              )}
-
-              {stakeholder.communicationFrequency && (
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <p className="text-muted-foreground text-xs">Comm. Frequency</p>
-                    <p>{stakeholder.communicationFrequency}</p>
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Strategy</span>
+                  <div className="mt-1">
+                    <Badge className={`text-xs border ${getEngagementBadgeClass(stakeholder.engagementStrategy)}`}>
+                      {stakeholder.engagementStrategy}
+                    </Badge>
                   </div>
-                  {stakeholder.communicationChannel && (
-                    <div>
-                      <p className="text-muted-foreground text-xs">Channel</p>
-                      <p>{stakeholder.communicationChannel}</p>
-                    </div>
-                  )}
                 </div>
               )}
+            </div>
+          )}
 
-              {stakeholder.communicationResponsible && (
-                <div className="text-sm">
-                  <p className="text-muted-foreground text-xs">Comm. Responsible</p>
-                  <p>{stakeholder.communicationResponsible}</p>
-                </div>
-              )}
-
+          {/* Communication */}
+          {(stakeholder.communicationFrequency || stakeholder.communicationChannel || stakeholder.communicationResponsible || stakeholder.communicationMessage) && (
+            <div>
+              <SectionLabel label="Communication" />
+              <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                <InfoRow label="Frequency" value={stakeholder.communicationFrequency} />
+                <InfoRow label="Channel" value={stakeholder.communicationChannel} />
+                <InfoRow label="Responsible" value={stakeholder.communicationResponsible} />
+              </div>
               {stakeholder.communicationMessage && (
-                <div className="text-sm">
-                  <p className="text-muted-foreground text-xs">Key Message</p>
-                  <p className="text-sm">{stakeholder.communicationMessage}</p>
+                <div className="mt-3 p-3 rounded-lg bg-muted/40 border border-border">
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-wide block mb-1">Key Message</span>
+                  <p className="text-sm text-foreground">{stakeholder.communicationMessage}</p>
                 </div>
               )}
             </div>
@@ -1287,51 +1311,40 @@ function DetailPanel({
 
           {/* Notes */}
           {stakeholder.notes && (
-            <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Remark / Notes</p>
-              <p className="text-sm text-muted-foreground">{stakeholder.notes}</p>
+            <div>
+              <SectionLabel label="Notes" />
+              <p className="text-sm text-muted-foreground leading-relaxed">{stakeholder.notes}</p>
             </div>
           )}
 
-          {/* Action buttons */}
-          <div className="space-y-2 pt-2 border-t">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Actions</p>
-
+          {/* Actions */}
+          <div className="pt-1">
+            <SectionLabel label="Actions" />
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" variant="outline" onClick={onEdit}>
-                <Pencil className="h-3.5 w-3.5 mr-1.5" />
+              <Button size="sm" className="gap-1.5" onClick={onEdit}>
+                <Pencil className="h-3.5 w-3.5" />
                 Edit
               </Button>
-              <Button size="sm" variant="outline" onClick={onKpi}>
-                <Target className="h-3.5 w-3.5 mr-1.5" />
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={onKpi}>
+                <Target className="h-3.5 w-3.5" />
                 KPI & Assessments
               </Button>
-            </div>
-
-            {classification === "TeamMember" && (
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => toast.info("Coming soon — use Engagement Plan / Resource Management pages")}
-                >
-                  <ClipboardList className="h-3.5 w-3.5 mr-1.5" />
-                  Development Plan
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => toast.info("Coming soon — use Engagement Plan / Resource Management pages")}
-                >
-                  <Activity className="h-3.5 w-3.5 mr-1.5" />
-                  Skills & SWOT
-                </Button>
-              </div>
-            )}
-
-            <div>
-              <Button size="sm" variant="destructive" onClick={onDelete}>
-                <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+              {classification === "TeamMember" && (
+                <>
+                  <Button size="sm" variant="outline" className="gap-1.5"
+                    onClick={() => toast.info("Coming soon — use Engagement Plan / Resource Management pages")}>
+                    <ClipboardList className="h-3.5 w-3.5" />
+                    Dev Plan
+                  </Button>
+                  <Button size="sm" variant="outline" className="gap-1.5"
+                    onClick={() => toast.info("Coming soon — use Engagement Plan / Resource Management pages")}>
+                    <Activity className="h-3.5 w-3.5" />
+                    Skills
+                  </Button>
+                </>
+              )}
+              <Button size="sm" variant="destructive" className="gap-1.5" onClick={onDelete}>
+                <Trash2 className="h-3.5 w-3.5" />
                 Delete
               </Button>
             </div>
