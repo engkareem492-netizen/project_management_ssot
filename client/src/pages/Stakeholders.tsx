@@ -877,14 +877,14 @@ function StakeholderFormDialog({
                 <Label>External Party</Label>
                 <div className="flex gap-2">
                   <Select
-                    value={formData.externalPartyId != null ? String(formData.externalPartyId) : ""}
-                    onValueChange={(v) => set({ externalPartyId: v ? parseInt(v) : null })}
+                    value={formData.externalPartyId != null ? String(formData.externalPartyId) : "__none__"}
+                    onValueChange={(v) => set({ externalPartyId: v && v !== "__none__" ? parseInt(v) : null })}
                   >
                     <SelectTrigger className="flex-1">
                       <SelectValue placeholder="Select party..." />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">— None —</SelectItem>
+                      <SelectItem value="__none__">— None —</SelectItem>
                       {externalParties.map((p: any) => (
                         <SelectItem key={p.id} value={String(p.id)}>
                           {p.name}
