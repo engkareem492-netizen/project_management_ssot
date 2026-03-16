@@ -44,6 +44,7 @@ import RaidLog from "./pages/RaidLog";
 import ActionItems from "./pages/ActionItems";
 import LessonsLearned from "./pages/LessonsLearned";
 import DocumentLibrary from "./pages/DocumentLibrary";
+import EEF from "./pages/EEF";
 import Portfolio from "./pages/Portfolio";
 import Sprints from "./pages/Sprints";
 import Goals from "./pages/Goals";
@@ -221,6 +222,11 @@ function Router() {
       <Route path={"/documents"}>
         <DashboardLayout>
           <DocumentLibrary />
+        </DashboardLayout>
+      </Route>
+      <Route path={"/eef"}>
+        <DashboardLayout>
+          <EEF />
         </DashboardLayout>
       </Route>
       <Route path={"/portfolio"}>

@@ -55,6 +55,7 @@ import { rbsResourceTypesRouter } from "./routers/rbsResourceTypes.router";
 import { teamSkillsRouter } from "./routers/teamSkills.router";
 import { rbsNodesRouter } from "./routers/rbsNodes.router";
 import { projectWorkWeekRouter } from "./routers/projectWorkWeek.router";
+import { eefRouter } from "./routers/eef.router";
 
 export const appRouter = router({
   system: systemRouter,
@@ -104,6 +105,7 @@ export const appRouter = router({
   teamSkills: teamSkillsRouter,
   rbsNodes: rbsNodesRouter,
   projectWorkWeek: projectWorkWeekRouter,
+  eef: eefRouter,
   scopeItems: router({
     list: protectedProcedure
       .input(z.object({ projectId: z.number() }))

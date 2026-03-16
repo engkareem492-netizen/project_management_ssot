@@ -1694,3 +1694,22 @@ export const projectWorkWeek = mysqlTable("projectWorkWeek", {
 });
 export type ProjectWorkWeek = typeof projectWorkWeek.$inferSelect;
 export type InsertProjectWorkWeek = typeof projectWorkWeek.$inferInsert;
+
+// ─── EEF (Enterprise Environmental Factors) ─────────────────────────────────────────────────────────────────────────────────────────
+// Captures internal and external environmental factors that influence the project.
+export const eefFactors = mysqlTable("eefFactors", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  eefId: varchar("eefId", { length: 50 }).notNull(),          // e.g. "EEF-0001"
+  category: varchar("category", { length: 100 }).notNull(),   // "Internal" | "External"
+  type: varchar("type", { length: 200 }).notNull(),            // e.g. "Organizational Culture"
+  description: text("description"),
+  impact: varchar("impact", { length: 50 }),                   // "Positive" | "Negative" | "Neutral"
+  impactLevel: varchar("impactLevel", { length: 50 }),         // "High" | "Medium" | "Low"
+  owner: varchar("owner", { length: 200 }),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type EefFactor = typeof eefFactors.$inferSelect;
+export type InsertEefFactor = typeof eefFactors.$inferInsert;

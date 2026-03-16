@@ -81,6 +81,7 @@ import {
   Radio,
   ClipboardList,
   UserCog,
+  Gauge,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import {
@@ -151,7 +152,17 @@ const menuItems: MenuItem[] = [
     ],
   },
   { icon: Package, label: "Deliverables", path: "/deliverables" },
-  { icon: BookOpen, label: "Knowledge Base", path: "/knowledge-base" },
+  {
+    icon: BookOpen,
+    label: "OPA",
+    path: "__opa__",
+    children: [
+      { icon: FolderOpen, label: "Document Library", path: "/documents" },
+      { icon: BookOpen, label: "Knowledge Base", path: "/knowledge-base" },
+      { icon: BookMarked, label: "Lessons Learned", path: "/lessons-learned" },
+      { icon: Gauge, label: "EEF", path: "/eef" },
+    ],
+  },
   { icon: AlertTriangle, label: "Risk Register", path: "/risk-register" },
   { icon: GitPullRequest, label: "Change Requests", path: "/change-requests" },
   { icon: MessageSquare, label: "Meetings & Decisions", path: "/meetings" },
@@ -160,8 +171,6 @@ const menuItems: MenuItem[] = [
   { icon: FlaskConical, label: "Test Cases", path: "/test-cases" },
   { icon: Crosshair, label: "Scope Items", path: "/scope" },
   { icon: Layers, label: "Traceability Matrix", path: "/traceability" },
-  { icon: FolderOpen, label: "Document Library", path: "/documents" },
-  { icon: BookMarked, label: "Lessons Learned", path: "/lessons-learned" },
   { icon: FileBarChart, label: "Periodic Report", path: "/periodic-report" },
   { icon: SettingsIcon, label: "Settings", path: "/settings" },
 ];
