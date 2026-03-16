@@ -31,6 +31,7 @@ export const eefRouter = router({
         impactLevel: z.enum(["High", "Medium", "Low"]).optional(),
         owner: z.string().optional(),
         notes: z.string().optional(),
+        linkedDocumentId: z.number().optional().nullable(),
       })
     )
     .mutation(async ({ input }) => {
@@ -79,6 +80,7 @@ export const eefRouter = router({
         impactLevel: z.enum(["High", "Medium", "Low"]).optional().nullable(),
         owner: z.string().optional().nullable(),
         notes: z.string().optional().nullable(),
+        linkedDocumentId: z.number().optional().nullable(),
       })
     )
     .mutation(async ({ input }) => {

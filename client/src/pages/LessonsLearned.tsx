@@ -40,6 +40,7 @@ const EMPTY_FORM = {
   owner: "",
   dateRecorded: "",
   status: "Draft" as "Draft" | "Reviewed" | "Approved" | "Archived",
+  linkedDocumentId: null as number | null,
 };
 
 export default function LessonsLearned() {
@@ -49,6 +50,7 @@ export default function LessonsLearned() {
 
   const { data: lessons = [], isLoading, refetch } = trpc.lessonsLearned.list.useQuery({ projectId }, { enabled });
   const { data: stakeholders = [] } = trpc.stakeholders.list.useQuery({ projectId }, { enabled });
+  const { data: allDocuments = [] } = trpc.documents.list.useQuery({ projectId }, { enabled });
 
   const create = trpc.lessonsLearned.create.useMutation({ onSuccess: () => { toast.success("Lesson recorded"); refetch(); setOpen(false); } });
   const update = trpc.lessonsLearned.update.useMutation({ onSuccess: () => { toast.success("Updated"); refetch(); setOpen(false); } });
@@ -70,6 +72,7 @@ export default function LessonsLearned() {
       recommendation: l.recommendation ?? "", impact: l.impact ?? "Medium",
       owner: l.owner ?? "", dateRecorded: l.dateRecorded ? l.dateRecorded.substring(0, 10) : "",
       status: l.status ?? "Draft",
+      linkedDocumentId: l.linkedDocumentId ?? null,
     });
     setOpen(true);
   };
@@ -77,9 +80,9 @@ export default function LessonsLearned() {
   const handleSave = () => {
     if (!form.title.trim()) return toast.error("Title is required");
     if (editing) {
-      update.mutate({ id: editing.id, ...form, dateRecorded: form.dateRecorded || undefined });
+      update.mutate({ id: editing.id, ...form, dateRecorded: form.dateRecorded || undefined, linkedDocumentId: form.linkedDocumentId });
     } else {
-      create.mutate({ projectId, ...form, dateRecorded: form.dateRecorded || undefined });
+      create.mutate({ projectId, ...form, dateRecorded: form.dateRecorded || undefined, linkedDocumentId: form.linkedDocumentId });
     }
   };
 
@@ -268,6 +271,20 @@ export default function LessonsLearned() {
                 <Label>Date Recorded</Label>
                 <Input type="date" value={form.dateRecorded} onChange={e => set("dateRecorded", e.target.value)} />
               </div>
+            </div>
+            <div>
+              <Label>Link to Document</Label>
+              <Select value={form.linkedDocumentId?.toString() ?? "none"} onValueChange={v => setForm(prev => ({ ...prev, linkedDocumentId: v === "none" ? null : parseInt(v) }))}>
+                <SelectTrigger><SelectValue placeholder="Select a registered document (optional)" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No linked document</SelectItem>
+                  {allDocuments.map((doc: any) => (
+                    <SelectItem key={doc.id} value={doc.id.toString()}>
+                      {doc.documentId} — {doc.originalName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label className="flex items-center gap-1"><ThumbsUp className="w-3 h-3 text-green-600" /> What Went Well</Label>

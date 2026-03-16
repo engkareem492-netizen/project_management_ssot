@@ -675,6 +675,7 @@ export const knowledgeBase = mysqlTable("knowledgeBase", {
   description: text("description"),
   attachmentUrl: varchar("attachmentUrl", { length: 500 }),
   attachmentName: varchar("attachmentName", { length: 255 }),
+  linkedDocumentId: int("linkedDocumentId"),  // optional link to documents table
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -1210,6 +1211,7 @@ export const lessonsLearned = mysqlTable("lessonsLearned", {
   dateRecorded: date("dateRecorded"),
   status: mysqlEnum("status", ["Draft", "Reviewed", "Approved", "Archived"]).default("Draft"),
   tags: json("tags").$type<string[]>().default([]),
+  linkedDocumentId: int("linkedDocumentId"),  // optional link to documents table
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -1708,6 +1710,7 @@ export const eefFactors = mysqlTable("eefFactors", {
   impactLevel: varchar("impactLevel", { length: 50 }),         // "High" | "Medium" | "Low"
   owner: varchar("owner", { length: 200 }),
   notes: text("notes"),
+  linkedDocumentId: int("linkedDocumentId"),  // optional link to documents table
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

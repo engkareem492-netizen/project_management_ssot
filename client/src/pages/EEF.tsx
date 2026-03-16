@@ -37,6 +37,7 @@ const EMPTY_FORM = {
   impactLevel: "Medium" as "High" | "Medium" | "Low",
   owner: "",
   notes: "",
+  linkedDocumentId: null as number | null,
 };
 
 export default function EEF() {
@@ -45,6 +46,7 @@ export default function EEF() {
   const enabled = !!currentProjectId;
 
   const { data: factors = [], isLoading, refetch } = trpc.eef.list.useQuery({ projectId }, { enabled });
+  const { data: allDocuments = [] } = trpc.documents.list.useQuery({ projectId }, { enabled });
   const create = trpc.eef.create.useMutation({ onSuccess: () => { toast.success("EEF factor added"); refetch(); setOpen(false); } });
   const update = trpc.eef.update.useMutation({ onSuccess: () => { toast.success("Updated"); refetch(); setOpen(false); } });
   const del = trpc.eef.delete.useMutation({ onSuccess: () => { toast.success("Deleted"); refetch(); } });
@@ -69,6 +71,7 @@ export default function EEF() {
       impactLevel: f.impactLevel ?? "Medium",
       owner: f.owner ?? "",
       notes: f.notes ?? "",
+      linkedDocumentId: f.linkedDocumentId ?? null,
     });
     setOpen(true);
   };
@@ -76,9 +79,9 @@ export default function EEF() {
   const handleSubmit = () => {
     if (!form.type.trim()) { toast.error("Type is required"); return; }
     if (editing) {
-      update.mutate({ id: editing.id, projectId, ...form });
+      update.mutate({ id: editing.id, projectId, ...form, linkedDocumentId: form.linkedDocumentId });
     } else {
-      create.mutate({ projectId, ...form });
+      create.mutate({ projectId, ...form, linkedDocumentId: form.linkedDocumentId });
     }
   };
 
@@ -328,6 +331,20 @@ export default function EEF() {
             <div className="space-y-1.5">
               <Label>Notes</Label>
               <Textarea value={form.notes} onChange={e => set("notes", e.target.value)} placeholder="Additional notes or mitigation strategies..." rows={2} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Link to Document</Label>
+              <Select value={form.linkedDocumentId?.toString() ?? "none"} onValueChange={v => setForm(f => ({ ...f, linkedDocumentId: v === "none" ? null : parseInt(v) }))}>
+                <SelectTrigger><SelectValue placeholder="Select a registered document (optional)" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No linked document</SelectItem>
+                  {allDocuments.map((doc: any) => (
+                    <SelectItem key={doc.id} value={doc.id.toString()}>
+                      {doc.documentId} — {doc.originalName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <DialogFooter>
