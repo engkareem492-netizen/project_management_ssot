@@ -79,6 +79,199 @@ const COPYABLE_ENTITIES = [
   { key: "issueGroups", label: "Issue Groups" },
 ];
 
+const DOMAIN_FIELD_KEYS: Record<string, string[]> = {
+  tasks: ["status", "priority", "type"],
+  issues: ["status", "priority", "type"],
+  risks: ["status", "probability", "impact", "category", "response_strategy"],
+  requirements: ["status", "priority", "type"],
+  deliverables: ["status", "type"],
+  change_requests: ["status", "impact", "type"],
+  milestones: ["status"],
+  budget: ["category"],
+  stakeholders: ["engagement_status", "communication_frequency", "communication_channel"],
+  test_cases: ["status", "priority"],
+  assumptions: ["status", "impact"],
+};
+
+const DOMAIN_LABELS: Record<string, string> = {
+  tasks: "Tasks",
+  issues: "Issues",
+  risks: "Risks",
+  requirements: "Requirements",
+  deliverables: "Deliverables",
+  change_requests: "Change Requests",
+  milestones: "Milestones",
+  budget: "Budget",
+  stakeholders: "Stakeholders",
+  test_cases: "Test Cases",
+  assumptions: "Assumptions",
+};
+
+function DropdownOptionsTab({ projectId }: { projectId: number }) {
+  const [selectedDomain, setSelectedDomain] = useState("tasks");
+  const [selectedFieldKey, setSelectedFieldKey] = useState("status");
+  const [newValue, setNewValue] = useState("");
+  const [newColor, setNewColor] = useState("#6b7280");
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editValue, setEditValue] = useState("");
+  const [editColor, setEditColor] = useState("");
+  const utils = trpc.useUtils();
+
+  const fieldKeys = DOMAIN_FIELD_KEYS[selectedDomain] ?? [];
+
+  useEffect(() => {
+    setSelectedFieldKey(fieldKeys[0] ?? "status");
+  }, [selectedDomain]);
+
+  const { data: options = [], isLoading } = trpc.dropdownRegistry.list.useQuery(
+    { projectId, domain: selectedDomain, fieldKey: selectedFieldKey },
+    { enabled: !!projectId && !!selectedDomain && !!selectedFieldKey }
+  );
+
+  const addMutation = trpc.dropdownRegistry.add.useMutation({
+    onSuccess: () => {
+      utils.dropdownRegistry.list.invalidate();
+      setNewValue("");
+    },
+  });
+
+  const updateMutation = trpc.dropdownRegistry.update.useMutation({
+    onSuccess: () => {
+      utils.dropdownRegistry.list.invalidate();
+      setEditingId(null);
+    },
+  });
+
+  const deleteMutation = trpc.dropdownRegistry.delete.useMutation({
+    onSuccess: () => utils.dropdownRegistry.list.invalidate(),
+  });
+
+  return (
+    <div className="flex gap-6 h-full min-h-[500px]">
+      {/* Domain selector */}
+      <div className="w-48 shrink-0">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Domains</p>
+        <div className="flex flex-col gap-1">
+          {Object.entries(DOMAIN_LABELS).map(([domain, label]) => (
+            <button
+              key={domain}
+              onClick={() => setSelectedDomain(domain)}
+              className={`text-left px-3 py-2 rounded-md text-sm transition-colors ${selectedDomain === domain ? "bg-primary text-primary-foreground font-medium" : "hover:bg-accent text-foreground"}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Options editor */}
+      <div className="flex-1">
+        {/* Field key tabs */}
+        <div className="flex gap-1 mb-4 border-b pb-2">
+          {fieldKeys.map((fk) => (
+            <button
+              key={fk}
+              onClick={() => setSelectedFieldKey(fk)}
+              className={`px-3 py-1.5 rounded-t text-sm capitalize transition-colors ${selectedFieldKey === fk ? "bg-accent font-medium" : "hover:bg-accent/50 text-muted-foreground"}`}
+            >
+              {fk.replace(/_/g, " ")}
+            </button>
+          ))}
+        </div>
+
+        {/* Options list */}
+        <div className="space-y-2 mb-4">
+          {isLoading ? (
+            <p className="text-sm text-muted-foreground">Loading...</p>
+          ) : options.length === 0 ? (
+            <p className="text-sm text-muted-foreground italic">No options yet. Add one below.</p>
+          ) : (
+            options.map((opt) => (
+              <div key={opt.id} className="flex items-center gap-3 p-2 border rounded-md hover:bg-accent/30">
+                {editingId === opt.id ? (
+                  <>
+                    <input
+                      type="color"
+                      value={editColor}
+                      onChange={(e) => setEditColor(e.target.value)}
+                      className="h-6 w-8 rounded cursor-pointer border"
+                    />
+                    <input
+                      value={editValue}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      className="flex-1 text-sm border rounded px-2 py-1"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") updateMutation.mutate({ id: opt.id, value: editValue, color: editColor });
+                        if (e.key === "Escape") setEditingId(null);
+                      }}
+                      autoFocus
+                    />
+                    <button onClick={() => updateMutation.mutate({ id: opt.id, value: editValue, color: editColor })} className="text-xs px-2 py-1 bg-primary text-primary-foreground rounded">Save</button>
+                    <button onClick={() => setEditingId(null)} className="text-xs px-2 py-1 border rounded">Cancel</button>
+                  </>
+                ) : (
+                  <>
+                    <div
+                      className="h-4 w-4 rounded-full shrink-0 border"
+                      style={{ backgroundColor: opt.color ?? "#6b7280" }}
+                    />
+                    <span className="flex-1 text-sm">{opt.value}</span>
+                    {opt.isDefault && <span className="text-[10px] text-muted-foreground border rounded px-1">default</span>}
+                    <button
+                      onClick={() => { setEditingId(opt.id); setEditValue(opt.value); setEditColor(opt.color ?? "#6b7280"); }}
+                      className="text-muted-foreground hover:text-foreground p-1 rounded"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={() => deleteMutation.mutate({ id: opt.id })}
+                      className="text-muted-foreground hover:text-destructive p-1 rounded"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Add new option */}
+        <div className="flex items-center gap-2 p-2 border rounded-md border-dashed">
+          <input
+            type="color"
+            value={newColor}
+            onChange={(e) => setNewColor(e.target.value)}
+            className="h-7 w-10 rounded cursor-pointer border"
+          />
+          <input
+            value={newValue}
+            onChange={(e) => setNewValue(e.target.value)}
+            placeholder="New option value..."
+            className="flex-1 text-sm border rounded px-2 py-1.5"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && newValue.trim()) {
+                addMutation.mutate({ projectId, domain: selectedDomain, fieldKey: selectedFieldKey, value: newValue.trim(), color: newColor });
+              }
+            }}
+          />
+          <button
+            onClick={() => {
+              if (newValue.trim()) {
+                addMutation.mutate({ projectId, domain: selectedDomain, fieldKey: selectedFieldKey, value: newValue.trim(), color: newColor });
+              }
+            }}
+            disabled={!newValue.trim() || addMutation.isPending}
+            className="px-3 py-1.5 bg-primary text-primary-foreground rounded text-sm disabled:opacity-50"
+          >
+            + Add
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Settings() {
   const { currentProjectId, setCurrentProjectId } = useProject();
   const { user } = useAuth();
