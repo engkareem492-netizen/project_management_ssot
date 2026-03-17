@@ -5,6 +5,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import {
   Dialog,
@@ -12,6 +16,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Sidebar,
@@ -72,20 +77,49 @@ import {
   UserCog,
   Gauge,
   FolderTree,
+  Folder,
+  FolderPlus,
+  GripVertical,
+  MoreHorizontal,
+  Trash2,
+  Pencil,
+  X,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
+import { Input } from "./ui/input";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useProject } from "@/contexts/ProjectContext";
 import { ThemeSelector } from "./ThemeSelector";
 import { GlobalSearch } from "./GlobalSearch";
 import { Search } from "lucide-react";
+import {
+  DndContext,
+  DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+  useDroppable,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  arrayMove,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 type SidebarItem = { icon: React.ElementType; label: string; path: string };
 type SidebarSection = { label: string; color?: string; items: SidebarItem[] };
+type CustomFolder = { id: string; name: string; paths: string[]; collapsed: boolean };
 
 const SIDEBAR_SECTIONS: SidebarSection[] = [
   {
@@ -162,10 +196,254 @@ const SIDEBAR_SECTIONS: SidebarSection[] = [
     ],
   },
 ];
+
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
+const CUSTOM_FOLDERS_KEY = "sidebar-custom-folders";
+const SECTION_ORDERS_KEY = "sidebar-section-orders";
 const DEFAULT_WIDTH = 280;
 const MIN_WIDTH = 200;
 const MAX_WIDTH = 480;
+
+// All items flat lookup
+const ALL_ITEMS: SidebarItem[] = SIDEBAR_SECTIONS.flatMap(s => s.items);
+function findItem(path: string): SidebarItem | undefined {
+  return ALL_ITEMS.find(i => i.path === path);
+}
+
+// ─── Sortable nav item ────────────────────────────────────────────────────────
+function SortableNavItem({
+  item,
+  isActive,
+  badgeCount,
+  onNavigate,
+  onAddToFolder,
+  folders,
+  onRemoveFromFolder,
+  inFolderId,
+}: {
+  item: SidebarItem;
+  isActive: boolean;
+  badgeCount?: number;
+  onNavigate: (path: string) => void;
+  onAddToFolder: (path: string, folderId: string) => void;
+  folders: CustomFolder[];
+  onRemoveFromFolder?: (path: string, folderId: string) => void;
+  inFolderId?: string;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: item.path });
+
+  const style: CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+  };
+
+  return (
+    <SidebarMenuItem ref={setNodeRef} style={style}>
+      <div className="flex items-center group/item w-full">
+        {/* drag handle */}
+        <span
+          {...attributes}
+          {...listeners}
+          className="hidden group-hover/item:flex items-center justify-center w-5 h-8 shrink-0 cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground"
+        >
+          <GripVertical className="h-3 w-3" />
+        </span>
+        <div className="flex-1 min-w-0">
+          <SidebarMenuButton
+            isActive={isActive}
+            onClick={() => onNavigate(item.path)}
+            tooltip={item.label}
+            className="h-8 transition-all font-normal text-sm w-full"
+          >
+            <item.icon className={`h-4 w-4 shrink-0 ${isActive ? "text-primary" : ""}`} />
+            <span className="flex-1 truncate">{item.label}</span>
+            {badgeCount != null && badgeCount > 0 && (
+              <span className="ml-auto inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full text-[10px] font-semibold bg-destructive text-destructive-foreground">
+                {badgeCount > 99 ? "99+" : badgeCount}
+              </span>
+            )}
+          </SidebarMenuButton>
+        </div>
+        {/* context menu */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="hidden group-hover/item:flex items-center justify-center w-5 h-8 shrink-0 rounded hover:bg-accent text-muted-foreground/40 hover:text-muted-foreground transition-colors">
+              <MoreHorizontal className="h-3 w-3" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44">
+            {folders.length > 0 && (
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger className="text-xs">
+                  <Folder className="mr-2 h-3 w-3" /> Add to folder
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  {folders.map(f => (
+                    <DropdownMenuItem
+                      key={f.id}
+                      className="text-xs"
+                      onClick={() => onAddToFolder(item.path, f.id)}
+                    >
+                      <Folder className="mr-2 h-3 w-3" />{f.name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            )}
+            {inFolderId && onRemoveFromFolder && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-xs text-destructive focus:text-destructive"
+                  onClick={() => onRemoveFromFolder(item.path, inFolderId)}
+                >
+                  <X className="mr-2 h-3 w-3" /> Remove from folder
+                </DropdownMenuItem>
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </SidebarMenuItem>
+  );
+}
+
+// ─── Droppable custom folder ──────────────────────────────────────────────────
+function DroppableFolder({
+  folder,
+  items,
+  isActive: activeLocation,
+  badgeCounts,
+  onNavigate,
+  onAddToFolder,
+  allFolders,
+  onRemoveFromFolder,
+  onRenameFolder,
+  onDeleteFolder,
+  isCollapsed: sidebarCollapsed,
+}: {
+  folder: CustomFolder;
+  items: SidebarItem[];
+  isActive: string;
+  badgeCounts: any;
+  onNavigate: (path: string) => void;
+  onAddToFolder: (path: string, folderId: string) => void;
+  allFolders: CustomFolder[];
+  onRemoveFromFolder: (path: string, folderId: string) => void;
+  onRenameFolder: (id: string, name: string) => void;
+  onDeleteFolder: (id: string) => void;
+  isCollapsed: boolean;
+}) {
+  const { isOver, setNodeRef } = useDroppable({ id: `folder-${folder.id}` });
+  const [folderCollapsed, setFolderCollapsed] = useState(folder.collapsed);
+  const [renaming, setRenaming] = useState(false);
+  const [renameValue, setRenameValue] = useState(folder.name);
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`transition-colors rounded-md ${isOver ? "bg-primary/5 ring-1 ring-primary/30" : ""}`}
+    >
+      <div className="px-2 pt-2 pb-0.5 group-data-[collapsible=icon]:hidden">
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setFolderCollapsed(p => !p)}
+            className="flex items-center gap-1 flex-1 min-w-0 text-left hover:text-foreground transition-colors"
+          >
+            {folderCollapsed ? (
+              <ChevronRight className="h-3 w-3 text-muted-foreground/50 shrink-0" />
+            ) : (
+              <ChevronDown className="h-3 w-3 text-muted-foreground/50 shrink-0" />
+            )}
+            <Folder className="h-3 w-3 text-amber-500 shrink-0" />
+            {renaming ? (
+              <form
+                onSubmit={e => { e.preventDefault(); onRenameFolder(folder.id, renameValue.trim() || folder.name); setRenaming(false); }}
+                className="flex-1 min-w-0"
+                onClick={e => e.stopPropagation()}
+              >
+                <Input
+                  className="h-5 text-[10px] px-1 py-0"
+                  value={renameValue}
+                  onChange={e => setRenameValue(e.target.value)}
+                  autoFocus
+                  onBlur={() => { onRenameFolder(folder.id, renameValue.trim() || folder.name); setRenaming(false); }}
+                />
+              </form>
+            ) : (
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 truncate">
+                {folder.name}
+              </span>
+            )}
+          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="opacity-0 group-hover:opacity-100 h-4 w-4 flex items-center justify-center rounded hover:bg-accent text-muted-foreground transition-all">
+                <MoreHorizontal className="h-2.5 w-2.5" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-36">
+              <DropdownMenuItem className="text-xs" onClick={() => { setRenameValue(folder.name); setRenaming(true); }}>
+                <Pencil className="mr-2 h-3 w-3" /> Rename
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-xs text-destructive focus:text-destructive"
+                onClick={() => onDeleteFolder(folder.id)}
+              >
+                <Trash2 className="mr-2 h-3 w-3" /> Delete folder
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+        {isOver && (
+          <div className="mt-1 ml-4 h-6 rounded border-dashed border border-primary/40 flex items-center justify-center">
+            <span className="text-[9px] text-primary/60">Drop here</span>
+          </div>
+        )}
+      </div>
+      {!folderCollapsed && !sidebarCollapsed && (
+        <SortableContext items={items.map(i => i.path)} strategy={verticalListSortingStrategy}>
+          <SidebarMenu className="px-2 pb-1">
+            {items.map(item => (
+              <SortableNavItem
+                key={item.path}
+                item={item}
+                isActive={activeLocation === item.path}
+                badgeCount={
+                  item.path === "/tasks" ? badgeCounts?.tasks :
+                  item.path === "/issues" ? badgeCounts?.issues :
+                  item.path === "/dependencies" ? badgeCounts?.dependencies :
+                  item.path === "/risk-register" ? badgeCounts?.risks :
+                  undefined
+                }
+                onNavigate={onNavigate}
+                onAddToFolder={onAddToFolder}
+                folders={allFolders.filter(f => f.id !== folder.id)}
+                onRemoveFromFolder={onRemoveFromFolder}
+                inFolderId={folder.id}
+              />
+            ))}
+          </SidebarMenu>
+        </SortableContext>
+      )}
+      {!folderCollapsed && items.length === 0 && !sidebarCollapsed && (
+        <div className="ml-6 mr-2 mb-2 rounded border border-dashed border-border/60 px-3 py-2 text-[10px] text-muted-foreground text-center">
+          Drag items here
+        </div>
+      )}
+      <div className="mx-4 border-t border-border/30 group-data-[collapsible=icon]:hidden" />
+    </div>
+  );
+}
 
 export default function DashboardLayout({
   children,
@@ -183,7 +461,7 @@ export default function DashboardLayout({
   }, [sidebarWidth]);
 
   if (loading) {
-    return <DashboardLayoutSkeleton />
+    return <DashboardLayoutSkeleton />;
   }
 
   if (!user) {
@@ -199,9 +477,7 @@ export default function DashboardLayout({
             </p>
           </div>
           <Button
-            onClick={() => {
-              window.location.href = getLoginUrl();
-            }}
+            onClick={() => { window.location.href = getLoginUrl(); }}
             size="lg"
             className="w-full shadow-lg hover:shadow-xl transition-all"
           >
@@ -214,11 +490,7 @@ export default function DashboardLayout({
 
   return (
     <SidebarProvider
-      style={
-        {
-          "--sidebar-width": `${sidebarWidth}px`,
-        } as CSSProperties
-      }
+      style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}
     >
       <DashboardLayoutContent setSidebarWidth={setSidebarWidth}>
         {children}
@@ -244,11 +516,30 @@ function DashboardLayoutContent({
   const [themeDialogOpen, setThemeDialogOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
-  const activeMenuItem = SIDEBAR_SECTIONS.flatMap(s => s.items).find(item => item.path === location);
   const isMobile = useIsMobile();
   const [uploading, setUploading] = useState(false);
   const { currentProjectId, setCurrentProjectId } = useProject();
   const { data: projects } = trpc.projects.list.useQuery();
+
+  // ─── Custom folder state ────────────────────────────────────────────────
+  const [customFolders, setCustomFolders] = useState<CustomFolder[]>(() => {
+    try { return JSON.parse(localStorage.getItem(CUSTOM_FOLDERS_KEY) ?? "[]"); } catch { return []; }
+  });
+  const [sectionOrders, setSectionOrders] = useState<Record<string, string[]>>(() => {
+    try { return JSON.parse(localStorage.getItem(SECTION_ORDERS_KEY) ?? "{}"); } catch { return {}; }
+  });
+  const [showFolderDialog, setShowFolderDialog] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
+
+  // Persist folders
+  useEffect(() => {
+    localStorage.setItem(CUSTOM_FOLDERS_KEY, JSON.stringify(customFolders));
+  }, [customFolders]);
+  // Persist section orders
+  useEffect(() => {
+    localStorage.setItem(SECTION_ORDERS_KEY, JSON.stringify(sectionOrders));
+  }, [sectionOrders]);
 
   const { data: badgeCounts } = trpc.sidebarBadges.counts.useQuery(
     { projectId: currentProjectId! },
@@ -268,29 +559,18 @@ function DashboardLayoutContent({
     },
   });
 
-  const exportQuery = trpc.excel.export.useQuery(undefined, {
-    enabled: false,
-  });
+  const exportQuery = trpc.excel.export.useQuery(undefined, { enabled: false });
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-
-    if (!currentProjectId) {
-      toast.error('No project selected');
-      return;
-    }
-
+    if (!currentProjectId) { toast.error('No project selected'); return; }
     setUploading(true);
     const reader = new FileReader();
-    
     reader.onload = async (e) => {
       const base64Data = e.target?.result as string;
-      const base64 = base64Data.split(',')[1];
-      
-      importMutation.mutate({ projectId: currentProjectId, base64Data: base64 });
+      importMutation.mutate({ projectId: currentProjectId, base64Data: base64Data.split(',')[1] });
     };
-    
     reader.readAsDataURL(file);
   };
 
@@ -305,15 +585,99 @@ function DashboardLayoutContent({
     }
   };
 
-  const handleSwitchProject = () => {
-    setCurrentProjectId(null);
-    setLocation("/");
-  };
+  const handleSwitchProject = () => { setCurrentProjectId(null); setLocation("/"); };
 
-  useEffect(() => {
-    if (isCollapsed) {
-      setIsResizing(false);
+  // ─── Folder helpers ──────────────────────────────────────────────────────
+  const folderPaths = customFolders.flatMap(f => f.paths);
+
+  function addToFolder(path: string, folderId: string) {
+    setCustomFolders(prev => prev.map(f =>
+      f.id === folderId
+        ? { ...f, paths: f.paths.includes(path) ? f.paths : [...f.paths, path] }
+        : { ...f, paths: f.paths.filter(p => p !== path) } // remove from other folders
+    ));
+  }
+
+  function removeFromFolder(path: string, folderId: string) {
+    setCustomFolders(prev => prev.map(f =>
+      f.id === folderId ? { ...f, paths: f.paths.filter(p => p !== path) } : f
+    ));
+  }
+
+  function renameFolder(id: string, name: string) {
+    setCustomFolders(prev => prev.map(f => f.id === id ? { ...f, name } : f));
+  }
+
+  function deleteFolder(id: string) {
+    setCustomFolders(prev => prev.filter(f => f.id !== id));
+  }
+
+  function createFolder() {
+    const name = newFolderName.trim();
+    if (!name) return;
+    const id = `folder-${Date.now()}`;
+    setCustomFolders(prev => [...prev, { id, name, paths: [], collapsed: false }]);
+    setNewFolderName("");
+    setShowFolderDialog(false);
+  }
+
+  // ─── Sections with custom order ─────────────────────────────────────────
+  const sectionsWithOrder = SIDEBAR_SECTIONS.map(section => {
+    const filteredItems = section.items.filter(item => !folderPaths.includes(item.path));
+    const order = sectionOrders[section.label];
+    if (!order) return { ...section, items: filteredItems };
+    const ordered = order
+      .filter(p => filteredItems.some(i => i.path === p))
+      .map(p => filteredItems.find(i => i.path === p)!)
+      .filter(Boolean);
+    const unordered = filteredItems.filter(i => !order.includes(i.path));
+    return { ...section, items: [...ordered, ...unordered] };
+  });
+
+  const activeMenuItem = ALL_ITEMS.find(item => item.path === location);
+  const draggingItem = activeDragId ? findItem(activeDragId) : null;
+
+  // ─── DnD ────────────────────────────────────────────────────────────────
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
+  );
+
+  function handleDragStart(event: DragStartEvent) {
+    setActiveDragId(event.active.id as string);
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    setActiveDragId(null);
+    if (!over) return;
+
+    const activeId = active.id as string;
+    const overId = over.id as string;
+
+    // Dropped on a folder droppable
+    if (overId.startsWith("folder-")) {
+      const folderId = overId.replace("folder-", "");
+      addToFolder(activeId, folderId);
+      return;
     }
+
+    // Reorder within a section
+    const section = sectionsWithOrder.find(s => s.items.some(i => i.path === activeId));
+    if (!section) return;
+    const inSameSection = section.items.some(i => i.path === overId);
+    if (!inSameSection) return;
+
+    const oldIndex = section.items.findIndex(i => i.path === activeId);
+    const newIndex = section.items.findIndex(i => i.path === overId);
+    if (oldIndex === newIndex) return;
+
+    const newOrder = arrayMove(section.items.map(i => i.path), oldIndex, newIndex);
+    setSectionOrders(prev => ({ ...prev, [section.label]: newOrder }));
+  }
+
+  // ─── Resize ─────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (isCollapsed) setIsResizing(false);
   }, [isCollapsed]);
 
   useEffect(() => {
@@ -330,25 +694,17 @@ function DashboardLayoutContent({
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizing) return;
-
       const sidebarLeft = sidebarRef.current?.getBoundingClientRect().left ?? 0;
       const newWidth = e.clientX - sidebarLeft;
-      if (newWidth >= MIN_WIDTH && newWidth <= MAX_WIDTH) {
-        setSidebarWidth(newWidth);
-      }
+      if (newWidth >= MIN_WIDTH && newWidth <= MAX_WIDTH) setSidebarWidth(newWidth);
     };
-
-    const handleMouseUp = () => {
-      setIsResizing(false);
-    };
-
+    const handleMouseUp = () => setIsResizing(false);
     if (isResizing) {
       document.addEventListener("mousemove", handleMouseMove);
       document.addEventListener("mouseup", handleMouseUp);
       document.body.style.cursor = "col-resize";
       document.body.style.userSelect = "none";
     }
-
     return () => {
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleMouseUp);
@@ -359,250 +715,267 @@ function DashboardLayoutContent({
 
   return (
     <>
-      <div className="relative" ref={sidebarRef}>
-        <Sidebar
-          collapsible="icon"
-          className="border-r-0"
-          disableTransition={isResizing}
-        >
-          <SidebarHeader className="h-16 justify-center">
-            <div className="flex items-center gap-3 px-2 transition-all w-full">
-              <button
-                onClick={toggleSidebar}
-                className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring shrink-0"
-                aria-label="Toggle navigation"
-              >
-                <PanelLeft className="h-4 w-4 text-muted-foreground" />
-              </button>
-              {!isCollapsed ? (
-                <div className="flex items-center gap-2 min-w-0 flex-1">
-                  <span className="font-semibold tracking-tight truncate">
-                    {currentProject?.name || "Navigation"}
-                  </span>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
+        <div className="relative" ref={sidebarRef}>
+          <Sidebar collapsible="icon" className="border-r-0" disableTransition={isResizing}>
+            <SidebarHeader className="h-16 justify-center">
+              <div className="flex items-center gap-3 px-2 transition-all w-full">
+                <button
+                  onClick={toggleSidebar}
+                  className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring shrink-0"
+                  aria-label="Toggle navigation"
+                >
+                  <PanelLeft className="h-4 w-4 text-muted-foreground" />
+                </button>
+                {!isCollapsed ? (
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <span className="font-semibold tracking-tight truncate">
+                      {currentProject?.name || "Navigation"}
+                    </span>
+                    <button
+                      onClick={handleSwitchProject}
+                      className="ml-auto h-7 px-2 text-xs hover:bg-accent rounded transition-colors flex items-center gap-1 shrink-0"
+                      title="Switch Project"
+                    >
+                      <Database className="h-3 w-3" />
+                      Switch
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            </SidebarHeader>
+
+            <SidebarContent className="gap-0 overflow-y-auto">
+              {/* Global Search */}
+              <div className="px-2 py-1 group-data-[collapsible=icon]:hidden">
+                <button
+                  onClick={() => setSearchOpen(true)}
+                  className="w-full flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors border border-border/50"
+                >
+                  <Search className="h-3.5 w-3.5 shrink-0" />
+                  <span className="flex-1 text-left">Search...</span>
+                  <kbd className="hidden sm:inline-flex h-5 items-center gap-0.5 rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
+                    <span className="text-xs">⌘</span>K
+                  </kbd>
+                </button>
+              </div>
+              <div className="hidden group-data-[collapsible=icon]:flex justify-center px-2 py-1">
+                <button
+                  onClick={() => setSearchOpen(true)}
+                  title="Search (⌘K)"
+                  className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+                >
+                  <Search className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* Custom Folders */}
+              {customFolders.map(folder => {
+                const folderItems = folder.paths.map(p => findItem(p)).filter(Boolean) as SidebarItem[];
+                return (
+                  <div key={folder.id} className="group">
+                    <DroppableFolder
+                      folder={folder}
+                      items={folderItems}
+                      isActive={location}
+                      badgeCounts={badgeCounts}
+                      onNavigate={setLocation}
+                      onAddToFolder={addToFolder}
+                      allFolders={customFolders}
+                      onRemoveFromFolder={removeFromFolder}
+                      onRenameFolder={renameFolder}
+                      onDeleteFolder={deleteFolder}
+                      isCollapsed={isCollapsed}
+                    />
+                  </div>
+                );
+              })}
+
+              {/* New Folder button */}
+              {!isCollapsed && (
+                <div className="px-3 py-1 group-data-[collapsible=icon]:hidden">
                   <button
-                    onClick={handleSwitchProject}
-                    className="ml-auto h-7 px-2 text-xs hover:bg-accent rounded transition-colors flex items-center gap-1 shrink-0"
-                    title="Switch Project"
+                    onClick={() => setShowFolderDialog(true)}
+                    className="w-full flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] text-muted-foreground/50 hover:text-muted-foreground hover:bg-accent transition-colors"
                   >
-                    <Database className="h-3 w-3" />
-                    Switch
+                    <FolderPlus className="h-3 w-3" />
+                    <span>New folder</span>
                   </button>
                 </div>
-              ) : null}
-            </div>
-          </SidebarHeader>
+              )}
 
-          <SidebarContent className="gap-0 overflow-y-auto">
-            {/* Global Search Button */}
-            <div className="px-2 py-1 group-data-[collapsible=icon]:hidden">
-              <button
-                onClick={() => setSearchOpen(true)}
-                className="w-full flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors border border-border/50"
-              >
-                <Search className="h-3.5 w-3.5 shrink-0" />
-                <span className="flex-1 text-left">Search...</span>
-                <kbd className="hidden sm:inline-flex h-5 items-center gap-0.5 rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
-                  <span className="text-xs">⌘</span>K
-                </kbd>
-              </button>
-            </div>
-            <div className="hidden group-data-[collapsible=icon]:flex justify-center px-2 py-1">
-              <button
-                onClick={() => setSearchOpen(true)}
-                title="Search (⌘K)"
-                className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
-              >
-                <Search className="h-4 w-4" />
-              </button>
-            </div>
-
-            {SIDEBAR_SECTIONS.map((section) => (
-              <div key={section.label}>
-                <div className="px-4 pt-3 pb-0.5 group-data-[collapsible=icon]:hidden">
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50 select-none">
-                    {section.label}
-                  </span>
-                </div>
-                <SidebarMenu className="px-2 pb-1">
-                  {section.items.map((item) => {
-                    const isActive = location === item.path;
-                    const badgeCount =
-                      item.path === "/tasks" ? badgeCounts?.tasks :
-                      item.path === "/issues" ? badgeCounts?.issues :
-                      item.path === "/dependencies" ? badgeCounts?.dependencies :
-                      item.path === "/risk-register" ? badgeCounts?.risks :
-                      undefined;
-                    return (
-                      <SidebarMenuItem key={item.path}>
-                        <SidebarMenuButton
-                          isActive={isActive}
-                          onClick={() => setLocation(item.path)}
-                          tooltip={item.label}
-                          className="h-8 transition-all font-normal text-sm"
-                        >
-                          <item.icon className={`h-4 w-4 shrink-0 ${isActive ? "text-primary" : ""}`} />
-                          <span className="flex-1">{item.label}</span>
-                          {badgeCount != null && badgeCount > 0 && (
-                            <span className="ml-auto inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full text-[10px] font-semibold bg-destructive text-destructive-foreground">
-                              {badgeCount > 99 ? "99+" : badgeCount}
-                            </span>
-                          )}
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    );
-                  })}
-                </SidebarMenu>
-                <div className="mx-4 border-t border-border/30 group-data-[collapsible=icon]:hidden" />
-              </div>
-            ))}
-          </SidebarContent>
-
-          <SidebarFooter className="p-3 gap-2">
-            {/* Excel Import/Export - in footer to avoid overlap with nav items */}
-            <div className="border-t pt-2 group-data-[collapsible=icon]:hidden">
-              <div className="flex gap-1 px-1">
-                <div className="flex-1">
-                  <input
-                    type="file"
-                    accept=".xlsx,.xls"
-                    onChange={handleFileUpload}
-                    onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
-                    className="hidden"
-                    id="sidebar-file-upload"
-                    disabled={uploading}
-                  />
-                  <label
-                    htmlFor="sidebar-file-upload"
-                    className="cursor-pointer w-full flex items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
-                  >
-                    <Upload className="h-3.5 w-3.5 shrink-0" />
-                    <span>{uploading ? "Importing..." : "Import Excel"}</span>
-                  </label>
-                </div>
-                <button
-                  onClick={handleExport}
-                  disabled={exportQuery.isLoading}
-                  className="flex-1 flex items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-accent transition-colors text-muted-foreground hover:text-foreground disabled:opacity-50"
-                >
-                  <Download className="h-3.5 w-3.5 shrink-0" />
-                  <span>{exportQuery.isLoading ? "Exporting..." : "Export Excel"}</span>
-                </button>
-              </div>
-            </div>
-            {/* Collapsed icon-only Excel buttons */}
-            <div className="hidden group-data-[collapsible=icon]:flex flex-col gap-1 border-t pt-2">
-              <label htmlFor="sidebar-file-upload-icon" title="Import Excel" className="cursor-pointer flex items-center justify-center h-8 w-8 mx-auto rounded-md hover:bg-accent transition-colors text-muted-foreground hover:text-foreground">
-                <input
-                  type="file"
-                  accept=".xlsx,.xls"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                  id="sidebar-file-upload-icon"
-                  disabled={uploading}
-                />
-                <Upload className="h-4 w-4" />
-              </label>
-              <button
-                onClick={handleExport}
-                disabled={exportQuery.isLoading}
-                title="Export Excel"
-                className="flex items-center justify-center h-8 w-8 mx-auto rounded-md hover:bg-accent transition-colors text-muted-foreground hover:text-foreground disabled:opacity-50"
-              >
-                <Download className="h-4 w-4" />
-              </button>
-            </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-3 rounded-lg px-1 py-1 hover:bg-accent/50 transition-colors w-full text-left group-data-[collapsible=icon]:justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                  <Avatar className="h-9 w-9 border shrink-0">
-                    <AvatarFallback className="text-xs font-medium">
-                      {user?.name?.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
-                    <p className="text-sm font-medium truncate leading-none">
-                      {user?.name || "-"}
-                    </p>
-                    <p className="text-xs text-muted-foreground truncate mt-1.5">
-                      {user?.email || "-"}
-                    </p>
+              {/* PMP Sections */}
+              {sectionsWithOrder.map((section) => (
+                <div key={section.label}>
+                  <div className="px-4 pt-3 pb-0.5 group-data-[collapsible=icon]:hidden">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50 select-none">
+                      {section.label}
+                    </span>
                   </div>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem
-                  onClick={handleSwitchProject}
-                  className="cursor-pointer"
-                >
-                  <Database className="mr-2 h-4 w-4" />
-                  <span>Switch Project</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => setThemeDialogOpen(true)}
-                  className="cursor-pointer"
-                >
-                  <Palette className="mr-2 h-4 w-4" />
-                  <span>Theme</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={logout}
-                  className="cursor-pointer text-destructive focus:text-destructive"
-                >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Sign out</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </SidebarFooter>
-        </Sidebar>
-        <div
-          className={`absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-primary/20 transition-colors ${isCollapsed ? "hidden" : ""}`}
-          onMouseDown={() => {
-            if (isCollapsed) return;
-            setIsResizing(true);
-          }}
-          style={{ zIndex: 50 }}
-        />
-      </div>
+                  <SortableContext items={section.items.map(i => i.path)} strategy={verticalListSortingStrategy}>
+                    <SidebarMenu className="px-2 pb-1">
+                      {section.items.map((item) => (
+                        <SortableNavItem
+                          key={item.path}
+                          item={item}
+                          isActive={location === item.path}
+                          badgeCount={
+                            item.path === "/tasks" ? badgeCounts?.tasks :
+                            item.path === "/issues" ? badgeCounts?.issues :
+                            item.path === "/dependencies" ? badgeCounts?.dependencies :
+                            item.path === "/risk-register" ? badgeCounts?.risks :
+                            undefined
+                          }
+                          onNavigate={setLocation}
+                          onAddToFolder={addToFolder}
+                          folders={customFolders}
+                        />
+                      ))}
+                    </SidebarMenu>
+                  </SortableContext>
+                  <div className="mx-4 border-t border-border/30 group-data-[collapsible=icon]:hidden" />
+                </div>
+              ))}
+            </SidebarContent>
 
-      <SidebarInset>
-        {isMobile && (
-          <div className="flex border-b h-14 items-center justify-between bg-background/95 px-2 backdrop-blur supports-[backdrop-filter]:backdrop-blur sticky top-0 z-40">
-            <div className="flex items-center gap-2">
-              <SidebarTrigger className="h-9 w-9 rounded-lg bg-background" />
-              <div className="flex items-center gap-3">
-                <div className="flex flex-col gap-1">
-                  <span className="tracking-tight text-foreground">
-                    {activeMenuItem?.label ?? "Menu"}
-                  </span>
+            <SidebarFooter className="p-3 gap-2">
+              <div className="border-t pt-2 group-data-[collapsible=icon]:hidden">
+                <div className="flex gap-1 px-1">
+                  <div className="flex-1">
+                    <input
+                      type="file" accept=".xlsx,.xls"
+                      onChange={handleFileUpload}
+                      onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
+                      className="hidden" id="sidebar-file-upload" disabled={uploading}
+                    />
+                    <label
+                      htmlFor="sidebar-file-upload"
+                      className="cursor-pointer w-full flex items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+                    >
+                      <Upload className="h-3.5 w-3.5 shrink-0" />
+                      <span>{uploading ? "Importing..." : "Import Excel"}</span>
+                    </label>
+                  </div>
+                  <button
+                    onClick={handleExport}
+                    disabled={exportQuery.isLoading}
+                    className="flex-1 flex items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-accent transition-colors text-muted-foreground hover:text-foreground disabled:opacity-50"
+                  >
+                    <Download className="h-3.5 w-3.5 shrink-0" />
+                    <span>{exportQuery.isLoading ? "Exporting..." : "Export Excel"}</span>
+                  </button>
                 </div>
               </div>
+              <div className="hidden group-data-[collapsible=icon]:flex flex-col gap-1 border-t pt-2">
+                <label htmlFor="sidebar-file-upload-icon" title="Import Excel" className="cursor-pointer flex items-center justify-center h-8 w-8 mx-auto rounded-md hover:bg-accent transition-colors text-muted-foreground hover:text-foreground">
+                  <input type="file" accept=".xlsx,.xls" onChange={handleFileUpload} className="hidden" id="sidebar-file-upload-icon" disabled={uploading} />
+                  <Upload className="h-4 w-4" />
+                </label>
+                <button onClick={handleExport} disabled={exportQuery.isLoading} title="Export Excel" className="flex items-center justify-center h-8 w-8 mx-auto rounded-md hover:bg-accent transition-colors text-muted-foreground hover:text-foreground disabled:opacity-50">
+                  <Download className="h-4 w-4" />
+                </button>
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="flex items-center gap-3 rounded-lg px-1 py-1 hover:bg-accent/50 transition-colors w-full text-left group-data-[collapsible=icon]:justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                    <Avatar className="h-9 w-9 border shrink-0">
+                      <AvatarFallback className="text-xs font-medium">
+                        {user?.name?.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
+                      <p className="text-sm font-medium truncate leading-none">{user?.name || "-"}</p>
+                      <p className="text-xs text-muted-foreground truncate mt-1.5">{user?.email || "-"}</p>
+                    </div>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem onClick={handleSwitchProject} className="cursor-pointer">
+                    <Database className="mr-2 h-4 w-4" /><span>Switch Project</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setThemeDialogOpen(true)} className="cursor-pointer">
+                    <Palette className="mr-2 h-4 w-4" /><span>Theme</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={logout} className="cursor-pointer text-destructive focus:text-destructive">
+                    <LogOut className="mr-2 h-4 w-4" /><span>Sign out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </SidebarFooter>
+          </Sidebar>
+          <div
+            className={`absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-primary/20 transition-colors ${isCollapsed ? "hidden" : ""}`}
+            onMouseDown={() => { if (!isCollapsed) setIsResizing(true); }}
+            style={{ zIndex: 50 }}
+          />
+        </div>
+
+        {/* Drag overlay */}
+        <DragOverlay>
+          {draggingItem ? (
+            <div className="flex items-center gap-2 rounded-md px-3 h-8 bg-background border border-border shadow-lg text-sm font-normal opacity-90">
+              <draggingItem.icon className="h-4 w-4 shrink-0 text-primary" />
+              <span>{draggingItem.label}</span>
             </div>
-            <div className="flex items-center gap-2">
-              <ThemeSelector />
+          ) : null}
+        </DragOverlay>
+
+        <SidebarInset>
+          {isMobile && (
+            <div className="flex border-b h-14 items-center justify-between bg-background/95 px-2 backdrop-blur supports-[backdrop-filter]:backdrop-blur sticky top-0 z-40">
+              <div className="flex items-center gap-2">
+                <SidebarTrigger className="h-9 w-9 rounded-lg bg-background" />
+                <span className="tracking-tight text-foreground">{activeMenuItem?.label ?? "Menu"}</span>
+              </div>
+              <div className="flex items-center gap-2"><ThemeSelector /></div>
             </div>
-          </div>
-        )}
-        <main className="flex-1 p-4">{children}</main>
-      </SidebarInset>
+          )}
+          <main className="flex-1 p-4">{children}</main>
+        </SidebarInset>
+      </DndContext>
 
       <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
+
+      {/* New Folder Dialog */}
+      <Dialog open={showFolderDialog} onOpenChange={setShowFolderDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FolderPlus className="h-4 w-4" /> New Folder
+            </DialogTitle>
+            <DialogDescription>
+              Create a custom folder to organise your navigation items.
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            placeholder="Folder name"
+            value={newFolderName}
+            onChange={e => setNewFolderName(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter") createFolder(); }}
+            autoFocus
+          />
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setShowFolderDialog(false)}>Cancel</Button>
+            <Button onClick={createFolder} disabled={!newFolderName.trim()}>Create</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Theme Settings Dialog */}
       <Dialog open={themeDialogOpen} onOpenChange={setThemeDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Theme Settings</DialogTitle>
-            <DialogDescription>
-              Choose your preferred color theme for the application
-            </DialogDescription>
+            <DialogDescription>Choose your preferred color theme for the application</DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            <ThemeSelector />
-          </div>
+          <div className="py-4"><ThemeSelector /></div>
         </DialogContent>
       </Dialog>
     </>
   );
 }
-

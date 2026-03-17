@@ -11,10 +11,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   Users, Loader2, Settings, BarChart2, Mail, Briefcase, UserCheck, UserX,
-  LayoutGrid, ChevronRight, ChevronDown, CalendarDays, FileText,
+  LayoutGrid, ChevronRight, ChevronDown, ChevronLeft, CalendarDays, FileText,
   TreeDeciduous, DollarSign, Clock, TrendingUp, Plus, Pencil, Trash2,
   ArrowUp, ArrowDown, Check, X, FolderTree, Cpu, Wrench, Package, Server, Banknote,
-  Building2, HardHat, Truck, FlaskConical, Wifi, UserPlus, Import, Download,
+  Building2, HardHat, Truck, FlaskConical, Wifi, UserPlus, Import, Download, Zap,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
@@ -160,6 +160,18 @@ export default function Resources() {
   // Heatmap filter state
   const [heatmapTypeFilter, setHeatmapTypeFilter] = useState<"all" | "TeamMember" | "External" | "Stakeholder">("all");
 
+  // ─── RBS Wizard state ──────────────────────────────────────────────────────
+  const [wizardStep, setWizardStep] = useState<1 | 2 | 3 | 4>(1);
+  const [wizardCategoryId, setWizardCategoryId] = useState<number | null>(null);
+  const [wizardSelectedWbsId, setWizardSelectedWbsId] = useState<number | null>(null);
+  const [wizardAssignForm, setWizardAssignForm] = useState({ rbsNodeId: "", allocationPct: "100", notes: "" });
+  const [wizardAddResourceForm, setWizardAddResourceForm] = useState({ code: "", name: "", unit: "Person", quantity: "1", costRate: "", availability: "100%", stakeholderId: "" });
+  const [wizardAddingResource, setWizardAddingResource] = useState(false);
+  const [wizardEditTypeId, setWizardEditTypeId] = useState<number | null>(null);
+  const [wizardTypeForm, setWizardTypeForm] = useState({ name: "", color: "#6366f1", description: "" });
+  const [wizardAddingType, setWizardAddingType] = useState(false);
+  const [wizardExpandedWbs, setWizardExpandedWbs] = useState<Record<number, boolean>>({});
+
   // ─── Queries ──────────────────────────────────────────────────────────────
   const { data: stakeholders = [], isLoading: stLoading } = trpc.stakeholders.list.useQuery({ projectId }, { enabled });
   const { data: tasks = [], isLoading: tasksLoading } = trpc.tasks.list.useQuery({ projectId }, { enabled });
@@ -194,6 +206,16 @@ export default function Resources() {
     { projectId, stakeholderId: calStakeholderId ?? undefined, startDate: calStart, endDate: calEnd },
     { enabled }
   );
+
+  const { data: wbsNodes = [] } = trpc.wbsNodes.list.useQuery({ projectId }, { enabled });
+  const { data: wbsAssignments = [], refetch: refetchAssignments } = trpc.wbsResourceAssignments.list.useQuery({ projectId }, { enabled });
+  const upsertAssignment = trpc.wbsResourceAssignments.upsert.useMutation({
+    onSuccess: () => { refetchAssignments(); setWizardAssignForm({ rbsNodeId: "", allocationPct: "100", notes: "" }); toast.success("Resource assigned"); },
+    onError: (e: any) => toast.error(e.message),
+  });
+  const deleteAssignment = trpc.wbsResourceAssignments.delete.useMutation({
+    onSuccess: () => { refetchAssignments(); toast.success("Assignment removed"); },
+  });
 
   const isLoading = stLoading || tasksLoading;
 
@@ -734,581 +756,633 @@ export default function Resources() {
           </div>
         </TabsContent>
 
-        {/* ─── RBS Tab ──────────────────────────────────────────────────── */}
-        <TabsContent value="rbs" className="mt-0 space-y-4">
-          {/* ── RBS: Professional Hierarchy Builder (fully independent of stakeholders) ── */}
+        {/* ─── RBS Wizard Tab ───────────────────────────────────────────── */}
+        <TabsContent value="rbs" className="mt-0">
           {(() => {
-            const RBS_TYPE_META: Record<string, { label: string; icon: React.ReactNode; bg: string; text: string; border: string }> = {
-              Human:          { label: 'Human',          icon: <Users className="w-3 h-3" />,        bg: '#eff6ff', text: '#1d4ed8', border: '#bfdbfe' },
-              Equipment:      { label: 'Equipment',      icon: <Wrench className="w-3 h-3" />,       bg: '#fffbeb', text: '#b45309', border: '#fde68a' },
-              Material:       { label: 'Material',       icon: <Package className="w-3 h-3" />,      bg: '#f0fdf4', text: '#15803d', border: '#bbf7d0' },
-              Infrastructure: { label: 'Infrastructure', icon: <Server className="w-3 h-3" />,       bg: '#faf5ff', text: '#7e22ce', border: '#e9d5ff' },
-              Software:       { label: 'Software',       icon: <Cpu className="w-3 h-3" />,          bg: '#ecfeff', text: '#0e7490', border: '#a5f3fc' },
-              Financial:      { label: 'Financial',      icon: <Banknote className="w-3 h-3" />,     bg: '#fff1f2', text: '#be123c', border: '#fecdd3' },
-              Subcontractor:  { label: 'Subcontractor',  icon: <HardHat className="w-3 h-3" />,      bg: '#fefce8', text: '#854d0e', border: '#fef08a' },
-              Facility:       { label: 'Facility',       icon: <Building2 className="w-3 h-3" />,    bg: '#f0f9ff', text: '#0369a1', border: '#bae6fd' },
-              Vehicle:        { label: 'Vehicle',        icon: <Truck className="w-3 h-3" />,        bg: '#fdf4ff', text: '#7c3aed', border: '#e9d5ff' },
-              Category:       { label: 'Category',       icon: <FolderTree className="w-3 h-3" />,  bg: '#f8fafc', text: '#475569', border: '#e2e8f0' },
+            // ── Type metadata ──────────────────────────────────────────────
+            const RBS_TYPE_META: Record<string, { icon: React.ReactNode; bg: string; text: string; border: string }> = {
+              Human:          { icon: <Users className="w-4 h-4" />,        bg: '#eff6ff', text: '#1d4ed8', border: '#bfdbfe' },
+              Equipment:      { icon: <Wrench className="w-4 h-4" />,       bg: '#fffbeb', text: '#b45309', border: '#fde68a' },
+              Material:       { icon: <Package className="w-4 h-4" />,      bg: '#f0fdf4', text: '#15803d', border: '#bbf7d0' },
+              Infrastructure: { icon: <Server className="w-4 h-4" />,       bg: '#faf5ff', text: '#7e22ce', border: '#e9d5ff' },
+              Software:       { icon: <Cpu className="w-4 h-4" />,          bg: '#ecfeff', text: '#0e7490', border: '#a5f3fc' },
+              Financial:      { icon: <Banknote className="w-4 h-4" />,     bg: '#fff1f2', text: '#be123c', border: '#fecdd3' },
+              Subcontractor:  { icon: <HardHat className="w-4 h-4" />,      bg: '#fefce8', text: '#854d0e', border: '#fef08a' },
+              Facility:       { icon: <Building2 className="w-4 h-4" />,    bg: '#f0f9ff', text: '#0369a1', border: '#bae6fd' },
+              Vehicle:        { icon: <Truck className="w-4 h-4" />,        bg: '#fdf4ff', text: '#7c3aed', border: '#e9d5ff' },
             };
-            const getMeta = (type: string) => RBS_TYPE_META[type] ?? { label: type || 'Category', icon: <FolderTree className="w-3 h-3" />, bg: '#f8fafc', text: '#475569', border: '#e2e8f0' };
-            const LEAF_UNITS: Record<string, string[]> = {
-              Human: ['Person', 'FTE', 'Consultant', 'Contractor'],
-              Equipment: ['Unit', 'Machine', 'Set', 'Hour'],
-              Material: ['kg', 'ton', 'm³', 'L', 'Unit', 'Box'],
-              Infrastructure: ['Unit', 'Server', 'License', 'Port'],
-              Software: ['License', 'Seat', 'Instance', 'API Call'],
-              Financial: ['SAR', 'USD', 'Budget Line'],
-              Subcontractor: ['Contract', 'Person', 'Team'],
-              Facility: ['m²', 'Room', 'Floor', 'Building'],
-              Vehicle: ['Unit', 'Trip', 'Day'],
-              Category: ['Unit'],
-            };
+            const getMeta = (type: string) => RBS_TYPE_META[type] ?? { icon: <FolderTree className="w-4 h-4" />, bg: '#f8fafc', text: '#475569', border: '#e2e8f0' };
 
-            // Build tree
-            const nodeMap: Record<number, any> = {};
-            (rbsNodes as any[]).forEach(n => { nodeMap[n.id] = { ...n, children: [] }; });
-            const roots: any[] = [];
-            (rbsNodes as any[]).forEach(n => {
-              if (n.parentId && nodeMap[n.parentId]) nodeMap[n.parentId].children.push(nodeMap[n.id]);
-              else roots.push(nodeMap[n.id]);
+            // ── WBS tree helpers ───────────────────────────────────────────
+            const wbsNodeMap: Record<number, any> = {};
+            (wbsNodes as any[]).forEach(n => { wbsNodeMap[n.id] = { ...n, children: [] }; });
+            const wbsRoots: any[] = [];
+            (wbsNodes as any[]).forEach(n => {
+              if (n.parentId && wbsNodeMap[n.parentId]) wbsNodeMap[n.parentId].children.push(wbsNodeMap[n.id]);
+              else wbsRoots.push(wbsNodeMap[n.id]);
             });
-            // Sort children by sequence then code
-            const sortNodes = (arr: any[]) => arr.sort((a, b) => (a.sequence ?? 0) - (b.sequence ?? 0) || a.code.localeCompare(b.code));
-            const sortTree = (nodes: any[]) => { sortNodes(nodes); nodes.forEach(n => sortTree(n.children)); };
-            sortTree(roots);
 
-            const renderNode = (node: any, depth: number, siblings: any[], idx: number): React.ReactNode => {
-              const isExp = rbsNodeExpanded[node.id] !== false;
-              const hasChildren = node.children.length > 0;
-              const meta = getMeta(node.resourceType);
-              const isEditing = rbsEditingNodeId === node.id;
-              const isAddingChild = rbsAddChildParentId === node.id;
+            // ── Leaf nodes (actual resources) ─────────────────────────────
+            const leafNodes = (rbsNodes as any[]).filter(n => n.isLeaf === 1);
 
-              return (
-                <div key={node.id}>
-                  {/* Node row */}
-                  <div
-                    className={`group flex items-start gap-0 ${
-                      depth > 0 ? 'ml-6 border-l-2 border-gray-200 pl-4' : ''
-                    }`}
-                  >
-                    <div className={`flex-1 rounded-xl border transition-all ${
-                      isEditing ? 'border-primary shadow-sm bg-primary/5' : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm'
-                    } mb-1.5`}>
+            // ── Cost rollup helpers ────────────────────────────────────────
+            function calcNodeCost(rbsNodeId: number): number {
+              const node = (rbsNodes as any[]).find(n => n.id === rbsNodeId);
+              if (!node) return 0;
+              const qty = parseFloat(node.quantity ?? "1") || 1;
+              const rate = parseFloat(node.costRate ?? "0") || 0;
+              return qty * rate;
+            }
+            function calcWbsCost(wbsNodeId: number): number {
+              const assignments = (wbsAssignments as any[]).filter(a => a.wbsNodeId === wbsNodeId);
+              return assignments.reduce((sum, a) => {
+                const base = calcNodeCost(a.rbsNodeId);
+                const pct = parseFloat(a.allocationPct ?? "100") / 100;
+                return sum + base * pct;
+              }, 0);
+            }
+            function calcSubtreeCost(node: any): number {
+              let total = calcWbsCost(node.id);
+              (node.children ?? []).forEach((c: any) => { total += calcSubtreeCost(c); });
+              return total;
+            }
 
-                      {isEditing ? (
-                        /* ─ Inline Edit Mode ─ */
-                        <div className="p-3 space-y-2">
-                          <div className="grid grid-cols-3 gap-2">
-                            <div>
-                              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Code</Label>
-                              <Input className="h-7 text-xs mt-0.5" value={rbsEditForm.code} onChange={e => setRbsEditForm(p => ({ ...p, code: e.target.value }))} />
-                            </div>
-                            <div className="col-span-2">
-                              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Name</Label>
-                              <Input className="h-7 text-xs mt-0.5" value={rbsEditForm.name} onChange={e => setRbsEditForm(p => ({ ...p, name: e.target.value }))} />
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-3 gap-2">
-                            <div>
-                              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Type</Label>
-                              <Select value={rbsEditForm.resourceType} onValueChange={v => setRbsEditForm(p => ({ ...p, resourceType: v }))}>
-                                <SelectTrigger className="h-7 text-xs mt-0.5"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                  {Object.keys(RBS_TYPE_META).map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div>
-                              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Node Role</Label>
-                              <Select value={rbsEditForm.isLeaf} onValueChange={v => setRbsEditForm(p => ({ ...p, isLeaf: v }))}>
-                                <SelectTrigger className="h-7 text-xs mt-0.5"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="0">Category</SelectItem>
-                                  <SelectItem value="1">Resource (Leaf)</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div>
-                              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Availability</Label>
-                              <Input className="h-7 text-xs mt-0.5" placeholder="100%" value={rbsEditForm.availability} onChange={e => setRbsEditForm(p => ({ ...p, availability: e.target.value }))} />
-                            </div>
-                          </div>
-                          {rbsEditForm.isLeaf === '1' && (
-                            <div className="grid grid-cols-3 gap-2">
-                              <div>
-                                <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Unit</Label>
-                                <Input className="h-7 text-xs mt-0.5" placeholder="Person" value={rbsEditForm.unit} onChange={e => setRbsEditForm(p => ({ ...p, unit: e.target.value }))} />
-                              </div>
-                              <div>
-                                <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Quantity</Label>
-                                <Input className="h-7 text-xs mt-0.5" placeholder="1" value={rbsEditForm.quantity} onChange={e => setRbsEditForm(p => ({ ...p, quantity: e.target.value }))} />
-                              </div>
-                              <div>
-                                <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Cost/Unit</Label>
-                                <Input className="h-7 text-xs mt-0.5" placeholder="0.00" value={rbsEditForm.costRate} onChange={e => setRbsEditForm(p => ({ ...p, costRate: e.target.value }))} />
-                              </div>
-                            </div>
-                          )}
-                          {rbsEditForm.isLeaf === '1' && rbsEditForm.resourceType === 'Human' && (
-                            <div>
-                              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Linked Stakeholder (optional)</Label>
-                              <Select value={rbsEditForm.stakeholderId || '__none__'} onValueChange={v => setRbsEditForm(p => ({ ...p, stakeholderId: v === '__none__' ? '' : v }))}>
-                                <SelectTrigger className="h-7 text-xs mt-0.5"><SelectValue placeholder="None" /></SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="__none__">None</SelectItem>
-                                  {stakeholders.filter((s: any) => !(rbsNodes as any[]).some(n => n.id !== node.id && n.stakeholderId === s.id)).map((s: any) => (
-                                    <SelectItem key={s.id} value={String(s.id)}>{s.fullName ?? s.name}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          )}
-                          <div>
-                            <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Description</Label>
-                            <Input className="h-7 text-xs mt-0.5" value={rbsEditForm.description} onChange={e => setRbsEditForm(p => ({ ...p, description: e.target.value }))} placeholder="Optional" />
-                          </div>
-                          <div className="flex gap-2 pt-1">
-                            <Button size="sm" className="h-7 text-xs gap-1" onClick={() => updateRbsNode.mutate({
-                              id: node.id,
-                              code: rbsEditForm.code.trim(),
-                              name: rbsEditForm.name.trim(),
-                              resourceType: rbsEditForm.resourceType,
-                              description: rbsEditForm.description || undefined,
-                              unit: rbsEditForm.unit || undefined,
-                              quantity: rbsEditForm.quantity || undefined,
-                              costRate: rbsEditForm.costRate || undefined,
-                              availability: rbsEditForm.availability || undefined,
-                              stakeholderId: rbsEditForm.stakeholderId ? parseInt(rbsEditForm.stakeholderId) : null,
-                              isLeaf: parseInt(rbsEditForm.isLeaf),
-                            })} disabled={!rbsEditForm.code.trim() || !rbsEditForm.name.trim() || updateRbsNode.isPending}>
-                              {updateRbsNode.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />} Save
-                            </Button>
-                            <Button size="sm" variant="ghost" className="h-7 text-xs gap-1" onClick={() => setRbsEditingNodeId(null)}>
-                              <X className="w-3 h-3" /> Cancel
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        /* ─ View Mode ─ */
-                        <div className="px-3 py-2">
-                          <div className="flex items-center gap-2">
-                            {/* Expand toggle */}
-                            {hasChildren ? (
-                              <button onClick={() => setRbsNodeExpanded(p => ({ ...p, [node.id]: !isExp }))} className="shrink-0 text-gray-400 hover:text-gray-600">
-                                {isExp ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-                              </button>
-                            ) : <span className="w-3.5 shrink-0" />}
-
-                            {/* Type icon */}
-                            <span className="shrink-0 w-6 h-6 rounded-md flex items-center justify-center" style={{ background: meta.bg, color: meta.text }}>
-                              {meta.icon}
-                            </span>
-
-                            {/* Code + Name */}
-                            <span className="font-mono text-[11px] text-muted-foreground shrink-0 w-14 truncate">{node.code}</span>
-                            <span className={`font-semibold flex-1 truncate ${node.isLeaf ? 'text-sm' : 'text-sm text-gray-700'}`}>{node.name}</span>
-
-                            {/* Stakeholder badge */}
-                            {node.stakeholderId && (() => {
-                              const sh = stakeholders.find((s: any) => s.id === node.stakeholderId);
-                              return sh ? (
-                                <span className="text-[10px] px-1.5 py-0.5 rounded border bg-blue-50 text-blue-700 border-blue-200 shrink-0 flex items-center gap-1">
-                                  <Users className="w-2.5 h-2.5" />{sh.fullName}
-                                </span>
-                              ) : null;
-                            })()}
-
-                            {/* Type badge */}
-                            <span className="text-[10px] px-2 py-0.5 rounded-full border font-medium shrink-0" style={{ background: meta.bg, color: meta.text, borderColor: meta.border }}>
-                              {meta.label}
-                            </span>
-
-                            {/* Leaf indicator */}
-                            {node.isLeaf === 1 && (
-                              <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold shrink-0">RESOURCE</span>
-                            )}
-
-                            {/* Children count */}
-                            {hasChildren && (
-                              <span className="text-[10px] text-muted-foreground shrink-0">{node.children.length} sub</span>
-                            )}
-
-                            {/* Action buttons (visible on hover) */}
-                            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                              {idx > 0 && (
-                                <button className="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700" title="Move up"
-                                  onClick={() => updateRbsNode.mutate({ id: node.id, sequence: (siblings[idx - 1].sequence ?? idx - 1) - 1 })}>
-                                  <ArrowUp className="w-3 h-3" />
-                                </button>
-                              )}
-                              {idx < siblings.length - 1 && (
-                                <button className="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700" title="Move down"
-                                  onClick={() => updateRbsNode.mutate({ id: node.id, sequence: (siblings[idx + 1].sequence ?? idx + 1) + 1 })}>
-                                  <ArrowDown className="w-3 h-3" />
-                                </button>
-                              )}
-                              <button className="w-6 h-6 flex items-center justify-center rounded hover:bg-green-50 text-gray-400 hover:text-green-600" title="Add child"
-                                onClick={() => {
-                                  setRbsAddChildParentId(node.id);
-                                  setRbsNodeExpanded(p => ({ ...p, [node.id]: true }));
-                                  setRbsAddChildForm({ code: node.code + '.', name: '', resourceType: node.resourceType || 'Human', description: '', unit: 'Person', quantity: '1', costRate: '', availability: '100%', stakeholderId: '', isLeaf: '1' });
-                                }}>
-                                <Plus className="w-3 h-3" />
-                              </button>
-                              <button className="w-6 h-6 flex items-center justify-center rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600" title="Edit"
-                                onClick={() => {
-                                  setRbsEditingNodeId(node.id);
-                                  setRbsEditForm({ code: node.code, name: node.name, resourceType: node.resourceType || 'Human', description: node.description || '', unit: node.unit || '', quantity: node.quantity || '', costRate: node.costRate || '', availability: node.availability || '', stakeholderId: node.stakeholderId ? String(node.stakeholderId) : '', isLeaf: String(node.isLeaf ?? 0) });
-                                }}>
-                                <Pencil className="w-3 h-3" />
-                              </button>
-                              <button className="w-6 h-6 flex items-center justify-center rounded hover:bg-red-50 text-gray-400 hover:text-red-600" title="Delete"
-                                onClick={() => { if (confirm(`Delete "${node.name}"?`)) deleteRbsNode.mutate({ id: node.id }); }}>
-                                <Trash2 className="w-3 h-3" />
-                              </button>
-                            </div>
-                          </div>
-                          {/* Leaf metadata row */}
-                          {node.isLeaf === 1 && (node.unit || node.quantity || node.costRate || node.availability) && (
-                            <div className="flex items-center gap-3 mt-1 ml-8 text-[10px] text-muted-foreground">
-                              {node.unit && <span className="flex items-center gap-0.5"><Package className="w-2.5 h-2.5" /> {node.quantity || '1'} {node.unit}</span>}
-                              {node.costRate && <span className="flex items-center gap-0.5"><DollarSign className="w-2.5 h-2.5" /> {node.costRate}/unit</span>}
-                              {node.availability && <span className="flex items-center gap-0.5"><Clock className="w-2.5 h-2.5" /> {node.availability} avail.</span>}
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Add-child inline form */}
-                      {isAddingChild && (
-                        <div className="border-t px-3 py-3 bg-emerald-50/60 space-y-2">
-                          <p className="text-xs font-semibold text-emerald-700 flex items-center gap-1"><Plus className="w-3 h-3" /> Add child under <span className="font-mono bg-emerald-100 px-1 rounded">{node.code}</span></p>
-                          <div className="grid grid-cols-3 gap-2">
-                            <div>
-                              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Code</Label>
-                              <Input className="h-7 text-xs mt-0.5" placeholder="R1.1" value={rbsAddChildForm.code} onChange={e => setRbsAddChildForm(p => ({ ...p, code: e.target.value }))} />
-                            </div>
-                            <div className="col-span-2">
-                              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Name</Label>
-                              <Input className="h-7 text-xs mt-0.5" placeholder="Resource name" value={rbsAddChildForm.name} onChange={e => setRbsAddChildForm(p => ({ ...p, name: e.target.value }))} />
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-3 gap-2">
-                            <div>
-                              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Type</Label>
-                              <Select value={rbsAddChildForm.resourceType} onValueChange={v => setRbsAddChildForm(p => ({ ...p, resourceType: v }))}>
-                                <SelectTrigger className="h-7 text-xs mt-0.5"><SelectValue /></SelectTrigger>
-                                <SelectContent>{Object.keys(RBS_TYPE_META).map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-                              </Select>
-                            </div>
-                            <div>
-                              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Node Role</Label>
-                              <Select value={rbsAddChildForm.isLeaf} onValueChange={v => setRbsAddChildForm(p => ({ ...p, isLeaf: v }))}>
-                                <SelectTrigger className="h-7 text-xs mt-0.5"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="0">Category</SelectItem>
-                                  <SelectItem value="1">Resource (Leaf)</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div>
-                              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Availability</Label>
-                              <Input className="h-7 text-xs mt-0.5" placeholder="100%" value={rbsAddChildForm.availability} onChange={e => setRbsAddChildForm(p => ({ ...p, availability: e.target.value }))} />
-                            </div>
-                          </div>
-                          {rbsAddChildForm.isLeaf === '1' && (
-                            <div className="grid grid-cols-3 gap-2">
-                              <div>
-                                <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Unit</Label>
-                                <Input className="h-7 text-xs mt-0.5" placeholder="Person" value={rbsAddChildForm.unit} onChange={e => setRbsAddChildForm(p => ({ ...p, unit: e.target.value }))} />
-                              </div>
-                              <div>
-                                <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Quantity</Label>
-                                <Input className="h-7 text-xs mt-0.5" placeholder="1" value={rbsAddChildForm.quantity} onChange={e => setRbsAddChildForm(p => ({ ...p, quantity: e.target.value }))} />
-                              </div>
-                              <div>
-                                <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Cost/Unit</Label>
-                                <Input className="h-7 text-xs mt-0.5" placeholder="0.00" value={rbsAddChildForm.costRate} onChange={e => setRbsAddChildForm(p => ({ ...p, costRate: e.target.value }))} />
-                              </div>
-                            </div>
-                          )}
-                          {rbsAddChildForm.isLeaf === '1' && rbsAddChildForm.resourceType === 'Human' && (
-                            <div>
-                              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Linked Stakeholder (optional)</Label>
-                              <Select value={rbsAddChildForm.stakeholderId || '__none__'} onValueChange={v => setRbsAddChildForm(p => ({ ...p, stakeholderId: v === '__none__' ? '' : v }))}>
-                                <SelectTrigger className="h-7 text-xs mt-0.5"><SelectValue placeholder="None" /></SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="__none__">None</SelectItem>
-                                  {stakeholders.filter((s: any) => !(rbsNodes as any[]).some(n => n.stakeholderId === s.id)).map((s: any) => (
-                                    <SelectItem key={s.id} value={String(s.id)}>{s.fullName ?? s.name}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          )}
-                          <div className="flex gap-2">
-                            <Button size="sm" className="h-7 text-xs gap-1" disabled={!rbsAddChildForm.code.trim() || !rbsAddChildForm.name.trim() || createRbsNode.isPending}
-                              onClick={() => createRbsNode.mutate({
-                                projectId,
-                                code: rbsAddChildForm.code.trim(),
-                                name: rbsAddChildForm.name.trim(),
-                                resourceType: rbsAddChildForm.resourceType,
-                                parentId: node.id,
-                                description: rbsAddChildForm.description || undefined,
-                                unit: rbsAddChildForm.unit || undefined,
-                                quantity: rbsAddChildForm.quantity || undefined,
-                                costRate: rbsAddChildForm.costRate || undefined,
-                                availability: rbsAddChildForm.availability || undefined,
-                                stakeholderId: rbsAddChildForm.stakeholderId ? parseInt(rbsAddChildForm.stakeholderId) : undefined,
-                                isLeaf: parseInt(rbsAddChildForm.isLeaf),
-                              })}>
-                              {createRbsNode.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />} Add
-                            </Button>
-                            <Button size="sm" variant="ghost" className="h-7 text-xs gap-1" onClick={() => setRbsAddChildParentId(null)}>
-                              <X className="w-3 h-3" /> Cancel
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Children */}
-                  {isExp && hasChildren && (
-                    <div className="space-y-0">
-                      {node.children.map((child: any, ci: number) => renderNode(child, depth + 1, node.children, ci))}
-                    </div>
-                  )}
-                </div>
-              );
-            };
+            // ── Wizard step indicators ─────────────────────────────────────
+            const STEPS = [
+              { n: 1 as const, label: "Categories", desc: "Define resource types" },
+              { n: 2 as const, label: "Resources", desc: "Add resources per type" },
+              { n: 3 as const, label: "WBS Assignment", desc: "Assign to WBS elements" },
+              { n: 4 as const, label: "Cost Rollup", desc: "View aggregated costs" },
+            ];
 
             return (
-              <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-                {/* Left 2/3: Tree */}
-                <div className="xl:col-span-2">
-                  <Card>
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <CardTitle className="text-base flex items-center gap-2">
-                            <FolderTree className="w-4 h-4" />
-                            Resource Breakdown Structure
-                          </CardTitle>
-                          <p className="text-xs text-muted-foreground mt-0.5">Build your project resource hierarchy from scratch. Hover any node to edit, add children, or reorder.</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-xs">{(rbsNodes as any[]).length} nodes</Badge>
-                          {(rbsNodes as any[]).length > 0 && (
-                            <Button size="sm" variant="ghost" className="text-xs h-7 gap-1 text-muted-foreground"
-                              onClick={() => setRbsNodeExpanded({})}>
-                              Expand All
-                            </Button>
-                          )}
-                        </div>
+              <div className="space-y-4">
+                {/* Step indicator */}
+                <div className="flex items-center gap-0 border border-border rounded-xl overflow-hidden bg-muted/30">
+                  {STEPS.map((step, i) => (
+                    <button
+                      key={step.n}
+                      onClick={() => setWizardStep(step.n)}
+                      className={`flex-1 flex flex-col items-center py-3 px-2 transition-all text-center border-r last:border-r-0 border-border ${
+                        wizardStep === step.n
+                          ? "bg-primary text-primary-foreground"
+                          : wizardStep > step.n
+                          ? "bg-primary/10 text-primary hover:bg-primary/15"
+                          : "hover:bg-accent text-muted-foreground"
+                      }`}
+                    >
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold mb-1 ${
+                        wizardStep === step.n ? "bg-white/20" : wizardStep > step.n ? "bg-primary text-primary-foreground" : "bg-muted-foreground/20"
+                      }`}>
+                        {wizardStep > step.n ? <Check className="w-3 h-3" /> : step.n}
                       </div>
-                    </CardHeader>
-                    <CardContent>
-                      {roots.length === 0 ? (
-                        <div className="text-center py-16 text-muted-foreground border-2 border-dashed rounded-xl">
-                          <FolderTree className="w-10 h-10 mx-auto mb-3 opacity-20" />
-                          <p className="text-sm font-medium">No RBS nodes yet</p>
-                          <p className="text-xs mt-1 opacity-70">Use the form on the right to add your first root node.</p>
-                        </div>
-                      ) : (
-                        <div className="space-y-0">
-                          {roots.map((r, i) => renderNode(r, 0, roots, i))}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
+                      <span className="text-xs font-semibold">{step.label}</span>
+                      <span className="text-[10px] opacity-70 hidden sm:block">{step.desc}</span>
+                    </button>
+                  ))}
                 </div>
 
-                {/* Right 1/3: Add Root Node + Resource Types */}
-                <div className="space-y-4">
-                  {/* Add Root Node */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-sm flex items-center gap-2">
-                        <Plus className="w-4 h-4" />
-                        Add Root Node
-                      </CardTitle>
-                      <p className="text-xs text-muted-foreground">Root nodes are top-level categories in the RBS hierarchy.</p>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div className="grid grid-cols-3 gap-2">
-                        <div>
-                          <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Code</Label>
-                          <Input className="h-8 text-sm mt-0.5" placeholder="R1" value={rbsNodeForm.code} onChange={e => setRbsNodeForm(p => ({ ...p, code: e.target.value }))} />
-                        </div>
-                        <div className="col-span-2">
-                          <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Name</Label>
-                          <Input className="h-8 text-sm mt-0.5" placeholder="Human Resources" value={rbsNodeForm.name} onChange={e => setRbsNodeForm(p => ({ ...p, name: e.target.value }))} />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Type</Label>
-                          <Select value={rbsNodeForm.resourceType} onValueChange={v => setRbsNodeForm(p => ({ ...p, resourceType: v }))}>
-                            <SelectTrigger className="h-8 text-sm mt-0.5"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              {Object.entries(RBS_TYPE_META).map(([k, v]) => (
-                                <SelectItem key={k} value={k}>
-                                  <span className="flex items-center gap-2">{v.icon} {v.label}</span>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Node Role</Label>
-                          <Select value={rbsNodeForm.isLeaf} onValueChange={v => setRbsNodeForm(p => ({ ...p, isLeaf: v }))}>
-                            <SelectTrigger className="h-8 text-sm mt-0.5"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="0">Category</SelectItem>
-                              <SelectItem value="1">Resource (Leaf)</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      {rbsNodeForm.isLeaf === '1' && (
-                        <div className="grid grid-cols-3 gap-2">
-                          <div>
-                            <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Unit</Label>
-                            <Input className="h-8 text-sm mt-0.5" placeholder="Person" value={rbsNodeForm.unit} onChange={e => setRbsNodeForm(p => ({ ...p, unit: e.target.value }))} />
-                          </div>
-                          <div>
-                            <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Qty</Label>
-                            <Input className="h-8 text-sm mt-0.5" placeholder="1" value={rbsNodeForm.quantity} onChange={e => setRbsNodeForm(p => ({ ...p, quantity: e.target.value }))} />
-                          </div>
-                          <div>
-                            <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Cost/Unit</Label>
-                            <Input className="h-8 text-sm mt-0.5" placeholder="0.00" value={rbsNodeForm.costRate} onChange={e => setRbsNodeForm(p => ({ ...p, costRate: e.target.value }))} />
-                          </div>
-                        </div>
-                      )}
-                      {rbsNodeForm.isLeaf === '1' && (
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Availability</Label>
-                            <Input className="h-8 text-sm mt-0.5" placeholder="100%" value={rbsNodeForm.availability} onChange={e => setRbsNodeForm(p => ({ ...p, availability: e.target.value }))} />
-                          </div>
-                          {rbsNodeForm.resourceType === 'Human' && (
-                            <div>
-                              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Stakeholder (opt.)</Label>
-                              <Select value={rbsNodeForm.stakeholderId || '__none__'} onValueChange={v => setRbsNodeForm(p => ({ ...p, stakeholderId: v === '__none__' ? '' : v }))}>
-                                <SelectTrigger className="h-8 text-sm mt-0.5"><SelectValue placeholder="None" /></SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="__none__">None</SelectItem>
-                                  {stakeholders.filter((s: any) => !(rbsNodes as any[]).some(n => n.stakeholderId === s.id)).map((s: any) => (
-                                    <SelectItem key={s.id} value={String(s.id)}>{s.fullName ?? s.name}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          )}
-                        </div>
-                      )}
+                {/* ── STEP 1: Resource Categories ─────────────────────────── */}
+                {wizardStep === 1 && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
                       <div>
-                        <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Description (optional)</Label>
-                        <Input className="h-8 text-sm mt-0.5" placeholder="Brief description..." value={rbsNodeForm.description} onChange={e => setRbsNodeForm(p => ({ ...p, description: e.target.value }))} />
+                        <h3 className="font-semibold text-base">Resource Categories</h3>
+                        <p className="text-xs text-muted-foreground mt-0.5">Define the types of resources used in this project</p>
                       </div>
-                      <Button
-                        className="w-full"
-                        size="sm"
-                        disabled={!rbsNodeForm.code.trim() || !rbsNodeForm.name.trim() || createRbsNode.isPending}
-                        onClick={() => createRbsNode.mutate({
-                          projectId,
-                          code: rbsNodeForm.code.trim(),
-                          name: rbsNodeForm.name.trim(),
-                          resourceType: rbsNodeForm.resourceType,
-                          parentId: (rbsNodeForm.parentId && rbsNodeForm.parentId !== '__root__') ? parseInt(rbsNodeForm.parentId) : undefined,
-                          description: rbsNodeForm.description || undefined,
-                          unit: rbsNodeForm.unit || undefined,
-                          quantity: rbsNodeForm.quantity || undefined,
-                          costRate: rbsNodeForm.costRate || undefined,
-                          availability: rbsNodeForm.availability || undefined,
-                          stakeholderId: rbsNodeForm.stakeholderId ? parseInt(rbsNodeForm.stakeholderId) : undefined,
-                          isLeaf: parseInt(rbsNodeForm.isLeaf),
-                        })}
-                      >
-                        {createRbsNode.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
-                        Add Root Node
-                      </Button>
-                    </CardContent>
-                  </Card>
-
-                  {/* Resource Type Legend */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-sm flex items-center gap-2">
-                        <TreeDeciduous className="w-4 h-4" />
-                        Resource Type Legend
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-1">
-                        {Object.entries(RBS_TYPE_META).map(([k, v]) => (
-                          <div key={k} className="flex items-center gap-2 px-2 py-1 rounded-lg border text-xs font-medium"
-                            style={{ background: v.bg, color: v.text, borderColor: v.border }}>
-                            {v.icon}
-                            <span>{v.label}</span>
-                            <span className="text-[10px] opacity-50 ml-auto">{(rbsNodes as any[]).filter(n => n.resourceType === k).length}</span>
-                          </div>
-                        ))}
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" variant="outline" className="h-8 text-xs gap-1"
+                          onClick={() => seedRbsTypes.mutate({ projectId })}
+                          disabled={seedRbsTypes.isPending}
+                        >
+                          {seedRbsTypes.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
+                          Seed Defaults
+                        </Button>
+                        <Button size="sm" className="h-8 text-xs gap-1" onClick={() => { setWizardAddingType(true); setWizardTypeForm({ name: "", color: "#6366f1", description: "" }); }}>
+                          <Plus className="w-3 h-3" /> Add Category
+                        </Button>
                       </div>
-                    </CardContent>
-                  </Card>
+                    </div>
 
-                  {/* Import from Stakeholders */}
-                  <Card className="border-blue-200 bg-blue-50/40">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm flex items-center gap-2 text-blue-700">
-                        <UserPlus className="w-4 h-4" />
-                        Import from Stakeholders
-                      </CardTitle>
-                      <p className="text-xs text-muted-foreground">Add stakeholders as Human leaf nodes. Already-linked stakeholders are excluded.</p>
-                    </CardHeader>
-                    <CardContent>
-                      {(() => {
-                        const linkedIds = new Set((rbsNodes as any[]).map(n => n.stakeholderId).filter(Boolean));
-                        const unlinked = stakeholders.filter((s: any) => !linkedIds.has(s.id));
-                        if (unlinked.length === 0) return <p className="text-xs text-muted-foreground italic">All stakeholders are already linked to RBS nodes.</p>;
-                        return (
-                          <div className="space-y-1.5">
-                            {unlinked.map((s: any) => (
-                              <div key={s.id} className="flex items-center gap-2 p-1.5 rounded-lg border bg-white text-xs">
-                                <div className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center text-[10px] font-bold text-blue-700 shrink-0">
-                                  {(s.fullName ?? '?')[0]}
-                                </div>
-                                <span className="flex-1 truncate font-medium">{s.fullName}</span>
-                                <span className="text-muted-foreground truncate text-[10px]">{s.job || s.role || ''}</span>
-                                <button
-                                  className="shrink-0 text-blue-600 hover:text-blue-800 font-semibold text-[10px] px-1.5 py-0.5 rounded border border-blue-200 hover:bg-blue-50"
-                                  onClick={() => {
-                                    const code = 'H' + (s.id);
-                                    createRbsNode.mutate({
-                                      projectId,
-                                      code,
-                                      name: s.fullName ?? s.name,
-                                      resourceType: 'Human',
-                                      stakeholderId: s.id,
-                                      unit: 'Person',
-                                      quantity: '1',
-                                      availability: '100%',
-                                      isLeaf: 1,
-                                    });
-                                  }}
-                                >+ Add</button>
+                    {/* Add category form */}
+                    {wizardAddingType && (
+                      <Card className="border-primary/30 bg-primary/5">
+                        <CardContent className="pt-4 space-y-3">
+                          <div className="grid grid-cols-3 gap-3">
+                            <div className="col-span-2">
+                              <Label className="text-xs">Category Name</Label>
+                              <Input className="h-8 text-sm mt-1" placeholder="e.g. Cloud Infrastructure" value={wizardTypeForm.name} onChange={e => setWizardTypeForm(p => ({ ...p, name: e.target.value }))} autoFocus />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Color</Label>
+                              <div className="flex items-center gap-2 mt-1">
+                                <input type="color" className="h-8 w-12 rounded border border-input cursor-pointer" value={wizardTypeForm.color} onChange={e => setWizardTypeForm(p => ({ ...p, color: e.target.value }))} />
+                                <Input className="h-8 text-xs flex-1" value={wizardTypeForm.color} onChange={e => setWizardTypeForm(p => ({ ...p, color: e.target.value }))} />
                               </div>
-                            ))}
+                            </div>
                           </div>
+                          <div>
+                            <Label className="text-xs">Description (optional)</Label>
+                            <Input className="h-8 text-sm mt-1" placeholder="Brief description" value={wizardTypeForm.description} onChange={e => setWizardTypeForm(p => ({ ...p, description: e.target.value }))} />
+                          </div>
+                          <div className="flex gap-2">
+                            <Button size="sm" className="h-8 text-xs" disabled={!wizardTypeForm.name.trim() || createRbsType.isPending}
+                              onClick={() => createRbsType.mutate({ projectId, name: wizardTypeForm.name.trim(), color: wizardTypeForm.color, description: wizardTypeForm.description }, { onSuccess: () => setWizardAddingType(false) })}>
+                              {createRbsType.isPending ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Check className="w-3 h-3 mr-1" />} Save
+                            </Button>
+                            <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setWizardAddingType(false)}>Cancel</Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {/* Category cards grid */}
+                    {(rbsTypes as any[]).length === 0 ? (
+                      <div className="text-center py-12 text-muted-foreground border border-dashed rounded-xl">
+                        <FolderTree className="w-8 h-8 mx-auto mb-3 opacity-30" />
+                        <p className="text-sm font-medium">No categories yet</p>
+                        <p className="text-xs mt-1">Click "Seed Defaults" to add built-in resource types, or create your own</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                        {(rbsTypes as any[]).map((type: any) => {
+                          const resourceCount = (rbsNodes as any[]).filter(n => n.resourceType === type.name && n.isLeaf === 1).length;
+                          const meta = getMeta(type.name);
+                          const isEditing = wizardEditTypeId === type.id;
+                          return (
+                            <Card key={type.id} className={`border transition-all hover:shadow-sm cursor-pointer ${isEditing ? "border-primary ring-1 ring-primary" : ""}`}
+                              onClick={() => { if (!isEditing) { setWizardCategoryId(type.id); setWizardStep(2); } }}>
+                              <CardContent className="p-4">
+                                {isEditing ? (
+                                  <div className="space-y-2" onClick={e => e.stopPropagation()}>
+                                    <Input className="h-7 text-xs" value={wizardTypeForm.name} onChange={e => setWizardTypeForm(p => ({ ...p, name: e.target.value }))} autoFocus />
+                                    <div className="flex items-center gap-2">
+                                      <input type="color" className="h-7 w-10 rounded border border-input cursor-pointer" value={wizardTypeForm.color} onChange={e => setWizardTypeForm(p => ({ ...p, color: e.target.value }))} />
+                                      <Input className="h-7 text-xs flex-1" value={wizardTypeForm.color} onChange={e => setWizardTypeForm(p => ({ ...p, color: e.target.value }))} />
+                                    </div>
+                                    <div className="flex gap-1">
+                                      <Button size="sm" className="h-6 text-[10px] px-2 flex-1"
+                                        disabled={!wizardTypeForm.name.trim() || updateRbsType.isPending}
+                                        onClick={() => updateRbsType.mutate({ id: type.id, name: wizardTypeForm.name, color: wizardTypeForm.color, description: wizardTypeForm.description }, { onSuccess: () => setWizardEditTypeId(null) })}>
+                                        Save
+                                      </Button>
+                                      <Button size="sm" variant="ghost" className="h-6 text-[10px] px-2" onClick={() => setWizardEditTypeId(null)}>✕</Button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div>
+                                    <div className="flex items-start justify-between mb-3">
+                                      <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: type.color ? `${type.color}20` : meta.bg, color: type.color ?? meta.text }}>
+                                        {meta.icon}
+                                      </div>
+                                      <div className="flex items-center gap-0.5 opacity-0 hover:opacity-100 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
+                                        <button className="w-6 h-6 flex items-center justify-center rounded hover:bg-muted text-muted-foreground transition-colors"
+                                          onClick={() => { setWizardEditTypeId(type.id); setWizardTypeForm({ name: type.name, color: type.color ?? "#6366f1", description: type.description ?? "" }); }}>
+                                          <Pencil className="w-3 h-3" />
+                                        </button>
+                                        <button className="w-6 h-6 flex items-center justify-center rounded hover:bg-red-50 text-muted-foreground hover:text-red-600 transition-colors"
+                                          onClick={() => { if (confirm(`Delete "${type.name}"?`)) deleteRbsType.mutate({ id: type.id }); }}>
+                                          <Trash2 className="w-3 h-3" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                    <p className="font-semibold text-sm">{type.name}</p>
+                                    {type.description && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{type.description}</p>}
+                                    <div className="mt-2 flex items-center gap-1">
+                                      <span className="text-[11px] px-2 py-0.5 rounded-full font-medium" style={{ background: type.color ? `${type.color}20` : meta.bg, color: type.color ?? meta.text }}>
+                                        {resourceCount} resource{resourceCount !== 1 ? "s" : ""}
+                                      </span>
+                                    </div>
+                                  </div>
+                                )}
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    <div className="flex justify-end">
+                      <Button className="gap-1" onClick={() => setWizardStep(2)}>
+                        Next: Resources <ChevronRight className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── STEP 2: Resource Register ────────────────────────────── */}
+                {wizardStep === 2 && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-semibold text-base">Resource Register</h3>
+                        <p className="text-xs text-muted-foreground mt-0.5">Add resources to each category</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setWizardStep(1)}>← Back</Button>
+                        <Button size="sm" className="h-8 text-xs gap-1" onClick={() => setWizardAddingResource(true)}>
+                          <Plus className="w-3 h-3" /> Add Resource
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-4">
+                      {/* Category sidebar */}
+                      <div className="w-44 shrink-0 space-y-1">
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold px-2 mb-2">Filter by Type</p>
+                        <button
+                          onClick={() => setWizardCategoryId(null)}
+                          className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between ${wizardCategoryId === null ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}
+                        >
+                          <span>All Resources</span>
+                          <span className="text-[10px] opacity-70">{leafNodes.length}</span>
+                        </button>
+                        {(rbsTypes as any[]).map((type: any) => {
+                          const count = leafNodes.filter(n => n.resourceType === type.name).length;
+                          const meta = getMeta(type.name);
+                          return (
+                            <button key={type.id}
+                              onClick={() => setWizardCategoryId(type.id)}
+                              className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-2 ${wizardCategoryId === type.id ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}
+                            >
+                              <span className="shrink-0" style={{ color: wizardCategoryId === type.id ? "inherit" : type.color ?? meta.text }}>{meta.icon}</span>
+                              <span className="flex-1 truncate">{type.name}</span>
+                              <span className="text-[10px] opacity-70">{count}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Resource list */}
+                      <div className="flex-1 min-w-0 space-y-2">
+                        {/* Add resource form */}
+                        {wizardAddingResource && (() => {
+                          const selectedType = wizardCategoryId ? (rbsTypes as any[]).find(t => t.id === wizardCategoryId) : null;
+                          return (
+                            <Card className="border-primary/30 bg-primary/5 mb-3">
+                              <CardContent className="pt-4 space-y-3">
+                                <p className="text-xs font-semibold text-primary flex items-center gap-1"><Plus className="w-3 h-3" /> New Resource {selectedType ? `— ${selectedType.name}` : ""}</p>
+                                <div className="grid grid-cols-3 gap-2">
+                                  <div>
+                                    <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Code</Label>
+                                    <Input className="h-7 text-xs mt-1" placeholder="R1.1" value={wizardAddResourceForm.code} onChange={e => setWizardAddResourceForm(p => ({ ...p, code: e.target.value }))} />
+                                  </div>
+                                  <div className="col-span-2">
+                                    <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Name</Label>
+                                    <Input className="h-7 text-xs mt-1" placeholder="Resource name" value={wizardAddResourceForm.name} onChange={e => setWizardAddResourceForm(p => ({ ...p, name: e.target.value }))} autoFocus />
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-4 gap-2">
+                                  <div>
+                                    <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Unit</Label>
+                                    <Input className="h-7 text-xs mt-1" placeholder="Person" value={wizardAddResourceForm.unit} onChange={e => setWizardAddResourceForm(p => ({ ...p, unit: e.target.value }))} />
+                                  </div>
+                                  <div>
+                                    <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Qty</Label>
+                                    <Input className="h-7 text-xs mt-1" placeholder="1" value={wizardAddResourceForm.quantity} onChange={e => setWizardAddResourceForm(p => ({ ...p, quantity: e.target.value }))} />
+                                  </div>
+                                  <div>
+                                    <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Cost/Unit</Label>
+                                    <Input className="h-7 text-xs mt-1" placeholder="0.00" value={wizardAddResourceForm.costRate} onChange={e => setWizardAddResourceForm(p => ({ ...p, costRate: e.target.value }))} />
+                                  </div>
+                                  <div>
+                                    <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Avail.</Label>
+                                    <Input className="h-7 text-xs mt-1" placeholder="100%" value={wizardAddResourceForm.availability} onChange={e => setWizardAddResourceForm(p => ({ ...p, availability: e.target.value }))} />
+                                  </div>
+                                </div>
+                                {selectedType?.name === "Human" && (
+                                  <div>
+                                    <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Linked Stakeholder (optional)</Label>
+                                    <Select value={wizardAddResourceForm.stakeholderId || "__none__"} onValueChange={v => setWizardAddResourceForm(p => ({ ...p, stakeholderId: v === "__none__" ? "" : v }))}>
+                                      <SelectTrigger className="h-7 text-xs mt-1"><SelectValue placeholder="None" /></SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="__none__">None</SelectItem>
+                                        {stakeholders.filter((s: any) => !leafNodes.some(n => n.stakeholderId === s.id)).map((s: any) => (
+                                          <SelectItem key={s.id} value={String(s.id)}>{s.fullName ?? s.name}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                )}
+                                <div className="flex gap-2">
+                                  <Button size="sm" className="h-7 text-xs" disabled={!wizardAddResourceForm.code.trim() || !wizardAddResourceForm.name.trim() || createRbsNode.isPending}
+                                    onClick={() => createRbsNode.mutate({
+                                      projectId,
+                                      code: wizardAddResourceForm.code.trim(),
+                                      name: wizardAddResourceForm.name.trim(),
+                                      resourceType: selectedType?.name ?? "Human",
+                                      unit: wizardAddResourceForm.unit || undefined,
+                                      quantity: wizardAddResourceForm.quantity || undefined,
+                                      costRate: wizardAddResourceForm.costRate || undefined,
+                                      availability: wizardAddResourceForm.availability || undefined,
+                                      stakeholderId: wizardAddResourceForm.stakeholderId ? parseInt(wizardAddResourceForm.stakeholderId) : undefined,
+                                      isLeaf: 1,
+                                    }, { onSuccess: () => { setWizardAddingResource(false); setWizardAddResourceForm({ code: "", name: "", unit: "Person", quantity: "1", costRate: "", availability: "100%", stakeholderId: "" }); }})}>
+                                    {createRbsNode.isPending ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Check className="w-3 h-3 mr-1" />} Add Resource
+                                  </Button>
+                                  <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setWizardAddingResource(false)}>Cancel</Button>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          );
+                        })()}
+
+                        {/* Resource cards */}
+                        {(() => {
+                          const filtered = wizardCategoryId
+                            ? leafNodes.filter(n => n.resourceType === (rbsTypes as any[]).find(t => t.id === wizardCategoryId)?.name)
+                            : leafNodes;
+                          if (filtered.length === 0) return (
+                            <div className="text-center py-10 text-muted-foreground border border-dashed rounded-xl">
+                              <Package className="w-7 h-7 mx-auto mb-2 opacity-30" />
+                              <p className="text-sm font-medium">No resources yet</p>
+                              <p className="text-xs mt-1">Click "Add Resource" to define resources for this category</p>
+                            </div>
+                          );
+                          return filtered.map((node: any) => {
+                            const meta = getMeta(node.resourceType);
+                            const linkedSh = node.stakeholderId ? stakeholders.find((s: any) => s.id === node.stakeholderId) : null;
+                            const totalCost = (parseFloat(node.quantity ?? "1") || 1) * (parseFloat(node.costRate ?? "0") || 0);
+                            return (
+                              <div key={node.id} className="flex items-center gap-3 p-3 rounded-xl border border-border bg-card hover:border-border/80 hover:shadow-sm transition-all">
+                                <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: meta.bg, color: meta.text }}>
+                                  {meta.icon}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-mono text-[10px] text-muted-foreground">{node.code}</span>
+                                    <span className="font-semibold text-sm truncate">{node.name}</span>
+                                    <span className="text-[10px] px-1.5 py-0.5 rounded-full border font-medium" style={{ background: meta.bg, color: meta.text, borderColor: meta.border }}>
+                                      {node.resourceType}
+                                    </span>
+                                    {linkedSh && (
+                                      <span className="text-[10px] px-1.5 py-0.5 rounded border bg-blue-50 text-blue-700 border-blue-200 flex items-center gap-1">
+                                        <Users className="w-2.5 h-2.5" />{linkedSh.fullName ?? linkedSh.name}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-3 mt-1 text-[10px] text-muted-foreground">
+                                    {node.unit && <span>{node.quantity ?? 1} × {node.unit}</span>}
+                                    {node.costRate && <span>{formatCurrency(parseFloat(node.costRate))}/unit</span>}
+                                    {totalCost > 0 && <span className="text-emerald-600 font-medium">Total: {formatCurrency(totalCost)}</span>}
+                                    {node.availability && <span>{node.availability} avail.</span>}
+                                  </div>
+                                </div>
+                                <button className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 hover:text-red-600 text-muted-foreground/40 transition-colors"
+                                  onClick={() => { if (confirm(`Delete "${node.name}"?`)) deleteRbsNode.mutate({ id: node.id }); }}>
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            );
+                          });
+                        })()}
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between">
+                      <Button variant="outline" className="gap-1" onClick={() => setWizardStep(1)}><ChevronLeft className="w-4 h-4" /> Back</Button>
+                      <Button className="gap-1" onClick={() => setWizardStep(3)}>Next: WBS Assignment <ChevronRight className="w-4 h-4" /></Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── STEP 3: WBS Assignment ───────────────────────────────── */}
+                {wizardStep === 3 && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-semibold text-base">WBS Assignment</h3>
+                        <p className="text-xs text-muted-foreground mt-0.5">Assign resources to WBS elements and set allocation percentages</p>
+                      </div>
+                      <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setWizardStep(2)}>← Back</Button>
+                    </div>
+
+                    {wbsRoots.length === 0 ? (
+                      <div className="text-center py-12 text-muted-foreground border border-dashed rounded-xl">
+                        <FolderTree className="w-8 h-8 mx-auto mb-3 opacity-30" />
+                        <p className="text-sm font-medium">No WBS nodes defined</p>
+                        <p className="text-xs mt-1">Go to the WBS page to build your Work Breakdown Structure first</p>
+                      </div>
+                    ) : (
+                      <div className="flex gap-4">
+                        {/* WBS tree */}
+                        <div className="w-64 shrink-0">
+                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold px-2 mb-2">WBS Tree</p>
+                          <div className="border rounded-xl overflow-hidden">
+                            {(() => {
+                              const renderWbsNode = (node: any, depth: number): React.ReactNode => {
+                                const hasChildren = node.children.length > 0;
+                                const isExp = wizardExpandedWbs[node.id] !== false;
+                                const isSelected = wizardSelectedWbsId === node.id;
+                                const assignCount = (wbsAssignments as any[]).filter(a => a.wbsNodeId === node.id).length;
+                                return (
+                                  <div key={node.id}>
+                                    <button
+                                      onClick={() => {
+                                        setWizardSelectedWbsId(node.id);
+                                        if (hasChildren) setWizardExpandedWbs(p => ({ ...p, [node.id]: !isExp }));
+                                      }}
+                                      className={`w-full flex items-center gap-1.5 px-3 py-2 text-left text-sm transition-colors border-b border-border/30 ${isSelected ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}
+                                      style={{ paddingLeft: `${12 + depth * 16}px` }}
+                                    >
+                                      {hasChildren ? (
+                                        isExp ? <ChevronDown className="w-3 h-3 shrink-0" /> : <ChevronRight className="w-3 h-3 shrink-0" />
+                                      ) : <span className="w-3 shrink-0" />}
+                                      <span className="font-mono text-[10px] opacity-60 shrink-0">{node.code}</span>
+                                      <span className="flex-1 truncate text-xs">{node.name}</span>
+                                      {assignCount > 0 && (
+                                        <span className={`text-[9px] px-1 rounded-full font-semibold ${isSelected ? "bg-white/20" : "bg-primary/10 text-primary"}`}>
+                                          {assignCount}
+                                        </span>
+                                      )}
+                                    </button>
+                                    {isExp && hasChildren && node.children.map((c: any) => renderWbsNode(c, depth + 1))}
+                                  </div>
+                                );
+                              };
+                              return wbsRoots.map(r => renderWbsNode(r, 0));
+                            })()}
+                          </div>
+                        </div>
+
+                        {/* Assignment panel */}
+                        <div className="flex-1 min-w-0">
+                          {!wizardSelectedWbsId ? (
+                            <div className="text-center py-12 text-muted-foreground border border-dashed rounded-xl">
+                              <p className="text-sm">Select a WBS element to assign resources</p>
+                            </div>
+                          ) : (() => {
+                            const wbs = wbsNodeMap[wizardSelectedWbsId];
+                            const assigned = (wbsAssignments as any[]).filter(a => a.wbsNodeId === wizardSelectedWbsId);
+                            const availableLeaves = leafNodes.filter(n => !assigned.some(a => a.rbsNodeId === n.id));
+                            return (
+                              <div className="space-y-3">
+                                <div className="p-3 rounded-xl border bg-muted/30">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-mono text-xs text-muted-foreground">{wbs?.code}</span>
+                                    <span className="font-semibold">{wbs?.name}</span>
+                                  </div>
+                                  {wbs?.responsible && <p className="text-xs text-muted-foreground mt-1">Responsible: {wbs.responsible}</p>}
+                                </div>
+
+                                {/* Assigned resources */}
+                                {assigned.length > 0 && (
+                                  <div className="space-y-1.5">
+                                    <p className="text-xs font-semibold text-muted-foreground">Assigned Resources</p>
+                                    {assigned.map((a: any) => {
+                                      const rNode = (rbsNodes as any[]).find(n => n.id === a.rbsNodeId);
+                                      if (!rNode) return null;
+                                      const meta = getMeta(rNode.resourceType);
+                                      const cost = (parseFloat(rNode.quantity ?? "1") || 1) * (parseFloat(rNode.costRate ?? "0") || 0) * (parseFloat(a.allocationPct ?? "100") / 100);
+                                      return (
+                                        <div key={a.id} className="flex items-center gap-2 p-2.5 rounded-lg border bg-card">
+                                          <div className="w-7 h-7 rounded-md flex items-center justify-center shrink-0" style={{ background: meta.bg, color: meta.text }}>
+                                            {meta.icon}
+                                          </div>
+                                          <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-medium truncate">{rNode.name}</p>
+                                            <p className="text-[10px] text-muted-foreground">{a.allocationPct ?? 100}% allocation{cost > 0 ? ` · ${formatCurrency(cost)}` : ""}</p>
+                                          </div>
+                                          <button className="w-6 h-6 flex items-center justify-center rounded hover:bg-red-50 hover:text-red-600 text-muted-foreground/40 transition-colors"
+                                            onClick={() => deleteAssignment.mutate({ id: a.id })}>
+                                            <X className="w-3 h-3" />
+                                          </button>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+
+                                {/* Add assignment */}
+                                {availableLeaves.length > 0 && (
+                                  <div className="space-y-2 p-3 rounded-xl border border-dashed border-primary/30 bg-primary/5">
+                                    <p className="text-xs font-semibold text-primary">Add Resource</p>
+                                    <div className="grid grid-cols-3 gap-2">
+                                      <div className="col-span-2">
+                                        <Select value={wizardAssignForm.rbsNodeId} onValueChange={v => setWizardAssignForm(p => ({ ...p, rbsNodeId: v }))}>
+                                          <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select resource..." /></SelectTrigger>
+                                          <SelectContent>
+                                            {availableLeaves.map((n: any) => (
+                                              <SelectItem key={n.id} value={String(n.id)}>{n.name} ({n.resourceType})</SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                      <div className="flex items-center gap-1">
+                                        <Input className="h-8 text-xs w-16" placeholder="100" value={wizardAssignForm.allocationPct} onChange={e => setWizardAssignForm(p => ({ ...p, allocationPct: e.target.value }))} />
+                                        <span className="text-xs text-muted-foreground">%</span>
+                                      </div>
+                                    </div>
+                                    <Button size="sm" className="h-7 text-xs" disabled={!wizardAssignForm.rbsNodeId || upsertAssignment.isPending}
+                                      onClick={() => upsertAssignment.mutate({ projectId, wbsNodeId: wizardSelectedWbsId, rbsNodeId: parseInt(wizardAssignForm.rbsNodeId), allocationPct: wizardAssignForm.allocationPct })}>
+                                      {upsertAssignment.isPending ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Plus className="w-3 h-3 mr-1" />} Assign
+                                    </Button>
+                                  </div>
+                                )}
+
+                                {assigned.length === 0 && availableLeaves.length === 0 && (
+                                  <div className="text-center py-6 text-muted-foreground text-sm">No resources available — add resources in Step 2 first</div>
+                                )}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex justify-between">
+                      <Button variant="outline" className="gap-1" onClick={() => setWizardStep(2)}><ChevronLeft className="w-4 h-4" /> Back</Button>
+                      <Button className="gap-1" onClick={() => setWizardStep(4)}>Next: Cost Rollup <ChevronRight className="w-4 h-4" /></Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── STEP 4: Cost Rollup ──────────────────────────────────── */}
+                {wizardStep === 4 && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-semibold text-base">Cost Rollup</h3>
+                        <p className="text-xs text-muted-foreground mt-0.5">Aggregated resource costs per WBS element</p>
+                      </div>
+                      <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setWizardStep(3)}>← Back</Button>
+                    </div>
+
+                    {(() => {
+                      const grandTotal = wbsRoots.reduce((sum, r) => sum + calcSubtreeCost(r), 0);
+                      const renderCostRow = (node: any, depth: number): React.ReactNode => {
+                        const directCost = calcWbsCost(node.id);
+                        const subtreeCost = calcSubtreeCost(node);
+                        const assignments = (wbsAssignments as any[]).filter(a => a.wbsNodeId === node.id);
+                        const hasChildren = node.children.length > 0;
+                        const isExp = wizardExpandedWbs[node.id] !== false;
+                        return (
+                          <React.Fragment key={node.id}>
+                            <tr className={`border-b border-border/30 hover:bg-muted/30 transition-colors ${depth === 0 ? "bg-muted/20" : ""}`}>
+                              <td className="py-2 px-3" style={{ paddingLeft: `${12 + depth * 20}px` }}>
+                                <div className="flex items-center gap-1.5">
+                                  {hasChildren ? (
+                                    <button onClick={() => setWizardExpandedWbs(p => ({ ...p, [node.id]: !isExp }))} className="text-muted-foreground hover:text-foreground">
+                                      {isExp ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                                    </button>
+                                  ) : <span className="w-3" />}
+                                  <span className="font-mono text-[10px] text-muted-foreground">{node.code}</span>
+                                  <span className={`text-sm ${depth === 0 ? "font-semibold" : ""}`}>{node.name}</span>
+                                </div>
+                              </td>
+                              <td className="py-2 px-3 text-xs text-muted-foreground">
+                                {assignments.length > 0 ? (
+                                  <div className="flex flex-wrap gap-1">
+                                    {assignments.map((a: any) => {
+                                      const n = (rbsNodes as any[]).find(r => r.id === a.rbsNodeId);
+                                      return n ? <span key={a.id} className="px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground text-[10px]">{n.name} ({a.allocationPct ?? 100}%)</span> : null;
+                                    })}
+                                  </div>
+                                ) : <span className="text-muted-foreground/50">—</span>}
+                              </td>
+                              <td className="py-2 px-3 text-right text-sm text-muted-foreground">
+                                {directCost > 0 ? formatCurrency(directCost) : "—"}
+                              </td>
+                              <td className="py-2 px-3 text-right text-sm font-semibold">
+                                {subtreeCost > 0 ? formatCurrency(subtreeCost) : "—"}
+                              </td>
+                            </tr>
+                            {isExp && node.children.map((c: any) => renderCostRow(c, depth + 1))}
+                          </React.Fragment>
                         );
-                      })()}
-                    </CardContent>
-                  </Card>
-                </div>
+                      };
+
+                      return (
+                        <div className="border rounded-xl overflow-hidden">
+                          <table className="w-full text-sm">
+                            <thead className="bg-muted/50 border-b border-border">
+                              <tr>
+                                <th className="text-left py-2 px-3 text-xs font-semibold text-muted-foreground">WBS Element</th>
+                                <th className="text-left py-2 px-3 text-xs font-semibold text-muted-foreground">Resources Assigned</th>
+                                <th className="text-right py-2 px-3 text-xs font-semibold text-muted-foreground">Direct Cost</th>
+                                <th className="text-right py-2 px-3 text-xs font-semibold text-muted-foreground">Subtree Total</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {wbsRoots.length === 0 ? (
+                                <tr><td colSpan={4} className="text-center py-8 text-muted-foreground text-sm">No WBS nodes — build your WBS first</td></tr>
+                              ) : wbsRoots.map(r => renderCostRow(r, 0))}
+                            </tbody>
+                            {grandTotal > 0 && (
+                              <tfoot className="border-t-2 border-border bg-primary/5">
+                                <tr>
+                                  <td className="py-3 px-3 text-sm font-bold text-primary" colSpan={2}>Grand Total</td>
+                                  <td className="py-3 px-3" />
+                                  <td className="py-3 px-3 text-right text-base font-bold text-primary">{formatCurrency(grandTotal)}</td>
+                                </tr>
+                              </tfoot>
+                            )}
+                          </table>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
               </div>
             );
           })()}

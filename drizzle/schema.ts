@@ -1667,6 +1667,21 @@ export const rbsNodes = mysqlTable("rbsNodes", {
 export type RbsNode = typeof rbsNodes.$inferSelect;
 export type InsertRbsNode = typeof rbsNodes.$inferInsert;
 
+// ─── WBS Resource Assignments ─────────────────────────────────────────────────
+// Maps RBS leaf-nodes (resources) to WBS elements with an optional allocation %.
+export const wbsResourceAssignments = mysqlTable("wbsResourceAssignments", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  wbsNodeId: int("wbsNodeId").notNull(),
+  rbsNodeId: int("rbsNodeId").notNull(),
+  allocationPct: decimal("allocationPct", { precision: 5, scale: 2 }).default("100.00"),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type WbsResourceAssignment = typeof wbsResourceAssignments.$inferSelect;
+export type InsertWbsResourceAssignment = typeof wbsResourceAssignments.$inferInsert;
+
 // ─── Task History (Recurring Task Snapshots) ──────────────────────────────────
 // When a recurring task is auto-renewed, its previous state is saved here.
 export const taskHistory = mysqlTable("taskHistory", {

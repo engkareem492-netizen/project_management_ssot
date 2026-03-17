@@ -281,6 +281,13 @@
       "when": 1742220200000,
       "tag": "0041_communication_log",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "6",
+      "when": 1742220300000,
+      "tag": "0042_wbs_resource_assignments",
+      "breakpoints": true
     }
   ]
 }

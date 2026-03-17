@@ -62,6 +62,7 @@ import { wbsNodesRouter } from "./routers/wbsNodes.router";
 import { commRaciMatrixRouter } from "./routers/commRaciMatrix.router";
 import { communicationLogRouter } from "./routers/communicationLog.router";
 import { dropdownRegistryRouter } from "./routers/dropdownRegistry.router";
+import { wbsResourceAssignmentsRouter } from "./routers/wbsResourceAssignments.router";
 
 export const appRouter = router({
   system: systemRouter,
@@ -118,6 +119,7 @@ export const appRouter = router({
   commRaciMatrix: commRaciMatrixRouter,
   communicationLog: communicationLogRouter,
   dropdownRegistry: dropdownRegistryRouter,
+  wbsResourceAssignments: wbsResourceAssignmentsRouter,
   scopeItems: router({
     list: protectedProcedure
       .input(z.object({ projectId: z.number() }))
