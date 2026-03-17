@@ -728,7 +728,7 @@ export default function Resources() {
               <p className="text-xs text-muted-foreground mt-0.5">Utilization per team member across the next 12 weeks</p>
             </div>
             {/* Type filter */}
-            <div className="flex items-center gap-2 mb-4 flex-wrap">
+            <div className="flex items-center gap-2 mb-3 flex-wrap">
               <span className="text-xs text-muted-foreground font-medium">Show:</span>
               {(["all", "TeamMember", "External", "Stakeholder"] as const).map(t => (
                 <button
@@ -748,26 +748,69 @@ export default function Resources() {
               ))}
             </div>
 
+            {/* Department/role filter pills */}
+            {(() => {
+              const roles = Array.from(new Set(workloadData.map(w => w.role).filter(Boolean)));
+              if (roles.length === 0) return null;
+              return (
+                <div className="flex items-center gap-2 mb-4 flex-wrap">
+                  <span className="text-xs text-muted-foreground font-medium">Role:</span>
+                  <button
+                    onClick={() => setHeatmapRoleFilter("all")}
+                    className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${heatmapRoleFilter === "all" ? "bg-primary text-primary-foreground border-primary" : "bg-background text-muted-foreground border-border hover:border-muted-foreground"}`}
+                  >
+                    All Roles
+                  </button>
+                  {roles.map(role => (
+                    <button
+                      key={role}
+                      onClick={() => setHeatmapRoleFilter(role)}
+                      className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${heatmapRoleFilter === role ? "bg-primary text-primary-foreground border-primary" : "bg-background text-muted-foreground border-border hover:border-muted-foreground"}`}
+                    >
+                      {role}
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
+
             <WorkloadHeatmap
               resources={workloadData
-                .filter(w => heatmapTypeFilter === "all" || w.classification === heatmapTypeFilter)
+                .filter(w => (heatmapTypeFilter === "all" || w.classification === heatmapTypeFilter) && (heatmapRoleFilter === "all" || w.role === heatmapRoleFilter))
                 .map((w) => {
+                const workerId = w.id;
+                const workerDaysPerWeek = w.daysPerWeek ?? 5;
+                const workerHoursPerDay = w.hoursPerDay ?? 8;
+                const AVG_TASK_HOURS = 8;
                 const weeklyData = [0,1,2,3,4,5,6,7,8,9,10,11].map((weekOffset) => {
                   const start = new Date();
                   start.setHours(0,0,0,0);
                   const day = start.getDay();
                   start.setDate(start.getDate() - (day === 0 ? 6 : day - 1) + weekOffset * 7);
-                  const weekStart = start.toISOString().split("T")[0];
+                  const weekStartDate = start.toISOString().split("T")[0];
+                  const weekEnd = new Date(start);
+                  weekEnd.setDate(start.getDate() + 6);
+                  const weekEndDate = weekEnd.toISOString().split("T")[0];
+                  // Count leave/holiday days for this worker this week
+                  const leaveDaysThisWeek = (calendarEntries as any[]).filter((e: any) => {
+                    if (e.stakeholderId !== workerId) return false;
+                    if (e.type !== "Leave" && e.type !== "Holiday") return false;
+                    const dateKey = e.date instanceof Date ? e.date.toISOString().split("T")[0] : String(e.date).split("T")[0];
+                    return dateKey >= weekStartDate && dateKey <= weekEndDate;
+                  }).length;
+                  const availableDays = Math.max(0, workerDaysPerWeek - leaveDaysThisWeek);
+                  const availableHours = availableDays * workerHoursPerDay;
                   const tasksInWeek = weekOffset === 0 ? w.thisWeek : weekOffset === 1 ? w.nextWeek : weekOffset === 2 ? w.next2 : weekOffset === 3 ? w.next3 : weekOffset === 4 ? w.next4 : 0;
-                  const utilization = w.capacity > 0 ? Math.round((tasksInWeek / w.capacity) * 100) : 0;
-                  return { weekStart, utilization };
+                  const utilization = availableHours > 0 ? Math.min(100, Math.round((tasksInWeek * AVG_TASK_HOURS) / availableHours * 100)) : 0;
+                  return { weekStart: weekStartDate, utilization };
                 });
                 return { id: w.id, name: w.name, weeklyData };
               })}
             />
-            {workloadData.filter(w => heatmapTypeFilter === "all" || w.classification === heatmapTypeFilter).length === 0 && (
+            {workloadData.filter(w => (heatmapTypeFilter === "all" || w.classification === heatmapTypeFilter) && (heatmapRoleFilter === "all" || w.role === heatmapRoleFilter)).length === 0 && (
               <p className="text-sm text-muted-foreground text-center py-6">No resources match the selected filter.</p>
             )}
+            <p className="text-xs text-muted-foreground mt-3 italic">Utilization adjusted for calendar leave/holidays.</p>
           </Card>
         </TabsContent>
 
@@ -847,11 +890,67 @@ export default function Resources() {
                         {wl && wl.nextWeek > 0 && <span className="bg-muted rounded px-1.5 py-0.5">{wl.nextWeek} next week</span>}
                       </div>
                     )}
+                    {/* Skills indicator badge for TeamMembers */}
+                    {cls === "TeamMember" && (
+                      <div className="mt-2">
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-200">
+                          Skills: Expand to view
+                        </span>
+                      </div>
+                    )}
                   </div>
                 );
               })}
             </div>
           </div>
+
+          {/* KPI Performance Summary Section */}
+          {(kpiSummary as any[]).length > 0 && (
+            <div className="bg-white border border-gray-200 rounded-xl p-5">
+              <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-muted-foreground" />
+                KPI Performance Summary
+              </h3>
+              <div className="overflow-auto">
+                <table className="w-full text-sm">
+                  <thead className="border-b border-border bg-muted/30">
+                    <tr>
+                      <th className="text-left py-2 px-3 text-xs font-semibold text-muted-foreground">Name</th>
+                      <th className="text-left py-2 px-3 text-xs font-semibold text-muted-foreground">Role</th>
+                      <th className="text-center py-2 px-3 text-xs font-semibold text-muted-foreground">KPI Score</th>
+                      <th className="text-center py-2 px-3 text-xs font-semibold text-muted-foreground">Trend</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/50">
+                    {stakeholders
+                      .filter((s: any) => s.classification === "TeamMember" || s.isInternalTeam)
+                      .map((s: any) => {
+                        const name = s.fullName ?? s.name ?? `Stakeholder ${s.id}`;
+                        const score = latestScoreMap[s.id];
+                        const scoreBadge = score == null ? "bg-gray-100 text-gray-500"
+                          : score >= 80 ? "bg-green-100 text-green-700"
+                          : score >= 60 ? "bg-yellow-100 text-yellow-700"
+                          : "bg-red-100 text-red-700";
+                        return (
+                          <tr key={s.id} className="hover:bg-muted/20">
+                            <td className="py-2 px-3 font-medium">{name}</td>
+                            <td className="py-2 px-3 text-muted-foreground text-xs">{s.role || "—"}</td>
+                            <td className="py-2 px-3 text-center">
+                              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${scoreBadge}`}>
+                                {score != null ? score : "—"}
+                              </span>
+                            </td>
+                            <td className="py-2 px-3 text-center text-muted-foreground text-xs">
+                              {score != null ? (score >= 70 ? <TrendingUp className="w-3.5 h-3.5 text-green-500 inline" /> : <ArrowDown className="w-3.5 h-3.5 text-red-400 inline" />) : "—"}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </TabsContent>
 
         {/* ─── RBS Wizard Tab ───────────────────────────────────────────── */}
@@ -1039,7 +1138,13 @@ export default function Resources() {
                                           <Pencil className="w-3 h-3" />
                                         </button>
                                         <button className="w-6 h-6 flex items-center justify-center rounded hover:bg-red-50 text-muted-foreground hover:text-red-600 transition-colors"
-                                          onClick={() => { if (confirm(`Delete "${type.name}"?`)) deleteRbsType.mutate({ id: type.id }); }}>
+                                          onClick={() => {
+                                            const resourceCount = (rbsNodes as any[]).filter(n => n.resourceType === type.name && n.isLeaf === 1).length;
+                                            const msg = resourceCount > 0
+                                              ? `Delete "${type.name}"? This will also delete ${resourceCount} resource${resourceCount !== 1 ? "s" : ""} under this category. This cannot be undone.`
+                                              : `Delete "${type.name}"?`;
+                                            if (confirm(msg)) deleteRbsType.mutate({ id: type.id });
+                                          }}>
                                           <Trash2 className="w-3 h-3" />
                                         </button>
                                       </div>
@@ -1534,6 +1639,39 @@ export default function Resources() {
                   <CalendarDays className="w-3.5 h-3.5" />
                   Add Holiday
                 </Button>
+                {/* Export CSV button */}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5"
+                  onClick={() => {
+                    const rows: string[] = ["Resource,Date,Type,Hours,Notes"];
+                    calResources.forEach((r: any) => {
+                      calDates.forEach(date => {
+                        const entry = calendarMap[r.id]?.[date];
+                        if (entry) {
+                          rows.push([
+                            JSON.stringify(r.name),
+                            date,
+                            entry.type,
+                            entry.availableHours ?? "",
+                            JSON.stringify(entry.notes ?? ""),
+                          ].join(","));
+                        }
+                      });
+                    });
+                    const blob = new Blob([rows.join("\n")], { type: "text/csv" });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `resource-calendar-${calStart}-to-${calEnd}.csv`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  Export CSV
+                </Button>
               </div>
 
               {/* Calendar Grid */}
@@ -1544,71 +1682,99 @@ export default function Resources() {
                 </div>
               ) : (
                 <div className="overflow-auto">
-                  <table className="text-xs border-collapse w-full min-w-max">
-                    <thead>
-                      <tr>
-                        <th className="text-left p-2 bg-gray-50 border border-gray-200 w-44 font-medium">Resource</th>
-                        {calDates.map(date => {
-                          const d = new Date(date + "T00:00:00");
-                          const isWeekend = d.getDay() === 0 || d.getDay() === 6;
-                          return (
-                            <th key={date} className={`p-1 border border-gray-200 text-center font-medium min-w-[52px] ${isWeekend ? "bg-gray-100 text-gray-400" : "bg-gray-50"}`}>
-                              <div>{d.toLocaleDateString("en-US", { weekday: "short" })}</div>
-                              <div className="text-[10px] text-muted-foreground">{d.toLocaleDateString("en-US", { month: "short", day: "numeric" })}</div>
-                            </th>
-                          );
-                        })}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {calResources.map((r: any) => {
-                        return (
-                          <tr key={r.id} className="hover:bg-gray-50/50">
-                            <td className="p-2 border border-gray-200 font-medium whitespace-nowrap">
-                              <div className="flex items-center gap-1.5">
-                                <div className="flex-1 min-w-0">
-                                  <div className="text-sm truncate">{r.name}</div>
-                                  <div className="text-[10px] text-muted-foreground truncate">{r.subtitle}</div>
-                                </div>
-                                <button
-                                  className="shrink-0 w-5 h-5 rounded-full bg-primary/10 hover:bg-primary/20 text-primary flex items-center justify-center transition-colors"
-                                  title={`Add calendar entry for ${r.name}`}
-                                  onClick={() => openCalDialogForResource(r.id, r.name)}
-                                >
-                                  <span className="text-xs font-bold leading-none">+</span>
-                                </button>
-                              </div>
-                            </td>
+                  {(() => {
+                    const todayStr = new Date().toISOString().split("T")[0];
+                    return (
+                      <table className="text-xs border-collapse w-full min-w-max">
+                        <thead>
+                          <tr>
+                            <th className="text-left p-2 bg-gray-50 border border-gray-200 w-44 font-medium">Resource</th>
                             {calDates.map(date => {
-                              const entry = calendarMap[r.id]?.[date];
                               const d = new Date(date + "T00:00:00");
                               const isWeekend = d.getDay() === 0 || d.getDay() === 6;
-                              const cellCls = entry
-                                ? CAL_TYPE_COLORS[entry.type] ?? "bg-gray-100 text-gray-600 border-gray-200"
-                                : isWeekend ? "bg-gray-100 text-gray-300" : "";
+                              const isToday = date === todayStr;
                               return (
-                                <td
-                                  key={date}
-                                  className={`p-1 border border-gray-200 text-center cursor-pointer hover:opacity-80 transition-opacity ${cellCls}`}
-                                  onClick={() => openCalDialog(r.id, r.name, date, entry, "single")}
-                                  title={entry ? `${entry.type}${entry.notes ? " — " + entry.notes : ""}` : "Click to mark"}
-                                >
-                                  {entry ? (
-                                    <div>
-                                      <div className="font-medium text-[10px]">{entry.type.slice(0, 3)}</div>
-                                      {entry.availableHours !== undefined && entry.availableHours !== "8.0" && (
-                                        <div className="text-[9px]">{entry.availableHours}h</div>
-                                      )}
-                                    </div>
-                                  ) : isWeekend ? <span>—</span> : null}
-                                </td>
+                                <th key={date} className={`p-1 border text-center font-medium min-w-[52px] ${
+                                  isToday ? "bg-red-50 border-red-300 text-red-700 font-bold"
+                                  : isWeekend ? "bg-gray-100 text-gray-400 border-gray-200"
+                                  : "bg-gray-50 border-gray-200"
+                                }`}>
+                                  <div>{d.toLocaleDateString("en-US", { weekday: "short" })}</div>
+                                  <div className={`text-[10px] ${isToday ? "text-red-600 font-semibold" : "text-muted-foreground"}`}>{d.toLocaleDateString("en-US", { month: "short", day: "numeric" })}</div>
+                                  {isToday && <div className="text-[9px] font-semibold text-red-600">TODAY</div>}
+                                </th>
                               );
                             })}
                           </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                        </thead>
+                        <tbody>
+                          {calResources.map((r: any) => {
+                            // Build a task-count-by-date map for this resource
+                            const resourceName = r.name;
+                            return (
+                              <tr key={r.id} className="hover:bg-gray-50/50">
+                                <td className="p-2 border border-gray-200 font-medium whitespace-nowrap">
+                                  <div className="flex items-center gap-1.5">
+                                    <div className="flex-1 min-w-0">
+                                      <div className="text-sm truncate">{r.name}</div>
+                                      <div className="text-[10px] text-muted-foreground truncate">{r.subtitle}</div>
+                                    </div>
+                                    <button
+                                      className="shrink-0 w-5 h-5 rounded-full bg-primary/10 hover:bg-primary/20 text-primary flex items-center justify-center transition-colors"
+                                      title={`Add calendar entry for ${r.name}`}
+                                      onClick={() => openCalDialogForResource(r.id, r.name)}
+                                    >
+                                      <span className="text-xs font-bold leading-none">+</span>
+                                    </button>
+                                  </div>
+                                </td>
+                                {calDates.map(date => {
+                                  const entry = calendarMap[r.id]?.[date];
+                                  const d = new Date(date + "T00:00:00");
+                                  const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+                                  const isToday = date === todayStr;
+                                  const cellCls = entry
+                                    ? CAL_TYPE_COLORS[entry.type] ?? "bg-gray-100 text-gray-600 border-gray-200"
+                                    : isToday ? "bg-red-50 border-red-200"
+                                    : isWeekend ? "bg-gray-100 text-gray-300" : "";
+                                  // Task count for this resource on this date
+                                  const taskCount = (tasks as any[]).filter((t: any) => {
+                                    if (!t.dueDate) return false;
+                                    const dueStr = t.dueDate instanceof Date ? t.dueDate.toISOString().split("T")[0] : String(t.dueDate).split("T")[0];
+                                    return dueStr === date && (t.responsible === resourceName);
+                                  }).length;
+                                  return (
+                                    <td
+                                      key={date}
+                                      className={`p-1 border border-gray-200 text-center cursor-pointer hover:opacity-80 transition-opacity relative ${cellCls} ${isToday ? "border-red-300" : ""}`}
+                                      onClick={() => openCalDialog(r.id, r.name, date, entry, "single")}
+                                      title={entry
+                                        ? `${entry.type}${entry.availableHours ? " · " + entry.availableHours + "h" : ""}${entry.notes ? " — " + entry.notes : ""}`
+                                        : "Click to mark"}
+                                    >
+                                      {entry ? (
+                                        <div>
+                                          <div className="font-medium text-[10px]">{entry.type.slice(0, 3)}</div>
+                                          {entry.availableHours !== undefined && entry.availableHours !== "8.0" && (
+                                            <div className="text-[9px]">{entry.availableHours}h</div>
+                                          )}
+                                        </div>
+                                      ) : isWeekend ? <span>—</span> : null}
+                                      {taskCount > 0 && (
+                                        <span className="absolute top-0 right-0 w-3.5 h-3.5 bg-blue-500 text-white text-[9px] font-bold rounded-bl flex items-center justify-center leading-none">
+                                          {taskCount}
+                                        </span>
+                                      )}
+                                    </td>
+                                  );
+                                })}
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    );
+                  })()}
                 </div>
               )}
             </CardContent>
@@ -1667,13 +1833,16 @@ export default function Resources() {
                           <TableHead className="w-44">Resource</TableHead>
                           <TableHead>Classification</TableHead>
                           <TableHead className="text-right">Rate ($/hr)</TableHead>
+                          <TableHead className="text-right">RBS Cost Rate</TableHead>
                           <TableHead className="text-right">Capacity (hrs/{planViewMode === "weekly" ? "wk" : "mo"})</TableHead>
                           <TableHead className="text-right">Tasks (total)</TableHead>
                           <TableHead className="text-right">Non-COMM Tasks</TableHead>
                           <TableHead className="text-right">Est. Hours Used</TableHead>
                           <TableHead className="text-right">Utilization</TableHead>
                           <TableHead className="text-right">Unused Hours</TableHead>
+                          <TableHead className="text-right">Planned Wkly Cost</TableHead>
                           <TableHead className="text-right">Est. Cost (total)</TableHead>
+                          <TableHead className="text-center">KPI Score</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1684,6 +1853,19 @@ export default function Resources() {
                           const util = capacityHrs > 0 ? Math.min(Math.round((estUsed / capacityHrs) * 100), 999) : 0;
                           const costTotal = r.totalAssigned * 8 * r.hourlyRate;
                           const utilColor = util > 100 ? "text-red-600 font-bold" : util >= 80 ? "text-yellow-600" : "text-green-600";
+                          // RBS cost rate: look up linked RBS leaf node for this stakeholder
+                          const linkedRbsNode = (rbsNodes as any[]).find(n => n.stakeholderId === r.id && n.isLeaf === 1);
+                          const rbsCostRate = linkedRbsNode ? parseFloat(linkedRbsNode.costRate ?? "0") || 0 : null;
+                          const effectiveCostRate = rbsCostRate != null && rbsCostRate > 0 ? rbsCostRate : r.hourlyRate;
+                          // Planned weekly cost
+                          const plannedHoursThisWeek = (r.thisWeek * r.hoursPerDay) / Math.max(DEFAULT_CAPACITY, 1);
+                          const plannedWeeklyCost = effectiveCostRate * plannedHoursThisWeek;
+                          // KPI score
+                          const kpiScore = latestScoreMap[r.id];
+                          const kpiBadgeCls = kpiScore == null ? "bg-gray-100 text-gray-500"
+                            : kpiScore >= 80 ? "bg-green-100 text-green-700"
+                            : kpiScore >= 60 ? "bg-yellow-100 text-yellow-700"
+                            : "bg-red-100 text-red-700";
                           return (
                             <TableRow key={r.id} className="hover:bg-muted/20">
                               <TableCell>
@@ -1696,13 +1878,24 @@ export default function Resources() {
                                 <Badge className={`text-xs ${classificationBadge(r.classification)}`}>{r.classification}</Badge>
                               </TableCell>
                               <TableCell className="text-right">{r.hourlyRate > 0 ? `$${r.hourlyRate.toFixed(0)}` : "—"}</TableCell>
+                              <TableCell className="text-right">
+                                {rbsCostRate != null && rbsCostRate > 0
+                                  ? <span className="text-emerald-700 font-medium">{formatCurrency(rbsCostRate)}</span>
+                                  : <span className="text-muted-foreground text-xs">fallback</span>}
+                              </TableCell>
                               <TableCell className="text-right font-medium">{capacityHrs.toFixed(0)}h</TableCell>
                               <TableCell className="text-right">{r.totalAssigned}</TableCell>
                               <TableCell className="text-right">{(r as any).nonCommAssigned ?? 0}</TableCell>
                               <TableCell className="text-right">{estUsed.toFixed(0)}h</TableCell>
                               <TableCell className={`text-right font-semibold ${utilColor}`}>{util}%</TableCell>
                               <TableCell className="text-right text-muted-foreground">{unused.toFixed(0)}h</TableCell>
+                              <TableCell className="text-right">{plannedWeeklyCost > 0 ? formatCurrency(plannedWeeklyCost) : "—"}</TableCell>
                               <TableCell className="text-right">{costTotal > 0 ? formatCurrency(costTotal) : "—"}</TableCell>
+                              <TableCell className="text-center">
+                                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${kpiBadgeCls}`}>
+                                  {kpiScore != null ? kpiScore : "—"}
+                                </span>
+                              </TableCell>
                             </TableRow>
                           );
                         })}
