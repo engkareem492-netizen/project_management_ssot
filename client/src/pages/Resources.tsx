@@ -159,6 +159,11 @@ export default function Resources() {
 
   // Heatmap filter state
   const [heatmapTypeFilter, setHeatmapTypeFilter] = useState<"all" | "TeamMember" | "External" | "Stakeholder">("all");
+  const [heatmapRoleFilter, setHeatmapRoleFilter] = useState<string>("all");
+
+  // Workload sort state
+  const [workloadSort, setWorkloadSort] = useState<{ col: string; dir: "asc" | "desc" }>({ col: "totalAssigned", dir: "desc" });
+  const [workloadFilter, setWorkloadFilter] = useState<"all" | "TeamMember" | "External" | "Stakeholder">("all");
 
   // ─── RBS Wizard state ──────────────────────────────────────────────────────
   const [wizardStep, setWizardStep] = useState<1 | 2 | 3 | 4>(1);
@@ -216,6 +221,21 @@ export default function Resources() {
   const deleteAssignment = trpc.wbsResourceAssignments.delete.useMutation({
     onSuccess: () => { refetchAssignments(); toast.success("Assignment removed"); },
   });
+
+  // KPI summary query for performance scores
+  const { data: kpiSummary = [] } = (trpc as any).stakeholderEnhancements?.listProjectKpiSummary?.useQuery
+    ? (trpc as any).stakeholderEnhancements.listProjectKpiSummary.useQuery({ projectId }, { enabled })
+    : { data: [] };
+
+  const latestScoreMap: Record<number, number> = useMemo(() => {
+    const map: Record<number, number> = {};
+    (kpiSummary as any[]).forEach((item: any) => {
+      if (item.stakeholderId != null && item.overallScore != null) {
+        map[item.stakeholderId] = item.overallScore;
+      }
+    });
+    return map;
+  }, [kpiSummary]);
 
   const isLoading = stLoading || tasksLoading;
 

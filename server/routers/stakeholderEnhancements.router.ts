@@ -13,8 +13,11 @@ import {
   taskGroups,
   tasks,
   stakeholders,
+  stakeholderSwot,
+  developmentPlans,
+  stakeholderSkills,
 } from "../../drizzle/schema";
-import { eq, and, inArray, sql } from "drizzle-orm";
+import { eq, and, inArray, sql, desc } from "drizzle-orm";
 
 // ─── KPIs ─────────────────────────────────────────────────────────────────────
 
@@ -310,5 +313,279 @@ export const stakeholderEnhancementsRouter = router({
       const { id, ...data } = input;
       await db.update(stakeholders).set(data).where(eq(stakeholders.id, id));
       return { success: true };
+    }),
+
+  // ─── SWOT ─────────────────────────────────────────────────────────────────────
+
+  listSwot: protectedProcedure
+    .input(z.object({ stakeholderId: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+      return db
+        .select()
+        .from(stakeholderSwot)
+        .where(eq(stakeholderSwot.stakeholderId, input.stakeholderId));
+    }),
+
+  createSwot: protectedProcedure
+    .input(
+      z.object({
+        stakeholderId: z.number(),
+        quadrant: z.enum(["Strength", "Weakness", "Opportunity", "Threat"]),
+        description: z.string(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("DB unavailable");
+      const [result] = await db.insert(stakeholderSwot).values(input);
+      return result;
+    }),
+
+  updateSwot: protectedProcedure
+    .input(z.object({ id: z.number(), description: z.string() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("DB unavailable");
+      await db
+        .update(stakeholderSwot)
+        .set({ description: input.description })
+        .where(eq(stakeholderSwot.id, input.id));
+      return { success: true };
+    }),
+
+  deleteSwot: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("DB unavailable");
+      await db
+        .delete(stakeholderSwot)
+        .where(eq(stakeholderSwot.id, input.id));
+      return { success: true };
+    }),
+
+  // ─── Development Plans ────────────────────────────────────────────────────────
+
+  listDevPlans: protectedProcedure
+    .input(z.object({ stakeholderId: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+      return db
+        .select()
+        .from(developmentPlans)
+        .where(eq(developmentPlans.stakeholderId, input.stakeholderId));
+    }),
+
+  createDevPlan: protectedProcedure
+    .input(
+      z.object({
+        stakeholderId: z.number(),
+        projectId: z.number(),
+        title: z.string(),
+        description: z.string().optional(),
+        goals: z.string().optional(),
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+        status: z
+          .enum(["Not Started", "In Progress", "Completed", "On Hold"])
+          .optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("DB unavailable");
+      const [result] = await db.insert(developmentPlans).values({
+        stakeholderId: input.stakeholderId,
+        projectId: input.projectId,
+        title: input.title,
+        description: input.description,
+        goals: input.goals,
+        startDate: input.startDate ? new Date(input.startDate) : undefined,
+        endDate: input.endDate ? new Date(input.endDate) : undefined,
+        status: input.status,
+      });
+      return result;
+    }),
+
+  updateDevPlan: protectedProcedure
+    .input(
+      z.object({
+        id: z.number(),
+        data: z.object({
+          title: z.string().optional(),
+          description: z.string().optional(),
+          goals: z.string().optional(),
+          startDate: z.string().optional(),
+          endDate: z.string().optional(),
+          status: z
+            .enum(["Not Started", "In Progress", "Completed", "On Hold"])
+            .optional(),
+        }),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("DB unavailable");
+      const { startDate, endDate, ...rest } = input.data;
+      await db
+        .update(developmentPlans)
+        .set({
+          ...rest,
+          ...(startDate !== undefined ? { startDate: new Date(startDate) } : {}),
+          ...(endDate !== undefined ? { endDate: new Date(endDate) } : {}),
+        })
+        .where(eq(developmentPlans.id, input.id));
+      return { success: true };
+    }),
+
+  deleteDevPlan: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("DB unavailable");
+      await db
+        .delete(developmentPlans)
+        .where(eq(developmentPlans.id, input.id));
+      return { success: true };
+    }),
+
+  // ─── Skills ───────────────────────────────────────────────────────────────────
+
+  listSkills: protectedProcedure
+    .input(z.object({ stakeholderId: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+      return db
+        .select()
+        .from(stakeholderSkills)
+        .where(eq(stakeholderSkills.stakeholderId, input.stakeholderId));
+    }),
+
+  createSkill: protectedProcedure
+    .input(
+      z.object({
+        stakeholderId: z.number(),
+        name: z.string(),
+        level: z.enum(["Beginner", "Intermediate", "Advanced", "Expert"]),
+        linkedKpiId: z.number().optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("DB unavailable");
+      const [result] = await db.insert(stakeholderSkills).values(input);
+      return result;
+    }),
+
+  updateSkill: protectedProcedure
+    .input(
+      z.object({
+        id: z.number(),
+        data: z.object({
+          name: z.string().optional(),
+          level: z
+            .enum(["Beginner", "Intermediate", "Advanced", "Expert"])
+            .optional(),
+          linkedKpiId: z.number().nullable().optional(),
+        }),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("DB unavailable");
+      await db
+        .update(stakeholderSkills)
+        .set(input.data)
+        .where(eq(stakeholderSkills.id, input.id));
+      return { success: true };
+    }),
+
+  deleteSkill: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("DB unavailable");
+      await db
+        .delete(stakeholderSkills)
+        .where(eq(stakeholderSkills.id, input.id));
+      return { success: true };
+    }),
+
+  // ─── Batch KPI summary for Team Overview ─────────────────────────────────────
+
+  listProjectKpiSummary: protectedProcedure
+    .input(z.object({ projectId: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+
+      // Get all assessments for the project
+      const assessments = await db
+        .select({
+          stakeholderId: stakeholderAssessments.stakeholderId,
+          overallScore: stakeholderAssessments.overallScore,
+          assessmentDate: stakeholderAssessments.assessmentDate,
+        })
+        .from(stakeholderAssessments)
+        .where(eq(stakeholderAssessments.projectId, input.projectId))
+        .orderBy(desc(stakeholderAssessments.assessmentDate));
+
+      // Group by stakeholderId to get the latest assessment per stakeholder
+      const latestByStakeholder = new Map<
+        number,
+        { overallScore: number | null; assessmentDate: Date | null }
+      >();
+      for (const a of assessments) {
+        if (!latestByStakeholder.has(a.stakeholderId)) {
+          latestByStakeholder.set(a.stakeholderId, {
+            overallScore: a.overallScore,
+            assessmentDate: a.assessmentDate,
+          });
+        }
+      }
+
+      // Get KPI counts per stakeholder for this project
+      const kpiRows = await db
+        .select({
+          stakeholderId: stakeholderKpis.stakeholderId,
+          kpiCount: sql<number>`count(*)`.as("kpiCount"),
+        })
+        .from(stakeholderKpis)
+        .where(eq(stakeholderKpis.projectId, input.projectId))
+        .groupBy(stakeholderKpis.stakeholderId);
+
+      const kpiCountMap = new Map<number, number>();
+      for (const row of kpiRows) {
+        kpiCountMap.set(row.stakeholderId, Number(row.kpiCount));
+      }
+
+      // Get stakeholder names for all relevant stakeholder IDs
+      const stakeholderIds = Array.from(latestByStakeholder.keys());
+      if (stakeholderIds.length === 0) return [];
+
+      const stakeholderRows = await db
+        .select({ id: stakeholders.id, fullName: stakeholders.fullName })
+        .from(stakeholders)
+        .where(inArray(stakeholders.id, stakeholderIds));
+
+      const nameMap = new Map<number, string>();
+      for (const s of stakeholderRows) {
+        nameMap.set(s.id, s.fullName);
+      }
+
+      // Build the summary result
+      return stakeholderIds.map((stakeholderId) => {
+        const latest = latestByStakeholder.get(stakeholderId);
+        return {
+          stakeholderId,
+          stakeholderName: nameMap.get(stakeholderId) ?? null,
+          latestOverallScore: latest?.overallScore ?? null,
+          kpiCount: kpiCountMap.get(stakeholderId) ?? 0,
+        };
+      });
     }),
 });
