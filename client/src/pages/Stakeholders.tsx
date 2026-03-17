@@ -1956,6 +1956,15 @@ export default function Stakeholders() {
         </Table>
       </div>
 
+        </TabsContent>
+
+        {/* Power/Interest Matrix Tab */}
+        <TabsContent value="matrix" className="mt-4">
+          <PowerInterestMatrix stakeholders={stakeholders as any[]} />
+        </TabsContent>
+
+      </Tabs>
+
       {/* Create Dialog */}
       <StakeholderFormDialog
         open={isCreateOpen}

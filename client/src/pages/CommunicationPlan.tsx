@@ -51,7 +51,6 @@ import {
   ClipboardList,
   ChevronDown,
   ChevronUp,
-  Filter,
 } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 
