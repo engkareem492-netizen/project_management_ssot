@@ -31,6 +31,7 @@ import {
   Plus, Trash2, Pencil, Search, Users, Mail, Phone,
   Target, Award, Activity, UserCheck, Briefcase,
   MoveRight, ChevronRight, ClipboardList, Download,
+  Brain, Star, Lightbulb, Shield, BookOpen, TrendingUp, Zap,
 } from "lucide-react";
 import { ImportExportToolbar } from "@/components/ImportExportToolbar";
 import { StakeholderSelect } from "@/components/StakeholderSelect";

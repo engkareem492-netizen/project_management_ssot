@@ -577,16 +577,61 @@ export default function Resources() {
             <Card className="p-4"><div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Overloaded This Week</div><div className={`text-3xl font-bold ${summaryStats.overloaded > 0 ? "text-red-600" : "text-green-600"}`}>{summaryStats.overloaded}</div></Card>
           </div>
 
+          {/* Classification filter pills */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs text-muted-foreground font-medium">Filter:</span>
+            {(["all", "TeamMember", "External", "Stakeholder"] as const).map(t => (
+              <button
+                key={t}
+                onClick={() => setWorkloadFilter(t)}
+                className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                  workloadFilter === t
+                    ? t === "TeamMember" ? "bg-blue-100 text-blue-700 border-blue-300"
+                      : t === "External" ? "bg-orange-100 text-orange-700 border-orange-300"
+                      : t === "Stakeholder" ? "bg-purple-100 text-purple-700 border-purple-300"
+                      : "bg-primary text-primary-foreground border-primary"
+                    : "bg-background text-muted-foreground border-border hover:border-muted-foreground"
+                }`}
+              >
+                {t === "all" ? "All" : t === "TeamMember" ? "Team Members" : t}
+              </button>
+            ))}
+          </div>
+
           <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
             <div className="px-5 py-3 bg-gray-50 border-b border-gray-200">
-              <div className="grid grid-cols-12 gap-2 text-xs font-semibold text-muted-foreground uppercase">
-                <div className="col-span-3">Stakeholder</div>
-                <div className="col-span-2 text-center">This Week</div>
-                <div className="col-span-2 text-center">Next Week</div>
-                <div className="col-span-2 text-center">Wk 3 / Wk 4</div>
-                <div className="col-span-2">This Week Load</div>
-                <div className="col-span-1 text-right">Actions</div>
-              </div>
+              {/* Sortable column headers */}
+              {(() => {
+                const cols = [
+                  { key: "name", label: "Name", span: "col-span-2" },
+                  { key: "role", label: "Role", span: "col-span-1" },
+                  { key: "totalAssigned", label: "Assigned", span: "col-span-1 text-center" },
+                  { key: "thisWeek", label: "This Week", span: "col-span-1 text-center" },
+                  { key: "capacity", label: "Capacity", span: "col-span-1 text-center" },
+                  { key: "hourlyRate", label: "Cost Rate", span: "col-span-1 text-right" },
+                  { key: "weeklyCost", label: "Weekly Cost", span: "col-span-1 text-right" },
+                  { key: "perfScore", label: "Perf Score", span: "col-span-1 text-center" },
+                  { key: "load", label: "Load", span: "col-span-2" },
+                  { key: "_actions", label: "", span: "col-span-1 text-right" },
+                ];
+                return (
+                  <div className="grid grid-cols-12 gap-2 text-xs font-semibold text-muted-foreground uppercase">
+                    {cols.map(c => (
+                      <div
+                        key={c.key}
+                        className={`${c.span} ${c.key !== "_actions" && c.key !== "load" ? "cursor-pointer hover:text-foreground select-none flex items-center gap-1" : ""}`}
+                        onClick={() => {
+                          if (c.key === "_actions" || c.key === "load") return;
+                          setWorkloadSort(prev => prev.col === c.key ? { col: c.key, dir: prev.dir === "asc" ? "desc" : "asc" } : { col: c.key, dir: "desc" });
+                        }}
+                      >
+                        {c.label}
+                        {workloadSort.col === c.key && (workloadSort.dir === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />)}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
             {isLoading ? (
               <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
@@ -594,29 +639,62 @@ export default function Resources() {
               <div className="py-16 text-center text-muted-foreground text-sm">No stakeholders found. Add stakeholders to see workload.</div>
             ) : (
               <div className="divide-y divide-gray-100">
-                {workloadData.map((w) => {
-                  const { label, className } = getLoadLabel(w.thisWeek, w.capacity);
-                  return (
-                    <div key={w.id} className="px-5 py-4 hover:bg-gray-50/50 transition-colors">
-                      <div className="grid grid-cols-12 gap-2 items-center">
-                        <div className="col-span-3">
-                          <div className="font-medium text-sm">{w.name}</div>
-                          {w.role && <div className="text-xs text-muted-foreground">{w.role}</div>}
-                          {w.email && <div className="text-xs text-muted-foreground">{w.email}</div>}
-                        </div>
-                        <div className="col-span-2 text-center"><div className="text-2xl font-bold">{w.thisWeek}</div><div className="text-xs text-muted-foreground">tasks</div></div>
-                        <div className="col-span-2 text-center"><div className="text-2xl font-bold text-muted-foreground">{w.nextWeek}</div><div className="text-xs text-muted-foreground">tasks</div></div>
-                        <div className="col-span-2 text-center"><div className="text-sm text-muted-foreground">{w.next2} / {w.next3}</div><div className="text-xs text-muted-foreground">wk 3 / wk 4</div></div>
-                        <div className="col-span-2"><WorkloadBar assigned={w.thisWeek} capacity={w.capacity} /><Badge className={`text-xs mt-1 ${className}`}>{label}</Badge></div>
-                        <div className="col-span-1 text-right">
-                          <Button size="sm" variant="ghost" onClick={() => openCapacityDialog(w.name, w.capacity)} title="Set capacity">
-                            <Settings className="w-4 h-4" />
-                          </Button>
+                {[...workloadData]
+                  .filter(w => workloadFilter === "all" || w.classification === workloadFilter)
+                  .sort((a, b) => {
+                    const dir = workloadSort.dir === "asc" ? 1 : -1;
+                    const col = workloadSort.col;
+                    if (col === "name" || col === "role") {
+                      return dir * ((a as any)[col] ?? "").localeCompare((b as any)[col] ?? "");
+                    }
+                    if (col === "weeklyCost") {
+                      const aCost = a.hourlyRate * a.hoursPerDay * (a.thisWeek / Math.max(a.capacity, 1));
+                      const bCost = b.hourlyRate * b.hoursPerDay * (b.thisWeek / Math.max(b.capacity, 1));
+                      return dir * (aCost - bCost);
+                    }
+                    if (col === "perfScore") {
+                      const aScore = latestScoreMap[a.id] ?? -1;
+                      const bScore = latestScoreMap[b.id] ?? -1;
+                      return dir * (aScore - bScore);
+                    }
+                    return dir * (((a as any)[col] ?? 0) - ((b as any)[col] ?? 0));
+                  })
+                  .map((w) => {
+                    const { label, className } = getLoadLabel(w.thisWeek, w.capacity);
+                    const weeklyCost = w.hourlyRate * w.hoursPerDay * (w.thisWeek / Math.max(w.capacity, 1));
+                    const perfScore = latestScoreMap[w.id];
+                    const perfBadgeCls = perfScore == null ? "bg-gray-100 text-gray-500"
+                      : perfScore >= 80 ? "bg-green-100 text-green-700"
+                      : perfScore >= 60 ? "bg-yellow-100 text-yellow-700"
+                      : "bg-red-100 text-red-700";
+                    return (
+                      <div key={w.id} className="px-5 py-4 hover:bg-gray-50/50 transition-colors">
+                        <div className="grid grid-cols-12 gap-2 items-center">
+                          <div className="col-span-2">
+                            <div className="font-medium text-sm">{w.name}</div>
+                            {w.email && <div className="text-xs text-muted-foreground">{w.email}</div>}
+                          </div>
+                          <div className="col-span-1 text-xs text-muted-foreground truncate">{w.role || "—"}</div>
+                          <div className="col-span-1 text-center"><div className="text-lg font-bold">{w.totalAssigned}</div></div>
+                          <div className="col-span-1 text-center"><div className="text-lg font-bold">{w.thisWeek}</div><div className="text-xs text-muted-foreground">tasks</div></div>
+                          <div className="col-span-1 text-center text-sm text-muted-foreground">{w.capacity}</div>
+                          <div className="col-span-1 text-right text-xs text-muted-foreground">{w.hourlyRate > 0 ? `$${w.hourlyRate.toFixed(0)}/hr` : "—"}</div>
+                          <div className="col-span-1 text-right text-xs font-medium">{weeklyCost > 0 ? formatCurrency(weeklyCost) : "—"}</div>
+                          <div className="col-span-1 text-center">
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${perfBadgeCls}`}>
+                              {perfScore != null ? perfScore : "—"}
+                            </span>
+                          </div>
+                          <div className="col-span-2"><WorkloadBar assigned={w.thisWeek} capacity={w.capacity} /><Badge className={`text-xs mt-1 ${className}`}>{label}</Badge></div>
+                          <div className="col-span-1 text-right">
+                            <Button size="sm" variant="ghost" onClick={() => openCapacityDialog(w.name, w.capacity)} title="Set capacity">
+                              <Settings className="w-4 h-4" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
               </div>
             )}
           </div>
