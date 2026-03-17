@@ -1771,3 +1771,52 @@ export const wbsNodes = mysqlTable("wbsNodes", {
 });
 export type WbsNode = typeof wbsNodes.$inferSelect;
 export type InsertWbsNode = typeof wbsNodes.$inferInsert;
+
+// ─── Comm RACI Matrix ─────────────────────────────────────────────────────────
+// Stores RACI assignments for the communication plan matrix
+export const commRaciMatrix = mysqlTable("comm_raci_matrix", {
+  id: int("id").primaryKey().autoincrement(),
+  projectId: int("project_id").notNull(),
+  commItemLabel: varchar("comm_item_label", { length: 500 }).notNull(),
+  stakeholderId: int("stakeholder_id").notNull(),
+  raciValue: varchar("raci_value", { length: 1 }),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow(),
+});
+export type CommRaciMatrix = typeof commRaciMatrix.$inferSelect;
+export type InsertCommRaciMatrix = typeof commRaciMatrix.$inferInsert;
+
+// ─── Communication Log ────────────────────────────────────────────────────────
+// Records actual communications that happened for a project
+export const communicationLog = mysqlTable("communication_log", {
+  id: int("id").primaryKey().autoincrement(),
+  projectId: int("project_id").notNull(),
+  logDate: date("log_date").notNull(),
+  communicationType: varchar("communication_type", { length: 255 }),
+  subject: varchar("subject", { length: 500 }).notNull(),
+  sentBy: varchar("sent_by", { length: 255 }),
+  recipients: text("recipients"),
+  method: varchar("method", { length: 100 }),
+  summary: text("summary"),
+  linkedCommPlanEntryId: int("linked_comm_plan_entry_id"),
+  attachmentUrl: varchar("attachment_url", { length: 1000 }),
+  notes: text("notes"),
+  createdBy: int("created_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+export type CommunicationLog = typeof communicationLog.$inferSelect;
+
+// Universal Dropdown Registry — every configurable select/dropdown in the system
+export const dropdownRegistry = mysqlTable("dropdown_registry", {
+  id: int("id").primaryKey().autoincrement(),
+  projectId: int("project_id").notNull(),
+  domain: varchar("domain", { length: 100 }).notNull(),
+  fieldKey: varchar("field_key", { length: 100 }).notNull(),
+  value: varchar("value", { length: 255 }).notNull(),
+  color: varchar("color", { length: 50 }),
+  icon: varchar("icon", { length: 50 }),
+  sortOrder: int("sort_order").notNull().default(0),
+  isDefault: boolean("is_default").notNull().default(false),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+export type InsertCommunicationLog = typeof communicationLog.$inferInsert;

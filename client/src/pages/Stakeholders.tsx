@@ -30,7 +30,7 @@ import { toast } from "sonner";
 import {
   Plus, Trash2, Pencil, Search, Users, Mail, Phone,
   Target, Award, Activity, UserCheck, Briefcase,
-  MoveRight, ChevronRight, ClipboardList,
+  MoveRight, ChevronRight, ClipboardList, Download,
 } from "lucide-react";
 import { ImportExportToolbar } from "@/components/ImportExportToolbar";
 import { StakeholderSelect } from "@/components/StakeholderSelect";
@@ -1373,6 +1373,117 @@ function DetailPanel({
   );
 }
 
+// ─── Power/Interest Matrix ────────────────────────────────────────────────────
+function PowerInterestMatrix({ stakeholders }: { stakeholders: any[] }) {
+  return (
+    <div className="space-y-4">
+      {/* Legend */}
+      <div className="flex flex-wrap gap-3 text-sm">
+        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-red-100 border border-red-300 inline-block"/><strong>Manage Closely</strong> — high power, high interest</span>
+        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-amber-100 border border-amber-300 inline-block"/><strong>Keep Satisfied</strong> — high power, low interest</span>
+        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-blue-100 border border-blue-300 inline-block"/><strong>Keep Informed</strong> — low power, high interest</span>
+        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-slate-100 border border-slate-300 inline-block"/><strong>Monitor</strong> — low power, low interest</span>
+      </div>
+
+      {/* Matrix container */}
+      <div className="relative border rounded-lg overflow-hidden" style={{ height: '520px' }}>
+        {/* Y axis label */}
+        <div className="absolute left-0 top-0 bottom-0 w-8 flex items-center justify-center">
+          <span className="text-xs text-muted-foreground -rotate-90 whitespace-nowrap">POWER / INFLUENCE ↑</span>
+        </div>
+
+        {/* Matrix grid */}
+        <div className="absolute left-8 right-0 top-0 bottom-8" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr' }}>
+          {/* Quadrant: Keep Satisfied (top-left) */}
+          <div className="bg-amber-50 border-r border-b border-border/50 relative p-2">
+            <span className="text-[10px] font-semibold uppercase text-amber-700/60 select-none absolute top-2 left-2">Keep Satisfied</span>
+          </div>
+          {/* Quadrant: Manage Closely (top-right) */}
+          <div className="bg-red-50 border-b border-border/50 relative p-2">
+            <span className="text-[10px] font-semibold uppercase text-red-700/60 select-none absolute top-2 right-2">Manage Closely</span>
+          </div>
+          {/* Quadrant: Monitor (bottom-left) */}
+          <div className="bg-slate-50 border-r border-border/50 relative p-2">
+            <span className="text-[10px] font-semibold uppercase text-slate-500/60 select-none absolute bottom-2 left-2">Monitor</span>
+          </div>
+          {/* Quadrant: Keep Informed (bottom-right) */}
+          <div className="bg-blue-50 relative p-2">
+            <span className="text-[10px] font-semibold uppercase text-blue-700/60 select-none absolute bottom-2 right-2">Keep Informed</span>
+          </div>
+        </div>
+
+        {/* Stakeholder dots - positioned absolutely over the grid */}
+        <div className="absolute left-8 right-0 top-0 bottom-8 pointer-events-none">
+          {stakeholders
+            .filter(s => s.powerLevel != null && s.interestLevel != null)
+            .map(s => {
+              const power = typeof s.powerLevel === 'number' ? s.powerLevel : 3;
+              const interest = typeof s.interestLevel === 'number' ? s.interestLevel : 3;
+              const xPct = ((interest - 1) / 4) * 100;
+              const yPct = ((5 - power) / 4) * 100;
+
+              const initials = (s.fullName || s.name || '?')
+                .split(' ')
+                .map((w: string) => w[0])
+                .join('')
+                .slice(0, 2)
+                .toUpperCase();
+
+              const colors = ['#3b82f6','#10b981','#8b5cf6','#f97316','#ef4444','#06b6d4','#f59e0b','#84cc16'];
+              const colorIdx = (s.id ?? 0) % colors.length;
+
+              return (
+                <div
+                  key={s.id}
+                  className="absolute pointer-events-auto"
+                  style={{
+                    left: `calc(${xPct}% - 20px)`,
+                    top: `calc(${yPct}% - 20px)`,
+                  }}
+                  title={`${s.fullName || s.name}\nPower: ${power}/5, Interest: ${interest}/5`}
+                >
+                  <div
+                    className="h-10 w-10 rounded-full flex items-center justify-center text-white text-xs font-semibold cursor-pointer shadow-md hover:scale-110 transition-transform border-2 border-white"
+                    style={{ backgroundColor: colors[colorIdx] }}
+                  >
+                    {initials}
+                  </div>
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 whitespace-nowrap text-[10px] bg-background border rounded px-1 shadow-sm pointer-events-none z-10">
+                    {(s.fullName || s.name || '').split(' ')[0]}
+                  </div>
+                </div>
+              );
+            })}
+        </div>
+
+        {/* X axis label */}
+        <div className="absolute left-8 right-0 bottom-0 h-8 flex items-center justify-center">
+          <span className="text-xs text-muted-foreground">→ INTEREST / INFLUENCE</span>
+        </div>
+
+        {/* Axis ticks */}
+        <div className="absolute left-8 bottom-0 right-0 h-8 flex items-end pointer-events-none">
+          {[1,2,3,4,5].map(n => (
+            <div key={n} className="flex-1 text-center text-[10px] text-muted-foreground/50 pb-1">{n}</div>
+          ))}
+        </div>
+        <div className="absolute left-0 top-0 bottom-8 w-8 flex flex-col-reverse pointer-events-none">
+          {[1,2,3,4,5].map(n => (
+            <div key={n} className="flex-1 flex items-center justify-center text-[10px] text-muted-foreground/50">{n}</div>
+          ))}
+        </div>
+      </div>
+
+      {/* Stakeholders without power/interest data */}
+      {stakeholders.filter(s => s.powerLevel == null || s.interestLevel == null).length > 0 && (
+        <p className="text-sm text-muted-foreground">
+          {stakeholders.filter(s => s.powerLevel == null || s.interestLevel == null).length} stakeholders not shown (missing power/interest values). Edit their profiles to set Power Level (1-5) and Interest Level (1-5).
+        </p>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Stakeholders Page ───────────────────────────────────────────────────
 export default function Stakeholders() {
   const { currentProjectId } = useProject();
@@ -1545,6 +1656,42 @@ export default function Stakeholders() {
     });
   }, [stakeholders, searchTerm, classificationFilter, strategyFilter]);
 
+  const handleExportCSV = () => {
+    const headers = ["ID","Full Name","Department","Role","Classification","Email","Phone",
+      "Current Engagement","Desired Engagement","Engagement Strategy",
+      "Comm Channel","Comm Frequency","Power Level","Interest Level","Notes"];
+
+    const rows = (stakeholders ?? []).map(s => [
+      s.id,
+      s.fullName || s.name || "",
+      s.department || "",
+      s.job || s.role || "",
+      s.classification || "",
+      s.email || "",
+      s.phone || "",
+      s.currentEngagementStatus || "",
+      s.desiredEngagementStatus || "",
+      s.engagementStrategy || "",
+      s.communicationChannel || "",
+      s.communicationFrequency || "",
+      s.powerLevel ?? "",
+      s.interestLevel ?? "",
+      s.notes || "",
+    ]);
+
+    const csv = [headers, ...rows]
+      .map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "stakeholder-register.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -1568,6 +1715,9 @@ export default function Stakeholders() {
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Badge variant="outline">{stakeholders.length} Total</Badge>
+          <Button variant="outline" size="sm" onClick={handleExportCSV}>
+            <Download className="h-4 w-4 mr-1" /> Export Register
+          </Button>
           <Button
             onClick={() => { setFormData(EMPTY_FORM); setIsCreateOpen(true); }}
             className="gap-2"
@@ -1627,6 +1777,16 @@ export default function Stakeholders() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Main tabs: Register / Power-Interest Matrix */}
+      <Tabs defaultValue="register">
+        <TabsList>
+          <TabsTrigger value="register">Stakeholder Register</TabsTrigger>
+          <TabsTrigger value="matrix">Power/Interest Matrix</TabsTrigger>
+        </TabsList>
+
+        {/* Register Tab */}
+        <TabsContent value="register" className="space-y-4 mt-4">
 
       {/* Filter bar */}
       <div className="flex flex-wrap items-center gap-3">

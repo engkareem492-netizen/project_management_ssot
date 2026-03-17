@@ -59,6 +59,8 @@ import { eefRouter } from "./routers/eef.router";
 import { llDropdownRouter } from "./routers/llDropdown.router";
 import { externalPartiesRouter } from "./routers/externalParties.router";
 import { wbsNodesRouter } from "./routers/wbsNodes.router";
+import { commRaciMatrixRouter } from "./routers/commRaciMatrix.router";
+import { communicationLogRouter } from "./routers/communicationLog.router";
 
 export const appRouter = router({
   system: systemRouter,
@@ -112,6 +114,8 @@ export const appRouter = router({
   llDropdown: llDropdownRouter,
   externalParties: externalPartiesRouter,
   wbsNodes: wbsNodesRouter,
+  commRaciMatrix: commRaciMatrixRouter,
+  communicationLog: communicationLogRouter,
   scopeItems: router({
     list: protectedProcedure
       .input(z.object({ projectId: z.number() }))

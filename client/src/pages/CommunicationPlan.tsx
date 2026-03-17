@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { useProject } from "@/contexts/ProjectContext";
 import { Button } from "@/components/ui/button";
@@ -47,6 +47,11 @@ import {
   Building2,
   Info,
   RefreshCw,
+  Grid3X3,
+  ClipboardList,
+  ChevronDown,
+  ChevronUp,
+  Filter,
 } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 
@@ -466,7 +471,58 @@ export default function CommunicationPlan() {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [selectedStakeholderIds, setSelectedStakeholderIds] = useState<number[]>([]);
   // Active tab
-  const [activeTab, setActiveTab] = useState<"stakeholder" | "role" | "position">("stakeholder");
+  const [activeTab, setActiveTab] = useState<"stakeholder" | "role" | "position" | "raci" | "commlog">("stakeholder");
+
+  // ----- RACI Matrix state -----
+  const [raciNewItemLabel, setRaciNewItemLabel] = useState("");
+  const { data: raciMatrix = [], refetch: refetchRaci } =
+    trpc.commRaciMatrix.getMatrix.useQuery({ projectId }, { enabled });
+  const { data: raciCommItems = [], refetch: refetchRaciItems } =
+    trpc.commRaciMatrix.listCommItems.useQuery({ projectId }, { enabled });
+  const raciSetCell = trpc.commRaciMatrix.setCell.useMutation({
+    onSuccess: () => refetchRaci(),
+    onError: (e) => toast.error(e.message),
+  });
+  const raciAddItem = trpc.commRaciMatrix.addCommItem.useMutation({
+    onSuccess: () => { refetchRaciItems(); refetchRaci(); setRaciNewItemLabel(""); },
+    onError: (e) => toast.error(e.message),
+  });
+  const raciDeleteItem = trpc.commRaciMatrix.deleteCommItem.useMutation({
+    onSuccess: () => { refetchRaciItems(); refetchRaci(); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  // ----- Communication Log state -----
+  const [commLogDialogOpen, setCommLogDialogOpen] = useState(false);
+  const [commLogEditing, setCommLogEditing] = useState<any>(null);
+  const [commLogForm, setCommLogForm] = useState({
+    logDate: new Date().toISOString().slice(0, 10),
+    communicationType: "",
+    subject: "",
+    sentBy: "",
+    recipients: "",
+    method: "",
+    summary: "",
+    linkedCommPlanEntryId: null as number | null,
+    attachmentUrl: "",
+    notes: "",
+  });
+  const [commLogFilter, setCommLogFilter] = useState({ method: "", sentBy: "", dateFrom: "", dateTo: "" });
+  const [expandedLogRows, setExpandedLogRows] = useState<Set<number>>(new Set());
+  const { data: commLogEntries = [], refetch: refetchCommLog } =
+    trpc.communicationLog.list.useQuery({ projectId }, { enabled });
+  const commLogCreate = trpc.communicationLog.create.useMutation({
+    onSuccess: () => { toast.success("Communication logged"); refetchCommLog(); setCommLogDialogOpen(false); },
+    onError: (e) => toast.error(e.message),
+  });
+  const commLogUpdate = trpc.communicationLog.update.useMutation({
+    onSuccess: () => { toast.success("Log entry updated"); refetchCommLog(); setCommLogDialogOpen(false); },
+    onError: (e) => toast.error(e.message),
+  });
+  const commLogDelete = trpc.communicationLog.delete.useMutation({
+    onSuccess: () => { toast.success("Log entry deleted"); refetchCommLog(); },
+    onError: (e) => toast.error(e.message),
+  });
 
   // ----- Helpers for the form -----
   const setField = <K extends keyof EntryFormData>(field: K, value: EntryFormData[K]) => {
@@ -738,7 +794,7 @@ export default function CommunicationPlan() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
-        <TabsList className="grid w-full grid-cols-3 max-w-md">
+        <TabsList className="grid w-full grid-cols-5 max-w-2xl">
           <TabsTrigger value="stakeholder" className="flex items-center gap-1.5">
             <UserCheck className="w-4 h-4" /> Stakeholders
           </TabsTrigger>
@@ -747,6 +803,12 @@ export default function CommunicationPlan() {
           </TabsTrigger>
           <TabsTrigger value="position" className="flex items-center gap-1.5">
             <Building2 className="w-4 h-4" /> By Position
+          </TabsTrigger>
+          <TabsTrigger value="raci" className="flex items-center gap-1.5">
+            <Grid3X3 className="w-4 h-4" /> RACI Matrix
+          </TabsTrigger>
+          <TabsTrigger value="commlog" className="flex items-center gap-1.5">
+            <ClipboardList className="w-4 h-4" /> Comm Log
           </TabsTrigger>
         </TabsList>
 
@@ -925,7 +987,476 @@ export default function CommunicationPlan() {
             />
           )}
         </TabsContent>
+
+        {/* ─── RACI Matrix Tab ─── */}
+        <TabsContent value="raci" className="mt-4 space-y-4">
+          {/* Legend + actions row */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="text-sm font-medium text-muted-foreground">Legend:</span>
+              {[
+                { v: "R", label: "Responsible (sends)", cls: "bg-green-100 text-green-800 border-green-200" },
+                { v: "A", label: "Accountable", cls: "bg-amber-100 text-amber-800 border-amber-200" },
+                { v: "C", label: "Consulted", cls: "bg-blue-100 text-blue-800 border-blue-200" },
+                { v: "I", label: "Informed", cls: "bg-gray-100 text-gray-700 border-gray-200" },
+              ].map(({ v, label, cls }) => (
+                <span key={v} className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded border font-medium ${cls}`}>
+                  <strong>{v}</strong> — {label}
+                </span>
+              ))}
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                const stakesList = (stakeholders as any[]);
+                const itemsList = raciCommItems as string[];
+                if (itemsList.length === 0 || stakesList.length === 0) { toast.error("No data to export"); return; }
+                const cellMap: Record<string, string> = {};
+                (raciMatrix as any[]).forEach((cell: any) => {
+                  if (cell.stakeholderId !== 0) cellMap[`${cell.commItemLabel}__${cell.stakeholderId}`] = cell.raciValue ?? "—";
+                });
+                const headers = ["Communication Item", ...stakesList.map((s: any) => s.fullName)];
+                const rows = itemsList.map((label: string) => [
+                  label,
+                  ...stakesList.map((s: any) => cellMap[`${label}__${s.id}`] ?? "—"),
+                ]);
+                const csv = [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+                const blob = new Blob([csv], { type: "text/csv" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a"); a.href = url; a.download = "raci_matrix.csv"; a.click();
+                URL.revokeObjectURL(url);
+              }}
+            >
+              <Download className="w-4 h-4 mr-1.5" /> Export CSV
+            </Button>
+          </div>
+
+          {/* Add row */}
+          <div className="flex items-center gap-2">
+            <Input
+              value={raciNewItemLabel}
+              onChange={(e) => setRaciNewItemLabel(e.target.value)}
+              placeholder="New communication item label..."
+              className="max-w-xs h-8 text-sm"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && raciNewItemLabel.trim()) {
+                  raciAddItem.mutate({ projectId, label: raciNewItemLabel.trim() });
+                }
+              }}
+            />
+            <Button
+              size="sm"
+              disabled={!raciNewItemLabel.trim() || raciAddItem.isPending}
+              onClick={() => { if (raciNewItemLabel.trim()) raciAddItem.mutate({ projectId, label: raciNewItemLabel.trim() }); }}
+            >
+              {raciAddItem.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Plus className="w-4 h-4 mr-1" />}
+              Add Item
+            </Button>
+          </div>
+
+          {/* Matrix */}
+          {(raciCommItems as string[]).length === 0 ? (
+            <EmptyState
+              icon={Grid3X3}
+              title="No RACI items yet"
+              description="Add communication items using the field above, then click cells to assign RACI roles."
+            />
+          ) : (
+            <div className="overflow-x-auto rounded-md border">
+              <table className="min-w-full border-collapse text-sm">
+                <thead>
+                  <tr className="bg-muted/50">
+                    <th className="sticky left-0 z-10 bg-muted/80 text-left px-3 py-2 border-b border-r font-semibold min-w-[200px] whitespace-nowrap">
+                      Communication Item
+                    </th>
+                    {(stakeholders as any[]).map((s: any) => (
+                      <th key={s.id} className="px-2 py-2 border-b border-r text-center font-medium min-w-[80px] max-w-[120px]">
+                        <div className="text-xs font-semibold truncate max-w-[100px]" title={s.fullName}>
+                          {s.fullName.length > 12 ? s.fullName.slice(0, 11) + "…" : s.fullName}
+                        </div>
+                        {s.role && <div className="text-xs text-muted-foreground truncate max-w-[100px]">{s.role}</div>}
+                      </th>
+                    ))}
+                    <th className="px-2 py-2 border-b text-center font-medium min-w-[60px]">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(raciCommItems as string[]).map((label: string, rowIdx: number) => {
+                    const cellMap: Record<number, string | null> = {};
+                    (raciMatrix as any[]).forEach((cell: any) => {
+                      if (cell.commItemLabel === label && cell.stakeholderId !== 0) {
+                        cellMap[cell.stakeholderId] = cell.raciValue;
+                      }
+                    });
+                    return (
+                      <tr key={label} className={rowIdx % 2 === 0 ? "bg-white" : "bg-muted/20"}>
+                        <td className="sticky left-0 z-10 px-3 py-2 border-b border-r font-medium text-sm" style={{ background: rowIdx % 2 === 0 ? "white" : "hsl(var(--muted)/0.2)" }}>
+                          {label}
+                        </td>
+                        {(stakeholders as any[]).map((s: any) => {
+                          const val = cellMap[s.id] ?? null;
+                          const RACI_CYCLE = [null, "I", "C", "A", "R"] as (string | null)[];
+                          const nextVal = RACI_CYCLE[(RACI_CYCLE.indexOf(val) + 1) % RACI_CYCLE.length];
+                          const chipCls = val === "R" ? "bg-green-100 text-green-800 hover:bg-green-200"
+                            : val === "A" ? "bg-amber-100 text-amber-800 hover:bg-amber-200"
+                            : val === "C" ? "bg-blue-100 text-blue-800 hover:bg-blue-200"
+                            : val === "I" ? "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                            : "bg-transparent text-muted-foreground hover:bg-muted";
+                          return (
+                            <td key={s.id} className="px-2 py-1.5 border-b border-r text-center">
+                              <button
+                                className={`w-8 h-8 rounded font-bold text-sm transition-colors ${chipCls}`}
+                                title={`Click to cycle RACI value (current: ${val ?? "—"})`}
+                                onClick={() => raciSetCell.mutate({ projectId, commItemLabel: label, stakeholderId: s.id, raciValue: nextVal })}
+                              >
+                                {val ?? "—"}
+                              </button>
+                            </td>
+                          );
+                        })}
+                        <td className="px-2 py-1.5 border-b text-center">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-red-400 hover:text-red-600 hover:bg-red-50"
+                            title="Delete this communication item row"
+                            onClick={() => raciDeleteItem.mutate({ projectId, label })}
+                            disabled={raciDeleteItem.isPending}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </TabsContent>
+
+        {/* ─── Communication Log Tab ─── */}
+        <TabsContent value="commlog" className="mt-4 space-y-4">
+          {/* Header row */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Method filter */}
+              <Select value={commLogFilter.method || "__all__"} onValueChange={(v) => setCommLogFilter(f => ({ ...f, method: v === "__all__" ? "" : v }))}>
+                <SelectTrigger className="h-8 text-xs w-36"><SelectValue placeholder="All methods" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">All methods</SelectItem>
+                  {["Email", "Meeting", "Phone", "Teams", "Slack", "Report", "Video Call", "Other"].map(m => (
+                    <SelectItem key={m} value={m}>{m}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {/* Date range */}
+              <input type="date" className="h-8 text-xs border rounded-md px-2" value={commLogFilter.dateFrom}
+                onChange={e => setCommLogFilter(f => ({ ...f, dateFrom: e.target.value }))} title="From date" />
+              <span className="text-xs text-muted-foreground">to</span>
+              <input type="date" className="h-8 text-xs border rounded-md px-2" value={commLogFilter.dateTo}
+                onChange={e => setCommLogFilter(f => ({ ...f, dateTo: e.target.value }))} title="To date" />
+              {(commLogFilter.method || commLogFilter.dateFrom || commLogFilter.dateTo) && (
+                <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setCommLogFilter({ method: "", sentBy: "", dateFrom: "", dateTo: "" })}>
+                  Clear filters
+                </Button>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  const list = (commLogEntries as any[]);
+                  if (list.length === 0) { toast.error("No entries to export"); return; }
+                  const headers = ["Date", "Subject", "Sent By", "Recipients", "Method", "Summary", "Notes"];
+                  const rows = list.map((e: any) => [e.logDate, e.subject, e.sentBy ?? "", e.recipients ?? "", e.method ?? "", e.summary ?? "", e.notes ?? ""]);
+                  const csv = [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+                  const blob = new Blob([csv], { type: "text/csv" });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a"); a.href = url; a.download = "communication_log.csv"; a.click();
+                  URL.revokeObjectURL(url);
+                }}
+              >
+                <Download className="w-4 h-4 mr-1.5" /> Export CSV
+              </Button>
+              <Button size="sm" onClick={() => {
+                setCommLogEditing(null);
+                setCommLogForm({ logDate: new Date().toISOString().slice(0, 10), communicationType: "", subject: "", sentBy: "", recipients: "", method: "", summary: "", linkedCommPlanEntryId: null, attachmentUrl: "", notes: "" });
+                setCommLogDialogOpen(true);
+              }}>
+                <Plus className="w-4 h-4 mr-1.5" /> Log Communication
+              </Button>
+            </div>
+          </div>
+
+          {/* Filtered list */}
+          {(() => {
+            const filtered = (commLogEntries as any[]).filter((e: any) => {
+              if (commLogFilter.method && e.method !== commLogFilter.method) return false;
+              if (commLogFilter.dateFrom && e.logDate < commLogFilter.dateFrom) return false;
+              if (commLogFilter.dateTo && e.logDate > commLogFilter.dateTo) return false;
+              return true;
+            });
+
+            if (filtered.length === 0) {
+              return (
+                <EmptyState
+                  icon={ClipboardList}
+                  title="No communication logs yet"
+                  description='Click "Log Communication" to record a communication event.'
+                  actionLabel="Log Communication"
+                  onAction={() => {
+                    setCommLogEditing(null);
+                    setCommLogForm({ logDate: new Date().toISOString().slice(0, 10), communicationType: "", subject: "", sentBy: "", recipients: "", method: "", summary: "", linkedCommPlanEntryId: null, attachmentUrl: "", notes: "" });
+                    setCommLogDialogOpen(true);
+                  }}
+                />
+              );
+            }
+
+            const LOG_METHOD_COLORS: Record<string, string> = {
+              Email: "bg-blue-100 text-blue-800",
+              Meeting: "bg-purple-100 text-purple-800",
+              Phone: "bg-green-100 text-green-800",
+              Teams: "bg-indigo-100 text-indigo-800",
+              Slack: "bg-yellow-100 text-yellow-800",
+              Report: "bg-orange-100 text-orange-800",
+              "Video Call": "bg-teal-100 text-teal-800",
+              Other: "bg-gray-100 text-gray-700",
+            };
+
+            return (
+              <div className="rounded-md border overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-28">Date</TableHead>
+                      <TableHead>Subject</TableHead>
+                      <TableHead className="w-36">Sent By</TableHead>
+                      <TableHead className="w-44">Recipients</TableHead>
+                      <TableHead className="w-28">Method</TableHead>
+                      <TableHead>Summary</TableHead>
+                      <TableHead className="w-20 text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filtered.map((entry: any) => {
+                      const isExpanded = expandedLogRows.has(entry.id);
+                      return (
+                        <React.Fragment key={entry.id}>
+                          <TableRow className="cursor-pointer hover:bg-muted/30">
+                            <TableCell className="text-sm font-mono align-top">{entry.logDate}</TableCell>
+                            <TableCell className="text-sm font-medium align-top">
+                              <button
+                                className="text-left hover:underline"
+                                onClick={() => setExpandedLogRows(prev => {
+                                  const next = new Set(prev);
+                                  if (next.has(entry.id)) next.delete(entry.id); else next.add(entry.id);
+                                  return next;
+                                })}
+                              >
+                                {entry.subject}
+                              </button>
+                            </TableCell>
+                            <TableCell className="text-sm align-top">{entry.sentBy || "—"}</TableCell>
+                            <TableCell className="text-sm align-top max-w-[160px] truncate" title={entry.recipients ?? ""}>{entry.recipients || "—"}</TableCell>
+                            <TableCell className="align-top">
+                              {entry.method ? (
+                                <span className={`inline-block text-xs px-1.5 py-0.5 rounded-full font-medium ${LOG_METHOD_COLORS[entry.method] ?? "bg-gray-100 text-gray-700"}`}>
+                                  {entry.method}
+                                </span>
+                              ) : <span className="text-muted-foreground text-xs">—</span>}
+                            </TableCell>
+                            <TableCell className="text-sm align-top max-w-[200px]">
+                              <div className="truncate">{entry.summary || "—"}</div>
+                            </TableCell>
+                            <TableCell className="align-top text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                <Button variant="ghost" size="icon" className="h-7 w-7"
+                                  onClick={() => setExpandedLogRows(prev => { const next = new Set(prev); if (next.has(entry.id)) next.delete(entry.id); else next.add(entry.id); return next; })}
+                                  title={isExpanded ? "Collapse" : "Expand"}
+                                >
+                                  {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-7 w-7"
+                                  onClick={() => {
+                                    setCommLogEditing(entry);
+                                    setCommLogForm({
+                                      logDate: entry.logDate,
+                                      communicationType: entry.communicationType ?? "",
+                                      subject: entry.subject,
+                                      sentBy: entry.sentBy ?? "",
+                                      recipients: entry.recipients ?? "",
+                                      method: entry.method ?? "",
+                                      summary: entry.summary ?? "",
+                                      linkedCommPlanEntryId: entry.linkedCommPlanEntryId ?? null,
+                                      attachmentUrl: entry.attachmentUrl ?? "",
+                                      notes: entry.notes ?? "",
+                                    });
+                                    setCommLogDialogOpen(true);
+                                  }}
+                                  title="Edit"
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-red-400 hover:text-red-600 hover:bg-red-50"
+                                  onClick={() => commLogDelete.mutate({ id: entry.id })}
+                                  disabled={commLogDelete.isPending}
+                                  title="Delete"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                          {isExpanded && (
+                            <TableRow key={`${entry.id}-expanded`} className="bg-muted/20">
+                              <TableCell colSpan={7} className="py-3 px-6">
+                                <div className="space-y-2 text-sm">
+                                  {entry.summary && (
+                                    <div>
+                                      <span className="font-semibold">Summary: </span>
+                                      <span className="text-muted-foreground whitespace-pre-wrap">{entry.summary}</span>
+                                    </div>
+                                  )}
+                                  {entry.notes && (
+                                    <div>
+                                      <span className="font-semibold">Notes: </span>
+                                      <span className="text-muted-foreground whitespace-pre-wrap">{entry.notes}</span>
+                                    </div>
+                                  )}
+                                  {entry.attachmentUrl && (
+                                    <div>
+                                      <span className="font-semibold">Attachment: </span>
+                                      <a href={entry.attachmentUrl} target="_blank" rel="noopener noreferrer" className="text-primary underline">{entry.attachmentUrl}</a>
+                                    </div>
+                                  )}
+                                  {!entry.summary && !entry.notes && !entry.attachmentUrl && (
+                                    <span className="text-muted-foreground italic">No additional details.</span>
+                                  )}
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            );
+          })()}
+        </TabsContent>
       </Tabs>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Communication Log Dialog                                            */}
+      {/* ------------------------------------------------------------------ */}
+      <Dialog open={commLogDialogOpen} onOpenChange={setCommLogDialogOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ClipboardList className="w-5 h-5" />
+              {commLogEditing ? "Edit Communication Log" : "Log Communication"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-1">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Date *</Label>
+                <input
+                  type="date"
+                  className="w-full h-9 border rounded-md px-3 text-sm"
+                  value={commLogForm.logDate}
+                  onChange={e => setCommLogForm(f => ({ ...f, logDate: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Method</Label>
+                <Select value={commLogForm.method || "__none__"} onValueChange={v => setCommLogForm(f => ({ ...f, method: v === "__none__" ? "" : v }))}>
+                  <SelectTrigger className="h-9"><SelectValue placeholder="Select method..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">— None —</SelectItem>
+                    {["Email", "Meeting", "Phone", "Teams", "Slack", "Report", "Video Call", "Other"].map(m => (
+                      <SelectItem key={m} value={m}>{m}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Subject *</Label>
+              <Input value={commLogForm.subject} onChange={e => setCommLogForm(f => ({ ...f, subject: e.target.value }))} placeholder="Brief subject or title..." />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Sent By</Label>
+                <Input value={commLogForm.sentBy} onChange={e => setCommLogForm(f => ({ ...f, sentBy: e.target.value }))} placeholder="Name or email..." />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Recipients</Label>
+                <Input value={commLogForm.recipients} onChange={e => setCommLogForm(f => ({ ...f, recipients: e.target.value }))} placeholder="Names, comma-separated..." />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Summary</Label>
+              <Textarea rows={3} value={commLogForm.summary} onChange={e => setCommLogForm(f => ({ ...f, summary: e.target.value }))} placeholder="What was communicated?" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Notes</Label>
+              <Textarea rows={2} value={commLogForm.notes} onChange={e => setCommLogForm(f => ({ ...f, notes: e.target.value }))} placeholder="Additional notes..." />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Attachment URL</Label>
+              <Input value={commLogForm.attachmentUrl} onChange={e => setCommLogForm(f => ({ ...f, attachmentUrl: e.target.value }))} placeholder="https://..." />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCommLogDialogOpen(false)}>Cancel</Button>
+            <Button
+              onClick={() => {
+                if (!commLogForm.subject.trim()) { toast.error("Subject is required"); return; }
+                if (!commLogForm.logDate) { toast.error("Date is required"); return; }
+                if (commLogEditing) {
+                  commLogUpdate.mutate({
+                    id: commLogEditing.id,
+                    logDate: commLogForm.logDate,
+                    communicationType: commLogForm.communicationType || null,
+                    subject: commLogForm.subject,
+                    sentBy: commLogForm.sentBy || null,
+                    recipients: commLogForm.recipients || null,
+                    method: commLogForm.method || null,
+                    summary: commLogForm.summary || null,
+                    linkedCommPlanEntryId: commLogForm.linkedCommPlanEntryId,
+                    attachmentUrl: commLogForm.attachmentUrl || null,
+                    notes: commLogForm.notes || null,
+                  });
+                } else {
+                  commLogCreate.mutate({
+                    projectId,
+                    logDate: commLogForm.logDate,
+                    communicationType: commLogForm.communicationType || undefined,
+                    subject: commLogForm.subject,
+                    sentBy: commLogForm.sentBy || undefined,
+                    recipients: commLogForm.recipients || undefined,
+                    method: commLogForm.method || undefined,
+                    summary: commLogForm.summary || undefined,
+                    linkedCommPlanEntryId: commLogForm.linkedCommPlanEntryId ?? undefined,
+                    attachmentUrl: commLogForm.attachmentUrl || undefined,
+                    notes: commLogForm.notes || undefined,
+                  });
+                }
+              }}
+              disabled={commLogCreate.isPending || commLogUpdate.isPending}
+            >
+              {(commLogCreate.isPending || commLogUpdate.isPending) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {commLogEditing ? "Update" : "Save Log"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* ------------------------------------------------------------------ */}
       {/* Add / Edit Entry Dialog                                              */}
