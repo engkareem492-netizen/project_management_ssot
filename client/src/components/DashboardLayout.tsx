@@ -17,24 +17,18 @@ import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarInset,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
   SidebarProvider,
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { 
+import {
   LayoutDashboard,
   LogOut,
   PanelLeft,
@@ -43,16 +37,12 @@ import {
   CheckSquare,
   AlertCircle,
   Link2,
-  History,
-  Map,
   Package,
   FileCheck,
   Settings as SettingsIcon,
   Calendar,
   Upload,
   Download,
-  FileSpreadsheet,
-  ChevronRight,
   Database,
   Palette,
   BookOpen,
@@ -79,29 +69,11 @@ import {
   Ticket,
   Network,
   Radio,
-  ClipboardList,
   UserCog,
   Gauge,
   FolderTree,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
@@ -112,79 +84,84 @@ import { ThemeSelector } from "./ThemeSelector";
 import { GlobalSearch } from "./GlobalSearch";
 import { Search } from "lucide-react";
 
-type SubMenuItem = { icon: React.ElementType; label: string; path: string };
-type MenuItem = { icon: React.ElementType; label: string; path: string; children?: SubMenuItem[] };
+type SidebarItem = { icon: React.ElementType; label: string; path: string };
+type SidebarSection = { label: string; color?: string; items: SidebarItem[] };
 
-const menuItems: MenuItem[] = [
-  { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
-  { icon: LayoutGrid, label: "Portfolio", path: "/portfolio" },
-  { icon: Zap, label: "Sprints", path: "/sprints" },
-  { icon: Target, label: "Goals & OKRs", path: "/goals" },
-  { icon: Clock, label: "Time Tracking", path: "/time-tracking" },
-  { icon: Ticket, label: "SLA Tickets", path: "/sla-tickets" },
+const SIDEBAR_SECTIONS: SidebarSection[] = [
   {
-    icon: FolderTree,
-    label: "Planning",
-    path: "__planning__",
-    children: [
+    label: "OVERVIEW",
+    items: [
+      { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
+      { icon: LayoutGrid, label: "Portfolio", path: "/portfolio" },
+      { icon: Target, label: "Goals & OKRs", path: "/goals" },
+    ],
+  },
+  {
+    label: "INITIATION",
+    items: [
       { icon: Scroll, label: "Project Charter", path: "/charter" },
+      { icon: UserCog, label: "Team Charter", path: "/team-charter" },
+      { icon: Users, label: "Stakeholder Register", path: "/stakeholders" },
+    ],
+  },
+  {
+    label: "PLANNING",
+    items: [
       { icon: FolderTree, label: "WBS", path: "/wbs" },
       { icon: Crosshair, label: "Scope Items", path: "/scope" },
-      { icon: Flag, label: "Main Milestones", path: "/milestones" },
-    ],
-  },
-  { icon: FileText, label: "Requirements", path: "/requirements" },
-  {
-    icon: CheckSquare,
-    label: "Tasks",
-    path: "__tasks__",
-    children: [
-      { icon: CheckSquare, label: "Task List", path: "/tasks" },
-      { icon: Calendar, label: "Today", path: "/today" },
+      { icon: FileText, label: "Requirements", path: "/requirements" },
+      { icon: Flag, label: "Milestones", path: "/milestones" },
       { icon: BarChart2, label: "Gantt Chart", path: "/gantt" },
-    ],
-  },
-  { icon: ListChecks, label: "Action Items", path: "/action-items" },
-  { icon: AlertCircle, label: "Issues", path: "/issues" },
-  { icon: Link2, label: "Dependencies", path: "/dependencies" },
-  { icon: FileCheck, label: "Assumptions", path: "/assumptions" },
-  { icon: ShieldAlert, label: "RAID Log", path: "/raid-log" },
-  {
-    icon: Users,
-    label: "Team",
-    path: "__team__",
-    children: [
-      { icon: Users, label: "Stakeholder Register", path: "/stakeholders" },
-      { icon: Network, label: "Engagement Plan", path: "/engagement-plan" },
+      { icon: AlertTriangle, label: "Risk Register", path: "/risk-register" },
+      { icon: DollarSign, label: "Budget", path: "/budget" },
       { icon: Radio, label: "Communication Plan", path: "/communication-plan" },
-      { icon: BarChart2, label: "Resource Management", path: "/resources" },
-      { icon: ClipboardList, label: "Team Charter", path: "/team-charter" },
+      { icon: Network, label: "RBS & Resources", path: "/resources" },
     ],
   },
-  { icon: Package, label: "Deliverables", path: "/deliverables" },
   {
-    icon: BookOpen,
+    label: "EXECUTION",
+    items: [
+      { icon: CheckSquare, label: "Tasks", path: "/tasks" },
+      { icon: Zap, label: "Sprints", path: "/sprints" },
+      { icon: AlertCircle, label: "Issues", path: "/issues" },
+      { icon: GitPullRequest, label: "Change Requests", path: "/change-requests" },
+      { icon: MessageSquare, label: "Meetings & Decisions", path: "/meetings" },
+      { icon: ListChecks, label: "Action Items", path: "/action-items" },
+      { icon: Clock, label: "Time Tracking", path: "/time-tracking" },
+      { icon: Ticket, label: "SLA Tickets", path: "/sla-tickets" },
+    ],
+  },
+  {
+    label: "MONITORING & CONTROL",
+    items: [
+      { icon: Network, label: "Engagement Plan", path: "/engagement-plan" },
+      { icon: ShieldAlert, label: "RAID Log", path: "/raid-log" },
+      { icon: Package, label: "Deliverables", path: "/deliverables" },
+      { icon: Link2, label: "Dependencies", path: "/dependencies" },
+      { icon: FileCheck, label: "Assumptions", path: "/assumptions" },
+      { icon: FlaskConical, label: "Test Cases", path: "/test-cases" },
+      { icon: Layers, label: "Traceability Matrix", path: "/traceability" },
+      { icon: FileBarChart, label: "Periodic Report", path: "/periodic-report" },
+      { icon: CalendarRange, label: "Calendar", path: "/calendar" },
+      { icon: Calendar, label: "Today", path: "/today" },
+    ],
+  },
+  {
     label: "OPA",
-    path: "__opa__",
-    children: [
+    items: [
       { icon: FolderOpen, label: "Document Library", path: "/documents" },
       { icon: BookOpen, label: "Knowledge Base", path: "/knowledge-base" },
       { icon: BookMarked, label: "Lessons Learned", path: "/lessons-learned" },
       { icon: Gauge, label: "EEF", path: "/eef" },
     ],
   },
-  { icon: AlertTriangle, label: "Risk Register", path: "/risk-register" },
-  { icon: GitPullRequest, label: "Change Requests", path: "/change-requests" },
-  { icon: MessageSquare, label: "Meetings & Decisions", path: "/meetings" },
-  { icon: CalendarRange, label: "Calendar", path: "/calendar" },
-  { icon: DollarSign, label: "Budget", path: "/budget" },
-  { icon: FlaskConical, label: "Test Cases", path: "/test-cases" },
-  { icon: Layers, label: "Traceability Matrix", path: "/traceability" },
-  { icon: FileBarChart, label: "Periodic Report", path: "/periodic-report" },
-  { icon: SettingsIcon, label: "Settings", path: "/settings" },
+  {
+    label: "CONFIGURATION",
+    items: [
+      { icon: SettingsIcon, label: "Settings", path: "/settings" },
+    ],
+  },
 ];
-
-const SIDEBAR_ORDER_KEY = "sidebar-order";
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
 const DEFAULT_WIDTH = 280;
 const MIN_WIDTH = 200;
@@ -267,49 +244,11 @@ function DashboardLayoutContent({
   const [themeDialogOpen, setThemeDialogOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
-  const activeMenuItem = menuItems.find(item =>
-    item.path === location || item.children?.some(c => c.path === location)
-  );
+  const activeMenuItem = SIDEBAR_SECTIONS.flatMap(s => s.items).find(item => item.path === location);
   const isMobile = useIsMobile();
   const [uploading, setUploading] = useState(false);
-  const [excelMenuOpen, setExcelMenuOpen] = useState(false);
   const { currentProjectId, setCurrentProjectId } = useProject();
   const { data: projects } = trpc.projects.list.useQuery();
-
-  // Sortable menu items
-  const [orderedItems, setOrderedItems] = useState(() => {
-    try {
-      const saved = localStorage.getItem(SIDEBAR_ORDER_KEY);
-      if (saved) {
-        const paths: string[] = JSON.parse(saved);
-        const sorted = paths
-          .map((p) => menuItems.find((m) => m.path === p))
-          .filter(Boolean) as typeof menuItems;
-        // Add any new items not in saved order
-        const missing = menuItems.filter((m) => !paths.includes(m.path));
-        return [...sorted, ...missing];
-      }
-    } catch {}
-    return menuItems;
-  });
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  );
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (over && active.id !== over.id) {
-      setOrderedItems((items) => {
-        const oldIndex = items.findIndex((i) => i.path === active.id);
-        const newIndex = items.findIndex((i) => i.path === over.id);
-        const newOrder = arrayMove(items, oldIndex, newIndex);
-        localStorage.setItem(SIDEBAR_ORDER_KEY, JSON.stringify(newOrder.map((i) => i.path)));
-        return newOrder;
-      });
-    }
-  };
 
   const { data: badgeCounts } = trpc.sidebarBadges.counts.useQuery(
     { projectId: currentProjectId! },
@@ -453,7 +392,7 @@ function DashboardLayoutContent({
             </div>
           </SidebarHeader>
 
-          <SidebarContent className="gap-0">
+          <SidebarContent className="gap-0 overflow-y-auto">
             {/* Global Search Button */}
             <div className="px-2 py-1 group-data-[collapsible=icon]:hidden">
               <button
@@ -467,7 +406,6 @@ function DashboardLayoutContent({
                 </kbd>
               </button>
             </div>
-            {/* Collapsed search icon */}
             <div className="hidden group-data-[collapsible=icon]:flex justify-center px-2 py-1">
               <button
                 onClick={() => setSearchOpen(true)}
@@ -477,20 +415,17 @@ function DashboardLayoutContent({
                 <Search className="h-4 w-4" />
               </button>
             </div>
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={orderedItems.map((i) => i.path)}
-                strategy={verticalListSortingStrategy}
-              >
-                <SidebarMenu className="px-2 py-1">
-                  {orderedItems.map(item => {
-                    const isActive = item.children
-                      ? item.children.some(c => c.path === location)
-                      : location === item.path;
+
+            {SIDEBAR_SECTIONS.map((section) => (
+              <div key={section.label}>
+                <div className="px-4 pt-3 pb-0.5 group-data-[collapsible=icon]:hidden">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50 select-none">
+                    {section.label}
+                  </span>
+                </div>
+                <SidebarMenu className="px-2 pb-1">
+                  {section.items.map((item) => {
+                    const isActive = location === item.path;
                     const badgeCount =
                       item.path === "/tasks" ? badgeCounts?.tasks :
                       item.path === "/issues" ? badgeCounts?.issues :
@@ -498,21 +433,28 @@ function DashboardLayoutContent({
                       item.path === "/risk-register" ? badgeCounts?.risks :
                       undefined;
                     return (
-                      <SortableSidebarItem
-                        key={item.path}
-                        item={item}
-                        isActive={isActive}
-                        badgeCount={badgeCount}
-                        isCollapsed={isCollapsed}
-                        currentLocation={location}
-                        navigate={setLocation}
-                        onClick={() => !item.children && setLocation(item.path)}
-                      />
+                      <SidebarMenuItem key={item.path}>
+                        <SidebarMenuButton
+                          isActive={isActive}
+                          onClick={() => setLocation(item.path)}
+                          tooltip={item.label}
+                          className="h-8 transition-all font-normal text-sm"
+                        >
+                          <item.icon className={`h-4 w-4 shrink-0 ${isActive ? "text-primary" : ""}`} />
+                          <span className="flex-1">{item.label}</span>
+                          {badgeCount != null && badgeCount > 0 && (
+                            <span className="ml-auto inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full text-[10px] font-semibold bg-destructive text-destructive-foreground">
+                              {badgeCount > 99 ? "99+" : badgeCount}
+                            </span>
+                          )}
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
                     );
                   })}
                 </SidebarMenu>
-              </SortableContext>
-            </DndContext>
+                <div className="mx-4 border-t border-border/30 group-data-[collapsible=icon]:hidden" />
+              </div>
+            ))}
           </SidebarContent>
 
           <SidebarFooter className="p-3 gap-2">
@@ -664,111 +606,3 @@ function DashboardLayoutContent({
   );
 }
 
-// ─── Sortable Sidebar Item ────────────────────────────────────────────────────
-type SortableSidebarItemProps = {
-  item: MenuItem;
-  isActive: boolean;
-  badgeCount?: number;
-  isCollapsed: boolean;
-  currentLocation: string;
-  navigate: (path: string) => void;
-  onClick: () => void;
-};
-
-function SortableSidebarItem({ item, isActive, badgeCount, isCollapsed, currentLocation, navigate, onClick }: SortableSidebarItemProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: item.path });
-
-  const hasChildren = !!(item.children && item.children.length > 0);
-  const isChildActive = hasChildren && item.children!.some(c => c.path === currentLocation);
-  const [groupOpen, setGroupOpen] = useState(() => isChildActive);
-
-  const style: CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-    zIndex: isDragging ? 10 : undefined,
-  };
-
-  const dragHandle = (
-    <span
-      {...listeners}
-      className="hidden group-hover/item:flex group-data-[collapsible=icon]:hidden items-center cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-muted-foreground shrink-0 -ml-1 mr-0.5"
-      onClick={(e) => e.stopPropagation()}
-      title="Drag to reorder"
-    >
-      <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor">
-        <circle cx="3" cy="2.5" r="1.2" />
-        <circle cx="7" cy="2.5" r="1.2" />
-        <circle cx="3" cy="7" r="1.2" />
-        <circle cx="7" cy="7" r="1.2" />
-        <circle cx="3" cy="11.5" r="1.2" />
-        <circle cx="7" cy="11.5" r="1.2" />
-      </svg>
-    </span>
-  );
-
-  if (hasChildren) {
-    return (
-      <SidebarMenuItem ref={setNodeRef} style={style}>
-        <SidebarMenuButton
-          isActive={isChildActive}
-          onClick={() => isCollapsed ? navigate(item.children![0].path) : setGroupOpen(o => !o)}
-          tooltip={item.label}
-          className="h-8 transition-all font-normal text-sm group/item"
-          {...attributes}
-        >
-          {dragHandle}
-          <item.icon className={`h-4 w-4 shrink-0 ${isChildActive ? "text-primary" : ""}`} />
-          <span className="flex-1">{item.label}</span>
-          <ChevronRight
-            className={`h-3.5 w-3.5 shrink-0 transition-transform duration-200 group-data-[collapsible=icon]:hidden ${groupOpen ? "rotate-90" : ""}`}
-          />
-        </SidebarMenuButton>
-        {groupOpen && !isCollapsed && (
-          <SidebarMenuSub>
-            {item.children!.map(child => (
-              <SidebarMenuSubItem key={child.path}>
-                <SidebarMenuSubButton
-                  isActive={currentLocation === child.path}
-                  onClick={() => navigate(child.path)}
-                  className="h-7 text-sm"
-                >
-                  <child.icon className="h-3.5 w-3.5 shrink-0" />
-                  <span>{child.label}</span>
-                </SidebarMenuSubButton>
-              </SidebarMenuSubItem>
-            ))}
-          </SidebarMenuSub>
-        )}
-      </SidebarMenuItem>
-    );
-  }
-
-  return (
-    <SidebarMenuItem ref={setNodeRef} style={style}>
-      <SidebarMenuButton
-        isActive={isActive}
-        onClick={onClick}
-        tooltip={item.label}
-        className="h-8 transition-all font-normal text-sm group/item"
-        {...attributes}
-      >
-        {dragHandle}
-        <item.icon className={`h-4 w-4 shrink-0 ${isActive ? "text-primary" : ""}`} />
-        <span className="flex-1">{item.label}</span>
-        {badgeCount != null && badgeCount > 0 && (
-          <span className="ml-auto inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full text-[10px] font-semibold bg-destructive text-destructive-foreground">
-            {badgeCount > 99 ? "99+" : badgeCount}
-          </span>
-        )}
-      </SidebarMenuButton>
-    </SidebarMenuItem>
-  );
-}
