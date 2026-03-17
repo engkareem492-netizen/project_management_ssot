@@ -61,6 +61,7 @@ import { externalPartiesRouter } from "./routers/externalParties.router";
 import { wbsNodesRouter } from "./routers/wbsNodes.router";
 import { commRaciMatrixRouter } from "./routers/commRaciMatrix.router";
 import { communicationLogRouter } from "./routers/communicationLog.router";
+import { dropdownRegistryRouter } from "./routers/dropdownRegistry.router";
 
 export const appRouter = router({
   system: systemRouter,
@@ -116,6 +117,7 @@ export const appRouter = router({
   wbsNodes: wbsNodesRouter,
   commRaciMatrix: commRaciMatrixRouter,
   communicationLog: communicationLogRouter,
+  dropdownRegistry: dropdownRegistryRouter,
   scopeItems: router({
     list: protectedProcedure
       .input(z.object({ projectId: z.number() }))
