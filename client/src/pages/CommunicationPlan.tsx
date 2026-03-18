@@ -47,7 +47,6 @@ import {
   Building2,
   Info,
   RefreshCw,
-  Grid3X3,
   ClipboardList,
   ChevronDown,
   ChevronUp,
@@ -470,26 +469,7 @@ export default function CommunicationPlan() {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [selectedStakeholderIds, setSelectedStakeholderIds] = useState<number[]>([]);
   // Active tab
-  const [activeTab, setActiveTab] = useState<"stakeholder" | "role" | "position" | "raci" | "commlog">("stakeholder");
-
-  // ----- RACI Matrix state -----
-  const [raciNewItemLabel, setRaciNewItemLabel] = useState("");
-  const { data: raciMatrix = [], refetch: refetchRaci } =
-    trpc.commRaciMatrix.getMatrix.useQuery({ projectId }, { enabled });
-  const { data: raciCommItems = [], refetch: refetchRaciItems } =
-    trpc.commRaciMatrix.listCommItems.useQuery({ projectId }, { enabled });
-  const raciSetCell = trpc.commRaciMatrix.setCell.useMutation({
-    onSuccess: () => refetchRaci(),
-    onError: (e) => toast.error(e.message),
-  });
-  const raciAddItem = trpc.commRaciMatrix.addCommItem.useMutation({
-    onSuccess: () => { refetchRaciItems(); refetchRaci(); setRaciNewItemLabel(""); },
-    onError: (e) => toast.error(e.message),
-  });
-  const raciDeleteItem = trpc.commRaciMatrix.deleteCommItem.useMutation({
-    onSuccess: () => { refetchRaciItems(); refetchRaci(); },
-    onError: (e) => toast.error(e.message),
-  });
+  const [activeTab, setActiveTab] = useState<"stakeholder" | "role" | "position" | "commlog">("stakeholder");
 
   // ----- Communication Log state -----
   const [commLogDialogOpen, setCommLogDialogOpen] = useState(false);
@@ -793,7 +773,7 @@ export default function CommunicationPlan() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
-        <TabsList className="grid w-full grid-cols-5 max-w-2xl">
+        <TabsList className="grid w-full grid-cols-4 max-w-2xl">
           <TabsTrigger value="stakeholder" className="flex items-center gap-1.5">
             <UserCheck className="w-4 h-4" /> Stakeholders
           </TabsTrigger>
@@ -802,9 +782,6 @@ export default function CommunicationPlan() {
           </TabsTrigger>
           <TabsTrigger value="position" className="flex items-center gap-1.5">
             <Building2 className="w-4 h-4" /> By Position
-          </TabsTrigger>
-          <TabsTrigger value="raci" className="flex items-center gap-1.5">
-            <Grid3X3 className="w-4 h-4" /> RACI Matrix
           </TabsTrigger>
           <TabsTrigger value="commlog" className="flex items-center gap-1.5">
             <ClipboardList className="w-4 h-4" /> Comm Log
@@ -987,153 +964,7 @@ export default function CommunicationPlan() {
           )}
         </TabsContent>
 
-        {/* ─── RACI Matrix Tab ─── */}
-        <TabsContent value="raci" className="mt-4 space-y-4">
-          {/* Legend + actions row */}
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3 flex-wrap">
-              <span className="text-sm font-medium text-muted-foreground">Legend:</span>
-              {[
-                { v: "R", label: "Responsible (sends)", cls: "bg-green-100 text-green-800 border-green-200" },
-                { v: "A", label: "Accountable", cls: "bg-amber-100 text-amber-800 border-amber-200" },
-                { v: "C", label: "Consulted", cls: "bg-blue-100 text-blue-800 border-blue-200" },
-                { v: "I", label: "Informed", cls: "bg-gray-100 text-gray-700 border-gray-200" },
-              ].map(({ v, label, cls }) => (
-                <span key={v} className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded border font-medium ${cls}`}>
-                  <strong>{v}</strong> — {label}
-                </span>
-              ))}
-            </div>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                const stakesList = (stakeholders as any[]);
-                const itemsList = raciCommItems as string[];
-                if (itemsList.length === 0 || stakesList.length === 0) { toast.error("No data to export"); return; }
-                const cellMap: Record<string, string> = {};
-                (raciMatrix as any[]).forEach((cell: any) => {
-                  if (cell.stakeholderId !== 0) cellMap[`${cell.commItemLabel}__${cell.stakeholderId}`] = cell.raciValue ?? "—";
-                });
-                const headers = ["Communication Item", ...stakesList.map((s: any) => s.fullName)];
-                const rows = itemsList.map((label: string) => [
-                  label,
-                  ...stakesList.map((s: any) => cellMap[`${label}__${s.id}`] ?? "—"),
-                ]);
-                const csv = [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
-                const blob = new Blob([csv], { type: "text/csv" });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a"); a.href = url; a.download = "raci_matrix.csv"; a.click();
-                URL.revokeObjectURL(url);
-              }}
-            >
-              <Download className="w-4 h-4 mr-1.5" /> Export CSV
-            </Button>
-          </div>
 
-          {/* Add row */}
-          <div className="flex items-center gap-2">
-            <Input
-              value={raciNewItemLabel}
-              onChange={(e) => setRaciNewItemLabel(e.target.value)}
-              placeholder="New communication item label..."
-              className="max-w-xs h-8 text-sm"
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && raciNewItemLabel.trim()) {
-                  raciAddItem.mutate({ projectId, label: raciNewItemLabel.trim() });
-                }
-              }}
-            />
-            <Button
-              size="sm"
-              disabled={!raciNewItemLabel.trim() || raciAddItem.isPending}
-              onClick={() => { if (raciNewItemLabel.trim()) raciAddItem.mutate({ projectId, label: raciNewItemLabel.trim() }); }}
-            >
-              {raciAddItem.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Plus className="w-4 h-4 mr-1" />}
-              Add Item
-            </Button>
-          </div>
-
-          {/* Matrix */}
-          {(raciCommItems as string[]).length === 0 ? (
-            <EmptyState
-              icon={Grid3X3}
-              title="No RACI items yet"
-              description="Add communication items using the field above, then click cells to assign RACI roles."
-            />
-          ) : (
-            <div className="overflow-x-auto rounded-md border">
-              <table className="min-w-full border-collapse text-sm">
-                <thead>
-                  <tr className="bg-muted/50">
-                    <th className="sticky left-0 z-10 bg-muted/80 text-left px-3 py-2 border-b border-r font-semibold min-w-[200px] whitespace-nowrap">
-                      Communication Item
-                    </th>
-                    {(stakeholders as any[]).map((s: any) => (
-                      <th key={s.id} className="px-2 py-2 border-b border-r text-center font-medium min-w-[80px] max-w-[120px]">
-                        <div className="text-xs font-semibold truncate max-w-[100px]" title={s.fullName}>
-                          {s.fullName.length > 12 ? s.fullName.slice(0, 11) + "…" : s.fullName}
-                        </div>
-                        {s.role && <div className="text-xs text-muted-foreground truncate max-w-[100px]">{s.role}</div>}
-                      </th>
-                    ))}
-                    <th className="px-2 py-2 border-b text-center font-medium min-w-[60px]">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(raciCommItems as string[]).map((label: string, rowIdx: number) => {
-                    const cellMap: Record<number, string | null> = {};
-                    (raciMatrix as any[]).forEach((cell: any) => {
-                      if (cell.commItemLabel === label && cell.stakeholderId !== 0) {
-                        cellMap[cell.stakeholderId] = cell.raciValue;
-                      }
-                    });
-                    return (
-                      <tr key={label} className={rowIdx % 2 === 0 ? "bg-white" : "bg-muted/20"}>
-                        <td className="sticky left-0 z-10 px-3 py-2 border-b border-r font-medium text-sm" style={{ background: rowIdx % 2 === 0 ? "white" : "hsl(var(--muted)/0.2)" }}>
-                          {label}
-                        </td>
-                        {(stakeholders as any[]).map((s: any) => {
-                          const val = cellMap[s.id] ?? null;
-                          const RACI_CYCLE = [null, "I", "C", "A", "R"] as (string | null)[];
-                          const nextVal = RACI_CYCLE[(RACI_CYCLE.indexOf(val) + 1) % RACI_CYCLE.length];
-                          const chipCls = val === "R" ? "bg-green-100 text-green-800 hover:bg-green-200"
-                            : val === "A" ? "bg-amber-100 text-amber-800 hover:bg-amber-200"
-                            : val === "C" ? "bg-blue-100 text-blue-800 hover:bg-blue-200"
-                            : val === "I" ? "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                            : "bg-transparent text-muted-foreground hover:bg-muted";
-                          return (
-                            <td key={s.id} className="px-2 py-1.5 border-b border-r text-center">
-                              <button
-                                className={`w-8 h-8 rounded font-bold text-sm transition-colors ${chipCls}`}
-                                title={`Click to cycle RACI value (current: ${val ?? "—"})`}
-                                onClick={() => raciSetCell.mutate({ projectId, commItemLabel: label, stakeholderId: s.id, raciValue: nextVal })}
-                              >
-                                {val ?? "—"}
-                              </button>
-                            </td>
-                          );
-                        })}
-                        <td className="px-2 py-1.5 border-b text-center">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-red-400 hover:text-red-600 hover:bg-red-50"
-                            title="Delete this communication item row"
-                            onClick={() => raciDeleteItem.mutate({ projectId, label })}
-                            disabled={raciDeleteItem.isPending}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </TabsContent>
 
         {/* ─── Communication Log Tab ─── */}
         <TabsContent value="commlog" className="mt-4 space-y-4">

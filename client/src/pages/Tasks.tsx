@@ -1772,7 +1772,7 @@ export default function Tasks() {
               <h4 className="text-sm font-semibold border-b pb-2">Dates</h4>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="assignDate">Assign Date</Label>
+                  <Label htmlFor="assignDate">Start Date</Label>
                   <Input
                     id="assignDate"
                     type="date"
@@ -2113,7 +2113,7 @@ export default function Tasks() {
                 )}
               </div>
               <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
-                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Assign Date</Label>
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Start Date</Label>
                 {isEditMode ? (
                   <Input type="date" value={editFormData.assignDate} onChange={(e) => setEditFormData({...editFormData, assignDate: e.target.value})} className="h-8" />
                 ) : (
