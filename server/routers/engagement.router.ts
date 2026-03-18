@@ -32,8 +32,8 @@ async function getProjectManager(projectId: number): Promise<{ id: number; fullN
   return pm ?? null;
 }
 
-const ENGAGEMENT_STATUSES = ["Unaware", "Resistant", "Neutral", "Supportive", "Leading"] as const;
-const FROM_STATUSES = ["Unaware", "Resistant", "Neutral", "Supportive", "Leading", "Any"] as const;
+const ENGAGEMENT_STATUSES = ["Resistant", "Unaware", "Neutral", "Supportive", "Leading"] as const;
+const FROM_STATUSES = ["Resistant", "Unaware", "Neutral", "Supportive", "Leading", "Any"] as const;
 
 export const engagementRouter = router({
   // ─── Task Groups ─────────────────────────────────────────────────────────────
@@ -241,7 +241,7 @@ export const engagementRouter = router({
     .query(async ({ input }) => {
       const db = await getDb();
       if (!db) return {};
-      const STATUS_ORDER = ["Unaware", "Resistant", "Neutral", "Supportive", "Leading"];
+      const STATUS_ORDER = ["Resistant", "Unaware", "Neutral", "Supportive", "Leading"];
       // Fetch all "current" history entries for the project, newest first
       const rows = await db
         .select()

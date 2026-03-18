@@ -244,11 +244,17 @@ export const teamSkillsRouter = router({
       availableHours: z.string().optional(),
       notes: z.string().optional(),
       skipWeekends: z.boolean().optional().default(true),
+      skipDays: z.array(z.number().min(0).max(6)).optional(),
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new Error("DB unavailable");
       const { eq, and } = await import("drizzle-orm");
+
+      // Determine which days to skip: explicit skipDays array takes priority over boolean skipWeekends
+      const daysToSkip: number[] = input.skipDays !== undefined
+        ? input.skipDays
+        : (input.skipWeekends ? [0, 6] : []);
 
       // Build list of dates in range
       const dates: string[] = [];
@@ -256,7 +262,7 @@ export const teamSkillsRouter = router({
       const end = new Date(input.endDate + "T00:00:00");
       while (current <= end) {
         const dow = current.getDay();
-        if (!input.skipWeekends || (dow !== 0 && dow !== 6)) {
+        if (!daysToSkip.includes(dow)) {
           dates.push(current.toISOString().split("T")[0]);
         }
         current.setDate(current.getDate() + 1);
@@ -312,8 +318,9 @@ export const teamSkillsRouter = router({
       startDate: z.string(),
       endDate: z.string(),
       fullTimeHours: z.string().default("8"),
-      skipSaturday: z.boolean().default(true),
-      skipSunday: z.boolean().default(true),
+      skipSaturday: z.boolean().default(true).optional(),
+      skipSunday: z.boolean().default(true).optional(),
+      skipDays: z.array(z.number().min(0).max(6)).optional(),
       createWeekendHolidays: z.boolean().default(true),
     }))
     .mutation(async ({ input }) => {
@@ -321,14 +328,21 @@ export const teamSkillsRouter = router({
       if (!db) throw new Error("DB unavailable");
       const { eq, and } = await import("drizzle-orm");
 
+      // Determine which days count as "weekend" (to skip/create holiday for)
+      // skipDays array takes priority over legacy skipSaturday/skipSunday booleans
+      const daysToSkip: number[] = input.skipDays !== undefined
+        ? input.skipDays
+        : [
+            ...(input.skipSunday !== false ? [0] : []),
+            ...(input.skipSaturday !== false ? [6] : []),
+          ];
+
       const allDates: { date: string; isWeekend: boolean }[] = [];
       const cur = new Date(input.startDate + "T00:00:00");
       const end = new Date(input.endDate + "T00:00:00");
       while (cur <= end) {
-        const dow = cur.getDay(); // 0=Sun, 6=Sat
-        const isSat = dow === 6;
-        const isSun = dow === 0;
-        const isWeekend = (isSat && input.skipSaturday) || (isSun && input.skipSunday);
+        const dow = cur.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+        const isWeekend = daysToSkip.includes(dow);
         allDates.push({ date: cur.toISOString().split("T")[0], isWeekend });
         cur.setDate(cur.getDate() + 1);
       }

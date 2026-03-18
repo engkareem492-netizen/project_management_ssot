@@ -10,7 +10,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
-import { Settings as SettingsIcon, Save, Plus, Edit, Trash2, Hash, AlertCircle, Sun, Moon, Monitor, Lock, Unlock, KeyRound, ShieldOff, ShieldCheck, AlertTriangle, Copy, CheckSquare, Square, Pencil } from "lucide-react";
+import { Settings as SettingsIcon, Save, Plus, Edit, Trash2, Hash, AlertCircle, Sun, Moon, Monitor, Lock, Unlock, KeyRound, ShieldOff, ShieldCheck, AlertTriangle, Copy, CheckSquare, Square, Pencil, DollarSign } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -335,6 +336,25 @@ export default function Settings() {
       navigate("/");
     },
     onError: (err) => toast.error(`Failed to delete: ${err.message}`),
+  });
+
+  // Project currency
+  const { data: budgetSummary, refetch: refetchBudget } = trpc.budget.getSummary.useQuery(
+    { projectId: currentProjectId! },
+    { enabled: !!currentProjectId }
+  );
+  const [projectCurrency, setProjectCurrency] = useState("USD");
+  useEffect(() => {
+    if (budgetSummary?.budget?.currency) {
+      setProjectCurrency(budgetSummary.budget.currency);
+    }
+  }, [budgetSummary?.budget?.currency]);
+  const upsertBudgetMutation = trpc.budget.upsertBudget.useMutation({
+    onSuccess: () => {
+      toast.success("Project currency updated");
+      refetchBudget();
+    },
+    onError: (err) => toast.error(`Failed to update currency: ${err.message}`),
   });
 
   const exportDataMutation = trpc.projects.exportData.useMutation();
@@ -1352,6 +1372,79 @@ export default function Settings() {
 
         {/* Project Tab */}
         <TabsContent value="project" className="space-y-6">
+
+          {/* Project Currency */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <DollarSign className="w-5 h-5 text-primary" />
+                Project Currency
+              </CardTitle>
+              <CardDescription>
+                Set the main currency used across all financial objects in this project (Budget, Resources, costs, etc.).
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-4">
+                <div className="flex-1 max-w-xs">
+                  <Label className="text-sm mb-1.5 block">Currency</Label>
+                  <Select
+                    value={projectCurrency}
+                    onValueChange={setProjectCurrency}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[
+                        { code: "USD", label: "USD — US Dollar ($)" },
+                        { code: "EUR", label: "EUR — Euro (€)" },
+                        { code: "GBP", label: "GBP — British Pound (£)" },
+                        { code: "SAR", label: "SAR — Saudi Riyal (﷼)" },
+                        { code: "AED", label: "AED — UAE Dirham (د.إ)" },
+                        { code: "EGP", label: "EGP — Egyptian Pound (E£)" },
+                        { code: "KWD", label: "KWD — Kuwaiti Dinar (KD)" },
+                        { code: "QAR", label: "QAR — Qatari Riyal (QR)" },
+                        { code: "BHD", label: "BHD — Bahraini Dinar (BD)" },
+                        { code: "OMR", label: "OMR — Omani Rial (RO)" },
+                        { code: "JOD", label: "JOD — Jordanian Dinar (JD)" },
+                        { code: "CAD", label: "CAD — Canadian Dollar (CA$)" },
+                        { code: "AUD", label: "AUD — Australian Dollar (A$)" },
+                        { code: "JPY", label: "JPY — Japanese Yen (¥)" },
+                        { code: "CHF", label: "CHF — Swiss Franc (CHF)" },
+                        { code: "CNY", label: "CNY — Chinese Yuan (¥)" },
+                        { code: "INR", label: "INR — Indian Rupee (₹)" },
+                        { code: "TRY", label: "TRY — Turkish Lira (₺)" },
+                      ].map(({ code, label }) => (
+                        <SelectItem key={code} value={code}>{label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="pt-6">
+                  <Button
+                    onClick={() => {
+                      if (!currentProjectId) return;
+                      upsertBudgetMutation.mutate({
+                        projectId: currentProjectId,
+                        totalBudget: budgetSummary?.budget?.totalBudget ?? "0",
+                        currency: projectCurrency,
+                        notes: budgetSummary?.budget?.notes ?? undefined,
+                      });
+                    }}
+                    disabled={upsertBudgetMutation.isPending}
+                  >
+                    <Save className="w-4 h-4 mr-2" />
+                    Save Currency
+                  </Button>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                This currency is used in the Budget page, resource cost rates, and all financial reporting across the project.
+              </p>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">

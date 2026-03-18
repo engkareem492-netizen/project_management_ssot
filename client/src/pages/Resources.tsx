@@ -94,8 +94,12 @@ const CAL_TYPE_COLORS: Record<string, string> = {
 };
 
 // ─── Resource Plan Row ────────────────────────────────────────────────────────
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value);
+function _formatCurrency(value: number, currency = "USD") {
+  try {
+    return new Intl.NumberFormat("en-US", { style: "currency", currency, maximumFractionDigits: 0 }).format(value);
+  } catch {
+    return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value);
+  }
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -154,8 +158,8 @@ export default function Resources() {
     const d = new Date(); d.setMonth(d.getMonth() + 1); return d.toISOString().split("T")[0];
   });
   const [massFullTimeHours, setMassFullTimeHours] = useState("8");
-  const [massSkipSaturday, setMassSkipSaturday] = useState(true);
-  const [massSkipSunday, setMassSkipSunday] = useState(true);
+  // skipDays: array of JS day numbers to exclude (0=Sun,1=Mon,...,6=Sat). Default: Fri+Sat for flexibility.
+  const [massSkipDays, setMassSkipDays] = useState<number[]>([0, 6]); // Sun=0, Sat=6
   const [massCreateWeekendHolidays, setMassCreateWeekendHolidays] = useState(true);
   const [calEditHours, setCalEditHours] = useState("0");
   // Holiday stakeholder assignment
@@ -164,7 +168,7 @@ export default function Resources() {
   // Stakeholder task summary popup
   const [taskSummaryStakeholder, setTaskSummaryStakeholder] = useState<any | null>(null);
   const [calEditNotes, setCalEditNotes] = useState("");
-  const [calSkipWeekends, setCalSkipWeekends] = useState(true);
+  const [calSkipDays, setCalSkipDays] = useState<number[]>([0, 6]); // default skip Sun+Sat
   const [showCalDialog, setShowCalDialog] = useState(false);
 
   // Resource Plan state
@@ -192,6 +196,12 @@ export default function Resources() {
   const [wizardExpandedWbs, setWizardExpandedWbs] = useState<Record<number, boolean>>({});
 
   // ─── Queries ──────────────────────────────────────────────────────────────
+  // Project currency from budget settings
+  const { data: budgetSummary } = trpc.budget.getSummary.useQuery({ projectId }, { enabled });
+  const projectCurrency = budgetSummary?.budget?.currency ?? "USD";
+  // Bound currency formatter for this project
+  const formatCurrency = (value: number) => _formatCurrency(value, projectCurrency);
+
   const { data: stakeholders = [], isLoading: stLoading } = trpc.stakeholders.list.useQuery({ projectId }, { enabled });
   const { data: tasks = [], isLoading: tasksLoading } = trpc.tasks.list.useQuery({ projectId }, { enabled });
   const { data: rbsTypes = [], refetch: refetchRbsTypes } = trpc.rbsResourceTypes.list.useQuery({ projectId }, { enabled });
@@ -496,7 +506,7 @@ export default function Resources() {
     setCalHolidayScope("all");
     setCalHolidayStakeholderIds([]);
     setCalEditNotes(existing?.notes ?? "");
-    setCalSkipWeekends(true);
+    setCalSkipDays([0, 6]);
     setShowCalDialog(true);
   }
 
@@ -539,7 +549,7 @@ export default function Resources() {
           type: effectiveType,
           availableHours: calEditHours,
           notes: calEditNotes,
-          skipWeekends: calSkipWeekends,
+          skipDays: calSkipDays,
         });
       } else {
         return upsertCalEntry.mutateAsync({
@@ -704,7 +714,7 @@ export default function Resources() {
                           <div className="col-span-1 text-center"><div className="text-lg font-bold">{w.totalAssigned}</div></div>
                           <div className="col-span-1 text-center"><div className="text-lg font-bold">{w.thisWeek}</div><div className="text-xs text-muted-foreground">tasks</div></div>
                           <div className="col-span-1 text-center text-sm text-muted-foreground">{w.capacity}</div>
-                          <div className="col-span-1 text-right text-xs text-muted-foreground">{w.hourlyRate > 0 ? `$${w.hourlyRate.toFixed(0)}/hr` : "—"}</div>
+                          <div className="col-span-1 text-right text-xs text-muted-foreground">{w.hourlyRate > 0 ? `${formatCurrency(w.hourlyRate)}/hr` : "—"}</div>
                           <div className="col-span-1 text-right text-xs font-medium">{weeklyCost > 0 ? formatCurrency(weeklyCost) : "—"}</div>
                           <div className="col-span-1 text-center">
                             <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${perfBadgeCls}`}>
@@ -1915,7 +1925,7 @@ export default function Resources() {
                         <TableRow>
                           <TableHead className="w-44">Resource</TableHead>
                           <TableHead>Classification</TableHead>
-                          <TableHead className="text-right">Rate ($/hr)</TableHead>
+                          <TableHead className="text-right">Rate ({projectCurrency}/hr)</TableHead>
                           <TableHead className="text-right">RBS Cost Rate</TableHead>
                           <TableHead className="text-right">Capacity (hrs/{planViewMode === "weekly" ? "wk" : "mo"})</TableHead>
                           <TableHead className="text-right">Tasks (total)</TableHead>
@@ -2080,17 +2090,30 @@ export default function Resources() {
               </div>
             )}
 
-            {/* Skip weekends toggle (range only) */}
+            {/* Skip days toggle (range only) — choose any days to exclude */}
             {calEntryMode === "range" && (
-              <label className="flex items-center gap-2 cursor-pointer text-sm select-none">
-                <input
-                  type="checkbox"
-                  checked={calSkipWeekends}
-                  onChange={e => setCalSkipWeekends(e.target.checked)}
-                  className="rounded"
-                />
-                Skip weekends
-              </label>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Exclude Days (Non-working)</Label>
+                <div className="flex gap-1.5 flex-wrap">
+                  {[
+                    { dow: 0, label: "Sun" }, { dow: 1, label: "Mon" }, { dow: 2, label: "Tue" },
+                    { dow: 3, label: "Wed" }, { dow: 4, label: "Thu" }, { dow: 5, label: "Fri" },
+                    { dow: 6, label: "Sat" },
+                  ].map(({ dow, label }) => (
+                    <label key={dow} className="flex items-center gap-1 text-xs cursor-pointer select-none px-1.5 py-0.5 rounded border border-border hover:bg-accent transition-colors">
+                      <input
+                        type="checkbox"
+                        className="rounded"
+                        checked={calSkipDays.includes(dow)}
+                        onChange={e => setCalSkipDays(prev =>
+                          e.target.checked ? [...prev, dow] : prev.filter(d => d !== dow)
+                        )}
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+              </div>
             )}
 
             {/* Type */}
@@ -2197,7 +2220,7 @@ export default function Resources() {
               const cur = new Date(start);
               while (cur <= end) {
                 const dow = cur.getDay();
-                if (!calSkipWeekends || (dow !== 0 && dow !== 6)) count++;
+                if (calSkipDays.length === 0 || !calSkipDays.includes(dow)) count++;
                 cur.setDate(cur.getDate() + 1);
               }
               return (
@@ -2260,23 +2283,33 @@ export default function Resources() {
               />
             </div>
 
-            {/* Weekend exclusion */}
+            {/* Weekend exclusion — choose any days to exclude */}
             <div className="space-y-2">
-              <Label>Exclude Weekends</Label>
-              <div className="flex gap-4">
-                <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
-                  <input type="checkbox" className="rounded" checked={massSkipSaturday} onChange={e => setMassSkipSaturday(e.target.checked)} />
-                  Saturday
-                </label>
-                <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
-                  <input type="checkbox" className="rounded" checked={massSkipSunday} onChange={e => setMassSkipSunday(e.target.checked)} />
-                  Sunday
-                </label>
+              <Label>Exclude Days (Non-working)</Label>
+              <div className="flex gap-2 flex-wrap">
+                {[
+                  { dow: 0, label: "Sun" }, { dow: 1, label: "Mon" }, { dow: 2, label: "Tue" },
+                  { dow: 3, label: "Wed" }, { dow: 4, label: "Thu" }, { dow: 5, label: "Fri" },
+                  { dow: 6, label: "Sat" },
+                ].map(({ dow, label }) => (
+                  <label key={dow} className="flex items-center gap-1.5 text-sm cursor-pointer select-none px-2 py-1 rounded border border-border hover:bg-accent transition-colors">
+                    <input
+                      type="checkbox"
+                      className="rounded"
+                      checked={massSkipDays.includes(dow)}
+                      onChange={e => setMassSkipDays(prev =>
+                        e.target.checked ? [...prev, dow] : prev.filter(d => d !== dow)
+                      )}
+                    />
+                    {label}
+                  </label>
+                ))}
               </div>
+              <p className="text-xs text-muted-foreground">Select which days of the week are non-working (e.g. Fri+Sat in Gulf countries).</p>
             </div>
 
             {/* Create holiday entries for excluded weekends */}
-            {(massSkipSaturday || massSkipSunday) && (
+            {massSkipDays.length > 0 && (
               <label className="flex items-start gap-2 text-sm cursor-pointer select-none">
                 <input
                   type="checkbox"
@@ -2298,8 +2331,7 @@ export default function Resources() {
               let working = 0, weekend = 0;
               while (cur <= end) {
                 const dow = cur.getDay();
-                const isSat = dow === 6, isSun = dow === 0;
-                if ((isSat && massSkipSaturday) || (isSun && massSkipSunday)) weekend++;
+                if (massSkipDays.includes(dow)) weekend++;
                 else working++;
                 cur.setDate(cur.getDate() + 1);
               }
@@ -2331,8 +2363,7 @@ export default function Resources() {
                   startDate: massStartDate,
                   endDate: massEndDate,
                   fullTimeHours: massFullTimeHours,
-                  skipSaturday: massSkipSaturday,
-                  skipSunday: massSkipSunday,
+                  skipDays: massSkipDays,
                   createWeekendHolidays: massCreateWeekendHolidays,
                 });
               }}

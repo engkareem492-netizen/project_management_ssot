@@ -86,8 +86,8 @@ type TaskPriority = "Low" | "Medium" | "High" | "Critical";
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const ENGAGEMENT_STATUSES: EngagementStatus[] = [
-  "Unaware",
   "Resistant",
+  "Unaware",
   "Neutral",
   "Supportive",
   "Leading",
@@ -982,7 +982,7 @@ function HistoryDialog({
               <SelectTrigger><SelectValue placeholder="Select status..." /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="__none__">— Select —</SelectItem>
-                {["Unaware", "Resistant", "Neutral", "Supportive", "Leading"].map((s) => (
+                {["Resistant", "Unaware", "Neutral", "Supportive", "Leading"].map((s) => (
                   <SelectItem key={s} value={s}>{s}</SelectItem>
                 ))}
               </SelectContent>
@@ -1242,7 +1242,7 @@ function EngagementAssessmentTab({
   const [filterCurrent, setFilterCurrent] = useState<string>("all");
   const [filterDesired, setFilterDesired] = useState<string>("all");
 
-  const ENGAGEMENT_STATUSES = ["Unaware", "Resistant", "Neutral", "Supportive", "Leading"];
+  const ENGAGEMENT_STATUSES = ["Resistant", "Unaware", "Neutral", "Supportive", "Leading"];
 
   // Fetch trend data for all stakeholders in this project
   const { data: trends = {} } = trpc.engagement.getStatusTrends.useQuery(
@@ -1330,7 +1330,7 @@ function EngagementAssessmentTab({
                       </TableCell>
                     </TableRow>
                   ) : filteredStakeholders.map((s) => {
-                    const STATUS_ORDER = ["Unaware", "Resistant", "Neutral", "Supportive", "Leading"];
+                    const STATUS_ORDER = ["Resistant", "Unaware", "Neutral", "Supportive", "Leading"];
                     const trendInfo = (trends as any)[s.id];
                     const trend = trendInfo?.trend as "up" | "down" | "same" | "none" | undefined;
                     // vs Target: compare current vs desired

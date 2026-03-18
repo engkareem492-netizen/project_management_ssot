@@ -175,8 +175,8 @@ const SEED_DEFAULTS: Record<string, Record<string, Array<{ value: string; color?
   },
   stakeholders: {
     engagement_status: [
-      { value: "Unaware", color: "#6b7280", sortOrder: 0 },
-      { value: "Resistant", color: "#ef4444", sortOrder: 1 },
+      { value: "Resistant", color: "#ef4444", sortOrder: 0 },
+      { value: "Unaware", color: "#6b7280", sortOrder: 1 },
       { value: "Neutral", color: "#f59e0b", sortOrder: 2 },
       { value: "Supportive", color: "#10b981", sortOrder: 3 },
       { value: "Leading", color: "#3b82f6", sortOrder: 4 },

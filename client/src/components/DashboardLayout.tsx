@@ -106,6 +106,7 @@ import {
   useSensor,
   useSensors,
   closestCenter,
+  useDroppable,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -201,7 +202,10 @@ const HIDDEN_SECTIONS_KEY    = "sidebar-hidden-sections";
 const MOVED_ITEMS_KEY        = "sidebar-moved-items";
 const CUSTOM_SECTIONS_KEY      = "sidebar-custom-sections";
 const COLLAPSED_SECTIONS_KEY   = "sidebar-collapsed-sections";
+const SECTION_ORDER_LIST_KEY   = "sidebar-section-order-list";
 const MAX_CUSTOM_SECTIONS      = 3;
+const SECTION_PREFIX = "__section__:";
+const EMPTY_PREFIX   = "__empty__:";
 const DEFAULT_WIDTH = 280;
 const MIN_WIDTH     = 200;
 const MAX_WIDTH     = 480;
@@ -281,6 +285,46 @@ function SortableNavItem({
         </div>
       </div>
     </SidebarMenuItem>
+  );
+}
+
+// ─── Sortable section wrapper ─────────────────────────────────────────────────
+function SortableSection({
+  sectionId,
+  children,
+}: {
+  sectionId: string;
+  children: (handle: { attributes: Record<string, unknown>; listeners: Record<string, unknown> | undefined }) => React.ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: `${SECTION_PREFIX}${sectionId}`,
+  });
+  const style: CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+  };
+  return (
+    <div ref={setNodeRef} style={style}>
+      {children({ attributes: attributes as Record<string, unknown>, listeners: listeners as Record<string, unknown> | undefined })}
+    </div>
+  );
+}
+
+// ─── Empty section drop zone ───────────────────────────────────────────────────
+function EmptyDropZone({ sectionLabel }: { sectionLabel: string }) {
+  const { setNodeRef, isOver } = useDroppable({ id: `${EMPTY_PREFIX}${sectionLabel}` });
+  return (
+    <div
+      ref={setNodeRef}
+      className={`mx-1 my-1 h-8 rounded-md border-2 border-dashed flex items-center justify-center text-[10px] select-none transition-colors ${
+        isOver
+          ? "border-primary/50 text-primary/60 bg-primary/5"
+          : "border-muted-foreground/15 text-muted-foreground/25"
+      }`}
+    >
+      Drop tiles here
+    </div>
   );
 }
 
@@ -382,6 +426,9 @@ function DashboardLayoutContent({
   const [collapsedSections, setCollapsedSections] = useState<string[]>(() => {
     try { return JSON.parse(localStorage.getItem(COLLAPSED_SECTIONS_KEY) ?? "[]"); } catch { return []; }
   });
+  const [sectionOrderList, setSectionOrderList] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem(SECTION_ORDER_LIST_KEY) ?? "[]"); } catch { return []; }
+  });
   const [renamingSection, setRenamingSection] = useState<string | null>(null);
   const [sectionRenameValue, setSectionRenameValue] = useState("");
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
@@ -393,6 +440,7 @@ function DashboardLayoutContent({
   useEffect(() => { localStorage.setItem(MOVED_ITEMS_KEY, JSON.stringify(movedItems)); }, [movedItems]);
   useEffect(() => { localStorage.setItem(CUSTOM_SECTIONS_KEY, JSON.stringify(customSections)); }, [customSections]);
   useEffect(() => { localStorage.setItem(COLLAPSED_SECTIONS_KEY, JSON.stringify(collapsedSections)); }, [collapsedSections]);
+  useEffect(() => { localStorage.setItem(SECTION_ORDER_LIST_KEY, JSON.stringify(sectionOrderList)); }, [sectionOrderList]);
 
   const { data: badgeCounts } = trpc.sidebarBadges.counts.useQuery(
     { projectId: currentProjectId! },
@@ -484,7 +532,15 @@ function DashboardLayoutContent({
       return { label: cs.id, items: [...ordered, ...unordered], displayLabel, isCustom: true };
     });
 
-  const sectionsWithOrder = [...builtInSectionsWithOrder, ...customSectionsWithOrder];
+  const sectionsWithOrder = (() => {
+    const all = [...builtInSectionsWithOrder, ...customSectionsWithOrder];
+    if (!sectionOrderList.length) return all;
+    const ordered = sectionOrderList
+      .map(label => all.find(s => s.label === label))
+      .filter((s): s is typeof all[0] => Boolean(s));
+    const unordered = all.filter(s => !sectionOrderList.includes(s.label));
+    return [...ordered, ...unordered];
+  })();
 
   // Helper: add a new custom section
   const handleAddCustomSection = () => {
@@ -526,6 +582,14 @@ function DashboardLayoutContent({
     const { over } = event;
     if (!over) { setOverSectionLabel(null); return; }
     const overId = String(over.id);
+    if (overId.startsWith(SECTION_PREFIX)) {
+      setOverSectionLabel(overId.slice(SECTION_PREFIX.length));
+      return;
+    }
+    if (overId.startsWith(EMPTY_PREFIX)) {
+      setOverSectionLabel(overId.slice(EMPTY_PREFIX.length));
+      return;
+    }
     const target = sectionsWithOrder.find(s => s.items.some(i => i.path === overId));
     setOverSectionLabel(target?.label ?? null);
   }
@@ -539,6 +603,56 @@ function DashboardLayoutContent({
     const activeId = active.id as string;
     const overId   = over.id as string;
 
+    // ── Section reordering ──────────────────────────────────────────────────
+    if (activeId.startsWith(SECTION_PREFIX)) {
+      if (overId.startsWith(SECTION_PREFIX)) {
+        const activeSectionId = activeId.slice(SECTION_PREFIX.length);
+        const overSectionId   = overId.slice(SECTION_PREFIX.length);
+        const labels = sectionsWithOrder.map(s => s.label);
+        const oldIdx = labels.indexOf(activeSectionId);
+        const newIdx = labels.indexOf(overSectionId);
+        if (oldIdx !== -1 && newIdx !== -1 && oldIdx !== newIdx) {
+          setSectionOrderList(arrayMove(labels, oldIdx, newIdx));
+        }
+      }
+      return;
+    }
+
+    // ── Item dropped onto empty drop zone ───────────────────────────────────
+    if (overId.startsWith(EMPTY_PREFIX)) {
+      const targetLabel = overId.slice(EMPTY_PREFIX.length);
+      const sourceSection = sectionsWithOrder.find(s => s.items.some(i => i.path === activeId));
+      if (!sourceSection || sourceSection.label === targetLabel) return;
+      setMovedItems(prev => ({ ...prev, [activeId]: targetLabel }));
+      const srcOrder = (sectionOrders[sourceSection.label] ?? sourceSection.items.map(i => i.path))
+        .filter(p => p !== activeId);
+      setSectionOrders(prev => ({
+        ...prev,
+        [sourceSection.label]: srcOrder,
+        [targetLabel]: [activeId],
+      }));
+      return;
+    }
+
+    // ── Item dropped onto a section header → move to that section ───────────
+    if (overId.startsWith(SECTION_PREFIX)) {
+      const targetLabel = overId.slice(SECTION_PREFIX.length);
+      const sourceSection = sectionsWithOrder.find(s => s.items.some(i => i.path === activeId));
+      if (!sourceSection || sourceSection.label === targetLabel) return;
+      setMovedItems(prev => ({ ...prev, [activeId]: targetLabel }));
+      const srcOrder = (sectionOrders[sourceSection.label] ?? sourceSection.items.map(i => i.path))
+        .filter(p => p !== activeId);
+      const tgtSection = sectionsWithOrder.find(s => s.label === targetLabel);
+      const tgtOrder = sectionOrders[targetLabel] ?? tgtSection?.items.map(i => i.path) ?? [];
+      setSectionOrders(prev => ({
+        ...prev,
+        [sourceSection.label]: srcOrder,
+        [targetLabel]: [...tgtOrder, activeId],
+      }));
+      return;
+    }
+
+    // ── Item reorder within / move between sections ──────────────────────────
     const sourceSection = sectionsWithOrder.find(s => s.items.some(i => i.path === activeId));
     const targetSection = sectionsWithOrder.find(s => s.items.some(i => i.path === overId));
     if (!sourceSection || !targetSection) return;
@@ -553,10 +667,8 @@ function DashboardLayoutContent({
     } else {
       // Move item to a different section
       setMovedItems(prev => ({ ...prev, [activeId]: targetSection.label }));
-      // Remove from source section order
       const srcOrder = (sectionOrders[sourceSection.label] ?? sourceSection.items.map(i => i.path))
         .filter(p => p !== activeId);
-      // Insert into target section order after the hovered item
       const tgtItems = targetSection.items.map(i => i.path).filter(p => p !== activeId);
       const tgtIdx = tgtItems.indexOf(overId);
       const newTgtOrder = tgtIdx >= 0
@@ -609,10 +721,14 @@ function DashboardLayoutContent({
   }, [isResizing, setSidebarWidth]);
 
   // Derived: which section does the dragged item currently live in?
-  const draggingSourceLabel = activeDragId
+  const isDraggingSection = (activeDragId?.startsWith(SECTION_PREFIX)) ?? false;
+  const draggingSourceLabel = (!isDraggingSection && activeDragId)
     ? sectionsWithOrder.find(s => s.items.some(i => i.path === activeDragId))?.label
     : null;
-  const isCrossSectionDrag = overSectionLabel && overSectionLabel !== draggingSourceLabel;
+  const isCrossSectionDrag = !isDraggingSection && overSectionLabel && overSectionLabel !== draggingSourceLabel;
+  const draggingSection = isDraggingSection && activeDragId
+    ? sectionsWithOrder.find(s => s.label === activeDragId.slice(SECTION_PREFIX.length))
+    : null;
 
   return (
     <>
@@ -685,7 +801,9 @@ function DashboardLayoutContent({
                 }`}>
                   <GripVertical className="h-3 w-3 text-primary/60 shrink-0" />
                   <span className="text-[10px] text-primary/70 font-medium">
-                    {isCrossSectionDrag
+                    {isDraggingSection
+                      ? "Drag to reorder sections"
+                      : isCrossSectionDrag
                       ? `Move to ${sectionNames[overSectionLabel!] ?? overSectionLabel}`
                       : "Drag to reorder or move to another section"}
                   </span>
@@ -693,6 +811,7 @@ function DashboardLayoutContent({
               )}
 
               {/* PMP Sections */}
+              <SortableContext items={sectionsWithOrder.map(s => `${SECTION_PREFIX}${s.label}`)} strategy={verticalListSortingStrategy}>
               {sectionsWithOrder.map((section) => {
                 const isSectionCollapsed = collapsedSections.includes(section.label);
                 const toggleCollapse = () => setCollapsedSections(prev =>
@@ -701,8 +820,19 @@ function DashboardLayoutContent({
                     : [...prev, section.label]
                 );
                 return (
-                <div key={section.label} className="group/section">
+                <SortableSection key={section.label} sectionId={section.label}>
+                {({ attributes: sectionDragAttrs, listeners: sectionDragListeners }) => (
+                <div className="group/section">
                   <div className="px-3 pt-3 pb-0.5 group-data-[collapsible=icon]:hidden flex items-center gap-1 group/sectionhdr">
+                    {/* Section reorder drag handle */}
+                    <span
+                      {...(sectionDragAttrs as React.HTMLAttributes<HTMLSpanElement>)}
+                      {...(sectionDragListeners as React.HTMLAttributes<HTMLSpanElement>)}
+                      title="Drag to reorder section"
+                      className="opacity-0 group-hover/sectionhdr:opacity-100 cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground/70 transition-all shrink-0 select-none flex items-center"
+                    >
+                      <GripVertical className="h-3 w-3" />
+                    </span>
                     {renamingSection === section.label ? (
                       <form
                         className="flex-1 min-w-0"
@@ -814,32 +944,42 @@ function DashboardLayoutContent({
                         <div className="mx-3 mb-1 h-0.5 rounded-full bg-primary/40 group-data-[collapsible=icon]:hidden" />
                       )}
 
-                      <SortableContext items={section.items.map(i => i.path)} strategy={verticalListSortingStrategy}>
+                      {section.items.length === 0 ? (
+                        /* Empty section: show a drop zone so tiles can be dragged in */
                         <SidebarMenu className="px-2 pb-1">
-                          {section.items.map((item) => (
-                            <SortableNavItem
-                              key={item.path}
-                              item={item}
-                              isActive={location === item.path}
-                              badgeCount={
-                                item.path === "/tasks" ? badgeCounts?.tasks :
-                                item.path === "/issues" ? badgeCounts?.issues :
-                                item.path === "/dependencies" ? badgeCounts?.dependencies :
-                                item.path === "/risk-register" ? badgeCounts?.risks :
-                                undefined
-                              }
-                              onNavigate={setLocation}
-                              isDraggingActive={!!activeDragId}
-                            />
-                          ))}
+                          <EmptyDropZone sectionLabel={section.label} />
                         </SidebarMenu>
-                      </SortableContext>
+                      ) : (
+                        <SortableContext items={section.items.map(i => i.path)} strategy={verticalListSortingStrategy}>
+                          <SidebarMenu className="px-2 pb-1">
+                            {section.items.map((item) => (
+                              <SortableNavItem
+                                key={item.path}
+                                item={item}
+                                isActive={location === item.path}
+                                badgeCount={
+                                  item.path === "/tasks" ? badgeCounts?.tasks :
+                                  item.path === "/issues" ? badgeCounts?.issues :
+                                  item.path === "/dependencies" ? badgeCounts?.dependencies :
+                                  item.path === "/risk-register" ? badgeCounts?.risks :
+                                  undefined
+                                }
+                                onNavigate={setLocation}
+                                isDraggingActive={!!activeDragId}
+                              />
+                            ))}
+                          </SidebarMenu>
+                        </SortableContext>
+                      )}
                     </>
                   )}
                   <div className="mx-4 border-t border-border/30 group-data-[collapsible=icon]:hidden" />
                 </div>
+                )}
+                </SortableSection>
                 );
               })}
+              </SortableContext>
 
               {/* Add new custom section button */}
               {!isCollapsed && customSections.length < MAX_CUSTOM_SECTIONS && (
@@ -943,7 +1083,12 @@ function DashboardLayoutContent({
 
         {/* Drag overlay */}
         <DragOverlay dropAnimation={{ duration: 180, easing: "ease" }}>
-          {draggingItem ? (
+          {draggingSection ? (
+            <div className="flex items-center gap-2 rounded-lg px-3 h-7 bg-background border-2 border-primary/40 shadow-xl text-[10px] font-semibold uppercase tracking-wider text-primary cursor-grabbing select-none" style={{ minWidth: 140 }}>
+              <GripVertical className="h-3 w-3 shrink-0" />
+              <span className="flex-1 truncate">{draggingSection.displayLabel}</span>
+            </div>
+          ) : draggingItem ? (
             <div className="flex items-center gap-2 rounded-lg px-3 h-9 bg-background border-2 border-primary/40 shadow-xl text-sm font-medium cursor-grabbing select-none" style={{ minWidth: 160 }}>
               <draggingItem.icon className="h-4 w-4 shrink-0 text-primary" />
               <span className="flex-1 truncate">{draggingItem.label}</span>

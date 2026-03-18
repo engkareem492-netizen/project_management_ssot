@@ -102,7 +102,7 @@ const EMPTY_FORM: StakeholderFormData = {
 };
 
 const ENGAGEMENT_STRATEGIES = ["Manage Closely", "Keep Satisfied", "Keep Informed", "Monitor"];
-const ENGAGEMENT_STATUSES = ["Unaware", "Resistant", "Neutral", "Supportive", "Leading"];
+const ENGAGEMENT_STATUSES = ["Resistant", "Unaware", "Neutral", "Supportive", "Leading"];
 const COMM_FREQUENCIES = ["Daily", "Weekly", "Bi-weekly", "Monthly", "Quarterly", "As needed"];
 const COMM_CHANNELS = ["Email", "Meeting", "Phone", "Slack", "Teams", "Report", "Newsletter"];
 
