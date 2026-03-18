@@ -45,5 +45,11 @@ try {
   console.log('Tasks test query FAILED:', e.message);
 }
 
+// Add PartTime to resourceCalendar calType enum
+try {
+  await c.query("ALTER TABLE resourceCalendar MODIFY COLUMN calType ENUM('Working','Leave','Holiday','Training','PartTime') NOT NULL DEFAULT 'Working'");
+  console.log('resourceCalendar calType enum updated to include PartTime');
+} catch (e) { console.log('resourceCalendar calType update:', e.message); }
+
 await c.end();
 console.log('Done');

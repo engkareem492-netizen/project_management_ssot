@@ -203,7 +203,7 @@ export const teamSkillsRouter = router({
       stakeholderId: z.number(),
       projectId: z.number(),
       date: z.string(),
-      type: z.enum(["Working", "Leave", "Holiday", "Training"]),
+      type: z.enum(["Working", "Leave", "Holiday", "Training", "PartTime"]),
       availableHours: z.string().optional(),
       notes: z.string().optional(),
     }))
@@ -240,7 +240,7 @@ export const teamSkillsRouter = router({
       projectId: z.number(),
       startDate: z.string(),
       endDate: z.string(),
-      type: z.enum(["Working", "Leave", "Holiday", "Training"]),
+      type: z.enum(["Working", "Leave", "Holiday", "Training", "PartTime"]),
       availableHours: z.string().optional(),
       notes: z.string().optional(),
       skipWeekends: z.boolean().optional().default(true),
@@ -302,5 +302,82 @@ export const teamSkillsRouter = router({
       if (!db) throw new Error("DB unavailable");
       await db.delete(resourceCalendar).where(eq(resourceCalendar.id, input.id));
       return { success: true };
+    }),
+
+  // Mass-fill working days: fill empty days as Working (full-time) and optionally create Holiday for weekends
+  massUpsertWorking: protectedProcedure
+    .input(z.object({
+      stakeholderIds: z.array(z.number()),
+      projectId: z.number(),
+      startDate: z.string(),
+      endDate: z.string(),
+      fullTimeHours: z.string().default("8"),
+      skipSaturday: z.boolean().default(true),
+      skipSunday: z.boolean().default(true),
+      createWeekendHolidays: z.boolean().default(true),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("DB unavailable");
+      const { eq, and } = await import("drizzle-orm");
+
+      const allDates: { date: string; isWeekend: boolean }[] = [];
+      const cur = new Date(input.startDate + "T00:00:00");
+      const end = new Date(input.endDate + "T00:00:00");
+      while (cur <= end) {
+        const dow = cur.getDay(); // 0=Sun, 6=Sat
+        const isSat = dow === 6;
+        const isSun = dow === 0;
+        const isWeekend = (isSat && input.skipSaturday) || (isSun && input.skipSunday);
+        allDates.push({ date: cur.toISOString().split("T")[0], isWeekend });
+        cur.setDate(cur.getDate() + 1);
+      }
+
+      let filledWorking = 0;
+      let filledHoliday = 0;
+
+      for (const sid of input.stakeholderIds) {
+        for (const { date, isWeekend } of allDates) {
+          // Check if an entry already exists
+          const existing = await db
+            .select()
+            .from(resourceCalendar)
+            .where(
+              and(
+                eq(resourceCalendar.stakeholderId, sid),
+                eq(resourceCalendar.date, date),
+              )
+            )
+            .limit(1);
+
+          if (existing.length > 0) continue; // Never overwrite existing entries
+
+          if (isWeekend) {
+            if (input.createWeekendHolidays) {
+              await db.insert(resourceCalendar).values({
+                stakeholderId: sid,
+                projectId: input.projectId,
+                date,
+                type: "Holiday",
+                availableHours: "0",
+                notes: "Weekend",
+              });
+              filledHoliday++;
+            }
+          } else {
+            await db.insert(resourceCalendar).values({
+              stakeholderId: sid,
+              projectId: input.projectId,
+              date,
+              type: "Working",
+              availableHours: input.fullTimeHours,
+              notes: "",
+            });
+            filledWorking++;
+          }
+        }
+      }
+
+      return { filledWorking, filledHoliday, total: filledWorking + filledHoliday };
     }),
 });

@@ -1542,7 +1542,7 @@ export const resourceCalendar = mysqlTable("resourceCalendar", {
   stakeholderId: int("stakeholderId").notNull(),
   projectId: int("projectId").notNull(),
   date: date("date").notNull(),
-  type: mysqlEnum("calType", ["Working", "Leave", "Holiday", "Training"]).default("Working").notNull(),
+  type: mysqlEnum("calType", ["Working", "Leave", "Holiday", "Training", "PartTime"]).default("Working").notNull(),
   availableHours: decimal("availableHours", { precision: 4, scale: 1 }).default("8.0"),
   notes: text("notes"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

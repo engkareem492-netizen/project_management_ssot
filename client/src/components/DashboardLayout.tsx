@@ -82,6 +82,8 @@ import {
   Eye,
   FolderPlus,
   Trash2,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -197,8 +199,9 @@ const SECTION_ORDERS_KEY     = "sidebar-section-orders";
 const SECTION_NAMES_KEY      = "sidebar-section-names";
 const HIDDEN_SECTIONS_KEY    = "sidebar-hidden-sections";
 const MOVED_ITEMS_KEY        = "sidebar-moved-items";
-const CUSTOM_SECTIONS_KEY    = "sidebar-custom-sections";
-const MAX_CUSTOM_SECTIONS    = 3;
+const CUSTOM_SECTIONS_KEY      = "sidebar-custom-sections";
+const COLLAPSED_SECTIONS_KEY   = "sidebar-collapsed-sections";
+const MAX_CUSTOM_SECTIONS      = 3;
 const DEFAULT_WIDTH = 280;
 const MIN_WIDTH     = 200;
 const MAX_WIDTH     = 480;
@@ -375,6 +378,10 @@ function DashboardLayoutContent({
   const [customSections, setCustomSections] = useState<CustomSectionDef[]>(() => {
     try { return JSON.parse(localStorage.getItem(CUSTOM_SECTIONS_KEY) ?? "[]"); } catch { return []; }
   });
+  // Collapsed sections (by section label/id)
+  const [collapsedSections, setCollapsedSections] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem(COLLAPSED_SECTIONS_KEY) ?? "[]"); } catch { return []; }
+  });
   const [renamingSection, setRenamingSection] = useState<string | null>(null);
   const [sectionRenameValue, setSectionRenameValue] = useState("");
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
@@ -385,6 +392,7 @@ function DashboardLayoutContent({
   useEffect(() => { localStorage.setItem(HIDDEN_SECTIONS_KEY, JSON.stringify(hiddenSections)); }, [hiddenSections]);
   useEffect(() => { localStorage.setItem(MOVED_ITEMS_KEY, JSON.stringify(movedItems)); }, [movedItems]);
   useEffect(() => { localStorage.setItem(CUSTOM_SECTIONS_KEY, JSON.stringify(customSections)); }, [customSections]);
+  useEffect(() => { localStorage.setItem(COLLAPSED_SECTIONS_KEY, JSON.stringify(collapsedSections)); }, [collapsedSections]);
 
   const { data: badgeCounts } = trpc.sidebarBadges.counts.useQuery(
     { projectId: currentProjectId! },
@@ -685,7 +693,14 @@ function DashboardLayoutContent({
               )}
 
               {/* PMP Sections */}
-              {sectionsWithOrder.map((section) => (
+              {sectionsWithOrder.map((section) => {
+                const isSectionCollapsed = collapsedSections.includes(section.label);
+                const toggleCollapse = () => setCollapsedSections(prev =>
+                  prev.includes(section.label)
+                    ? prev.filter(s => s !== section.label)
+                    : [...prev, section.label]
+                );
+                return (
                 <div key={section.label} className="group/section">
                   <div className="px-3 pt-3 pb-0.5 group-data-[collapsible=icon]:hidden flex items-center gap-1 group/sectionhdr">
                     {renamingSection === section.label ? (
@@ -714,14 +729,24 @@ function DashboardLayoutContent({
                         />
                       </form>
                     ) : (
-                      <span className="flex-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50 select-none truncate">
-                        {section.displayLabel}
-                        {!section.isCustom && sectionNames[section.label] && (
-                          <span className="ml-1 normal-case font-normal text-muted-foreground/30 not-uppercase tracking-normal">
-                            ({section.label})
-                          </span>
-                        )}
-                      </span>
+                      <button
+                        className="flex-1 min-w-0 flex items-center gap-1 group/collapsetoggle text-left"
+                        onClick={toggleCollapse}
+                        title={isSectionCollapsed ? "Expand section" : "Collapse section"}
+                      >
+                        <span className="flex-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50 select-none truncate">
+                          {section.displayLabel}
+                          {!section.isCustom && sectionNames[section.label] && (
+                            <span className="ml-1 normal-case font-normal text-muted-foreground/30 not-uppercase tracking-normal">
+                              ({section.label})
+                            </span>
+                          )}
+                        </span>
+                        {isSectionCollapsed
+                          ? <ChevronRight className="h-3 w-3 text-muted-foreground/30 group-hover/collapsetoggle:text-muted-foreground shrink-0 transition-colors" />
+                          : <ChevronDown className="h-3 w-3 text-muted-foreground/20 group-hover/collapsetoggle:text-muted-foreground/50 shrink-0 transition-colors" />
+                        }
+                      </button>
                     )}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -782,34 +807,39 @@ function DashboardLayoutContent({
                     </DropdownMenu>
                   </div>
 
-                  {/* Section drop highlight when dragging cross-section */}
-                  {activeDragId && isCrossSectionDrag && overSectionLabel === section.label && (
-                    <div className="mx-3 mb-1 h-0.5 rounded-full bg-primary/40 group-data-[collapsible=icon]:hidden" />
-                  )}
+                  {!isSectionCollapsed && (
+                    <>
+                      {/* Section drop highlight when dragging cross-section */}
+                      {activeDragId && isCrossSectionDrag && overSectionLabel === section.label && (
+                        <div className="mx-3 mb-1 h-0.5 rounded-full bg-primary/40 group-data-[collapsible=icon]:hidden" />
+                      )}
 
-                  <SortableContext items={section.items.map(i => i.path)} strategy={verticalListSortingStrategy}>
-                    <SidebarMenu className="px-2 pb-1">
-                      {section.items.map((item) => (
-                        <SortableNavItem
-                          key={item.path}
-                          item={item}
-                          isActive={location === item.path}
-                          badgeCount={
-                            item.path === "/tasks" ? badgeCounts?.tasks :
-                            item.path === "/issues" ? badgeCounts?.issues :
-                            item.path === "/dependencies" ? badgeCounts?.dependencies :
-                            item.path === "/risk-register" ? badgeCounts?.risks :
-                            undefined
-                          }
-                          onNavigate={setLocation}
-                          isDraggingActive={!!activeDragId}
-                        />
-                      ))}
-                    </SidebarMenu>
-                  </SortableContext>
+                      <SortableContext items={section.items.map(i => i.path)} strategy={verticalListSortingStrategy}>
+                        <SidebarMenu className="px-2 pb-1">
+                          {section.items.map((item) => (
+                            <SortableNavItem
+                              key={item.path}
+                              item={item}
+                              isActive={location === item.path}
+                              badgeCount={
+                                item.path === "/tasks" ? badgeCounts?.tasks :
+                                item.path === "/issues" ? badgeCounts?.issues :
+                                item.path === "/dependencies" ? badgeCounts?.dependencies :
+                                item.path === "/risk-register" ? badgeCounts?.risks :
+                                undefined
+                              }
+                              onNavigate={setLocation}
+                              isDraggingActive={!!activeDragId}
+                            />
+                          ))}
+                        </SidebarMenu>
+                      </SortableContext>
+                    </>
+                  )}
                   <div className="mx-4 border-t border-border/30 group-data-[collapsible=icon]:hidden" />
                 </div>
-              ))}
+                );
+              })}
 
               {/* Add new custom section button */}
               {!isCollapsed && customSections.length < MAX_CUSTOM_SECTIONS && (

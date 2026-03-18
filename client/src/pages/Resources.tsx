@@ -15,6 +15,7 @@ import {
   TreeDeciduous, DollarSign, Clock, TrendingUp, Plus, Pencil, Trash2,
   ArrowUp, ArrowDown, Check, X, FolderTree, Cpu, Wrench, Package, Server, Banknote,
   Building2, HardHat, Truck, FlaskConical, Wifi, UserPlus, Import, Download, Zap,
+  CalendarCheck, Layers,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
@@ -86,6 +87,7 @@ function getDatesInRange(startStr: string, endStr: string): string[] {
 
 const CAL_TYPE_COLORS: Record<string, string> = {
   Working: "bg-green-100 text-green-700 border-green-200",
+  PartTime: "bg-orange-100 text-orange-700 border-orange-200",
   Leave: "bg-yellow-100 text-yellow-700 border-yellow-200",
   Holiday: "bg-blue-100 text-blue-700 border-blue-200",
   Training: "bg-purple-100 text-purple-700 border-purple-200",
@@ -144,7 +146,17 @@ export default function Resources() {
   const [calEntryMode, setCalEntryMode] = useState<"single" | "range">("single");
   const [calEditStakeholder, setCalEditStakeholder] = useState<number | null>(null);
   const [calEditStakeholderName, setCalEditStakeholderName] = useState<string>("");
-  const [calEditType, setCalEditType] = useState<"Working" | "Leave" | "Holiday" | "Training">("Leave");
+  const [calEditType, setCalEditType] = useState<"Working" | "Leave" | "Holiday" | "Training" | "PartTime">("Leave");
+  // Mass Fill state
+  const [showMassDialog, setShowMassDialog] = useState(false);
+  const [massStartDate, setMassStartDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [massEndDate, setMassEndDate] = useState(() => {
+    const d = new Date(); d.setMonth(d.getMonth() + 1); return d.toISOString().split("T")[0];
+  });
+  const [massFullTimeHours, setMassFullTimeHours] = useState("8");
+  const [massSkipSaturday, setMassSkipSaturday] = useState(true);
+  const [massSkipSunday, setMassSkipSunday] = useState(true);
+  const [massCreateWeekendHolidays, setMassCreateWeekendHolidays] = useState(true);
   const [calEditHours, setCalEditHours] = useState("0");
   // Holiday stakeholder assignment
   const [calHolidayScope, setCalHolidayScope] = useState<"all" | "selected">("all");
@@ -255,6 +267,14 @@ export default function Resources() {
       setShowCalDialog(false);
       toast.success(`Calendar entries saved for ${data.count} day(s)`);
     },
+  });
+  const massUpsertWorking = trpc.teamSkills.massUpsertWorking.useMutation({
+    onSuccess: (data) => {
+      refetchCal();
+      setShowMassDialog(false);
+      toast.success(`Mass fill done: ${data.filledWorking} working day(s) + ${data.filledHoliday} weekend holiday(s) created`);
+    },
+    onError: (e) => toast.error(e.message ?? "Mass fill failed"),
   });
 
   // ─── Workload Data ────────────────────────────────────────────────────────
@@ -472,7 +492,7 @@ export default function Resources() {
     const defaultType = stakeholderId === null ? "Holiday" : "Leave";
     const entryType = existing?.type ?? defaultType;
     setCalEditType(entryType);
-    setCalEditHours(existing?.availableHours ?? (entryType === "Working" || entryType === "Training" ? "8" : "0"));
+    setCalEditHours(existing?.availableHours ?? (entryType === "PartTime" ? "4" : entryType === "Working" || entryType === "Training" ? "8" : "0"));
     setCalHolidayScope("all");
     setCalHolidayStakeholderIds([]);
     setCalEditNotes(existing?.notes ?? "");
@@ -1664,6 +1684,17 @@ export default function Resources() {
                   <CalendarDays className="w-3.5 h-3.5" />
                   Add Holiday
                 </Button>
+                {/* Mass Fill Working Days button */}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5 text-green-700 border-green-300 hover:bg-green-50"
+                  onClick={() => setShowMassDialog(true)}
+                  title="Mass fill empty days as Working for the selected resource(s)"
+                >
+                  <CalendarCheck className="w-3.5 h-3.5" />
+                  Mass Fill
+                </Button>
                 {/* Export CSV button */}
                 <Button
                   size="sm"
@@ -2068,19 +2099,21 @@ export default function Resources() {
               {/* Holiday is only available at general level (no specific stakeholder) */}
               {calEditStakeholder !== null && calEditType === "Holiday" && (
                 <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-2 py-1">
-                  Holiday entered for a specific resource will be saved as <strong>Leave</strong>.
+                  Holiday for a specific resource will be saved as <strong>Leave</strong>.
                 </p>
               )}
               <Select value={calEditType} onValueChange={v => {
-                const t = v as "Working" | "Leave" | "Holiday" | "Training";
+                const t = v as "Working" | "Leave" | "Holiday" | "Training" | "PartTime";
                 setCalEditType(t);
                 // Auto-set sensible default hours when type changes
                 if (t === "Leave" || t === "Holiday") setCalEditHours("0");
+                else if (t === "PartTime") setCalEditHours("4");
                 else if (t === "Working" || t === "Training") setCalEditHours("8");
               }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Working">Working</SelectItem>
+                  <SelectItem value="Working">Working (Full Time)</SelectItem>
+                  <SelectItem value="PartTime">Part Time</SelectItem>
                   <SelectItem value="Leave">Leave</SelectItem>
                   {/* Holiday only makes sense at general level */}
                   {calEditStakeholder === null && (
@@ -2179,6 +2212,133 @@ export default function Resources() {
             <Button onClick={saveCalEntry} disabled={upsertCalEntry.isPending || upsertCalRange.isPending}>
               {(upsertCalEntry.isPending || upsertCalRange.isPending) ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : null}
               Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Mass Fill Working Days Dialog ────────────────────────────────── */}
+      <Dialog open={showMassDialog} onOpenChange={setShowMassDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CalendarCheck className="w-4 h-4 text-green-600" />
+              Mass Fill Working Days
+            </DialogTitle>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Fill all <strong>empty</strong> days in the selected range as full-time working days.
+              {calStakeholderId
+                ? <> Applies to: <strong>{calResources.find((r: any) => r.id === calStakeholderId)?.name ?? "selected resource"}</strong>.</>
+                : <> Applies to <strong>all {calResources.length} resource(s)</strong> currently shown.</>
+              }
+            </p>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {/* Date range */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>Start Date</Label>
+                <Input type="date" value={massStartDate} onChange={e => setMassStartDate(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label>End Date</Label>
+                <Input type="date" value={massEndDate} onChange={e => setMassEndDate(e.target.value)} />
+              </div>
+            </div>
+
+            {/* Full-time hours */}
+            <div className="space-y-1">
+              <Label>Full-Time Hours per Day</Label>
+              <Input
+                type="number"
+                min={1}
+                max={24}
+                step={0.5}
+                value={massFullTimeHours}
+                onChange={e => setMassFullTimeHours(e.target.value)}
+                placeholder="e.g. 8"
+              />
+            </div>
+
+            {/* Weekend exclusion */}
+            <div className="space-y-2">
+              <Label>Exclude Weekends</Label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+                  <input type="checkbox" className="rounded" checked={massSkipSaturday} onChange={e => setMassSkipSaturday(e.target.checked)} />
+                  Saturday
+                </label>
+                <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+                  <input type="checkbox" className="rounded" checked={massSkipSunday} onChange={e => setMassSkipSunday(e.target.checked)} />
+                  Sunday
+                </label>
+              </div>
+            </div>
+
+            {/* Create holiday entries for excluded weekends */}
+            {(massSkipSaturday || massSkipSunday) && (
+              <label className="flex items-start gap-2 text-sm cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  className="rounded mt-0.5"
+                  checked={massCreateWeekendHolidays}
+                  onChange={e => setMassCreateWeekendHolidays(e.target.checked)}
+                />
+                <span>
+                  Create <strong>Holiday</strong> entries for excluded weekend days
+                  <span className="block text-xs text-muted-foreground mt-0.5">Only creates entries where none exist yet</span>
+                </span>
+              </label>
+            )}
+
+            {/* Preview */}
+            {massStartDate && massEndDate && massStartDate <= massEndDate && (() => {
+              const cur = new Date(massStartDate + "T00:00:00");
+              const end = new Date(massEndDate + "T00:00:00");
+              let working = 0, weekend = 0;
+              while (cur <= end) {
+                const dow = cur.getDay();
+                const isSat = dow === 6, isSun = dow === 0;
+                if ((isSat && massSkipSaturday) || (isSun && massSkipSunday)) weekend++;
+                else working++;
+                cur.setDate(cur.getDate() + 1);
+              }
+              const resources = calStakeholderId ? 1 : calResources.length;
+              return (
+                <div className="text-xs bg-muted/40 rounded px-3 py-2 space-y-0.5">
+                  <p><span className="font-semibold text-green-700">{working}</span> working day(s) × {resources} resource(s) → up to <span className="font-semibold">{working * resources}</span> Working entries</p>
+                  {massCreateWeekendHolidays && weekend > 0 && (
+                    <p><span className="font-semibold text-blue-700">{weekend}</span> weekend day(s) × {resources} resource(s) → up to <span className="font-semibold">{weekend * resources}</span> Holiday entries</p>
+                  )}
+                  <p className="text-muted-foreground mt-1">Existing entries are never overwritten.</p>
+                </div>
+              );
+            })()}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowMassDialog(false)}>Cancel</Button>
+            <Button
+              className="bg-green-600 hover:bg-green-700 text-white"
+              disabled={massUpsertWorking.isPending || !massStartDate || !massEndDate || massStartDate > massEndDate}
+              onClick={() => {
+                const targetIds = calStakeholderId
+                  ? [calStakeholderId]
+                  : calResources.map((r: any) => r.id).filter((id: number) => id > 0); // positive IDs are stakeholders
+                if (targetIds.length === 0) { toast.error("No resources to fill"); return; }
+                massUpsertWorking.mutate({
+                  stakeholderIds: targetIds,
+                  projectId,
+                  startDate: massStartDate,
+                  endDate: massEndDate,
+                  fullTimeHours: massFullTimeHours,
+                  skipSaturday: massSkipSaturday,
+                  skipSunday: massSkipSunday,
+                  createWeekendHolidays: massCreateWeekendHolidays,
+                });
+              }}
+            >
+              {massUpsertWorking.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <CalendarCheck className="w-3.5 h-3.5 mr-1.5" />}
+              {massUpsertWorking.isPending ? "Filling..." : "Confirm Mass Fill"}
             </Button>
           </DialogFooter>
         </DialogContent>
