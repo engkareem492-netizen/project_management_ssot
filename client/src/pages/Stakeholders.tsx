@@ -1379,7 +1379,6 @@ function DetailPanel({
 
             {/* Engagement */}
             {(stakeholder.currentEngagementStatus || stakeholder.desiredEngagementStatus ||
-              stakeholder.powerLevel != null || stakeholder.interestLevel != null ||
               stakeholder.engagementStrategy) && (
               <div>
                 <SectionLabel label="Engagement" />
@@ -1401,31 +1400,6 @@ function DetailPanel({
                     )}
                   </div>
                 )}
-
-                <div className="grid grid-cols-2 gap-x-6 gap-y-3 mb-3">
-                  {stakeholder.powerLevel != null && (
-                    <div>
-                      <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Power Level</span>
-                      <div className="flex items-center gap-1.5 mt-1">
-                        {[1,2,3,4,5].map(i => (
-                          <div key={i} className={`h-2 w-full rounded-sm ${i <= (stakeholder.powerLevel ?? 0) ? "bg-primary" : "bg-muted"}`} />
-                        ))}
-                        <span className="text-xs font-semibold ml-1">{stakeholder.powerLevel}/5</span>
-                      </div>
-                    </div>
-                  )}
-                  {stakeholder.interestLevel != null && (
-                    <div>
-                      <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Interest Level</span>
-                      <div className="flex items-center gap-1.5 mt-1">
-                        {[1,2,3,4,5].map(i => (
-                          <div key={i} className={`h-2 w-full rounded-sm ${i <= (stakeholder.interestLevel ?? 0) ? "bg-primary" : "bg-muted"}`} />
-                        ))}
-                        <span className="text-xs font-semibold ml-1">{stakeholder.interestLevel}/5</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
 
                 {stakeholder.engagementStrategy && (
                   <div>
