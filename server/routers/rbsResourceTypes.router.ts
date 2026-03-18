@@ -72,16 +72,14 @@ export const rbsResourceTypesRouter = router({
       return rows[0];
     }),
 
-  // Delete a custom resource type (cannot delete built-in)
+  // Delete any resource type (including built-in)
   delete: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new Error("DB unavailable");
-      const { eq, and } = await import("drizzle-orm");
-      await db
-        .delete(rbsResourceTypes)
-        .where(and(eq(rbsResourceTypes.id, input.id), eq(rbsResourceTypes.isBuiltIn, false)));
+      const { eq } = await import("drizzle-orm");
+      await db.delete(rbsResourceTypes).where(eq(rbsResourceTypes.id, input.id));
       return { success: true };
     }),
 

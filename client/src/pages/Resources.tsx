@@ -1139,26 +1139,22 @@ export default function Resources() {
                                         {meta.icon}
                                       </div>
                                       <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
-                                        {type.isBuiltIn ? (
-                                          <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border/60 select-none">Built-in</span>
-                                        ) : (
-                                          <>
-                                            <button className="w-6 h-6 flex items-center justify-center rounded hover:bg-muted text-muted-foreground transition-colors"
-                                              onClick={() => { setWizardEditTypeId(type.id); setWizardTypeForm({ name: type.name, color: type.color ?? "#6366f1", description: type.description ?? "" }); }}>
-                                              <Pencil className="w-3 h-3" />
-                                            </button>
-                                            <button className="w-6 h-6 flex items-center justify-center rounded hover:bg-red-50 text-muted-foreground hover:text-red-600 transition-colors"
-                                              onClick={() => {
-                                                const resourceCount = (rbsNodes as any[]).filter(n => n.resourceType === type.name && n.isLeaf === 1).length;
-                                                const msg = resourceCount > 0
-                                                  ? `Delete "${type.name}"? This will also remove ${resourceCount} resource${resourceCount !== 1 ? "s" : ""} under this category. This cannot be undone.`
-                                                  : `Delete "${type.name}"? This cannot be undone.`;
-                                                if (confirm(msg)) deleteRbsType.mutate({ id: type.id });
-                                              }}>
-                                              <Trash2 className="w-3 h-3" />
-                                            </button>
-                                          </>
-                                        )}
+                                        <>
+                                          <button className="w-6 h-6 flex items-center justify-center rounded hover:bg-muted text-muted-foreground transition-colors"
+                                            onClick={() => { setWizardEditTypeId(type.id); setWizardTypeForm({ name: type.name, color: type.color ?? "#6366f1", description: type.description ?? "" }); }}>
+                                            <Pencil className="w-3 h-3" />
+                                          </button>
+                                          <button className="w-6 h-6 flex items-center justify-center rounded hover:bg-red-50 text-muted-foreground hover:text-red-600 transition-colors"
+                                            onClick={() => {
+                                              const resourceCount = (rbsNodes as any[]).filter(n => n.resourceType === type.name && n.isLeaf === 1).length;
+                                              const msg = resourceCount > 0
+                                                ? `Delete "${type.name}"? This will also remove ${resourceCount} resource${resourceCount !== 1 ? "s" : ""} under this category. This cannot be undone.`
+                                                : `Delete "${type.name}"? This cannot be undone.`;
+                                              if (confirm(msg)) deleteRbsType.mutate({ id: type.id });
+                                            }}>
+                                            <Trash2 className="w-3 h-3" />
+                                          </button>
+                                        </>
                                       </div>
                                     </div>
                                     <p className="font-semibold text-sm">{type.name}</p>
@@ -2201,7 +2197,6 @@ export default function Resources() {
                 value={rbsTypeForm.name}
                 onChange={e => setRbsTypeForm(f => ({ ...f, name: e.target.value }))}
                 placeholder="e.g. Vendor, Consultant, System"
-                disabled={rbsTypeEditing?.isBuiltIn}
               />
             </div>
             <div className="space-y-1">
