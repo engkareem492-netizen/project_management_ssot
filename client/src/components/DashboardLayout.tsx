@@ -101,6 +101,7 @@ import { Search } from "lucide-react";
 import {
   DndContext,
   DragEndEvent,
+  DragOverEvent,
   DragOverlay,
   DragStartEvent,
   PointerSensor,
@@ -220,6 +221,7 @@ function SortableNavItem({
   folders,
   onRemoveFromFolder,
   inFolderId,
+  isDraggingActive,
 }: {
   item: SidebarItem;
   isActive: boolean;
@@ -229,6 +231,7 @@ function SortableNavItem({
   folders: CustomFolder[];
   onRemoveFromFolder?: (path: string, folderId: string) => void;
   inFolderId?: string;
+  isDraggingActive?: boolean;
 }) {
   const {
     attributes,
@@ -242,17 +245,27 @@ function SortableNavItem({
   const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.4 : 1,
+    opacity: isDragging ? 0.3 : 1,
+    zIndex: isDragging ? 50 : undefined,
   };
 
   return (
     <SidebarMenuItem ref={setNodeRef} style={style}>
-      <div className="flex items-center group/item w-full">
-        {/* drag handle */}
+      <div className={`flex items-center group/item w-full rounded-md transition-all duration-150 ${
+        isDragging ? "shadow-lg ring-2 ring-primary/40 bg-background" : ""
+      }`}>
+        {/* Drag handle — always visible at low opacity, prominent on hover/drag-active */}
         <span
           {...attributes}
           {...listeners}
-          className="hidden group-hover/item:flex items-center justify-center w-5 h-8 shrink-0 cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground"
+          title="Drag to reorder or drop into a folder"
+          className={`flex items-center justify-center w-5 h-8 shrink-0 cursor-grab active:cursor-grabbing transition-all duration-150 select-none ${
+            isDragging
+              ? "text-primary"
+              : isDraggingActive
+              ? "text-muted-foreground/60 group-hover/item:text-muted-foreground"
+              : "text-muted-foreground/20 group-hover/item:text-muted-foreground/70"
+          }`}
         >
           <GripVertical className="h-3 w-3" />
         </span>
@@ -272,18 +285,22 @@ function SortableNavItem({
             )}
           </SidebarMenuButton>
         </div>
-        {/* context menu */}
+        {/* Context menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="hidden group-hover/item:flex items-center justify-center w-5 h-8 shrink-0 rounded hover:bg-accent text-muted-foreground/40 hover:text-muted-foreground transition-colors">
+            <button className={`items-center justify-center w-5 h-8 shrink-0 rounded hover:bg-accent transition-colors ${
+              isDraggingActive
+                ? "hidden"
+                : "hidden group-hover/item:flex text-muted-foreground/40 hover:text-muted-foreground"
+            }`}>
               <MoreHorizontal className="h-3 w-3" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-44">
+          <DropdownMenuContent align="end" className="w-48">
             {folders.length > 0 && (
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger className="text-xs">
-                  <Folder className="mr-2 h-3 w-3" /> Add to folder
+                  <FolderPlus className="mr-2 h-3 w-3" /> Add to folder
                 </DropdownMenuSubTrigger>
                 <DropdownMenuSubContent>
                   {folders.map(f => (
@@ -292,7 +309,7 @@ function SortableNavItem({
                       className="text-xs"
                       onClick={() => onAddToFolder(item.path, f.id)}
                     >
-                      <Folder className="mr-2 h-3 w-3" />{f.name}
+                      <Folder className="mr-2 h-3 w-3 text-amber-500" />{f.name}
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuSubContent>
@@ -300,7 +317,7 @@ function SortableNavItem({
             )}
             {inFolderId && onRemoveFromFolder && (
               <>
-                <DropdownMenuSeparator />
+                {folders.length > 0 && <DropdownMenuSeparator />}
                 <DropdownMenuItem
                   className="text-xs text-destructive focus:text-destructive"
                   onClick={() => onRemoveFromFolder(item.path, inFolderId)}
@@ -329,6 +346,7 @@ function DroppableFolder({
   onRenameFolder,
   onDeleteFolder,
   isCollapsed: sidebarCollapsed,
+  isDraggingActive,
 }: {
   folder: CustomFolder;
   items: SidebarItem[];
@@ -341,29 +359,47 @@ function DroppableFolder({
   onRenameFolder: (id: string, name: string) => void;
   onDeleteFolder: (id: string) => void;
   isCollapsed: boolean;
+  isDraggingActive: boolean;
 }) {
   const { isOver, setNodeRef } = useDroppable({ id: `folder-${folder.id}` });
   const [folderCollapsed, setFolderCollapsed] = useState(folder.collapsed);
   const [renaming, setRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState(folder.name);
 
+  // Auto-expand when user hovers over a collapsed folder during drag
+  useEffect(() => {
+    if (!isOver || !folderCollapsed) return;
+    const t = setTimeout(() => setFolderCollapsed(false), 500);
+    return () => clearTimeout(t);
+  }, [isOver, folderCollapsed]);
+
   return (
     <div
       ref={setNodeRef}
-      className={`transition-colors rounded-md ${isOver ? "bg-primary/5 ring-1 ring-primary/30" : ""}`}
+      className={`rounded-lg mx-1 mb-1 transition-all duration-200 ${
+        isOver
+          ? "bg-primary/8 ring-2 ring-primary/50 shadow-sm"
+          : isDraggingActive
+          ? "ring-1 ring-dashed ring-border/70 bg-muted/20"
+          : ""
+      }`}
     >
       <div className="px-2 pt-2 pb-0.5 group-data-[collapsible=icon]:hidden">
         <div className="flex items-center gap-1">
           <button
             onClick={() => setFolderCollapsed(p => !p)}
-            className="flex items-center gap-1 flex-1 min-w-0 text-left hover:text-foreground transition-colors"
+            className="flex items-center gap-1.5 flex-1 min-w-0 text-left hover:text-foreground transition-colors py-0.5"
           >
             {folderCollapsed ? (
               <ChevronRight className="h-3 w-3 text-muted-foreground/50 shrink-0" />
             ) : (
               <ChevronDown className="h-3 w-3 text-muted-foreground/50 shrink-0" />
             )}
-            <Folder className="h-3 w-3 text-amber-500 shrink-0" />
+            {isOver ? (
+              <FolderOpen className="h-3.5 w-3.5 text-primary shrink-0" />
+            ) : (
+              <Folder className={`h-3.5 w-3.5 shrink-0 transition-colors ${isDraggingActive ? "text-amber-400" : "text-amber-500"}`} />
+            )}
             {renaming ? (
               <form
                 onSubmit={e => { e.preventDefault(); onRenameFolder(folder.id, renameValue.trim() || folder.name); setRenaming(false); }}
@@ -379,15 +415,20 @@ function DroppableFolder({
                 />
               </form>
             ) : (
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 truncate">
+              <span className={`text-[10px] font-semibold uppercase tracking-wider truncate transition-colors ${
+                isOver ? "text-primary" : "text-muted-foreground/60"
+              }`}>
                 {folder.name}
               </span>
+            )}
+            {items.length > 0 && !isOver && (
+              <span className="text-[9px] text-muted-foreground/40 shrink-0">{items.length}</span>
             )}
           </button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="opacity-0 group-hover:opacity-100 h-4 w-4 flex items-center justify-center rounded hover:bg-accent text-muted-foreground transition-all">
-                <MoreHorizontal className="h-2.5 w-2.5" />
+              <button className="opacity-0 group-hover:opacity-100 h-5 w-5 flex items-center justify-center rounded hover:bg-accent text-muted-foreground transition-all">
+                <MoreHorizontal className="h-3 w-3" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-36">
@@ -404,12 +445,29 @@ function DroppableFolder({
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-        {isOver && (
-          <div className="mt-1 ml-4 h-6 rounded border-dashed border border-primary/40 flex items-center justify-center">
-            <span className="text-[9px] text-primary/60">Drop here</span>
+
+        {/* Drop zone indicator */}
+        {isDraggingActive && (
+          <div className={`mt-1.5 mx-1 rounded-md flex items-center justify-center gap-1.5 transition-all duration-200 ${
+            isOver
+              ? "h-9 bg-primary/10 border-2 border-primary/40 border-dashed"
+              : "h-7 bg-muted/30 border border-dashed border-border/50"
+          }`}>
+            {isOver ? (
+              <>
+                <FolderPlus className="h-3.5 w-3.5 text-primary/70" />
+                <span className="text-[10px] text-primary font-semibold">Release to add to "{folder.name}"</span>
+              </>
+            ) : (
+              <>
+                <FolderPlus className="h-3 w-3 text-muted-foreground/30" />
+                <span className="text-[9px] text-muted-foreground/50">Drop here</span>
+              </>
+            )}
           </div>
         )}
       </div>
+
       {!folderCollapsed && !sidebarCollapsed && (
         <SortableContext items={items.map(i => i.path)} strategy={verticalListSortingStrategy}>
           <SidebarMenu className="px-2 pb-1">
@@ -430,17 +488,18 @@ function DroppableFolder({
                 folders={allFolders.filter(f => f.id !== folder.id)}
                 onRemoveFromFolder={onRemoveFromFolder}
                 inFolderId={folder.id}
+                isDraggingActive={isDraggingActive}
               />
             ))}
           </SidebarMenu>
         </SortableContext>
       )}
-      {!folderCollapsed && items.length === 0 && !sidebarCollapsed && (
-        <div className="ml-6 mr-2 mb-2 rounded border border-dashed border-border/60 px-3 py-2 text-[10px] text-muted-foreground text-center">
-          Drag items here
+      {!folderCollapsed && items.length === 0 && !sidebarCollapsed && !isDraggingActive && (
+        <div className="ml-6 mr-3 mb-2 rounded-md border border-dashed border-border/50 px-3 py-2 text-[10px] text-muted-foreground/50 text-center">
+          Empty folder — drag items here
         </div>
       )}
-      <div className="mx-4 border-t border-border/30 group-data-[collapsible=icon]:hidden" />
+      <div className="mx-3 mt-1 border-t border-border/20 group-data-[collapsible=icon]:hidden" />
     </div>
   );
 }
@@ -531,6 +590,7 @@ function DashboardLayoutContent({
   const [showFolderDialog, setShowFolderDialog] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
 
   // Persist folders
   useEffect(() => {
@@ -639,29 +699,62 @@ function DashboardLayoutContent({
 
   // ─── DnD ────────────────────────────────────────────────────────────────
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } })
   );
 
   function handleDragStart(event: DragStartEvent) {
     setActiveDragId(event.active.id as string);
+    setDragOverFolderId(null);
+  }
+
+  function handleDragOver(event: DragOverEvent) {
+    const { over } = event;
+    if (over?.id && String(over.id).startsWith("folder-")) {
+      setDragOverFolderId(String(over.id).replace("folder-", ""));
+    } else {
+      setDragOverFolderId(null);
+    }
   }
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     setActiveDragId(null);
+    setDragOverFolderId(null);
     if (!over) return;
 
     const activeId = active.id as string;
     const overId = over.id as string;
 
-    // Dropped on a folder droppable
+    // Dropped directly on a folder droppable zone
     if (overId.startsWith("folder-")) {
       const folderId = overId.replace("folder-", "");
       addToFolder(activeId, folderId);
       return;
     }
 
-    // Reorder within a section
+    // Dropped on an item that lives inside a folder → move to that folder
+    const targetFolder = customFolders.find(f => f.paths.includes(overId));
+    const sourceFolder = customFolders.find(f => f.paths.includes(activeId));
+
+    if (targetFolder && targetFolder.id !== sourceFolder?.id) {
+      // Cross-folder or section→folder move
+      addToFolder(activeId, targetFolder.id);
+      return;
+    }
+
+    // Reorder within a custom folder
+    if (sourceFolder && targetFolder && sourceFolder.id === targetFolder.id) {
+      const oldIndex = sourceFolder.paths.indexOf(activeId);
+      const newIndex = sourceFolder.paths.indexOf(overId);
+      if (oldIndex === newIndex) return;
+      const newPaths = arrayMove(sourceFolder.paths, oldIndex, newIndex);
+      setCustomFolders(prev => prev.map(f =>
+        f.id === sourceFolder.id ? { ...f, paths: newPaths } : f
+      ));
+      return;
+    }
+
+    // Reorder within a PMP section
     const section = sectionsWithOrder.find(s => s.items.some(i => i.path === activeId));
     if (!section) return;
     const inSameSection = section.items.some(i => i.path === overId);
@@ -719,6 +812,7 @@ function DashboardLayoutContent({
         sensors={sensors}
         collisionDetection={closestCenter}
         onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
         <div className="relative" ref={sidebarRef}>
@@ -774,6 +868,16 @@ function DashboardLayoutContent({
                 </button>
               </div>
 
+              {/* Drag mode hint banner */}
+              {activeDragId && !isCollapsed && (
+                <div className="mx-2 mb-1 px-3 py-1.5 rounded-md bg-primary/10 border border-primary/20 flex items-center gap-2 group-data-[collapsible=icon]:hidden">
+                  <GripVertical className="h-3 w-3 text-primary/60 shrink-0" />
+                  <span className="text-[10px] text-primary/70 font-medium">
+                    {customFolders.length > 0 ? "Drop on a folder below, or reorder within a section" : "Reorder within a section"}
+                  </span>
+                </div>
+              )}
+
               {/* Custom Folders */}
               {customFolders.map(folder => {
                 const folderItems = folder.paths.map(p => findItem(p)).filter(Boolean) as SidebarItem[];
@@ -791,6 +895,7 @@ function DashboardLayoutContent({
                       onRenameFolder={renameFolder}
                       onDeleteFolder={deleteFolder}
                       isCollapsed={isCollapsed}
+                      isDraggingActive={!!activeDragId}
                     />
                   </div>
                 );
@@ -834,6 +939,7 @@ function DashboardLayoutContent({
                           onNavigate={setLocation}
                           onAddToFolder={addToFolder}
                           folders={customFolders}
+                          isDraggingActive={!!activeDragId}
                         />
                       ))}
                     </SidebarMenu>
@@ -916,11 +1022,19 @@ function DashboardLayoutContent({
         </div>
 
         {/* Drag overlay */}
-        <DragOverlay>
+        <DragOverlay dropAnimation={{ duration: 180, easing: "ease" }}>
           {draggingItem ? (
-            <div className="flex items-center gap-2 rounded-md px-3 h-8 bg-background border border-border shadow-lg text-sm font-normal opacity-90">
+            <div className="flex items-center gap-2 rounded-lg px-3 h-9 bg-background border-2 border-primary/40 shadow-xl text-sm font-medium cursor-grabbing select-none" style={{ minWidth: 160 }}>
               <draggingItem.icon className="h-4 w-4 shrink-0 text-primary" />
-              <span>{draggingItem.label}</span>
+              <span className="flex-1 truncate">{draggingItem.label}</span>
+              {dragOverFolderId && (() => {
+                const f = customFolders.find(f => f.id === dragOverFolderId);
+                return f ? (
+                  <span className="flex items-center gap-1 text-[10px] text-primary font-semibold bg-primary/10 px-1.5 py-0.5 rounded-full">
+                    <Folder className="h-2.5 w-2.5" />{f.name}
+                  </span>
+                ) : null;
+              })()}
             </div>
           ) : null}
         </DragOverlay>

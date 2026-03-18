@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { useProject } from "@/contexts/ProjectContext";
 import { Button } from "@/components/ui/button";
@@ -24,13 +24,13 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Sheet, SheetContent, SheetHeader, SheetTitle,
+  Sheet, SheetContent,
 } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import {
   Plus, Trash2, Pencil, Search, Users, Mail, Phone,
   Target, Award, Activity, UserCheck, Briefcase,
-  MoveRight, ChevronRight, ClipboardList, Download,
+  MoveRight, Download,
   Brain, Star, Lightbulb, Shield, BookOpen, TrendingUp, Zap,
 } from "lucide-react";
 import { ImportExportToolbar } from "@/components/ImportExportToolbar";
@@ -1123,7 +1123,6 @@ function DetailPanel({
   onKpi: () => void;
 }) {
   const { currentProjectId } = useProject();
-  const utils = trpc.useUtils();
 
   // ── SWOT state ──
   const [swotInputs, setSwotInputs] = useState({ Strength: "", Weakness: "", Opportunity: "", Threat: "" });
@@ -1236,7 +1235,7 @@ function DetailPanel({
   }
 
   // ── SWOT helpers ──
-  const swotQuadrants: { key: "Strength" | "Weakness" | "Opportunity" | "Threat"; label: string; shortLabel: string; icon: React.ReactNode; color: string; headerColor: string }[] = [
+  const swotQuadrants: { key: "Strength" | "Weakness" | "Opportunity" | "Threat"; label: string; shortLabel: string; icon: JSX.Element; color: string; headerColor: string }[] = [
     { key: "Strength",    label: "Strengths",    shortLabel: "S", icon: <Star className="h-4 w-4" />,       color: "border-green-200 bg-green-50",  headerColor: "text-green-700 bg-green-100" },
     { key: "Weakness",    label: "Weaknesses",   shortLabel: "W", icon: <Shield className="h-4 w-4" />,     color: "border-red-200 bg-red-50",      headerColor: "text-red-700 bg-red-100" },
     { key: "Opportunity", label: "Opportunities",shortLabel: "O", icon: <Lightbulb className="h-4 w-4" />, color: "border-blue-200 bg-blue-50",    headerColor: "text-blue-700 bg-blue-100" },
@@ -1895,111 +1894,314 @@ function DetailPanel({
 }
 
 // ─── Power/Interest Matrix ────────────────────────────────────────────────────
-function PowerInterestMatrix({ stakeholders }: { stakeholders: any[] }) {
+const QUADRANT_CONFIG = [
+  { key: "keep-satisfied",  label: "Keep Satisfied",  icon: "⚡", desc: "High Power · Low Interest", gradient: "from-amber-50 to-amber-100/60",  border: "border-amber-200/60",  text: "text-amber-700",  dot: "#f59e0b", corner: "top-3 left-3"   },
+  { key: "manage-closely",  label: "Manage Closely",  icon: "🎯", desc: "High Power · High Interest", gradient: "from-rose-50 to-rose-100/60",    border: "border-rose-200/60",   text: "text-rose-700",   dot: "#ef4444", corner: "top-3 right-3"  },
+  { key: "monitor",         label: "Monitor",          icon: "👁", desc: "Low Power · Low Interest",  gradient: "from-slate-50 to-slate-100/50",  border: "border-slate-200/50",  text: "text-slate-500",  dot: "#94a3b8", corner: "bottom-3 left-3" },
+  { key: "keep-informed",   label: "Keep Informed",   icon: "📢", desc: "Low Power · High Interest", gradient: "from-sky-50 to-sky-100/60",      border: "border-sky-200/60",    text: "text-sky-700",    dot: "#0ea5e9", corner: "bottom-3 right-3"},
+];
+
+const BUBBLE_COLORS: Record<string, string> = {
+  TeamMember: "#6366f1",
+  External:   "#f97316",
+  Stakeholder:"#8b5cf6",
+};
+const FALLBACK_COLORS = ['#3b82f6','#10b981','#f97316','#ef4444','#06b6d4','#f59e0b','#84cc16','#ec4899'];
+
+function PowerInterestMatrix({
+  stakeholders,
+  onUpdatePosition,
+}: {
+  stakeholders: any[];
+  onUpdatePosition?: (id: number, power: number, interest: number) => void;
+}) {
+  const matrixRef = useRef<HTMLDivElement>(null);
+  const [dragging, setDragging] = useState<{ id: number; startPower: number; startInterest: number } | null>(null);
+  const [positions, setPositions] = useState<Record<number, { power: number; interest: number }>>({});
+  const [hovered, setHovered] = useState<number | null>(null);
+  const [tooltip, setTooltip] = useState<{ x: number; y: number; id: number } | null>(null);
+
+  // Build effective positions: override with local drag state
+  const getPos = useCallback((s: any) => {
+    if (positions[s.id]) return positions[s.id];
+    return {
+      power: typeof s.powerLevel === 'number' ? s.powerLevel : 3,
+      interest: typeof s.interestLevel === 'number' ? s.interestLevel : 3,
+    };
+  }, [positions]);
+
+  function pctToValue(pct: number): number {
+    return Math.round(Math.min(5, Math.max(1, 1 + pct * 4)));
+  }
+  function valueToPct(v: number): number {
+    return (v - 1) / 4;
+  }
+
+  function getMatrixXY(clientX: number, clientY: number) {
+    const rect = matrixRef.current?.getBoundingClientRect();
+    if (!rect) return null;
+    const xPct = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+    const yPct = Math.min(1, Math.max(0, (clientY - rect.top) / rect.height));
+    return { xPct, yPct };
+  }
+
+  function handleBubbleMouseDown(e: React.MouseEvent, s: any) {
+    e.preventDefault();
+    const pos = getPos(s);
+    setDragging({ id: s.id, startPower: pos.power, startInterest: pos.interest });
+    setHovered(s.id);
+    setTooltip(null);
+  }
+
+  useEffect(() => {
+    if (!dragging) return;
+    function onMove(e: MouseEvent) {
+      const xy = getMatrixXY(e.clientX, e.clientY);
+      if (!xy) return;
+      const interest = pctToValue(xy.xPct);
+      const power = pctToValue(1 - xy.yPct);
+      setPositions(prev => ({ ...prev, [dragging!.id]: { power, interest } }));
+    }
+    function onUp(e: MouseEvent) {
+      const xy = getMatrixXY(e.clientX, e.clientY);
+      if (xy) {
+        const interest = pctToValue(xy.xPct);
+        const power = pctToValue(1 - xy.yPct);
+        setPositions(prev => ({ ...prev, [dragging!.id]: { power, interest } }));
+        onUpdatePosition?.(dragging!.id, power, interest);
+      }
+      setDragging(null);
+    }
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => { window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); };
+  }, [dragging, onUpdatePosition]);
+
+  const visible = stakeholders.filter(s => s.powerLevel != null && s.interestLevel != null);
+  const missing = stakeholders.filter(s => s.powerLevel == null || s.interestLevel == null);
+
+  // Strategy counts for legend
+  const strategyCounts = useMemo(() => {
+    const counts: Record<string, number> = { "manage-closely": 0, "keep-satisfied": 0, "keep-informed": 0, "monitor": 0 };
+    visible.forEach(s => {
+      const p = getPos(s); const strat = proposeEngagementStrategy(p.power, p.interest).toLowerCase().replace(" ", "-");
+      if (counts[strat] !== undefined) counts[strat]++;
+    });
+    return counts;
+  }, [visible, getPos]);
+
   return (
     <div className="space-y-4">
-      {/* Legend */}
-      <div className="flex flex-wrap gap-3 text-sm">
-        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-red-100 border border-red-300 inline-block"/><strong>Manage Closely</strong> — high power, high interest</span>
-        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-amber-100 border border-amber-300 inline-block"/><strong>Keep Satisfied</strong> — high power, low interest</span>
-        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-blue-100 border border-blue-300 inline-block"/><strong>Keep Informed</strong> — low power, high interest</span>
-        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-slate-100 border border-slate-300 inline-block"/><strong>Monitor</strong> — low power, low interest</span>
+      {/* Header summary */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        {QUADRANT_CONFIG.map(q => (
+          <div key={q.key} className={`rounded-xl border px-3 py-2 bg-gradient-to-br ${q.gradient} ${q.border}`}>
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <span>{q.icon}</span>
+              <span className={`text-xs font-semibold ${q.text}`}>{q.label}</span>
+            </div>
+            <div className="text-[10px] text-muted-foreground">{q.desc}</div>
+            <div className={`text-2xl font-bold mt-1 ${q.text}`}>{strategyCounts[q.key] ?? 0}</div>
+          </div>
+        ))}
       </div>
 
-      {/* Matrix container */}
-      <div className="relative border rounded-lg overflow-hidden" style={{ height: '520px' }}>
+      {/* Tip */}
+      <p className="text-[11px] text-muted-foreground/70 flex items-center gap-1">
+        <span>💡</span> Drag a bubble to reposition a stakeholder on the matrix — changes are saved automatically.
+      </p>
+
+      {/* Matrix */}
+      <div className="relative border border-border/60 rounded-2xl overflow-hidden shadow-sm bg-white dark:bg-zinc-950" style={{ height: 560 }}>
         {/* Y axis label */}
-        <div className="absolute left-0 top-0 bottom-0 w-8 flex items-center justify-center">
-          <span className="text-xs text-muted-foreground -rotate-90 whitespace-nowrap">POWER / INFLUENCE ↑</span>
+        <div className="absolute left-0 top-0 bottom-8 w-9 flex items-center justify-center z-10 pointer-events-none">
+          <span className="text-[10px] font-semibold text-muted-foreground/60 -rotate-90 whitespace-nowrap tracking-widest uppercase">Power ↑</span>
         </div>
 
-        {/* Matrix grid */}
-        <div className="absolute left-8 right-0 top-0 bottom-8" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr' }}>
-          {/* Quadrant: Keep Satisfied (top-left) */}
-          <div className="bg-amber-50 border-r border-b border-border/50 relative p-2">
-            <span className="text-[10px] font-semibold uppercase text-amber-700/60 select-none absolute top-2 left-2">Keep Satisfied</span>
+        {/* Inner matrix area */}
+        <div ref={matrixRef} className="absolute left-9 right-0 top-0 bottom-8"
+          style={{ cursor: dragging ? "grabbing" : "default" }}
+        >
+          {/* Quadrant backgrounds */}
+          <div className="absolute inset-0" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr" }}>
+            {/* Top-left: Keep Satisfied */}
+            <div className={`relative bg-gradient-to-br ${QUADRANT_CONFIG[0].gradient} border-r border-b border-amber-200/40`}>
+              <div className="absolute top-3 left-3 flex items-center gap-1.5">
+                <span className="text-base">{QUADRANT_CONFIG[0].icon}</span>
+                <div>
+                  <div className={`text-[10px] font-bold uppercase tracking-wide ${QUADRANT_CONFIG[0].text}`}>{QUADRANT_CONFIG[0].label}</div>
+                  <div className="text-[9px] text-muted-foreground/60">{QUADRANT_CONFIG[0].desc}</div>
+                </div>
+              </div>
+            </div>
+            {/* Top-right: Manage Closely */}
+            <div className={`relative bg-gradient-to-bl ${QUADRANT_CONFIG[1].gradient} border-b border-rose-200/40`}>
+              <div className="absolute top-3 right-3 flex items-center gap-1.5 flex-row-reverse">
+                <span className="text-base">{QUADRANT_CONFIG[1].icon}</span>
+                <div className="text-right">
+                  <div className={`text-[10px] font-bold uppercase tracking-wide ${QUADRANT_CONFIG[1].text}`}>{QUADRANT_CONFIG[1].label}</div>
+                  <div className="text-[9px] text-muted-foreground/60">{QUADRANT_CONFIG[1].desc}</div>
+                </div>
+              </div>
+            </div>
+            {/* Bottom-left: Monitor */}
+            <div className={`relative bg-gradient-to-tr ${QUADRANT_CONFIG[2].gradient} border-r border-slate-200/40`}>
+              <div className="absolute bottom-3 left-3 flex items-center gap-1.5">
+                <span className="text-base">{QUADRANT_CONFIG[2].icon}</span>
+                <div>
+                  <div className={`text-[10px] font-bold uppercase tracking-wide ${QUADRANT_CONFIG[2].text}`}>{QUADRANT_CONFIG[2].label}</div>
+                  <div className="text-[9px] text-muted-foreground/60">{QUADRANT_CONFIG[2].desc}</div>
+                </div>
+              </div>
+            </div>
+            {/* Bottom-right: Keep Informed */}
+            <div className={`relative bg-gradient-to-tl ${QUADRANT_CONFIG[3].gradient}`}>
+              <div className="absolute bottom-3 right-3 flex items-center gap-1.5 flex-row-reverse">
+                <span className="text-base">{QUADRANT_CONFIG[3].icon}</span>
+                <div className="text-right">
+                  <div className={`text-[10px] font-bold uppercase tracking-wide ${QUADRANT_CONFIG[3].text}`}>{QUADRANT_CONFIG[3].label}</div>
+                  <div className="text-[9px] text-muted-foreground/60">{QUADRANT_CONFIG[3].desc}</div>
+                </div>
+              </div>
+            </div>
           </div>
-          {/* Quadrant: Manage Closely (top-right) */}
-          <div className="bg-red-50 border-b border-border/50 relative p-2">
-            <span className="text-[10px] font-semibold uppercase text-red-700/60 select-none absolute top-2 right-2">Manage Closely</span>
+
+          {/* Center cross-hair lines */}
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute left-1/2 top-0 bottom-0 w-px bg-border/60" />
+            <div className="absolute top-1/2 left-0 right-0 h-px bg-border/60" />
+            {/* Grid lines at each unit */}
+            {[1,2,3,4].map(n => (
+              <div key={`x${n}`} className="absolute top-0 bottom-0 w-px bg-border/20" style={{ left: `${(n / 4) * 100}%` }} />
+            ))}
+            {[1,2,3,4].map(n => (
+              <div key={`y${n}`} className="absolute left-0 right-0 h-px bg-border/20" style={{ top: `${(n / 4) * 100}%` }} />
+            ))}
           </div>
-          {/* Quadrant: Monitor (bottom-left) */}
-          <div className="bg-slate-50 border-r border-border/50 relative p-2">
-            <span className="text-[10px] font-semibold uppercase text-slate-500/60 select-none absolute bottom-2 left-2">Monitor</span>
+
+          {/* Axis tick values */}
+          <div className="absolute left-0 right-0 bottom-0 flex pointer-events-none" style={{ height: 0 }}>
+            {[1,2,3,4,5].map(n => (
+              <div key={n} className="flex-1 flex justify-center" style={{ transform: "translateY(2px)" }}>
+                <span className="text-[9px] text-muted-foreground/40">{n}</span>
+              </div>
+            ))}
           </div>
-          {/* Quadrant: Keep Informed (bottom-right) */}
-          <div className="bg-blue-50 relative p-2">
-            <span className="text-[10px] font-semibold uppercase text-blue-700/60 select-none absolute bottom-2 right-2">Keep Informed</span>
+          <div className="absolute top-0 bottom-0 left-0 flex flex-col-reverse pointer-events-none" style={{ width: 0 }}>
+            {[1,2,3,4,5].map(n => (
+              <div key={n} className="flex-1 flex items-center" style={{ transform: "translateX(-14px)" }}>
+                <span className="text-[9px] text-muted-foreground/40">{n}</span>
+              </div>
+            ))}
           </div>
-        </div>
 
-        {/* Stakeholder dots - positioned absolutely over the grid */}
-        <div className="absolute left-8 right-0 top-0 bottom-8 pointer-events-none">
-          {stakeholders
-            .filter(s => s.powerLevel != null && s.interestLevel != null)
-            .map(s => {
-              const power = typeof s.powerLevel === 'number' ? s.powerLevel : 3;
-              const interest = typeof s.interestLevel === 'number' ? s.interestLevel : 3;
-              const xPct = ((interest - 1) / 4) * 100;
-              const yPct = ((5 - power) / 4) * 100;
+          {/* Stakeholder bubbles */}
+          {visible.map((s, idx) => {
+            const pos = getPos(s);
+            const xPct = valueToPct(pos.interest) * 100;
+            const yPct = (1 - valueToPct(pos.power)) * 100;
+            const isDraggingThis = dragging?.id === s.id;
+            const isHovered = hovered === s.id && !dragging;
+            const cls = s.classification ?? (s.isInternalTeam ? "TeamMember" : "Stakeholder");
+            const color = BUBBLE_COLORS[cls] ?? FALLBACK_COLORS[idx % FALLBACK_COLORS.length];
+            const initials = (s.fullName || s.name || "?")
+              .split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
+            const strategy = proposeEngagementStrategy(pos.power, pos.interest);
+            const stratQ = QUADRANT_CONFIG.find(q => q.key === strategy.toLowerCase().replace(/ /g, "-"));
 
-              const initials = (s.fullName || s.name || '?')
-                .split(' ')
-                .map((w: string) => w[0])
-                .join('')
-                .slice(0, 2)
-                .toUpperCase();
-
-              const colors = ['#3b82f6','#10b981','#8b5cf6','#f97316','#ef4444','#06b6d4','#f59e0b','#84cc16'];
-              const colorIdx = (s.id ?? 0) % colors.length;
-
-              return (
-                <div
-                  key={s.id}
-                  className="absolute pointer-events-auto"
-                  style={{
-                    left: `calc(${xPct}% - 20px)`,
-                    top: `calc(${yPct}% - 20px)`,
-                  }}
-                  title={`${s.fullName || s.name}\nPower: ${power}/5, Interest: ${interest}/5`}
-                >
+            return (
+              <div
+                key={s.id}
+                className="absolute select-none"
+                style={{
+                  left: `calc(${xPct}% - 22px)`,
+                  top: `calc(${yPct}% - 22px)`,
+                  zIndex: isDraggingThis ? 100 : isHovered ? 50 : 10,
+                  transition: isDraggingThis ? "none" : "left 0.15s ease, top 0.15s ease",
+                }}
+                onMouseDown={e => handleBubbleMouseDown(e, s)}
+                onMouseEnter={() => { if (!dragging) setHovered(s.id); }}
+                onMouseLeave={() => { if (!dragging) setHovered(null); }}
+              >
+                {/* Shadow ring when hovered */}
+                {(isHovered || isDraggingThis) && (
                   <div
-                    className="h-10 w-10 rounded-full flex items-center justify-center text-white text-xs font-semibold cursor-pointer shadow-md hover:scale-110 transition-transform border-2 border-white"
-                    style={{ backgroundColor: colors[colorIdx] }}
-                  >
-                    {initials}
-                  </div>
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 whitespace-nowrap text-[10px] bg-background border rounded px-1 shadow-sm pointer-events-none z-10">
-                    {(s.fullName || s.name || '').split(' ')[0]}
+                    className="absolute -inset-2 rounded-full animate-pulse"
+                    style={{ background: `${color}25` }}
+                  />
+                )}
+                {/* Bubble */}
+                <div
+                  className="h-11 w-11 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-lg border-[2.5px] border-white transition-transform"
+                  style={{
+                    backgroundColor: color,
+                    cursor: isDraggingThis ? "grabbing" : "grab",
+                    transform: isDraggingThis ? "scale(1.2)" : isHovered ? "scale(1.08)" : "scale(1)",
+                    boxShadow: isDraggingThis
+                      ? `0 8px 24px ${color}60`
+                      : isHovered
+                      ? `0 4px 12px ${color}50`
+                      : `0 2px 6px ${color}40`,
+                  }}
+                >
+                  {initials}
+                </div>
+                {/* Name label */}
+                <div className={`absolute top-full left-1/2 -translate-x-1/2 mt-1.5 pointer-events-none transition-all ${isHovered || isDraggingThis ? "opacity-100" : "opacity-80"}`}>
+                  <div className="whitespace-nowrap text-[10px] font-medium bg-background/95 border border-border rounded-full px-2 py-0.5 shadow-sm">
+                    {(s.fullName || s.name || "").split(" ")[0]}
                   </div>
                 </div>
-              );
-            })}
+                {/* Rich tooltip on hover */}
+                {isHovered && !dragging && (
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-52 pointer-events-none z-50">
+                    <div className="bg-background border border-border rounded-xl shadow-xl p-3 space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <div className="h-6 w-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0" style={{ backgroundColor: color }}>{initials}</div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold truncate">{s.fullName || s.name}</p>
+                          {s.role && <p className="text-[10px] text-muted-foreground truncate">{s.role}</p>}
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-1 text-[10px]">
+                        <div className="bg-muted/40 rounded px-2 py-1">
+                          <span className="text-muted-foreground">Power</span>
+                          <span className="ml-1 font-bold">{pos.power}/5</span>
+                        </div>
+                        <div className="bg-muted/40 rounded px-2 py-1">
+                          <span className="text-muted-foreground">Interest</span>
+                          <span className="ml-1 font-bold">{pos.interest}/5</span>
+                        </div>
+                      </div>
+                      {stratQ && (
+                        <div className={`flex items-center gap-1 text-[10px] rounded px-2 py-1 bg-gradient-to-r ${stratQ.gradient} border ${stratQ.border}`}>
+                          <span>{stratQ.icon}</span>
+                          <span className={`font-semibold ${stratQ.text}`}>{stratQ.label}</span>
+                        </div>
+                      )}
+                      <p className="text-[9px] text-muted-foreground/60">Drag to reposition</p>
+                    </div>
+                    {/* Caret */}
+                    <div className="w-2.5 h-2.5 bg-background border-r border-b border-border rotate-45 mx-auto -mt-1.5" />
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
 
         {/* X axis label */}
-        <div className="absolute left-8 right-0 bottom-0 h-8 flex items-center justify-center">
-          <span className="text-xs text-muted-foreground">→ INTEREST / INFLUENCE</span>
-        </div>
-
-        {/* Axis ticks */}
-        <div className="absolute left-8 bottom-0 right-0 h-8 flex items-end pointer-events-none">
-          {[1,2,3,4,5].map(n => (
-            <div key={n} className="flex-1 text-center text-[10px] text-muted-foreground/50 pb-1">{n}</div>
-          ))}
-        </div>
-        <div className="absolute left-0 top-0 bottom-8 w-8 flex flex-col-reverse pointer-events-none">
-          {[1,2,3,4,5].map(n => (
-            <div key={n} className="flex-1 flex items-center justify-center text-[10px] text-muted-foreground/50">{n}</div>
-          ))}
+        <div className="absolute left-9 right-0 bottom-0 h-8 flex items-center justify-center pointer-events-none">
+          <span className="text-[10px] font-semibold text-muted-foreground/60 tracking-widest uppercase">Interest →</span>
         </div>
       </div>
 
-      {/* Stakeholders without power/interest data */}
-      {stakeholders.filter(s => s.powerLevel == null || s.interestLevel == null).length > 0 && (
-        <p className="text-sm text-muted-foreground">
-          {stakeholders.filter(s => s.powerLevel == null || s.interestLevel == null).length} stakeholders not shown (missing power/interest values). Edit their profiles to set Power Level (1-5) and Interest Level (1-5).
-        </p>
+      {/* Missing data notice */}
+      {missing.length > 0 && (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/30 rounded-lg px-3 py-2 border border-border/50">
+          <span>ℹ️</span>
+          <span>{missing.length} stakeholder{missing.length > 1 ? "s" : ""} not shown — edit their profile to set Power (1–5) and Interest (1–5).</span>
+        </div>
       )}
     </div>
   );
@@ -2047,6 +2249,11 @@ export default function Stakeholders() {
       toast.success("Stakeholder updated");
     },
     onError: (e) => toast.error(`Failed: ${e.message}`),
+  });
+
+  const updatePositionMutation = trpc.stakeholders.update.useMutation({
+    onSuccess: () => utils.stakeholders.list.invalidate(),
+    onError: (e) => toast.error(`Failed to save position: ${e.message}`),
   });
 
   const deleteMutation = trpc.stakeholders.delete.useMutation({
@@ -2481,7 +2688,12 @@ export default function Stakeholders() {
 
         {/* Power/Interest Matrix Tab */}
         <TabsContent value="matrix" className="mt-4">
-          <PowerInterestMatrix stakeholders={stakeholders as any[]} />
+          <PowerInterestMatrix
+            stakeholders={stakeholders as any[]}
+            onUpdatePosition={(id, power, interest) =>
+              updatePositionMutation.mutate({ id, powerLevel: power, interestLevel: interest } as any)
+            }
+          />
         </TabsContent>
 
       </Tabs>
