@@ -102,6 +102,139 @@ function _formatCurrency(value: number, currency = "USD") {
   }
 }
 
+// ─── Skill level badge helper ─────────────────────────────────────────────────
+function getSkillLevelBadge(level: string) {
+  const map: Record<string, string> = {
+    "Beginner":     "bg-gray-100 text-gray-700",
+    "Intermediate": "bg-blue-100 text-blue-700",
+    "Advanced":     "bg-green-100 text-green-700",
+    "Expert":       "bg-purple-100 text-purple-700",
+  };
+  return map[level] || "bg-gray-100 text-gray-700";
+}
+
+// ─── Task Summary Dialog ──────────────────────────────────────────────────────
+function TaskSummaryDialog({ s, wl, name, tasks, onClose }: {
+  s: any;
+  wl: any;
+  name: string;
+  tasks: any[];
+  onClose: () => void;
+}) {
+  const cls = s.classification ?? (s.isInternalTeam ? "TeamMember" : "Stakeholder");
+  const isTeamMember = cls === "TeamMember";
+
+  const { data: skills = [] } = trpc.stakeholderEnhancements.listSkills.useQuery(
+    { stakeholderId: s.id },
+    { enabled: isTeamMember && !!s.id }
+  );
+
+  const stTasks = (tasks as any[]).filter((t: any) => t.responsible === name || t.responsible === s.fullName || t.responsible === s.name);
+  const byStatus: Record<string, any[]> = {};
+  stTasks.forEach((t: any) => {
+    const st = t.status ?? "Unknown";
+    if (!byStatus[st]) byStatus[st] = [];
+    byStatus[st].push(t);
+  });
+  const statusColors: Record<string, string> = {
+    "Completed": "bg-green-100 text-green-700",
+    "In Progress": "bg-blue-100 text-blue-700",
+    "Not Started": "bg-gray-100 text-gray-600",
+    "On Hold": "bg-yellow-100 text-yellow-700",
+    "Cancelled": "bg-red-100 text-red-600",
+  };
+
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Users className="w-4 h-4" />
+            {name} — Summary
+          </DialogTitle>
+          <div className="flex items-center gap-2 flex-wrap text-sm text-muted-foreground mt-1">
+            {s.role && <span className="flex items-center gap-1"><Briefcase className="w-3 h-3" />{s.role}</span>}
+            <Badge className={`text-[10px] px-1 py-0 ${classificationBadge(cls)}`}>{cls}</Badge>
+            {s.department && <span>{s.department}</span>}
+          </div>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <div className="grid grid-cols-4 gap-3">
+            <div className="bg-muted/40 rounded-lg p-3 text-center">
+              <div className="text-2xl font-bold">{stTasks.length}</div>
+              <div className="text-[10px] text-muted-foreground">Total</div>
+            </div>
+            <div className="bg-blue-50 rounded-lg p-3 text-center">
+              <div className="text-2xl font-bold text-blue-600">{wl?.thisWeek ?? 0}</div>
+              <div className="text-[10px] text-muted-foreground">This Week</div>
+            </div>
+            <div className="bg-muted/40 rounded-lg p-3 text-center">
+              <div className="text-2xl font-bold">{wl?.nextWeek ?? 0}</div>
+              <div className="text-[10px] text-muted-foreground">Next Week</div>
+            </div>
+            <div className="bg-green-50 rounded-lg p-3 text-center">
+              <div className="text-2xl font-bold text-green-600">{byStatus["Completed"]?.length ?? 0}</div>
+              <div className="text-[10px] text-muted-foreground">Completed</div>
+            </div>
+          </div>
+          {stTasks.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-6">No tasks assigned to this stakeholder.</p>
+          ) : (
+            Object.entries(byStatus).map(([status, statusTasks]) => (
+              <div key={status}>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${statusColors[status] ?? "bg-muted text-muted-foreground"}`}>{status}</span>
+                  <span className="text-xs text-muted-foreground">{statusTasks.length} task{statusTasks.length !== 1 ? "s" : ""}</span>
+                </div>
+                <div className="space-y-1.5">
+                  {statusTasks.map((t: any) => (
+                    <div key={t.id ?? t.taskId} className="flex items-start justify-between gap-3 bg-muted/30 rounded-lg px-3 py-2">
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium truncate">{t.description ?? t.taskId}</div>
+                        {t.taskId && <div className="text-[10px] text-muted-foreground">{t.taskId}</div>}
+                      </div>
+                      <div className="shrink-0 text-right">
+                        {t.dueDate && <div className="text-[10px] text-muted-foreground">{new Date(t.dueDate).toLocaleDateString()}</div>}
+                        {t.priority && <Badge variant="outline" className="text-[10px] px-1 py-0 mt-0.5">{t.priority}</Badge>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))
+          )}
+          {/* Skills section for TeamMembers */}
+          {isTeamMember && (
+            <div className="border-t pt-4">
+              <h4 className="text-sm font-semibold mb-2 flex items-center gap-1.5">
+                <Layers className="w-3.5 h-3.5 text-indigo-500" />
+                Skills
+              </h4>
+              {(skills as any[]).length === 0 ? (
+                <p className="text-xs text-muted-foreground">No skills recorded for this team member.</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {(skills as any[]).map((skill: any) => (
+                    <span
+                      key={skill.id}
+                      className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border ${getSkillLevelBadge(skill.level)}`}
+                    >
+                      {skill.name}
+                      {skill.level && (
+                        <span className="opacity-70 text-[10px]">· {skill.level}</span>
+                      )}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function Resources() {
@@ -930,7 +1063,7 @@ export default function Resources() {
                     {cls === "TeamMember" && (
                       <div className="mt-2">
                         <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-200">
-                          Skills: Expand to view
+                          Skills: Click to view
                         </span>
                       </div>
                     )}
@@ -2430,87 +2563,15 @@ export default function Resources() {
       </Dialog>
 
       {/* ─── Task Summary Popup ──────────────────────────────────────────── */}
-      {taskSummaryStakeholder && (() => {
-        const { s, wl, name } = taskSummaryStakeholder;
-        const stTasks = (tasks as any[]).filter((t: any) => t.responsible === name || t.responsible === s.fullName || t.responsible === s.name);
-        const byStatus: Record<string, any[]> = {};
-        stTasks.forEach((t: any) => {
-          const st = t.status ?? "Unknown";
-          if (!byStatus[st]) byStatus[st] = [];
-          byStatus[st].push(t);
-        });
-        const statusColors: Record<string, string> = {
-          "Completed": "bg-green-100 text-green-700",
-          "In Progress": "bg-blue-100 text-blue-700",
-          "Not Started": "bg-gray-100 text-gray-600",
-          "On Hold": "bg-yellow-100 text-yellow-700",
-          "Cancelled": "bg-red-100 text-red-600",
-        };
-        const cls = s.classification ?? (s.isInternalTeam ? "TeamMember" : "Stakeholder");
-        return (
-          <Dialog open={!!taskSummaryStakeholder} onOpenChange={() => setTaskSummaryStakeholder(null)}>
-            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <Users className="w-4 h-4" />
-                  {name} — Task Summary
-                </DialogTitle>
-                <div className="flex items-center gap-2 flex-wrap text-sm text-muted-foreground mt-1">
-                  {s.role && <span className="flex items-center gap-1"><Briefcase className="w-3 h-3" />{s.role}</span>}
-                  <Badge className={`text-[10px] px-1 py-0 ${classificationBadge(cls)}`}>{cls}</Badge>
-                  {s.department && <span>{s.department}</span>}
-                </div>
-              </DialogHeader>
-              <div className="space-y-4 py-2">
-                <div className="grid grid-cols-4 gap-3">
-                  <div className="bg-muted/40 rounded-lg p-3 text-center">
-                    <div className="text-2xl font-bold">{stTasks.length}</div>
-                    <div className="text-[10px] text-muted-foreground">Total</div>
-                  </div>
-                  <div className="bg-blue-50 rounded-lg p-3 text-center">
-                    <div className="text-2xl font-bold text-blue-600">{wl?.thisWeek ?? 0}</div>
-                    <div className="text-[10px] text-muted-foreground">This Week</div>
-                  </div>
-                  <div className="bg-muted/40 rounded-lg p-3 text-center">
-                    <div className="text-2xl font-bold">{wl?.nextWeek ?? 0}</div>
-                    <div className="text-[10px] text-muted-foreground">Next Week</div>
-                  </div>
-                  <div className="bg-green-50 rounded-lg p-3 text-center">
-                    <div className="text-2xl font-bold text-green-600">{byStatus["Completed"]?.length ?? 0}</div>
-                    <div className="text-[10px] text-muted-foreground">Completed</div>
-                  </div>
-                </div>
-                {stTasks.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-6">No tasks assigned to this stakeholder.</p>
-                ) : (
-                  Object.entries(byStatus).map(([status, statusTasks]) => (
-                    <div key={status}>
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${statusColors[status] ?? "bg-muted text-muted-foreground"}`}>{status}</span>
-                        <span className="text-xs text-muted-foreground">{statusTasks.length} task{statusTasks.length !== 1 ? "s" : ""}</span>
-                      </div>
-                      <div className="space-y-1.5">
-                        {statusTasks.map((t: any) => (
-                          <div key={t.id ?? t.taskId} className="flex items-start justify-between gap-3 bg-muted/30 rounded-lg px-3 py-2">
-                            <div className="min-w-0">
-                              <div className="text-sm font-medium truncate">{t.description ?? t.taskId}</div>
-                              {t.taskId && <div className="text-[10px] text-muted-foreground">{t.taskId}</div>}
-                            </div>
-                            <div className="shrink-0 text-right">
-                              {t.dueDate && <div className="text-[10px] text-muted-foreground">{new Date(t.dueDate).toLocaleDateString()}</div>}
-                              {t.priority && <Badge variant="outline" className="text-[10px] px-1 py-0 mt-0.5">{t.priority}</Badge>}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </DialogContent>
-          </Dialog>
-        );
-      })()}
+      {taskSummaryStakeholder && (
+        <TaskSummaryDialog
+          s={taskSummaryStakeholder.s}
+          wl={taskSummaryStakeholder.wl}
+          name={taskSummaryStakeholder.name}
+          tasks={tasks as any[]}
+          onClose={() => setTaskSummaryStakeholder(null)}
+        />
+      )}
     </div>
   );
 }
