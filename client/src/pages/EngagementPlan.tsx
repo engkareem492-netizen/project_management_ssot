@@ -51,6 +51,9 @@ import {
   TrendingUp,
   TrendingDown,
   Minus,
+  ArrowUp,
+  ArrowDown,
+  CheckCircle2,
 } from "lucide-react";
 import { StakeholderSelect } from "@/components/StakeholderSelect";
 import {
@@ -1313,21 +1316,27 @@ function EngagementAssessmentTab({
                     <TableHead>Stakeholder</TableHead>
                     <TableHead>Role</TableHead>
                     <TableHead>Current Status</TableHead>
-                    <TableHead className="text-center w-24">Trend</TableHead>
+                    <TableHead className="text-center w-28">Movement</TableHead>
                     <TableHead>Desired Status</TableHead>
+                    <TableHead className="text-center w-28">vs Target</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredStakeholders.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-sm text-muted-foreground">
+                      <TableCell colSpan={7} className="text-center py-8 text-sm text-muted-foreground">
                         No stakeholders match the selected filters.
                       </TableCell>
                     </TableRow>
                   ) : filteredStakeholders.map((s) => {
+                    const STATUS_ORDER = ["Unaware", "Resistant", "Neutral", "Supportive", "Leading"];
                     const trendInfo = (trends as any)[s.id];
                     const trend = trendInfo?.trend as "up" | "down" | "same" | "none" | undefined;
+                    // vs Target: compare current vs desired
+                    const currIdx = STATUS_ORDER.indexOf(s.currentEngagementStatus ?? "");
+                    const desiredIdx = STATUS_ORDER.indexOf(s.desiredEngagementStatus ?? "");
+                    const gap = currIdx >= 0 && desiredIdx >= 0 ? currIdx - desiredIdx : null;
                     return (
                     <TableRow key={s.id}>
                       <TableCell className="font-medium text-sm">{s.fullName}</TableCell>
@@ -1335,6 +1344,7 @@ function EngagementAssessmentTab({
                       <TableCell>
                         <StatusBadge status={s.currentEngagementStatus} />
                       </TableCell>
+                      {/* Historical movement column */}
                       <TableCell className="text-center">
                         <TooltipProvider>
                           <Tooltip>
@@ -1353,7 +1363,7 @@ function EngagementAssessmentTab({
                                   </span>
                                 )}
                                 {trend === "same" && (
-                                  <span className="inline-flex items-center gap-1 text-green-600 font-semibold text-xs">
+                                  <span className="inline-flex items-center gap-1 text-amber-600 font-semibold text-xs">
                                     <Minus className="h-4 w-4" />
                                     <span>Stable</span>
                                   </span>
@@ -1365,9 +1375,8 @@ function EngagementAssessmentTab({
                             </TooltipTrigger>
                             {trendInfo && trend !== "none" && (
                               <TooltipContent side="top" className="text-xs">
-                                {trend === "up" && `${trendInfo.prevStatus} → ${trendInfo.currStatus}`}
-                                {trend === "down" && `${trendInfo.prevStatus} → ${trendInfo.currStatus}`}
-                                {trend === "same" && `No change (${trendInfo.currStatus})`}
+                                {(trend === "up" || trend === "down") && `${trendInfo.prevStatus} → ${trendInfo.currStatus}`}
+                                {trend === "same" && `No change since last assessment (${trendInfo.currStatus})`}
                               </TooltipContent>
                             )}
                           </Tooltip>
@@ -1375,6 +1384,43 @@ function EngagementAssessmentTab({
                       </TableCell>
                       <TableCell>
                         <StatusBadge status={s.desiredEngagementStatus} />
+                      </TableCell>
+                      {/* vs Target column */}
+                      <TableCell className="text-center">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-flex items-center justify-center">
+                                {gap === null && <span className="text-muted-foreground text-xs">—</span>}
+                                {gap !== null && gap > 0 && (
+                                  <span className="inline-flex items-center gap-1 text-emerald-600 font-semibold text-xs">
+                                    <ArrowUp className="h-3.5 w-3.5" />
+                                    <span>+{gap} above</span>
+                                  </span>
+                                )}
+                                {gap !== null && gap === 0 && (
+                                  <span className="inline-flex items-center gap-1 text-green-600 font-semibold text-xs">
+                                    <CheckCircle2 className="h-3.5 w-3.5" />
+                                    <span>On target</span>
+                                  </span>
+                                )}
+                                {gap !== null && gap < 0 && (
+                                  <span className="inline-flex items-center gap-1 text-red-600 font-semibold text-xs">
+                                    <ArrowDown className="h-3.5 w-3.5" />
+                                    <span>{Math.abs(gap)} below</span>
+                                  </span>
+                                )}
+                              </span>
+                            </TooltipTrigger>
+                            {gap !== null && (
+                              <TooltipContent side="top" className="text-xs">
+                                {gap > 0 && `Current (${s.currentEngagementStatus}) is ${gap} level${gap > 1 ? "s" : ""} above desired (${s.desiredEngagementStatus})`}
+                                {gap === 0 && `Current matches desired (${s.currentEngagementStatus})`}
+                                {gap < 0 && `Current (${s.currentEngagementStatus}) is ${Math.abs(gap)} level${Math.abs(gap) > 1 ? "s" : ""} below desired (${s.desiredEngagementStatus})`}
+                              </TooltipContent>
+                            )}
+                          </Tooltip>
+                        </TooltipProvider>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1.5">

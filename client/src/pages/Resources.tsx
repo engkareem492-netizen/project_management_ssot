@@ -138,6 +138,7 @@ export default function Resources() {
     return d.toISOString().split("T")[0];
   });
   const [calStakeholderId, setCalStakeholderId] = useState<number | null>(null);
+  const [calCategoryFilter, setCalCategoryFilter] = useState<string>("all");
   const [calEditDate, setCalEditDate] = useState<string | null>(null);
   const [calEditEndDate, setCalEditEndDate] = useState<string | null>(null);
   const [calEntryMode, setCalEntryMode] = useState<"single" | "range">("single");
@@ -156,6 +157,7 @@ export default function Resources() {
 
   // Resource Plan state
   const [planViewMode, setPlanViewMode] = useState<"weekly" | "monthly">("weekly");
+  const [planCategoryFilter, setPlanCategoryFilter] = useState<string>("all");
 
   // Heatmap filter state
   const [heatmapTypeFilter, setHeatmapTypeFilter] = useState<"all" | "TeamMember" | "External" | "Stakeholder">("all");
@@ -404,10 +406,12 @@ export default function Resources() {
         name: s.fullName ?? s.name ?? `Stakeholder ${s.id}`,
         subtitle: s.role || s.classification || '',
         rbsNodeId: null,
-        resourceType: 'Human',
+        resourceType: s.classification ?? 'Human',
       }));
-      if (calStakeholderId) return base.filter(r => r.id === calStakeholderId);
-      return base;
+      let filtered = base;
+      if (calCategoryFilter !== "all") filtered = filtered.filter(r => r.resourceType === calCategoryFilter);
+      if (calStakeholderId) filtered = filtered.filter(r => r.id === calStakeholderId);
+      return filtered;
     }
     const base = leafNodes.map((n: any) => {
       const calId = n.stakeholderId ? n.stakeholderId : -(n.id);
@@ -420,9 +424,11 @@ export default function Resources() {
         resourceType: n.resourceType,
       };
     });
-    if (calStakeholderId) return base.filter(r => r.id === calStakeholderId);
-    return base;
-  }, [rbsNodes, stakeholders, calStakeholderId]);
+    let filtered = base;
+    if (calCategoryFilter !== "all") filtered = filtered.filter(r => r.resourceType === calCategoryFilter);
+    if (calStakeholderId) filtered = filtered.filter(r => r.id === calStakeholderId);
+    return filtered;
+  }, [rbsNodes, stakeholders, calStakeholderId, calCategoryFilter]);
 
   // ─── Resource Plan ─────────────────────────────────────────────────────────
   const resourcePlan = useMemo(() => {
@@ -1107,7 +1113,7 @@ export default function Resources() {
                           const meta = getMeta(type.name);
                           const isEditing = wizardEditTypeId === type.id;
                           return (
-                            <Card key={type.id} className={`border transition-all hover:shadow-sm cursor-pointer ${isEditing ? "border-primary ring-1 ring-primary" : ""}`}
+                            <Card key={type.id} className={`group border transition-all hover:shadow-sm cursor-pointer ${isEditing ? "border-primary ring-1 ring-primary" : ""}`}
                               onClick={() => { if (!isEditing) { setWizardCategoryId(type.id); setWizardStep(2); } }}>
                               <CardContent className="p-4">
                                 {isEditing ? (
@@ -1132,21 +1138,27 @@ export default function Resources() {
                                       <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: type.color ? `${type.color}20` : meta.bg, color: type.color ?? meta.text }}>
                                         {meta.icon}
                                       </div>
-                                      <div className="flex items-center gap-0.5 opacity-0 hover:opacity-100 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
-                                        <button className="w-6 h-6 flex items-center justify-center rounded hover:bg-muted text-muted-foreground transition-colors"
-                                          onClick={() => { setWizardEditTypeId(type.id); setWizardTypeForm({ name: type.name, color: type.color ?? "#6366f1", description: type.description ?? "" }); }}>
-                                          <Pencil className="w-3 h-3" />
-                                        </button>
-                                        <button className="w-6 h-6 flex items-center justify-center rounded hover:bg-red-50 text-muted-foreground hover:text-red-600 transition-colors"
-                                          onClick={() => {
-                                            const resourceCount = (rbsNodes as any[]).filter(n => n.resourceType === type.name && n.isLeaf === 1).length;
-                                            const msg = resourceCount > 0
-                                              ? `Delete "${type.name}"? This will also delete ${resourceCount} resource${resourceCount !== 1 ? "s" : ""} under this category. This cannot be undone.`
-                                              : `Delete "${type.name}"?`;
-                                            if (confirm(msg)) deleteRbsType.mutate({ id: type.id });
-                                          }}>
-                                          <Trash2 className="w-3 h-3" />
-                                        </button>
+                                      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
+                                        {type.isBuiltIn ? (
+                                          <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border/60 select-none">Built-in</span>
+                                        ) : (
+                                          <>
+                                            <button className="w-6 h-6 flex items-center justify-center rounded hover:bg-muted text-muted-foreground transition-colors"
+                                              onClick={() => { setWizardEditTypeId(type.id); setWizardTypeForm({ name: type.name, color: type.color ?? "#6366f1", description: type.description ?? "" }); }}>
+                                              <Pencil className="w-3 h-3" />
+                                            </button>
+                                            <button className="w-6 h-6 flex items-center justify-center rounded hover:bg-red-50 text-muted-foreground hover:text-red-600 transition-colors"
+                                              onClick={() => {
+                                                const resourceCount = (rbsNodes as any[]).filter(n => n.resourceType === type.name && n.isLeaf === 1).length;
+                                                const msg = resourceCount > 0
+                                                  ? `Delete "${type.name}"? This will also remove ${resourceCount} resource${resourceCount !== 1 ? "s" : ""} under this category. This cannot be undone.`
+                                                  : `Delete "${type.name}"? This cannot be undone.`;
+                                                if (confirm(msg)) deleteRbsType.mutate({ id: type.id });
+                                              }}>
+                                              <Trash2 className="w-3 h-3" />
+                                            </button>
+                                          </>
+                                        )}
                                       </div>
                                     </div>
                                     <p className="font-semibold text-sm">{type.name}</p>
@@ -1613,6 +1625,23 @@ export default function Resources() {
                   <Input type="date" value={calEnd} onChange={e => setCalEnd(e.target.value)} className="w-40 h-8 text-sm" />
                 </div>
                 <div className="space-y-1">
+                  <Label className="text-xs">RBS Category</Label>
+                  <Select value={calCategoryFilter} onValueChange={v => { setCalCategoryFilter(v); setCalStakeholderId(null); }}>
+                    <SelectTrigger className="w-40 h-8 text-sm"><SelectValue placeholder="All Categories" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Categories</SelectItem>
+                      {(rbsTypes as any[]).map((t: any) => (
+                        <SelectItem key={t.id} value={t.name}>
+                          <span className="flex items-center gap-1.5">
+                            {t.color && <span className="w-2 h-2 rounded-full shrink-0" style={{ background: t.color }} />}
+                            {t.name}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
                   <Label className="text-xs">Resource</Label>
                   <Select value={calStakeholderId ? String(calStakeholderId) : "all"} onValueChange={v => setCalStakeholderId(v === "all" ? null : Number(v))}>
                     <SelectTrigger className="w-48 h-8 text-sm"><SelectValue placeholder="All Resources" /></SelectTrigger>
@@ -1785,7 +1814,7 @@ export default function Resources() {
         <TabsContent value="plan" className="mt-0 space-y-4">
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-3">
                 <div>
                   <CardTitle className="text-base flex items-center gap-2">
                     <FileText className="w-4 h-4" />
@@ -1793,9 +1822,28 @@ export default function Resources() {
                   </CardTitle>
                   <p className="text-xs text-muted-foreground mt-1">Cost, availability, utilization, and task assignment per resource</p>
                 </div>
-                <div className="flex gap-2">
-                  <Button size="sm" variant={planViewMode === "weekly" ? "default" : "outline"} onClick={() => setPlanViewMode("weekly")} className="text-xs h-7">Weekly</Button>
-                  <Button size="sm" variant={planViewMode === "monthly" ? "default" : "outline"} onClick={() => setPlanViewMode("monthly")} className="text-xs h-7">Monthly</Button>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">RBS Category:</span>
+                    <Select value={planCategoryFilter} onValueChange={setPlanCategoryFilter}>
+                      <SelectTrigger className="w-36 h-7 text-xs"><SelectValue placeholder="All Categories" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Categories</SelectItem>
+                        {(rbsTypes as any[]).map((t: any) => (
+                          <SelectItem key={t.id} value={t.name}>
+                            <span className="flex items-center gap-1.5">
+                              {t.color && <span className="w-2 h-2 rounded-full shrink-0" style={{ background: t.color }} />}
+                              {t.name}
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant={planViewMode === "weekly" ? "default" : "outline"} onClick={() => setPlanViewMode("weekly")} className="text-xs h-7">Weekly</Button>
+                    <Button size="sm" variant={planViewMode === "monthly" ? "default" : "outline"} onClick={() => setPlanViewMode("monthly")} className="text-xs h-7">Monthly</Button>
+                  </div>
                 </div>
               </div>
             </CardHeader>
@@ -1804,25 +1852,33 @@ export default function Resources() {
                 <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
               ) : resourcePlan.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground text-sm">No resources found. Add stakeholders first.</div>
-              ) : (
+              ) : (() => {
+                const filteredPlan = planCategoryFilter === "all"
+                  ? resourcePlan
+                  : resourcePlan.filter(r => {
+                      const node = (rbsNodes as any[]).find(n => n.stakeholderId === r.id && n.isLeaf === 1);
+                      const typeName = node?.resourceType ?? (r as any).classification;
+                      return typeName === planCategoryFilter;
+                    });
+                return (
                 <>
                   {/* Summary bar */}
                   <div className="px-5 py-3 bg-muted/30 border-b grid grid-cols-4 gap-4 text-center">
                     <div>
                       <div className="text-xs text-muted-foreground">Total Resources</div>
-                      <div className="font-bold text-lg">{resourcePlan.length}</div>
+                      <div className="font-bold text-lg">{filteredPlan.length}{planCategoryFilter !== "all" && <span className="text-xs font-normal text-muted-foreground ml-1">/ {resourcePlan.length}</span>}</div>
                     </div>
                     <div>
                       <div className="text-xs text-muted-foreground">Total Capacity (hrs/{planViewMode === "weekly" ? "wk" : "mo"})</div>
-                      <div className="font-bold text-lg">{resourcePlan.reduce((s, r) => s + (planViewMode === "weekly" ? r.weeklyCapacityHours : r.weeklyCapacityHours * 4), 0).toFixed(0)}</div>
+                      <div className="font-bold text-lg">{filteredPlan.reduce((s, r) => s + (planViewMode === "weekly" ? r.weeklyCapacityHours : r.weeklyCapacityHours * 4), 0).toFixed(0)}</div>
                     </div>
                     <div>
                       <div className="text-xs text-muted-foreground">Total Tasks Assigned</div>
-                      <div className="font-bold text-lg">{resourcePlan.reduce((s, r) => s + r.totalAssigned, 0)}</div>
+                      <div className="font-bold text-lg">{filteredPlan.reduce((s, r) => s + r.totalAssigned, 0)}</div>
                     </div>
                     <div>
                       <div className="text-xs text-muted-foreground">Estimated Cost (this wk)</div>
-                      <div className="font-bold text-lg">{formatCurrency(resourcePlan.reduce((s, r) => s + r.costThisWeek, 0))}</div>
+                      <div className="font-bold text-lg">{formatCurrency(filteredPlan.reduce((s, r) => s + r.costThisWeek, 0))}</div>
                     </div>
                   </div>
 
@@ -1846,7 +1902,7 @@ export default function Resources() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {resourcePlan.map((r) => {
+                        {filteredPlan.map((r) => {
                           const capacityHrs = planViewMode === "weekly" ? r.weeklyCapacityHours : r.weeklyCapacityHours * 4;
                           const estUsed = planViewMode === "weekly" ? r.estimatedHoursUsed : r.totalAssigned * 8;
                           const unused = Math.max(capacityHrs - estUsed, 0);
@@ -1903,7 +1959,8 @@ export default function Resources() {
                     </Table>
                   </div>
                 </>
-              )}
+                );
+              })()}
             </CardContent>
           </Card>
         </TabsContent>
