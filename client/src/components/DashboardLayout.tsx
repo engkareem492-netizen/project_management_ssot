@@ -80,6 +80,8 @@ import {
   RotateCcw,
   EyeOff,
   Eye,
+  FolderPlus,
+  Trash2,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -190,14 +192,18 @@ const SIDEBAR_SECTIONS: SidebarSection[] = [
   },
 ];
 
-const SIDEBAR_WIDTH_KEY   = "sidebar-width";
-const SECTION_ORDERS_KEY  = "sidebar-section-orders";
-const SECTION_NAMES_KEY   = "sidebar-section-names";
-const HIDDEN_SECTIONS_KEY = "sidebar-hidden-sections";
-const MOVED_ITEMS_KEY     = "sidebar-moved-items";
+const SIDEBAR_WIDTH_KEY      = "sidebar-width";
+const SECTION_ORDERS_KEY     = "sidebar-section-orders";
+const SECTION_NAMES_KEY      = "sidebar-section-names";
+const HIDDEN_SECTIONS_KEY    = "sidebar-hidden-sections";
+const MOVED_ITEMS_KEY        = "sidebar-moved-items";
+const CUSTOM_SECTIONS_KEY    = "sidebar-custom-sections";
+const MAX_CUSTOM_SECTIONS    = 3;
 const DEFAULT_WIDTH = 280;
 const MIN_WIDTH     = 200;
 const MAX_WIDTH     = 480;
+
+type CustomSectionDef = { id: string; label: string };
 
 const ALL_ITEMS: SidebarItem[] = SIDEBAR_SECTIONS.flatMap(s => s.items);
 function findItem(path: string): SidebarItem | undefined {
@@ -365,6 +371,10 @@ function DashboardLayoutContent({
   const [movedItems, setMovedItems] = useState<Record<string, string>>(() => {
     try { return JSON.parse(localStorage.getItem(MOVED_ITEMS_KEY) ?? "{}"); } catch { return {}; }
   });
+  // Custom user-created sections (max 3)
+  const [customSections, setCustomSections] = useState<CustomSectionDef[]>(() => {
+    try { return JSON.parse(localStorage.getItem(CUSTOM_SECTIONS_KEY) ?? "[]"); } catch { return []; }
+  });
   const [renamingSection, setRenamingSection] = useState<string | null>(null);
   const [sectionRenameValue, setSectionRenameValue] = useState("");
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
@@ -374,6 +384,7 @@ function DashboardLayoutContent({
   useEffect(() => { localStorage.setItem(SECTION_NAMES_KEY, JSON.stringify(sectionNames)); }, [sectionNames]);
   useEffect(() => { localStorage.setItem(HIDDEN_SECTIONS_KEY, JSON.stringify(hiddenSections)); }, [hiddenSections]);
   useEffect(() => { localStorage.setItem(MOVED_ITEMS_KEY, JSON.stringify(movedItems)); }, [movedItems]);
+  useEffect(() => { localStorage.setItem(CUSTOM_SECTIONS_KEY, JSON.stringify(customSections)); }, [customSections]);
 
   const { data: badgeCounts } = trpc.sidebarBadges.counts.useQuery(
     { projectId: currentProjectId! },
@@ -422,7 +433,7 @@ function DashboardLayoutContent({
   const handleSwitchProject = () => { setCurrentProjectId(null); setLocation("/"); };
 
   // ─── Sections with custom order + cross-section membership ──────────────
-  const sectionsWithOrder = SIDEBAR_SECTIONS
+  const builtInSectionsWithOrder = SIDEBAR_SECTIONS
     .filter(section => !hiddenSections.includes(section.label))
     .map(section => {
       // Items originally in this section that haven't been moved elsewhere
@@ -439,15 +450,56 @@ function DashboardLayoutContent({
 
       const order = sectionOrders[section.label];
       const displayLabel = sectionNames[section.label] ?? section.label;
-      if (!order) return { ...section, items: allItems, displayLabel };
+      if (!order) return { ...section, items: allItems, displayLabel, isCustom: false };
 
       const ordered = order
         .filter(p => allItems.some(i => i.path === p))
         .map(p => allItems.find(i => i.path === p)!)
         .filter(Boolean);
       const unordered = allItems.filter(i => !order.includes(i.path));
-      return { ...section, items: [...ordered, ...unordered], displayLabel };
+      return { ...section, items: [...ordered, ...unordered], displayLabel, isCustom: false };
     });
+
+  // Custom sections: items are those with movedItems[path] === custom section id
+  const customSectionsWithOrder = customSections
+    .filter(cs => !hiddenSections.includes(cs.id))
+    .map(cs => {
+      const allItems = ALL_ITEMS.filter(item => movedItems[item.path] === cs.id);
+      const order = sectionOrders[cs.id];
+      const displayLabel = sectionNames[cs.id] ?? cs.label;
+      if (!order) return { label: cs.id, items: allItems, displayLabel, isCustom: true };
+      const ordered = order
+        .filter(p => allItems.some(i => i.path === p))
+        .map(p => allItems.find(i => i.path === p)!)
+        .filter(Boolean);
+      const unordered = allItems.filter(i => !order.includes(i.path));
+      return { label: cs.id, items: [...ordered, ...unordered], displayLabel, isCustom: true };
+    });
+
+  const sectionsWithOrder = [...builtInSectionsWithOrder, ...customSectionsWithOrder];
+
+  // Helper: add a new custom section
+  const handleAddCustomSection = () => {
+    if (customSections.length >= MAX_CUSTOM_SECTIONS) return;
+    const num = customSections.length + 1;
+    const id = `CUSTOM_SECTION_${Date.now()}`;
+    const label = `Custom Section ${num}`;
+    setCustomSections(prev => [...prev, { id, label }]);
+    setSectionNames(prev => ({ ...prev, [id]: label }));
+  };
+
+  // Helper: delete a custom section (return its items to original sections)
+  const handleDeleteCustomSection = (sectionId: string) => {
+    setCustomSections(prev => prev.filter(cs => cs.id !== sectionId));
+    setMovedItems(prev => {
+      const next = { ...prev };
+      Object.keys(next).forEach(path => { if (next[path] === sectionId) delete next[path]; });
+      return next;
+    });
+    setSectionNames(prev => { const n = { ...prev }; delete n[sectionId]; return n; });
+    setSectionOrders(prev => { const n = { ...prev }; delete n[sectionId]; return n; });
+    setHiddenSections(prev => prev.filter(s => s !== sectionId));
+  };
 
   const activeMenuItem = ALL_ITEMS.find(item => item.path === location);
   const draggingItem = activeDragId ? findItem(activeDragId) : null;
@@ -664,7 +716,7 @@ function DashboardLayoutContent({
                     ) : (
                       <span className="flex-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50 select-none truncate">
                         {section.displayLabel}
-                        {sectionNames[section.label] && (
+                        {!section.isCustom && sectionNames[section.label] && (
                           <span className="ml-1 normal-case font-normal text-muted-foreground/30 not-uppercase tracking-normal">
                             ({section.label})
                           </span>
@@ -684,7 +736,7 @@ function DashboardLayoutContent({
                         >
                           <Pencil className="mr-2 h-3 w-3" /> Rename
                         </DropdownMenuItem>
-                        {sectionNames[section.label] && (
+                        {!section.isCustom && sectionNames[section.label] && (
                           <DropdownMenuItem
                             className="text-xs"
                             onClick={() => setSectionNames(prev => { const n = { ...prev }; delete n[section.label]; return n; })}
@@ -711,12 +763,21 @@ function DashboardLayoutContent({
                           </DropdownMenuItem>
                         )}
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          className="text-xs text-destructive focus:text-destructive"
-                          onClick={() => setHiddenSections(prev => [...prev, section.label])}
-                        >
-                          <EyeOff className="mr-2 h-3 w-3" /> Hide section
-                        </DropdownMenuItem>
+                        {section.isCustom ? (
+                          <DropdownMenuItem
+                            className="text-xs text-destructive focus:text-destructive"
+                            onClick={() => handleDeleteCustomSection(section.label)}
+                          >
+                            <Trash2 className="mr-2 h-3 w-3" /> Delete section
+                          </DropdownMenuItem>
+                        ) : (
+                          <DropdownMenuItem
+                            className="text-xs text-destructive focus:text-destructive"
+                            onClick={() => setHiddenSections(prev => [...prev, section.label])}
+                          >
+                            <EyeOff className="mr-2 h-3 w-3" /> Hide section
+                          </DropdownMenuItem>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
@@ -749,6 +810,20 @@ function DashboardLayoutContent({
                   <div className="mx-4 border-t border-border/30 group-data-[collapsible=icon]:hidden" />
                 </div>
               ))}
+
+              {/* Add new custom section button */}
+              {!isCollapsed && customSections.length < MAX_CUSTOM_SECTIONS && (
+                <div className="px-3 py-1 group-data-[collapsible=icon]:hidden">
+                  <button
+                    onClick={handleAddCustomSection}
+                    className="w-full flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] text-muted-foreground/40 hover:text-primary hover:bg-primary/5 transition-colors border border-dashed border-muted-foreground/20 hover:border-primary/30"
+                    title={`Add custom section (${customSections.length}/${MAX_CUSTOM_SECTIONS} used)`}
+                  >
+                    <FolderPlus className="h-3 w-3" />
+                    <span>Add section ({MAX_CUSTOM_SECTIONS - customSections.length} remaining)</span>
+                  </button>
+                </div>
+              )}
 
               {/* Restore hidden sections */}
               {hiddenSections.length > 0 && !isCollapsed && (
