@@ -487,6 +487,7 @@ export default function CommunicationPlan() {
     notes: "",
   });
   const [commLogFilter, setCommLogFilter] = useState({ method: "", sentBy: "", dateFrom: "", dateTo: "" });
+  const [commClassFilter, setCommClassFilter] = useState<"all" | "TeamMember" | "External" | "Stakeholder">("all");
   const [expandedLogRows, setExpandedLogRows] = useState<Set<number>>(new Set());
   const { data: commLogEntries = [], refetch: refetchCommLog } =
     trpc.communicationLog.list.useQuery({ projectId }, { enabled });
@@ -790,17 +791,42 @@ export default function CommunicationPlan() {
 
         {/* ─── Stakeholder Tab ─── */}
         <TabsContent value="stakeholder" className="mt-4 space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm text-muted-foreground">
               Showing only stakeholders with a communication plan entry. Use <strong>Import from Stakeholders</strong> to add more.
             </p>
+            <div className="flex gap-1 border rounded-lg p-1">
+              {([
+                { key: "all", label: "All Types" },
+                { key: "TeamMember", label: "Team Members" },
+                { key: "External", label: "External" },
+                { key: "Stakeholder", label: "Stakeholders" },
+              ] as const).map((t) => (
+                <button
+                  key={t.key}
+                  onClick={() => setCommClassFilter(t.key)}
+                  className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                    commClassFilter === t.key
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
           </div>
           {isLoading ? (
             <div className="flex items-center justify-center h-48"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
           ) : (() => {
-            // Only stakeholders who have a direct comm plan entry
+            // Only stakeholders who have a direct comm plan entry, filtered by type
             const stakeholdersWithPlan = (stakeholders as any[]).filter(
-              (s: any) => !!stakeholderEntryMap[s.id]
+              (s: any) => {
+                if (!stakeholderEntryMap[s.id]) return false;
+                if (commClassFilter === "all") return true;
+                const cls = s.classification ?? (s.isInternalTeam ? "TeamMember" : "Stakeholder");
+                return cls === commClassFilter;
+              }
             );
             if (stakeholdersWithPlan.length === 0) {
               return (

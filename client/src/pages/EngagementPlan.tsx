@@ -491,11 +491,14 @@ function StakeholderAnalysisTab({
 }) {
   const utils = trpc.useUtils();
   const [selectedStakeholder, setSelectedStakeholder] = useState<any>(null);
+  const [classFilter, setClassFilter] = useState<"all" | "TeamMember" | "External" | "Stakeholder">("Stakeholder");
 
-  // Only show true Stakeholders (not Team Members or External)
   const mapStakeholders = useMemo(
-    () => stakeholders.filter((s) => s.classification === "Stakeholder"),
-    [stakeholders]
+    () => stakeholders.filter((s) => {
+      const cls = s.classification ?? (s.isInternalTeam ? "TeamMember" : "Stakeholder");
+      return classFilter === "all" || cls === classFilter;
+    }),
+    [stakeholders, classFilter]
   );
 
   const updateMut = trpc.stakeholders.update.useMutation({
@@ -523,6 +526,27 @@ function StakeholderAnalysisTab({
   return (
     <>
       <div className="flex flex-col gap-6">
+        {/* Classification filter */}
+        <div className="flex gap-1 border rounded-lg p-1 w-fit">
+          {([
+            { key: "all", label: "All Types" },
+            { key: "TeamMember", label: "Team Members" },
+            { key: "External", label: "External" },
+            { key: "Stakeholder", label: "Stakeholders" },
+          ] as const).map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setClassFilter(t.key)}
+              className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                classFilter === t.key
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
         {/* Power/Interest Map */}
         <Card>
           <CardHeader className="pb-2">

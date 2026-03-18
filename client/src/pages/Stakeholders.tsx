@@ -1942,15 +1942,19 @@ const FALLBACK_COLORS = ['#3b82f6','#10b981','#f97316','#ef4444','#06b6d4','#f59
 function PowerInterestMatrix({
   stakeholders,
   onUpdatePosition,
+  onStakeholderClick,
 }: {
   stakeholders: any[];
   onUpdatePosition?: (id: number, power: number, interest: number) => void;
+  onStakeholderClick?: (s: any) => void;
 }) {
   const matrixRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState<{ id: number; startPower: number; startInterest: number } | null>(null);
   const [positions, setPositions] = useState<Record<number, { power: number; interest: number }>>({});
   const [hovered, setHovered] = useState<number | null>(null);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; id: number } | null>(null);
+  const dragStart = useRef<{ x: number; y: number } | null>(null);
+  const dragMoved = useRef(false);
 
   // Build effective positions: override with local drag state
   const getPos = useCallback((s: any) => {
@@ -1978,6 +1982,8 @@ function PowerInterestMatrix({
 
   function handleBubbleMouseDown(e: React.MouseEvent, s: any) {
     e.preventDefault();
+    dragStart.current = { x: e.clientX, y: e.clientY };
+    dragMoved.current = false;
     const pos = getPos(s);
     setDragging({ id: s.id, startPower: pos.power, startInterest: pos.interest });
     setHovered(s.id);
@@ -1987,6 +1993,12 @@ function PowerInterestMatrix({
   useEffect(() => {
     if (!dragging) return;
     function onMove(e: MouseEvent) {
+      if (!dragMoved.current && dragStart.current) {
+        const dx = Math.abs(e.clientX - dragStart.current.x);
+        const dy = Math.abs(e.clientY - dragStart.current.y);
+        if (dx > 5 || dy > 5) dragMoved.current = true;
+      }
+      if (!dragMoved.current) return;
       const xy = getMatrixXY(e.clientX, e.clientY);
       if (!xy) return;
       const interest = pctToValue(xy.xPct);
@@ -1994,13 +2006,20 @@ function PowerInterestMatrix({
       setPositions(prev => ({ ...prev, [dragging!.id]: { power, interest } }));
     }
     function onUp(e: MouseEvent) {
-      const xy = getMatrixXY(e.clientX, e.clientY);
-      if (xy) {
-        const interest = pctToValue(xy.xPct);
-        const power = pctToValue(1 - xy.yPct);
-        setPositions(prev => ({ ...prev, [dragging!.id]: { power, interest } }));
-        onUpdatePosition?.(dragging!.id, power, interest);
+      if (dragMoved.current) {
+        const xy = getMatrixXY(e.clientX, e.clientY);
+        if (xy) {
+          const interest = pctToValue(xy.xPct);
+          const power = pctToValue(1 - xy.yPct);
+          setPositions(prev => ({ ...prev, [dragging!.id]: { power, interest } }));
+          onUpdatePosition?.(dragging!.id, power, interest);
+        }
+      } else {
+        const clicked = stakeholders.find(x => x.id === dragging!.id);
+        if (clicked) onStakeholderClick?.(clicked);
       }
+      dragStart.current = null;
+      dragMoved.current = false;
       setDragging(null);
     }
     window.addEventListener("mousemove", onMove);
@@ -2099,29 +2118,29 @@ function PowerInterestMatrix({
 
           {/* Center cross-hair lines */}
           <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute left-1/2 top-0 bottom-0 w-px bg-border/60" />
-            <div className="absolute top-1/2 left-0 right-0 h-px bg-border/60" />
-            {/* Grid lines at each unit */}
-            {[1,2,3,4].map(n => (
+            <div className="absolute left-1/2 top-0 bottom-0 w-[1.5px] bg-border/80" />
+            <div className="absolute top-1/2 left-0 right-0 h-[1.5px] bg-border/80" />
+            {/* Minor grid lines at values 2 and 4 only (skip 3=center and 5=edge) */}
+            {[1,3].map(n => (
               <div key={`x${n}`} className="absolute top-0 bottom-0 w-px bg-border/20" style={{ left: `${(n / 4) * 100}%` }} />
             ))}
-            {[1,2,3,4].map(n => (
+            {[1,3].map(n => (
               <div key={`y${n}`} className="absolute left-0 right-0 h-px bg-border/20" style={{ top: `${(n / 4) * 100}%` }} />
             ))}
           </div>
 
-          {/* Axis tick values */}
-          <div className="absolute left-0 right-0 bottom-0 flex pointer-events-none" style={{ height: 0 }}>
+          {/* Axis tick values — absolutely positioned to match bubble coordinates */}
+          <div className="absolute left-0 right-0 bottom-0 pointer-events-none" style={{ height: 0 }}>
             {[1,2,3,4,5].map(n => (
-              <div key={n} className="flex-1 flex justify-center" style={{ transform: "translateY(2px)" }}>
-                <span className="text-[9px] text-muted-foreground/40">{n}</span>
+              <div key={n} className="absolute" style={{ left: `${((n - 1) / 4) * 100}%`, transform: "translateX(-50%) translateY(3px)" }}>
+                <span className="text-[9px] text-muted-foreground/50">{n}</span>
               </div>
             ))}
           </div>
-          <div className="absolute top-0 bottom-0 left-0 flex flex-col-reverse pointer-events-none" style={{ width: 0 }}>
+          <div className="absolute top-0 bottom-0 left-0 pointer-events-none" style={{ width: 0 }}>
             {[1,2,3,4,5].map(n => (
-              <div key={n} className="flex-1 flex items-center" style={{ transform: "translateX(-14px)" }}>
-                <span className="text-[9px] text-muted-foreground/40">{n}</span>
+              <div key={n} className="absolute flex items-center" style={{ top: `${((5 - n) / 4) * 100}%`, transform: "translateY(-50%) translateX(-16px)" }}>
+                <span className="text-[9px] text-muted-foreground/50">{n}</span>
               </div>
             ))}
           </div>
@@ -2246,6 +2265,7 @@ export default function Stakeholders() {
   const [searchTerm, setSearchTerm] = useState("");
   const [classificationFilter, setClassificationFilter] = useState<"all" | "TeamMember" | "External" | "Stakeholder">("all");
   const [strategyFilter, setStrategyFilter] = useState<string>("all");
+  const [matrixClassFilter, setMatrixClassFilter] = useState<"all" | "TeamMember" | "External" | "Stakeholder">("all");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -2718,12 +2738,37 @@ export default function Stakeholders() {
         </TabsContent>
 
         {/* Power/Interest Matrix Tab */}
-        <TabsContent value="matrix" className="mt-4">
+        <TabsContent value="matrix" className="mt-4 space-y-3">
+          {/* Classification filter */}
+          <div className="flex gap-1 border rounded-lg p-1 w-fit">
+            {([
+              { key: "all", label: "All Types" },
+              { key: "TeamMember", label: "Team Members" },
+              { key: "External", label: "External" },
+              { key: "Stakeholder", label: "Stakeholders" },
+            ] as const).map((t) => (
+              <button
+                key={t.key}
+                onClick={() => setMatrixClassFilter(t.key)}
+                className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                  matrixClassFilter === t.key
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
           <PowerInterestMatrix
-            stakeholders={stakeholders as any[]}
+            stakeholders={(stakeholders as any[]).filter((s) =>
+              matrixClassFilter === "all" ||
+              (s.classification ?? (s.isInternalTeam ? "TeamMember" : "Stakeholder")) === matrixClassFilter
+            )}
             onUpdatePosition={(id, power, interest) =>
               updatePositionMutation.mutate({ id, powerLevel: power, interestLevel: interest } as any)
             }
+            onStakeholderClick={(s) => { setSelectedStakeholder(s); setDetailOpen(true); }}
           />
         </TabsContent>
 
