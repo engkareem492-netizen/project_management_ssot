@@ -472,6 +472,7 @@ export const stakeholderEnhancementsRouter = router({
         name: z.string(),
         level: z.enum(["Beginner", "Intermediate", "Advanced", "Expert"]),
         linkedKpiId: z.number().optional(),
+        linkedSwotId: z.number().optional(),
       })
     )
     .mutation(async ({ input }) => {
@@ -491,6 +492,7 @@ export const stakeholderEnhancementsRouter = router({
             .enum(["Beginner", "Intermediate", "Advanced", "Expert"])
             .optional(),
           linkedKpiId: z.number().nullable().optional(),
+          linkedSwotId: z.number().nullable().optional(),
         }),
       })
     )

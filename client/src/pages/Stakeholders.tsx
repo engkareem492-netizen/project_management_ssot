@@ -1136,7 +1136,7 @@ function DetailPanel({
 
   // ── Skill state ──
   const [showSkillForm, setShowSkillForm] = useState(false);
-  const [skillForm, setSkillForm] = useState({ name: "", level: "Beginner" as string, linkedKpiId: "" });
+  const [skillForm, setSkillForm] = useState({ name: "", level: "Beginner" as string, linkedKpiId: "", linkedSwotId: "" });
 
   // ── tRPC queries ──
   const { data: swotItems = [], refetch: refetchSwot } = trpc.stakeholderEnhancements.listSwot.useQuery(
@@ -1190,7 +1190,7 @@ function DetailPanel({
     onSuccess: () => {
       refetchSkills();
       setShowSkillForm(false);
-      setSkillForm({ name: "", level: "Beginner", linkedKpiId: "" });
+      setSkillForm({ name: "", level: "Beginner", linkedKpiId: "", linkedSwotId: "" });
       toast.success("Skill added");
     },
     onError: (e) => toast.error(`Failed: ${e.message}`),
@@ -1317,10 +1317,18 @@ function DetailPanel({
           <div className="px-4 pt-3 border-b">
             <TabsList className="w-full justify-start gap-0 bg-transparent p-0 h-auto">
               <TabsTrigger value="profile"    className="text-xs px-3 py-2 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent">Profile</TabsTrigger>
-              <TabsTrigger value="kpis"       className="text-xs px-3 py-2 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent">KPIs</TabsTrigger>
-              <TabsTrigger value="swot"       className="text-xs px-3 py-2 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent">SWOT</TabsTrigger>
-              <TabsTrigger value="devplan"    className="text-xs px-3 py-2 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent">Dev Plan</TabsTrigger>
-              <TabsTrigger value="skills"     className="text-xs px-3 py-2 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent">Skills</TabsTrigger>
+              {classification === "TeamMember" && (
+                <TabsTrigger value="kpis"     className="text-xs px-3 py-2 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent">KPIs</TabsTrigger>
+              )}
+              {classification === "TeamMember" && (
+                <TabsTrigger value="swot"     className="text-xs px-3 py-2 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent">SWOT</TabsTrigger>
+              )}
+              {classification === "TeamMember" && (
+                <TabsTrigger value="devplan"  className="text-xs px-3 py-2 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent">Dev Plan</TabsTrigger>
+              )}
+              {classification === "TeamMember" && (
+                <TabsTrigger value="skills"   className="text-xs px-3 py-2 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent">Skills</TabsTrigger>
+              )}
             </TabsList>
           </div>
 
@@ -1816,6 +1824,22 @@ function DetailPanel({
                     </Select>
                   </div>
                 )}
+                {swotItems.length > 0 && (
+                  <div className="space-y-1">
+                    <Label className="text-xs">Link to SWOT item (optional)</Label>
+                    <Select value={skillForm.linkedSwotId} onValueChange={(v) => setSkillForm((p) => ({ ...p, linkedSwotId: v }))}>
+                      <SelectTrigger className="h-8">
+                        <SelectValue placeholder="Select SWOT item..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">— None —</SelectItem>
+                        {(swotItems as any[]).map((s) => (
+                          <SelectItem key={s.id} value={String(s.id)}>[{s.quadrant}] {s.description}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <div className="flex gap-2">
                   <Button
                     size="sm"
@@ -1828,6 +1852,7 @@ function DetailPanel({
                         name: skillForm.name,
                         level: skillForm.level,
                         linkedKpiId: skillForm.linkedKpiId ? parseInt(skillForm.linkedKpiId) : undefined,
+                        linkedSwotId: skillForm.linkedSwotId ? parseInt(skillForm.linkedSwotId) : undefined,
                       });
                     }}
                   >
@@ -1848,6 +1873,7 @@ function DetailPanel({
               <div className="space-y-2">
                 {(skills as any[]).map((skill) => {
                   const linkedKpi = (kpis as any[]).find((k) => k.id === skill.linkedKpiId);
+                  const linkedSwot = (swotItems as any[]).find((s) => s.id === skill.linkedSwotId);
                   return (
                     <div key={skill.id} className="border rounded-lg px-3 py-2.5 flex items-center gap-2">
                       <div className="flex-1 min-w-0">
@@ -1857,6 +1883,11 @@ function DetailPanel({
                           {linkedKpi && (
                             <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
                               <Target className="h-2.5 w-2.5" /> KPI: {linkedKpi.name}
+                            </span>
+                          )}
+                          {linkedSwot && (
+                            <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                              <Brain className="h-2.5 w-2.5" /> {linkedSwot.quadrant}: {linkedSwot.description.length > 30 ? linkedSwot.description.slice(0, 30) + "…" : linkedSwot.description}
                             </span>
                           )}
                         </div>

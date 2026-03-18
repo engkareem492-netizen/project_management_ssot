@@ -1462,6 +1462,7 @@ export const stakeholderSkills = mysqlTable("stakeholderSkills", {
   name: varchar("name", { length: 200 }).notNull(),
   level: mysqlEnum("skillLevel", ["Beginner", "Intermediate", "Advanced", "Expert"]).default("Intermediate").notNull(),
   linkedKpiId: int("linkedKpiId"),
+  linkedSwotId: int("linkedSwotId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type StakeholderSkill = typeof stakeholderSkills.$inferSelect;
