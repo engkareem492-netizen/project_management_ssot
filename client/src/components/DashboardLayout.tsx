@@ -86,6 +86,9 @@ import {
   X,
   ChevronDown,
   ChevronRight,
+  RotateCcw,
+  EyeOff,
+  Eye,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -201,7 +204,17 @@ const SIDEBAR_SECTIONS: SidebarSection[] = [
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
 const CUSTOM_FOLDERS_KEY = "sidebar-custom-folders";
 const SECTION_ORDERS_KEY = "sidebar-section-orders";
+const SECTION_NAMES_KEY = "sidebar-section-names";
+const HIDDEN_SECTIONS_KEY = "sidebar-hidden-sections";
 const DEFAULT_WIDTH = 280;
+
+const FOLDER_COLORS = [
+  { bg: "bg-amber-500/8",   border: "border-amber-500/25",  borderL: "border-l-amber-500",   icon: "text-amber-500",   badge: "bg-amber-500/15 text-amber-600 dark:text-amber-400" },
+  { bg: "bg-blue-500/8",    border: "border-blue-500/25",   borderL: "border-l-blue-500",    icon: "text-blue-500",    badge: "bg-blue-500/15 text-blue-600 dark:text-blue-400" },
+  { bg: "bg-emerald-500/8", border: "border-emerald-500/25",borderL: "border-l-emerald-500", icon: "text-emerald-500", badge: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" },
+  { bg: "bg-violet-500/8",  border: "border-violet-500/25", borderL: "border-l-violet-500",  icon: "text-violet-500",  badge: "bg-violet-500/15 text-violet-600 dark:text-violet-400" },
+  { bg: "bg-rose-500/8",    border: "border-rose-500/25",   borderL: "border-l-rose-500",    icon: "text-rose-500",    badge: "bg-rose-500/15 text-rose-600 dark:text-rose-400" },
+] as const;
 const MIN_WIDTH = 200;
 const MAX_WIDTH = 480;
 
@@ -347,6 +360,7 @@ function DroppableFolder({
   onDeleteFolder,
   isCollapsed: sidebarCollapsed,
   isDraggingActive,
+  colorIndex,
 }: {
   folder: CustomFolder;
   items: SidebarItem[];
@@ -360,11 +374,14 @@ function DroppableFolder({
   onDeleteFolder: (id: string) => void;
   isCollapsed: boolean;
   isDraggingActive: boolean;
+  colorIndex?: number;
 }) {
   const { isOver, setNodeRef } = useDroppable({ id: `folder-${folder.id}` });
   const [folderCollapsed, setFolderCollapsed] = useState(folder.collapsed);
   const [renaming, setRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState(folder.name);
+
+  const colors = FOLDER_COLORS[(colorIndex ?? 0) % FOLDER_COLORS.length];
 
   // Auto-expand when user hovers over a collapsed folder during drag
   useEffect(() => {
@@ -376,29 +393,25 @@ function DroppableFolder({
   return (
     <div
       ref={setNodeRef}
-      className={`rounded-lg mx-1 mb-1 transition-all duration-200 ${
+      className={`rounded-lg mx-1 mb-2 border-l-2 border transition-all duration-200 overflow-hidden group-data-[collapsible=icon]:hidden ${
         isOver
-          ? "bg-primary/8 ring-2 ring-primary/50 shadow-sm"
+          ? "bg-primary/8 border-primary/30 border-l-primary shadow-md"
           : isDraggingActive
-          ? "ring-1 ring-dashed ring-border/70 bg-muted/20"
-          : ""
+          ? `${colors.bg} ${colors.border} ${colors.borderL} ring-1 ring-dashed ring-border/60`
+          : `${colors.bg} ${colors.border} ${colors.borderL}`
       }`}
     >
-      <div className="px-2 pt-2 pb-0.5 group-data-[collapsible=icon]:hidden">
-        <div className="flex items-center gap-1">
+      {/* Folder header */}
+      <div className="px-2 pt-2 pb-1.5 group/folder">
+        <div className="flex items-center gap-1.5">
           <button
             onClick={() => setFolderCollapsed(p => !p)}
-            className="flex items-center gap-1.5 flex-1 min-w-0 text-left hover:text-foreground transition-colors py-0.5"
+            className="flex items-center gap-2 flex-1 min-w-0 text-left rounded transition-colors py-0.5"
           >
-            {folderCollapsed ? (
-              <ChevronRight className="h-3 w-3 text-muted-foreground/50 shrink-0" />
-            ) : (
-              <ChevronDown className="h-3 w-3 text-muted-foreground/50 shrink-0" />
-            )}
             {isOver ? (
-              <FolderOpen className="h-3.5 w-3.5 text-primary shrink-0" />
+              <FolderOpen className="h-4 w-4 shrink-0 text-primary" />
             ) : (
-              <Folder className={`h-3.5 w-3.5 shrink-0 transition-colors ${isDraggingActive ? "text-amber-400" : "text-amber-500"}`} />
+              <Folder className={`h-4 w-4 shrink-0 transition-colors ${colors.icon}`} />
             )}
             {renaming ? (
               <form
@@ -407,7 +420,7 @@ function DroppableFolder({
                 onClick={e => e.stopPropagation()}
               >
                 <Input
-                  className="h-5 text-[10px] px-1 py-0"
+                  className="h-5 text-xs px-1 py-0"
                   value={renameValue}
                   onChange={e => setRenameValue(e.target.value)}
                   autoFocus
@@ -415,23 +428,35 @@ function DroppableFolder({
                 />
               </form>
             ) : (
-              <span className={`text-[10px] font-semibold uppercase tracking-wider truncate transition-colors ${
-                isOver ? "text-primary" : "text-muted-foreground/60"
+              <span className={`text-xs font-medium truncate flex-1 transition-colors ${
+                isOver ? "text-primary" : "text-foreground/75"
               }`}>
                 {folder.name}
               </span>
             )}
-            {items.length > 0 && !isOver && (
-              <span className="text-[9px] text-muted-foreground/40 shrink-0">{items.length}</span>
-            )}
+            <div className="flex items-center gap-1 shrink-0 ml-auto">
+              {items.length > 0 && (
+                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
+                  isOver ? "bg-primary/20 text-primary" : colors.badge
+                }`}>
+                  {items.length}
+                </span>
+              )}
+              {folderCollapsed ? (
+                <ChevronRight className="h-3 w-3 text-muted-foreground/40" />
+              ) : (
+                <ChevronDown className="h-3 w-3 text-muted-foreground/40" />
+              )}
+            </div>
           </button>
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="opacity-0 group-hover:opacity-100 h-5 w-5 flex items-center justify-center rounded hover:bg-accent text-muted-foreground transition-all">
+              <button className="opacity-0 group-hover/folder:opacity-100 h-6 w-6 flex items-center justify-center rounded hover:bg-accent/70 text-muted-foreground transition-all shrink-0">
                 <MoreHorizontal className="h-3 w-3" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-36">
+            <DropdownMenuContent align="end" className="w-40">
               <DropdownMenuItem className="text-xs" onClick={() => { setRenameValue(folder.name); setRenaming(true); }}>
                 <Pencil className="mr-2 h-3 w-3" /> Rename
               </DropdownMenuItem>
@@ -448,10 +473,10 @@ function DroppableFolder({
 
         {/* Drop zone indicator */}
         {isDraggingActive && (
-          <div className={`mt-1.5 mx-1 rounded-md flex items-center justify-center gap-1.5 transition-all duration-200 ${
+          <div className={`mt-1.5 rounded-md flex items-center justify-center gap-1.5 transition-all duration-200 ${
             isOver
               ? "h-9 bg-primary/10 border-2 border-primary/40 border-dashed"
-              : "h-7 bg-muted/30 border border-dashed border-border/50"
+              : "h-7 bg-muted/20 border border-dashed border-border/40"
           }`}>
             {isOver ? (
               <>
@@ -460,17 +485,18 @@ function DroppableFolder({
               </>
             ) : (
               <>
-                <FolderPlus className="h-3 w-3 text-muted-foreground/30" />
-                <span className="text-[9px] text-muted-foreground/50">Drop here</span>
+                <FolderPlus className="h-3 w-3 text-muted-foreground/25" />
+                <span className="text-[9px] text-muted-foreground/40">Drop here</span>
               </>
             )}
           </div>
         )}
       </div>
 
+      {/* Items */}
       {!folderCollapsed && !sidebarCollapsed && (
         <SortableContext items={items.map(i => i.path)} strategy={verticalListSortingStrategy}>
-          <SidebarMenu className="px-2 pb-1">
+          <SidebarMenu className="px-2 pb-2">
             {items.map(item => (
               <SortableNavItem
                 key={item.path}
@@ -495,11 +521,10 @@ function DroppableFolder({
         </SortableContext>
       )}
       {!folderCollapsed && items.length === 0 && !sidebarCollapsed && !isDraggingActive && (
-        <div className="ml-6 mr-3 mb-2 rounded-md border border-dashed border-border/50 px-3 py-2 text-[10px] text-muted-foreground/50 text-center">
-          Empty folder — drag items here
+        <div className="mx-3 mb-3 rounded-md border border-dashed border-border/40 px-3 py-2.5 text-[10px] text-muted-foreground/40 text-center">
+          Empty — drag items here
         </div>
       )}
-      <div className="mx-3 mt-1 border-t border-border/20 group-data-[collapsible=icon]:hidden" />
     </div>
   );
 }
@@ -587,6 +612,14 @@ function DashboardLayoutContent({
   const [sectionOrders, setSectionOrders] = useState<Record<string, string[]>>(() => {
     try { return JSON.parse(localStorage.getItem(SECTION_ORDERS_KEY) ?? "{}"); } catch { return {}; }
   });
+  const [sectionNames, setSectionNames] = useState<Record<string, string>>(() => {
+    try { return JSON.parse(localStorage.getItem(SECTION_NAMES_KEY) ?? "{}"); } catch { return {}; }
+  });
+  const [hiddenSections, setHiddenSections] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem(HIDDEN_SECTIONS_KEY) ?? "[]"); } catch { return []; }
+  });
+  const [renamingSection, setRenamingSection] = useState<string | null>(null);
+  const [sectionRenameValue, setSectionRenameValue] = useState("");
   const [showFolderDialog, setShowFolderDialog] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
@@ -600,6 +633,14 @@ function DashboardLayoutContent({
   useEffect(() => {
     localStorage.setItem(SECTION_ORDERS_KEY, JSON.stringify(sectionOrders));
   }, [sectionOrders]);
+  // Persist section names
+  useEffect(() => {
+    localStorage.setItem(SECTION_NAMES_KEY, JSON.stringify(sectionNames));
+  }, [sectionNames]);
+  // Persist hidden sections
+  useEffect(() => {
+    localStorage.setItem(HIDDEN_SECTIONS_KEY, JSON.stringify(hiddenSections));
+  }, [hiddenSections]);
 
   const { data: badgeCounts } = trpc.sidebarBadges.counts.useQuery(
     { projectId: currentProjectId! },
@@ -681,18 +722,20 @@ function DashboardLayoutContent({
     setShowFolderDialog(false);
   }
 
-  // ─── Sections with custom order ─────────────────────────────────────────
-  const sectionsWithOrder = SIDEBAR_SECTIONS.map(section => {
-    const filteredItems = section.items.filter(item => !folderPaths.includes(item.path));
-    const order = sectionOrders[section.label];
-    if (!order) return { ...section, items: filteredItems };
-    const ordered = order
-      .filter(p => filteredItems.some(i => i.path === p))
-      .map(p => filteredItems.find(i => i.path === p)!)
-      .filter(Boolean);
-    const unordered = filteredItems.filter(i => !order.includes(i.path));
-    return { ...section, items: [...ordered, ...unordered] };
-  });
+  // ─── Sections with custom order (hidden sections excluded) ──────────────
+  const sectionsWithOrder = SIDEBAR_SECTIONS
+    .filter(section => !hiddenSections.includes(section.label))
+    .map(section => {
+      const filteredItems = section.items.filter(item => !folderPaths.includes(item.path));
+      const order = sectionOrders[section.label];
+      if (!order) return { ...section, items: filteredItems, displayLabel: sectionNames[section.label] ?? section.label };
+      const ordered = order
+        .filter(p => filteredItems.some(i => i.path === p))
+        .map(p => filteredItems.find(i => i.path === p)!)
+        .filter(Boolean);
+      const unordered = filteredItems.filter(i => !order.includes(i.path));
+      return { ...section, items: [...ordered, ...unordered], displayLabel: sectionNames[section.label] ?? section.label };
+    });
 
   const activeMenuItem = ALL_ITEMS.find(item => item.path === location);
   const draggingItem = activeDragId ? findItem(activeDragId) : null;
@@ -879,25 +922,25 @@ function DashboardLayoutContent({
               )}
 
               {/* Custom Folders */}
-              {customFolders.map(folder => {
+              {customFolders.map((folder, idx) => {
                 const folderItems = folder.paths.map(p => findItem(p)).filter(Boolean) as SidebarItem[];
                 return (
-                  <div key={folder.id} className="group">
-                    <DroppableFolder
-                      folder={folder}
-                      items={folderItems}
-                      isActive={location}
-                      badgeCounts={badgeCounts}
-                      onNavigate={setLocation}
-                      onAddToFolder={addToFolder}
-                      allFolders={customFolders}
-                      onRemoveFromFolder={removeFromFolder}
-                      onRenameFolder={renameFolder}
-                      onDeleteFolder={deleteFolder}
-                      isCollapsed={isCollapsed}
-                      isDraggingActive={!!activeDragId}
-                    />
-                  </div>
+                  <DroppableFolder
+                    key={folder.id}
+                    folder={folder}
+                    items={folderItems}
+                    isActive={location}
+                    badgeCounts={badgeCounts}
+                    onNavigate={setLocation}
+                    onAddToFolder={addToFolder}
+                    allFolders={customFolders}
+                    onRemoveFromFolder={removeFromFolder}
+                    onRenameFolder={renameFolder}
+                    onDeleteFolder={deleteFolder}
+                    isCollapsed={isCollapsed}
+                    isDraggingActive={!!activeDragId}
+                    colorIndex={idx}
+                  />
                 );
               })}
 
@@ -916,11 +959,73 @@ function DashboardLayoutContent({
 
               {/* PMP Sections */}
               {sectionsWithOrder.map((section) => (
-                <div key={section.label}>
-                  <div className="px-4 pt-3 pb-0.5 group-data-[collapsible=icon]:hidden">
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50 select-none">
-                      {section.label}
-                    </span>
+                <div key={section.label} className="group/section">
+                  <div className="px-3 pt-3 pb-0.5 group-data-[collapsible=icon]:hidden flex items-center gap-1 group/sectionhdr">
+                    {renamingSection === section.label ? (
+                      <form
+                        className="flex-1 min-w-0"
+                        onSubmit={e => {
+                          e.preventDefault();
+                          const v = sectionRenameValue.trim();
+                          if (v) setSectionNames(prev => ({ ...prev, [section.label]: v }));
+                          else setSectionNames(prev => { const n = { ...prev }; delete n[section.label]; return n; });
+                          setRenamingSection(null);
+                        }}
+                      >
+                        <Input
+                          className="h-5 text-[10px] px-1.5 py-0 uppercase font-semibold tracking-wider"
+                          value={sectionRenameValue}
+                          onChange={e => setSectionRenameValue(e.target.value)}
+                          autoFocus
+                          onBlur={() => {
+                            const v = sectionRenameValue.trim();
+                            if (v) setSectionNames(prev => ({ ...prev, [section.label]: v }));
+                            else setSectionNames(prev => { const n = { ...prev }; delete n[section.label]; return n; });
+                            setRenamingSection(null);
+                          }}
+                          onKeyDown={e => { if (e.key === "Escape") setRenamingSection(null); }}
+                        />
+                      </form>
+                    ) : (
+                      <span className="flex-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50 select-none truncate">
+                        {section.displayLabel}
+                        {sectionNames[section.label] && (
+                          <span className="ml-1 normal-case font-normal text-muted-foreground/30 not-uppercase tracking-normal">
+                            ({section.label})
+                          </span>
+                        )}
+                      </span>
+                    )}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="opacity-0 group-hover/sectionhdr:opacity-100 h-5 w-5 flex items-center justify-center rounded hover:bg-accent text-muted-foreground/40 hover:text-muted-foreground transition-all shrink-0">
+                          <MoreHorizontal className="h-3 w-3" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-44">
+                        <DropdownMenuItem
+                          className="text-xs"
+                          onClick={() => { setSectionRenameValue(sectionNames[section.label] ?? section.label); setRenamingSection(section.label); }}
+                        >
+                          <Pencil className="mr-2 h-3 w-3" /> Rename
+                        </DropdownMenuItem>
+                        {sectionNames[section.label] && (
+                          <DropdownMenuItem
+                            className="text-xs"
+                            onClick={() => setSectionNames(prev => { const n = { ...prev }; delete n[section.label]; return n; })}
+                          >
+                            <RotateCcw className="mr-2 h-3 w-3" /> Revert to standard
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className="text-xs text-destructive focus:text-destructive"
+                          onClick={() => setHiddenSections(prev => [...prev, section.label])}
+                        >
+                          <EyeOff className="mr-2 h-3 w-3" /> Hide section
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                   <SortableContext items={section.items.map(i => i.path)} strategy={verticalListSortingStrategy}>
                     <SidebarMenu className="px-2 pb-1">
@@ -947,6 +1052,19 @@ function DashboardLayoutContent({
                   <div className="mx-4 border-t border-border/30 group-data-[collapsible=icon]:hidden" />
                 </div>
               ))}
+
+              {/* Restore hidden sections */}
+              {hiddenSections.length > 0 && !isCollapsed && (
+                <div className="px-3 py-2 group-data-[collapsible=icon]:hidden">
+                  <button
+                    onClick={() => setHiddenSections([])}
+                    className="w-full flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] text-muted-foreground/40 hover:text-muted-foreground hover:bg-accent transition-colors"
+                  >
+                    <Eye className="h-3 w-3" />
+                    <span>{hiddenSections.length} hidden section{hiddenSections.length > 1 ? "s" : ""} — restore all</span>
+                  </button>
+                </div>
+              )}
             </SidebarContent>
 
             <SidebarFooter className="p-3 gap-2">
