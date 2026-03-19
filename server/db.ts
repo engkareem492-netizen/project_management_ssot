@@ -1404,6 +1404,18 @@ export async function createProject(data: InsertProject) {
   }
 }
 
+export async function updateProject(projectId: number, data: { programName?: string | null; portfolioName?: string | null; logoUrl?: string | null; name?: string; description?: string | null }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  try {
+    await db.update(projects).set(data).where(eq(projects.id, projectId));
+    return { success: true };
+  } catch (error) {
+    console.error("[Database] Failed to update project:", error);
+    throw error;
+  }
+}
+
 export async function updateProjectPassword(projectId: number, hashedPassword: string | null) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");

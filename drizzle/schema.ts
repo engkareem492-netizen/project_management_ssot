@@ -42,6 +42,9 @@ export const projects = mysqlTable("projects", {
   description: text("description"),
   password: varchar("password", { length: 255 }),
   createdBy: int("createdBy").notNull(),
+  programName: varchar("programName", { length: 200 }),
+  portfolioName: varchar("portfolioName", { length: 200 }),
+  logoUrl: text("logoUrl"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

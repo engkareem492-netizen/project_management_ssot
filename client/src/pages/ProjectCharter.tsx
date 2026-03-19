@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Loader2, Save, FileText, Target, CheckCircle2, AlertTriangle, Users } from "lucide-react";
+import { CURRENCIES } from "@/lib/currencies";
 
 const RAG_COLORS: Record<string, string> = {
   Green: "bg-green-100 text-green-800 border-green-300",
@@ -190,9 +191,9 @@ export default function ProjectCharter() {
           {editing ? (
             <div className="flex gap-2">
               <Select value={form.currency || "USD"} onValueChange={v => set("currency", v)}>
-                <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {["USD", "EUR", "GBP", "AED", "SAR", "INR"].map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  {CURRENCIES.map(({ code, label }) => <SelectItem key={code} value={code}>{label}</SelectItem>)}
                 </SelectContent>
               </Select>
               <Input type="number" placeholder="Total budget" value={form.budget} onChange={e => set("budget", e.target.value)} />

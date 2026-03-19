@@ -14,6 +14,7 @@ import { Plus, Eye, Pencil, Trash2, Users, CheckSquare, Link2, Loader2 } from "l
 import { toast } from "sonner";
 import { formatDate as _formatDateUtil } from "@/lib/dateUtils";
 import { StakeholderSelect, StakeholderMultiSelect } from "@/components/StakeholderSelect";
+import { RegistrySelect } from "@/components/RegistrySelect";
 
 const MEETING_TYPE_COLORS: Record<string, string> = {
   "Steering Committee": "bg-purple-100 text-purple-700",
@@ -339,10 +340,9 @@ export default function Meetings() {
             <div className="space-y-1"><Label>Date</Label><Input type="date" value={meetingForm.meetingDate} onChange={(e) => setMeetingForm({ ...meetingForm, meetingDate: e.target.value })} /></div>
             <div className="space-y-1"><Label>Location / Link</Label><Input value={meetingForm.location} onChange={(e) => setMeetingForm({ ...meetingForm, location: e.target.value })} /></div>
             <div className="space-y-1"><Label>Status</Label>
-              <Select value={meetingForm.status} onValueChange={(v) => setMeetingForm({ ...meetingForm, status: v as MeetingStatus })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{(["Scheduled", "In Progress", "Completed", "Cancelled"] as MeetingStatus[]).map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
-              </Select>
+              <RegistrySelect projectId={projectId} domain="meetings" fieldKey="status"
+                value={meetingForm.status} onValueChange={(v) => setMeetingForm({ ...meetingForm, status: v as MeetingStatus })}
+                placeholder="Select status" />
             </div>
             <div className="space-y-1"><Label>Organizer</Label><StakeholderSelect stakeholders={stakeholders as any[]} value={meetingForm.organizer} onValueChange={(v) => setMeetingForm({ ...meetingForm, organizer: v })} projectId={projectId} /></div>
             <div className="col-span-2 space-y-1"><Label>Attendees</Label><StakeholderMultiSelect stakeholders={stakeholders as any[]} value={meetingForm.attendees} onValueChange={(v) => setMeetingForm({ ...meetingForm, attendees: v })} projectId={projectId} /></div>
@@ -367,10 +367,9 @@ export default function Meetings() {
             <div className="space-y-1"><Label>Date</Label><Input type="date" value={meetingForm.meetingDate} onChange={(e) => setMeetingForm({ ...meetingForm, meetingDate: e.target.value })} /></div>
             <div className="space-y-1"><Label>Location / Link</Label><Input value={meetingForm.location} onChange={(e) => setMeetingForm({ ...meetingForm, location: e.target.value })} /></div>
             <div className="space-y-1"><Label>Status</Label>
-              <Select value={meetingForm.status} onValueChange={(v) => setMeetingForm({ ...meetingForm, status: v as MeetingStatus })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{(["Scheduled", "In Progress", "Completed", "Cancelled"] as MeetingStatus[]).map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
-              </Select>
+              <RegistrySelect projectId={projectId} domain="meetings" fieldKey="status"
+                value={meetingForm.status} onValueChange={(v) => setMeetingForm({ ...meetingForm, status: v as MeetingStatus })}
+                placeholder="Select status" />
             </div>
             <div className="space-y-1"><Label>Organizer</Label><StakeholderSelect stakeholders={stakeholders as any[]} value={meetingForm.organizer} onValueChange={(v) => setMeetingForm({ ...meetingForm, organizer: v })} projectId={projectId} /></div>
             <div className="col-span-2 space-y-1"><Label>Attendees</Label><StakeholderMultiSelect stakeholders={stakeholders as any[]} value={meetingForm.attendees} onValueChange={(v) => setMeetingForm({ ...meetingForm, attendees: v })} projectId={projectId} /></div>
@@ -454,10 +453,9 @@ export default function Meetings() {
             <div className="space-y-1"><Label>Decided By</Label><StakeholderSelect stakeholders={stakeholders as any[]} value={decisionForm.decidedBy} onValueChange={(v) => setDecisionForm({ ...decisionForm, decidedBy: v })} projectId={projectId} /></div>
             <div className="space-y-1"><Label>Decision Date</Label><Input type="date" value={decisionForm.decisionDate} onChange={(e) => setDecisionForm({ ...decisionForm, decisionDate: e.target.value })} /></div>
             <div className="space-y-1"><Label>Status</Label>
-              <Select value={decisionForm.status} onValueChange={(v) => setDecisionForm({ ...decisionForm, status: v as DecisionStatus })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{(["Open", "Implemented", "Deferred", "Cancelled"] as DecisionStatus[]).map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
-              </Select>
+              <RegistrySelect projectId={projectId} domain="meetings" fieldKey="decision_status"
+                value={decisionForm.status} onValueChange={(v) => setDecisionForm({ ...decisionForm, status: v as DecisionStatus })}
+                placeholder="Select status" />
             </div>
             <div className="space-y-1"><Label>Linked Meeting</Label>
               <Select value={String(decisionForm.meetingId)} onValueChange={(v) => setDecisionForm({ ...decisionForm, meetingId: v === "none" ? "" : Number(v) })}>
@@ -560,10 +558,9 @@ export default function Meetings() {
             <div className="space-y-1"><Label>Decided By</Label><StakeholderSelect stakeholders={stakeholders as any[]} value={decisionForm.decidedBy} onValueChange={(v) => setDecisionForm({ ...decisionForm, decidedBy: v })} projectId={projectId} /></div>
             <div className="space-y-1"><Label>Decision Date</Label><Input type="date" value={decisionForm.decisionDate} onChange={(e) => setDecisionForm({ ...decisionForm, decisionDate: e.target.value })} /></div>
             <div className="space-y-1"><Label>Status</Label>
-              <Select value={decisionForm.status} onValueChange={(v) => setDecisionForm({ ...decisionForm, status: v as DecisionStatus })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{(["Open", "Implemented", "Deferred", "Cancelled"] as DecisionStatus[]).map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
-              </Select>
+              <RegistrySelect projectId={projectId} domain="meetings" fieldKey="decision_status"
+                value={decisionForm.status} onValueChange={(v) => setDecisionForm({ ...decisionForm, status: v as DecisionStatus })}
+                placeholder="Select status" />
             </div>
             <div className="space-y-1"><Label>Linked Meeting</Label>
               <Select value={String(decisionForm.meetingId)} onValueChange={(v) => setDecisionForm({ ...decisionForm, meetingId: v === "none" ? "" : Number(v) })}>

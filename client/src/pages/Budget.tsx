@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DollarSign, Plus, Pencil, Trash2, Settings, Users, Loader2 } from "lucide-react";
+import { CURRENCIES } from "@/lib/currencies";
 import { toast } from "sonner";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
@@ -341,8 +342,8 @@ export default function Budget() {
               <Select value={budgetForm.currency} onValueChange={(v) => setBudgetForm((prev) => ({ ...prev, currency: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {["USD", "EUR", "GBP", "CAD", "AUD", "JPY", "CHF"].map((c) => (
-                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                  {CURRENCIES.map(({ code, label }) => (
+                    <SelectItem key={code} value={code}>{label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

@@ -753,6 +753,9 @@ function DashboardLayoutContent({
                 </button>
                 {!isCollapsed ? (
                   <div className="flex items-center gap-2 min-w-0 flex-1">
+                    {(currentProject as any)?.logoUrl && (
+                      <img src={(currentProject as any).logoUrl} alt="Project logo" className="h-6 w-6 object-contain rounded shrink-0" />
+                    )}
                     <span className="font-semibold tracking-tight truncate">
                       {currentProject?.name || "Navigation"}
                     </span>
@@ -765,6 +768,8 @@ function DashboardLayoutContent({
                       Switch
                     </button>
                   </div>
+                ) : (currentProject as any)?.logoUrl ? (
+                  <img src={(currentProject as any).logoUrl} alt="logo" className="h-6 w-6 object-contain rounded" />
                 ) : null}
               </div>
             </SidebarHeader>

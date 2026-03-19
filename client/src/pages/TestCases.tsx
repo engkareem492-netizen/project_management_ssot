@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { RegistrySelect } from "@/components/RegistrySelect";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Label } from "@/components/ui/label";
 import { Plus, Eye, Pencil, Trash2, FlaskConical, CheckCircle, XCircle, AlertCircle, Clock, PlayCircle } from "lucide-react";
@@ -174,24 +175,16 @@ export default function TestCases() {
         </Select>
       </div>
       <div className="space-y-1"><Label>Test Type</Label>
-        <Select value={form.testType} onValueChange={(v) => setForm({ ...form, testType: v })}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {["Functional", "Integration", "Regression", "UAT", "Performance", "Security", "Smoke"].map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <RegistrySelect projectId={projectId} domain="test_cases" fieldKey="type"
+          value={form.testType} onValueChange={(v) => setForm({ ...form, testType: v })} placeholder="Select type" />
       </div>
       <div className="space-y-1"><Label>Priority</Label>
-        <Select value={form.priority} onValueChange={(v) => setForm({ ...form, priority: v })}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>{["Critical", "High", "Medium", "Low"].map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
-        </Select>
+        <RegistrySelect projectId={projectId} domain="test_cases" fieldKey="priority"
+          value={form.priority} onValueChange={(v) => setForm({ ...form, priority: v })} placeholder="Select priority" />
       </div>
       <div className="space-y-1"><Label>Status</Label>
-        <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v as TestStatus })}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>{(["Not Executed", "In Progress", "Passed", "Failed", "Blocked", "Skipped"] as TestStatus[]).map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
-        </Select>
+        <RegistrySelect projectId={projectId} domain="test_cases" fieldKey="status"
+          value={form.status} onValueChange={(v) => setForm({ ...form, status: v as TestStatus })} placeholder="Select status" />
       </div>
       <div className="col-span-2 space-y-1"><Label>Description</Label><Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} /></div>
       <div className="col-span-2 space-y-1"><Label>Preconditions</Label><Textarea value={form.preconditions} onChange={(e) => setForm({ ...form, preconditions: e.target.value })} rows={2} /></div>

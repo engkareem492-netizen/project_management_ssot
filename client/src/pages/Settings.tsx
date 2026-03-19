@@ -19,6 +19,7 @@ import { useProject } from "@/contexts/ProjectContext";
 import { ThemeSelector } from "@/components/ThemeSelector";
 import CollaborationTab from "@/components/CollaborationTab";
 import { useLocation } from "wouter";
+import { CURRENCIES } from "@/lib/currencies";
 
 interface IdConfigEdit {
   prefix: string;
@@ -355,6 +356,25 @@ export default function Settings() {
       refetchBudget();
     },
     onError: (err) => toast.error(`Failed to update currency: ${err.message}`),
+  });
+
+  // Program / Portfolio / Logo
+  const [programName, setProgramName] = useState("");
+  const [portfolioName, setPortfolioName] = useState("");
+  const [logoUrl, setLogoUrl] = useState("");
+  useEffect(() => {
+    if (currentProject) {
+      setProgramName((currentProject as any).programName ?? "");
+      setPortfolioName((currentProject as any).portfolioName ?? "");
+      setLogoUrl((currentProject as any).logoUrl ?? "");
+    }
+  }, [currentProject?.id]);
+  const updateProjectMutation = trpc.projects.update.useMutation({
+    onSuccess: () => {
+      toast.success("Project settings updated");
+      projectQuery.refetch();
+    },
+    onError: (err) => toast.error(`Failed to update: ${err.message}`),
   });
 
   const exportDataMutation = trpc.projects.exportData.useMutation();
@@ -1396,26 +1416,7 @@ export default function Settings() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {[
-                        { code: "USD", label: "USD — US Dollar ($)" },
-                        { code: "EUR", label: "EUR — Euro (€)" },
-                        { code: "GBP", label: "GBP — British Pound (£)" },
-                        { code: "SAR", label: "SAR — Saudi Riyal (﷼)" },
-                        { code: "AED", label: "AED — UAE Dirham (د.إ)" },
-                        { code: "EGP", label: "EGP — Egyptian Pound (E£)" },
-                        { code: "KWD", label: "KWD — Kuwaiti Dinar (KD)" },
-                        { code: "QAR", label: "QAR — Qatari Riyal (QR)" },
-                        { code: "BHD", label: "BHD — Bahraini Dinar (BD)" },
-                        { code: "OMR", label: "OMR — Omani Rial (RO)" },
-                        { code: "JOD", label: "JOD — Jordanian Dinar (JD)" },
-                        { code: "CAD", label: "CAD — Canadian Dollar (CA$)" },
-                        { code: "AUD", label: "AUD — Australian Dollar (A$)" },
-                        { code: "JPY", label: "JPY — Japanese Yen (¥)" },
-                        { code: "CHF", label: "CHF — Swiss Franc (CHF)" },
-                        { code: "CNY", label: "CNY — Chinese Yuan (¥)" },
-                        { code: "INR", label: "INR — Indian Rupee (₹)" },
-                        { code: "TRY", label: "TRY — Turkish Lira (₺)" },
-                      ].map(({ code, label }) => (
+                      {CURRENCIES.map(({ code, label }) => (
                         <SelectItem key={code} value={code}>{label}</SelectItem>
                       ))}
                     </SelectContent>
@@ -1442,6 +1443,104 @@ export default function Settings() {
               <p className="text-xs text-muted-foreground mt-2">
                 This currency is used in the Budget page, resource cost rates, and all financial reporting across the project.
               </p>
+            </CardContent>
+          </Card>
+
+          {/* Project Logo */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Sun className="w-5 h-5 text-primary" />
+                Project Logo
+              </CardTitle>
+              <CardDescription>
+                Upload a logo for this project. It will appear in the sidebar header and periodic reports.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-4">
+                {logoUrl && (
+                  <img src={logoUrl} alt="Project logo" className="w-16 h-16 object-contain rounded border" />
+                )}
+                <div className="space-y-2 flex-1">
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      if (file.size > 2 * 1024 * 1024) {
+                        toast.error("Image must be under 2 MB");
+                        return;
+                      }
+                      const reader = new FileReader();
+                      reader.onload = (ev) => {
+                        const result = ev.target?.result as string;
+                        setLogoUrl(result);
+                      };
+                      reader.readAsDataURL(file);
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground">PNG, JPG, SVG — max 2 MB</p>
+                </div>
+              </div>
+              <div className="mt-4 flex gap-2">
+                <Button
+                  onClick={() => {
+                    if (!currentProjectId) return;
+                    updateProjectMutation.mutate({ projectId: currentProjectId, logoUrl: logoUrl || null });
+                  }}
+                  disabled={updateProjectMutation.isPending}
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  Save Logo
+                </Button>
+                {logoUrl && (
+                  <Button variant="outline" onClick={() => {
+                    setLogoUrl("");
+                    if (currentProjectId) updateProjectMutation.mutate({ projectId: currentProjectId, logoUrl: null });
+                  }}>
+                    Remove Logo
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Program / Portfolio */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Hash className="w-5 h-5 text-primary" />
+                Program &amp; Portfolio
+              </CardTitle>
+              <CardDescription>
+                Assign this project to a Program or Portfolio for higher-level grouping and resource pooling.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label>Program Name</Label>
+                  <Input value={programName} onChange={e => setProgramName(e.target.value)} placeholder="e.g. Digital Transformation Program" />
+                </div>
+                <div className="space-y-1">
+                  <Label>Portfolio Name</Label>
+                  <Input value={portfolioName} onChange={e => setPortfolioName(e.target.value)} placeholder="e.g. IT Portfolio 2026" />
+                </div>
+              </div>
+              <div className="mt-4">
+                <Button
+                  onClick={() => {
+                    if (!currentProjectId) return;
+                    updateProjectMutation.mutate({ projectId: currentProjectId, programName: programName || null, portfolioName: portfolioName || null });
+                  }}
+                  disabled={updateProjectMutation.isPending}
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  Save Program &amp; Portfolio
+                </Button>
+              </div>
             </CardContent>
           </Card>
 

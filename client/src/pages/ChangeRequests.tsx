@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Plus, Eye, Pencil, Trash2, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { StakeholderSelect } from "@/components/StakeholderSelect";
+import { RegistrySelect } from "@/components/RegistrySelect";
 
 const STATUS_COLORS: Record<string, string> = {
   Draft: "bg-gray-100 text-gray-700",
@@ -227,10 +228,9 @@ export default function ChangeRequests() {
             <div className="space-y-1"><Label>Requested By</Label><StakeholderSelect stakeholders={stakeholders as any[]} value={form.requestedBy} onValueChange={(v) => setForm({ ...form, requestedBy: v })} projectId={projectId} /></div>
             <div className="space-y-1"><Label>Assigned To</Label><StakeholderSelect stakeholders={stakeholders as any[]} value={form.assignedTo} onValueChange={(v) => setForm({ ...form, assignedTo: v })} projectId={projectId} /></div>
             <div className="space-y-1"><Label>Priority</Label>
-              <Select value={form.priority} onValueChange={(v) => setForm({ ...form, priority: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{PRIORITIES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
-              </Select>
+              <RegistrySelect projectId={projectId} domain="change_requests" fieldKey="priority"
+                value={form.priority} onValueChange={(v) => setForm({ ...form, priority: v })}
+                placeholder="Select priority" />
             </div>
             <div className="space-y-1"><Label>Estimated Effort</Label><Input value={form.estimatedEffort} onChange={(e) => setForm({ ...form, estimatedEffort: e.target.value })} placeholder="e.g. 3 days" /></div>
             <div className="col-span-2 space-y-1"><Label>Impact Assessment</Label><Textarea value={form.impactAssessment} onChange={(e) => setForm({ ...form, impactAssessment: e.target.value })} rows={2} /></div>
@@ -314,10 +314,9 @@ export default function ChangeRequests() {
             <div className="space-y-1"><Label>Requested By</Label><StakeholderSelect stakeholders={stakeholders as any[]} value={form.requestedBy} onValueChange={(v) => setForm({ ...form, requestedBy: v })} projectId={projectId} /></div>
             <div className="space-y-1"><Label>Assigned To</Label><StakeholderSelect stakeholders={stakeholders as any[]} value={form.assignedTo} onValueChange={(v) => setForm({ ...form, assignedTo: v })} projectId={projectId} /></div>
             <div className="space-y-1"><Label>Priority</Label>
-              <Select value={form.priority} onValueChange={(v) => setForm({ ...form, priority: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{PRIORITIES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
-              </Select>
+              <RegistrySelect projectId={projectId} domain="change_requests" fieldKey="priority"
+                value={form.priority} onValueChange={(v) => setForm({ ...form, priority: v })}
+                placeholder="Select priority" />
             </div>
             <div className="space-y-1"><Label>Estimated Effort</Label><Input value={form.estimatedEffort} onChange={(e) => setForm({ ...form, estimatedEffort: e.target.value })} /></div>
             <div className="col-span-2 space-y-1"><Label>Impact Assessment</Label><Textarea value={form.impactAssessment} onChange={(e) => setForm({ ...form, impactAssessment: e.target.value })} rows={2} /></div>

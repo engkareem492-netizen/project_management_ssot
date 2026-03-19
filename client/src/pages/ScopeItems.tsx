@@ -15,24 +15,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Search, Loader2, Plus, Trash2, Pencil, Crosshair, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { EmptyState } from "@/components/EmptyState";
-
-const PHASES = ["Explore", "Prepare", "Realize", "Deploy", "Run"];
-const PROCESS_AREAS = [
-  "Financial Management",
-  "Supply Chain",
-  "Procurement",
-  "Human Resources",
-  "Project Management",
-  "Sales",
-  "Customer Service",
-  "Analytics & Reporting",
-  "Integration",
-  "Security & Compliance",
-  "Other",
-];
-const CATEGORIES = ["Configuration", "Development", "Data Migration", "Integration", "Testing", "Training", "Change Management", "Other"];
-const STATUSES = ["Active", "In Scope", "Out of Scope", "Deferred", "Completed"];
-const PRIORITIES = ["Critical", "High", "Medium", "Low"];
+import { RegistrySelect } from "@/components/RegistrySelect";
 
 const STATUS_COLORS: Record<string, string> = {
   Active: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
@@ -80,9 +63,11 @@ type ScopeItem = {
 function ScopeForm({
   form,
   onChange,
+  projectId,
 }: {
   form: ReturnType<typeof emptyForm>;
   onChange: (key: string, value: string) => void;
+  projectId: number;
 }) {
   return (
     <div className="space-y-4">
@@ -106,73 +91,35 @@ function ScopeForm({
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
           <Label>Phase</Label>
-          <Select value={form.phase || "__none__"} onValueChange={(v) => onChange("phase", v === "__none__" ? "" : v)}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select phase" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__none__">— None —</SelectItem>
-              {PHASES.map((p) => (
-                <SelectItem key={p} value={p}>{p}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <RegistrySelect projectId={projectId} domain="scope_items" fieldKey="phase"
+            value={form.phase || ""} onValueChange={(v) => onChange("phase", v)}
+            allowNone noneLabel="— None —" placeholder="Select phase" />
         </div>
         <div className="space-y-1">
           <Label>Process Area</Label>
-          <Select value={form.processArea || "__none__"} onValueChange={(v) => onChange("processArea", v === "__none__" ? "" : v)}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select area" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__none__">— None —</SelectItem>
-              {PROCESS_AREAS.map((p) => (
-                <SelectItem key={p} value={p}>{p}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <RegistrySelect projectId={projectId} domain="scope_items" fieldKey="process_area"
+            value={form.processArea || ""} onValueChange={(v) => onChange("processArea", v)}
+            allowNone noneLabel="— None —" placeholder="Select area" />
         </div>
       </div>
       <div className="grid grid-cols-3 gap-4">
         <div className="space-y-1">
           <Label>Category</Label>
-          <Select value={form.category || "__none__"} onValueChange={(v) => onChange("category", v === "__none__" ? "" : v)}>
-            <SelectTrigger>
-              <SelectValue placeholder="Category" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__none__">— None —</SelectItem>
-              {CATEGORIES.map((c) => (
-                <SelectItem key={c} value={c}>{c}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <RegistrySelect projectId={projectId} domain="scope_items" fieldKey="category"
+            value={form.category || ""} onValueChange={(v) => onChange("category", v)}
+            allowNone noneLabel="— None —" placeholder="Category" />
         </div>
         <div className="space-y-1">
           <Label>Status</Label>
-          <Select value={form.status} onValueChange={(v) => onChange("status", v)}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {STATUSES.map((s) => (
-                <SelectItem key={s} value={s}>{s}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <RegistrySelect projectId={projectId} domain="scope_items" fieldKey="status"
+            value={form.status} onValueChange={(v) => onChange("status", v)}
+            placeholder="Status" />
         </div>
         <div className="space-y-1">
           <Label>Priority</Label>
-          <Select value={form.priority} onValueChange={(v) => onChange("priority", v)}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {PRIORITIES.map((p) => (
-                <SelectItem key={p} value={p}>{p}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <RegistrySelect projectId={projectId} domain="scope_items" fieldKey="priority"
+            value={form.priority} onValueChange={(v) => onChange("priority", v)}
+            placeholder="Priority" />
         </div>
       </div>
       <div className="space-y-1">
@@ -195,6 +142,16 @@ export default function ScopeItems() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterPhase, setFilterPhase] = useState("__all__");
   const [filterStatus, setFilterStatus] = useState("__all__");
+
+  // Load registry options for filter dropdowns
+  const { data: phaseOptions = [] } = trpc.dropdownRegistry.list.useQuery(
+    { projectId: currentProjectId!, domain: "scope_items", fieldKey: "phase" },
+    { enabled: !!currentProjectId }
+  );
+  const { data: statusOptions = [] } = trpc.dropdownRegistry.list.useQuery(
+    { projectId: currentProjectId!, domain: "scope_items", fieldKey: "status" },
+    { enabled: !!currentProjectId }
+  );
 
   const { data: scopeItems = [], isLoading } = trpc.scopeItems.list.useQuery(
     { projectId: currentProjectId! },
@@ -337,7 +294,7 @@ export default function ScopeItems() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="__all__">All Phases</SelectItem>
-            {PHASES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+            {(phaseOptions as any[]).map((p: any) => <SelectItem key={p.id} value={p.value}>{p.value}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={filterStatus} onValueChange={setFilterStatus}>
@@ -346,7 +303,7 @@ export default function ScopeItems() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="__all__">All Statuses</SelectItem>
-            {STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+            {(statusOptions as any[]).map((s: any) => <SelectItem key={s.id} value={s.value}>{s.value}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
@@ -508,7 +465,7 @@ export default function ScopeItems() {
             <DialogTitle>New Scope Item</DialogTitle>
           </DialogHeader>
           <ScrollArea className="max-h-[70vh] pr-1">
-            <ScopeForm form={form} onChange={handleFormChange} />
+            <ScopeForm form={form} onChange={handleFormChange} projectId={currentProjectId!} />
           </ScrollArea>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
@@ -543,7 +500,7 @@ export default function ScopeItems() {
             <DialogTitle>Edit Scope Item</DialogTitle>
           </DialogHeader>
           <ScrollArea className="max-h-[70vh] pr-1">
-            <ScopeForm form={editForm} onChange={handleEditFormChange} />
+            <ScopeForm form={editForm} onChange={handleEditFormChange} projectId={currentProjectId!} />
           </ScrollArea>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>

@@ -152,6 +152,12 @@ const SEED_DEFAULTS: Record<string, Record<string, Array<{ value: string; color?
       { value: "Quality", color: "#8b5cf6", sortOrder: 3 },
       { value: "Resource", color: "#06b6d4", sortOrder: 4 },
     ],
+    priority: [
+      { value: "Low", color: "#3b82f6", sortOrder: 0 },
+      { value: "Medium", color: "#f59e0b", sortOrder: 1 },
+      { value: "High", color: "#f97316", sortOrder: 2 },
+      { value: "Critical", color: "#ef4444", sortOrder: 3 },
+    ],
   },
   milestones: {
     status: [
@@ -224,6 +230,94 @@ const SEED_DEFAULTS: Record<string, Record<string, Array<{ value: string; color?
       { value: "Low", color: "#10b981", sortOrder: 0 },
       { value: "Medium", color: "#f59e0b", sortOrder: 1 },
       { value: "High", color: "#ef4444", sortOrder: 2 },
+    ],
+  },
+  scope_items: {
+    phase: [
+      { value: "Explore", color: "#3b82f6", sortOrder: 0 },
+      { value: "Prepare", color: "#8b5cf6", sortOrder: 1 },
+      { value: "Realize", color: "#f59e0b", sortOrder: 2 },
+      { value: "Deploy", color: "#f97316", sortOrder: 3 },
+      { value: "Run", color: "#10b981", sortOrder: 4 },
+    ],
+    process_area: [
+      { value: "Financial Management", color: "#3b82f6", sortOrder: 0 },
+      { value: "Supply Chain", color: "#8b5cf6", sortOrder: 1 },
+      { value: "Procurement", color: "#06b6d4", sortOrder: 2 },
+      { value: "HR", color: "#10b981", sortOrder: 3 },
+      { value: "Project Management", color: "#f59e0b", sortOrder: 4 },
+      { value: "Sales", color: "#f97316", sortOrder: 5 },
+      { value: "Customer Service", color: "#ef4444", sortOrder: 6 },
+      { value: "Analytics", color: "#6366f1", sortOrder: 7 },
+      { value: "Integration", color: "#ec4899", sortOrder: 8 },
+      { value: "Security", color: "#dc2626", sortOrder: 9 },
+      { value: "Other", color: "#6b7280", sortOrder: 10 },
+    ],
+    category: [
+      { value: "Configuration", color: "#3b82f6", sortOrder: 0 },
+      { value: "Development", color: "#8b5cf6", sortOrder: 1 },
+      { value: "Data Migration", color: "#06b6d4", sortOrder: 2 },
+      { value: "Integration", color: "#10b981", sortOrder: 3 },
+      { value: "Testing", color: "#f59e0b", sortOrder: 4 },
+      { value: "Training", color: "#f97316", sortOrder: 5 },
+      { value: "Change Management", color: "#ef4444", sortOrder: 6 },
+      { value: "Other", color: "#6b7280", sortOrder: 7 },
+    ],
+    status: [
+      { value: "Active", color: "#3b82f6", sortOrder: 0 },
+      { value: "In Scope", color: "#10b981", sortOrder: 1 },
+      { value: "Out of Scope", color: "#ef4444", sortOrder: 2 },
+      { value: "Deferred", color: "#f59e0b", sortOrder: 3 },
+      { value: "Completed", color: "#8b5cf6", sortOrder: 4 },
+    ],
+    priority: [
+      { value: "Critical", color: "#dc2626", sortOrder: 0 },
+      { value: "High", color: "#f97316", sortOrder: 1 },
+      { value: "Medium", color: "#f59e0b", sortOrder: 2 },
+      { value: "Low", color: "#10b981", sortOrder: 3 },
+    ],
+  },
+  wbs: {
+    status: [
+      { value: "Not Started", color: "#6b7280", sortOrder: 0 },
+      { value: "In Progress", color: "#3b82f6", sortOrder: 1 },
+      { value: "Complete", color: "#10b981", sortOrder: 2 },
+      { value: "On Hold", color: "#f59e0b", sortOrder: 3 },
+    ],
+  },
+  test_cases: {
+    type: [
+      { value: "Functional", color: "#3b82f6", sortOrder: 0 },
+      { value: "Integration", color: "#8b5cf6", sortOrder: 1 },
+      { value: "Regression", color: "#f59e0b", sortOrder: 2 },
+      { value: "UAT", color: "#10b981", sortOrder: 3 },
+      { value: "Performance", color: "#f97316", sortOrder: 4 },
+      { value: "Security", color: "#ef4444", sortOrder: 5 },
+      { value: "Smoke", color: "#06b6d4", sortOrder: 6 },
+    ],
+  },
+  dependencies: {
+    status: [
+      { value: "Pending", color: "#6b7280", sortOrder: 0 },
+      { value: "In Progress", color: "#3b82f6", sortOrder: 1 },
+      { value: "Completed", color: "#10b981", sortOrder: 2 },
+      { value: "Blocked", color: "#ef4444", sortOrder: 3 },
+      { value: "At Risk", color: "#f97316", sortOrder: 4 },
+      { value: "Cancelled", color: "#9ca3af", sortOrder: 5 },
+    ],
+  },
+  meetings: {
+    status: [
+      { value: "Scheduled", color: "#3b82f6", sortOrder: 0 },
+      { value: "In Progress", color: "#f59e0b", sortOrder: 1 },
+      { value: "Completed", color: "#10b981", sortOrder: 2 },
+      { value: "Cancelled", color: "#ef4444", sortOrder: 3 },
+    ],
+    decision_status: [
+      { value: "Open", color: "#3b82f6", sortOrder: 0 },
+      { value: "Implemented", color: "#10b981", sortOrder: 1 },
+      { value: "Deferred", color: "#f59e0b", sortOrder: 2 },
+      { value: "Cancelled", color: "#ef4444", sortOrder: 3 },
     ],
   },
 };

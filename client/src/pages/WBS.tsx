@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import DashboardLayout from "@/components/DashboardLayout";
+import { RegistrySelect } from "@/components/RegistrySelect";
 
 const STATUS_COLORS: Record<string, string> = {
   "Not Started": "bg-gray-100 text-gray-700 border-gray-200",
@@ -35,6 +36,8 @@ export default function WBS() {
 
   const { data: nodes = [], isLoading, refetch } = trpc.wbsNodes.list.useQuery({ projectId }, { enabled });
   const { data: tasks = [] } = trpc.tasks.list.useQuery({ projectId }, { enabled });
+  const { data: stakeholders = [] } = trpc.stakeholders.list.useQuery({ projectId }, { enabled });
+  const { data: deliverables = [] } = trpc.deliverables.list.useQuery({ projectId }, { enabled });
 
   const createNode = trpc.wbsNodes.create.useMutation({
     onSuccess: () => { refetch(); setShowAddDialog(false); setAddParentId(null); toast.success("WBS node added"); },
@@ -120,22 +123,35 @@ export default function WBS() {
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Deliverable</Label>
-                    <Input className="h-7 text-xs mt-0.5" placeholder="Output/deliverable" value={editForm.deliverable} onChange={e => setEditForm(p => ({ ...p, deliverable: e.target.value }))} />
+                    <Select value={editForm.deliverable || "__none__"} onValueChange={v => setEditForm(p => ({ ...p, deliverable: v === "__none__" ? "" : v }))}>
+                      <SelectTrigger className="h-7 text-xs mt-0.5"><SelectValue placeholder="Link deliverable" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">— None —</SelectItem>
+                        {(deliverables as any[]).map((d: any) => (
+                          <SelectItem key={d.id} value={d.name ?? d.title ?? String(d.id)}>{d.name ?? d.title}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div>
                     <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Responsible</Label>
-                    <Input className="h-7 text-xs mt-0.5" value={editForm.responsible} onChange={e => setEditForm(p => ({ ...p, responsible: e.target.value }))} />
+                    <Select value={editForm.responsible || "__none__"} onValueChange={v => setEditForm(p => ({ ...p, responsible: v === "__none__" ? "" : v }))}>
+                      <SelectTrigger className="h-7 text-xs mt-0.5"><SelectValue placeholder="Select person" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">— None —</SelectItem>
+                        {(stakeholders as any[]).map((s: any) => (
+                          <SelectItem key={s.id} value={s.fullName}>{s.fullName}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Status</Label>
-                    <Select value={editForm.status} onValueChange={v => setEditForm(p => ({ ...p, status: v as any }))}>
-                      <SelectTrigger className="h-7 text-xs mt-0.5"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {Object.keys(STATUS_COLORS).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <RegistrySelect projectId={projectId} domain="wbs" fieldKey="status"
+                      value={editForm.status} onValueChange={v => setEditForm(p => ({ ...p, status: v as any }))}
+                      size="sm" triggerClassName="mt-0.5" />
                   </div>
                   <div>
                     <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Linked Task</Label>
@@ -318,22 +334,35 @@ export default function WBS() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs">Deliverable</Label>
-                <Input className="mt-1" placeholder="Output/deliverable" value={addForm.deliverable} onChange={e => setAddForm(p => ({ ...p, deliverable: e.target.value }))} />
+                <Select value={addForm.deliverable || "__none__"} onValueChange={v => setAddForm(p => ({ ...p, deliverable: v === "__none__" ? "" : v }))}>
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="Link deliverable" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">— None —</SelectItem>
+                    {(deliverables as any[]).map((d: any) => (
+                      <SelectItem key={d.id} value={d.name ?? d.title ?? String(d.id)}>{d.name ?? d.title}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label className="text-xs">Responsible</Label>
-                <Input className="mt-1" placeholder="Owner name" value={addForm.responsible} onChange={e => setAddForm(p => ({ ...p, responsible: e.target.value }))} />
+                <Select value={addForm.responsible || "__none__"} onValueChange={v => setAddForm(p => ({ ...p, responsible: v === "__none__" ? "" : v }))}>
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="Select person" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">— None —</SelectItem>
+                    {(stakeholders as any[]).map((s: any) => (
+                      <SelectItem key={s.id} value={s.fullName}>{s.fullName}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs">Status</Label>
-                <Select value={addForm.status} onValueChange={v => setAddForm(p => ({ ...p, status: v as any }))}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {Object.keys(STATUS_COLORS).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <RegistrySelect projectId={projectId} domain="wbs" fieldKey="status"
+                  value={addForm.status} onValueChange={v => setAddForm(p => ({ ...p, status: v as any }))}
+                  className="mt-1" />
               </div>
               <div>
                 <Label className="text-xs">Link to Task</Label>

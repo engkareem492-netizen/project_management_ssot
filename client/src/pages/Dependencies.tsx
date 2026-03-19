@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { ImportExportToolbar } from "@/components/ImportExportToolbar";
 import { formatDate } from "@/lib/dateUtils";
 import { EmptyState } from "@/components/EmptyState";
+import { RegistrySelect } from "@/components/RegistrySelect";
 
 export default function Dependencies() {
   const { currentProjectId } = useProject();
@@ -221,13 +222,17 @@ export default function Dependencies() {
               </div>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="currentStatus" className="text-right">Current Status</Label>
-              <Input
-                id="currentStatus"
-                value={newDependency.currentStatus}
-                onChange={(e) => setNewDependency({ ...newDependency, currentStatus: e.target.value })}
-                className="col-span-3"
-              />
+              <Label className="text-right">Current Status</Label>
+              <div className="col-span-3">
+                <RegistrySelect
+                  projectId={currentProjectId!}
+                  domain="dependencies"
+                  fieldKey="status"
+                  value={newDependency.currentStatus}
+                  onValueChange={(v) => setNewDependency({ ...newDependency, currentStatus: v })}
+                  placeholder="Select status"
+                />
+              </div>
             </div>
           </div>
           <div className="flex justify-end gap-2">
