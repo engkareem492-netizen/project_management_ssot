@@ -816,7 +816,7 @@ export default function Tasks() {
     <div className="space-y-6">
       {/* Dashboard Chart */}
       <TasksByResponsibleChart
-        tasks={tasks || []}
+        tasks={regularTasks}
         selectedResponsible={responsibleFilter}
         onResponsibleSelect={(name) => {
           setResponsibleFilter(prev => prev === name ? null : name);

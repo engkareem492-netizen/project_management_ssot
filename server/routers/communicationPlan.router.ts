@@ -103,8 +103,8 @@ async function upsertLinkedTask(opts: {
       responsible: responsibleName ?? null,
     } as any).where(eq(tasks.id, existing[0].id));
   } else {
-    // Create a new recurring task
-    const taskId = await getNextId("task", "T", projectId);
+    // Create a new recurring task with COMM prefix to mark it as a communication task
+    const taskId = await getNextId("commTask", "COMM", projectId);
     await createTask({
       projectId,
       taskId,

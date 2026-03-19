@@ -148,6 +148,7 @@ const SIDEBAR_SECTIONS: SidebarSection[] = [
       { icon: DollarSign, label: "Budget", path: "/budget" },
       { icon: Radio, label: "Communication Plan", path: "/communication-plan" },
       { icon: Network, label: "RBS & Resources", path: "/resources" },
+      { icon: Users, label: "Stakeholder Management", path: "/stakeholder-management" },
     ],
   },
   {

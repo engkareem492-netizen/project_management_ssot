@@ -98,9 +98,15 @@ export default function Dashboard() {
   const today = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
   const nextWeek = useMemo(() => { const d = new Date(today); d.setDate(d.getDate() + 7); return d; }, [today]);
 
+  // Exclude communication tasks (COMM- prefix or communicationStakeholderId set) from project status KPIs
+  const regularTasks = useMemo(() =>
+    (tasks as any[]).filter((t: any) =>
+      !t.communicationStakeholderId && !(t.taskId || "").startsWith("COMM-")
+    ), [tasks]);
+
   const kpis = useMemo(() => {
     const openIssues = issues.filter((i: any) => i.status !== "Closed" && i.status !== "Resolved").length;
-    const overdueTasks = tasks.filter((t: any) => {
+    const overdueTasks = regularTasks.filter((t: any) => {
       if (!t.dueDate) return false;
       const due = new Date(t.dueDate); due.setHours(0, 0, 0, 0);
       return due < today && t.status !== "Done" && t.status !== "Completed" && t.status !== "Closed";
@@ -109,11 +115,11 @@ export default function Dashboard() {
     const activeRisks = risks.filter((r: any) => r.status !== "Closed" && r.status !== "Mitigated").length;
     const passedTests = testCases.filter((t: any) => t.status === "Passed").length;
     const testPassRate = testCases.length > 0 ? Math.round((passedTests / testCases.length) * 100) : 0;
-    const doneTasks = tasks.filter((t: any) => t.status === "Done" || t.status === "Completed" || t.status === "Closed").length;
-    const taskCompletion = tasks.length > 0 ? Math.round((doneTasks / tasks.length) * 100) : 0;
+    const doneTasks = regularTasks.filter((t: any) => t.status === "Done" || t.status === "Completed" || t.status === "Closed").length;
+    const taskCompletion = regularTasks.length > 0 ? Math.round((doneTasks / regularTasks.length) * 100) : 0;
     const openActionItems = actionItems.filter((a: any) => a.status === "Open" || a.status === "In Progress").length;
     return { openIssues, overdueTasks, pendingCRs, activeRisks, testPassRate, taskCompletion, openActionItems };
-  }, [issues, tasks, changeRequests, risks, testCases, actionItems, today]);
+  }, [issues, regularTasks, changeRequests, risks, testCases, actionItems, today]);
 
   const healthScore = useMemo(() => {
     let score = 100;
@@ -132,11 +138,12 @@ export default function Dashboard() {
     return Object.entries(map).map(([name, value]) => ({ name, value }));
   }, [requirements]);
 
+  // Tasks by person excludes communication tasks
   const tasksByPerson = useMemo(() => {
     const map: Record<string, number> = {};
-    tasks.forEach((t: any) => { const p = t.responsible || "Unassigned"; map[p] = (map[p] || 0) + 1; });
+    regularTasks.forEach((t: any) => { const p = t.responsible || "Unassigned"; map[p] = (map[p] || 0) + 1; });
     return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([name, count]) => ({ name, count }));
-  }, [tasks]);
+  }, [regularTasks]);
 
   const dueThisWeek = useMemo(() => {
     const isThisWeek = (dateStr: string | null | undefined) => {
@@ -144,7 +151,7 @@ export default function Dashboard() {
       const d = new Date(dateStr); d.setHours(0, 0, 0, 0);
       return d >= today && d <= nextWeek;
     };
-    const tasksDue = tasks.filter((t: any) => isThisWeek(t.dueDate)).length;
+    const tasksDue = regularTasks.filter((t: any) => isThisWeek(t.dueDate)).length;
     const issuesDue = issues.filter((i: any) => isThisWeek(i.updateDate)).length;
     const deliverablesDue = deliverables.filter((d: any) => isThisWeek(d.dueDate)).length;
     const milestonesDue = milestones.filter((m: any) => isThisWeek(m.dueDate) && m.status !== "Achieved").length;
@@ -210,7 +217,7 @@ export default function Dashboard() {
       case "tasks-by-person":
         return <BarChartWidget data={tasksByPerson.map((d: any) => ({ name: d.name, value: d.count }))} />;
       case "task-done-ring":
-        return <StatusRingWidget label="Tasks Done" value={tasks.filter((t: any) => ["Done","Completed","Closed"].includes(t.status)).length} max={tasks.length} color="#22c55e" />;
+        return <StatusRingWidget label="Tasks Done" value={regularTasks.filter((t: any) => ["Done","Completed","Closed"].includes(t.status)).length} max={regularTasks.length} color="#22c55e" />;
       default:
         return <div className="text-sm text-muted-foreground p-4">Unknown widget</div>;
     }

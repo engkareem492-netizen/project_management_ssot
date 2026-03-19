@@ -85,9 +85,14 @@ export const traceabilityRouter = router({
       const periodStart = input.periodStart ?? new Date(new Date().setDate(new Date().getDate() - new Date().getDay())).toISOString().split("T")[0];
       const periodEnd = input.periodEnd ?? new Date(new Date(periodStart).setDate(new Date(periodStart).getDate() + 6)).toISOString().split("T")[0];
 
-      // Task stats
+      // Exclude communication tasks (COMM- prefix or communicationStakeholderId set) from reports
+      const regularTasks = allTasks.filter(
+        (t) => !t.communicationStakeholderId && !(t.taskId ?? "").startsWith("COMM-")
+      );
+
+      // Task stats (excluding COMM tasks)
       const tasksByStatus: Record<string, number> = {};
-      for (const t of allTasks) {
+      for (const t of regularTasks) {
         const s = t.status ?? "Unknown";
         tasksByStatus[s] = (tasksByStatus[s] ?? 0) + 1;
       }
@@ -131,7 +136,7 @@ export const traceabilityRouter = router({
       const DONE_STATUSES = new Set(dbDoneValues.length > 0
         ? dbDoneValues
         : ["completed", "closed", "solved", "done", "cancelled", "approved", "passed"]);
-      const overdueTasks = allTasks.filter((t) => {
+      const overdueTasks = regularTasks.filter((t) => {
         if (!t.dueDate) return false;
         const isDone = DONE_STATUSES.has((t.currentStatus || t.status || "").toLowerCase());
         return !isDone && t.dueDate < today;
@@ -145,8 +150,8 @@ export const traceabilityRouter = router({
 
       // === PERIOD-BASED DATA ===
 
-      // Tasks with due date within period
-      const tasksInPeriod = allTasks.filter((t) => {
+      // Tasks with due date within period (excluding COMM tasks)
+      const tasksInPeriod = regularTasks.filter((t) => {
         if (!t.dueDate) return false;
         return t.dueDate >= periodStart && t.dueDate <= periodEnd;
       });
@@ -166,18 +171,18 @@ export const traceabilityRouter = router({
         return caStr >= periodStart && caStr <= periodEnd;
       });
 
-      // Task status breakdown per responsible
+      // Task status breakdown per responsible (excluding COMM tasks)
       const taskStatusByResponsible: Record<string, Record<string, number>> = {};
-      for (const t of allTasks) {
+      for (const t of regularTasks) {
         const responsible = t.responsible ?? "Unassigned";
         const status = t.status ?? "Unknown";
         if (!taskStatusByResponsible[responsible]) taskStatusByResponsible[responsible] = {};
         taskStatusByResponsible[responsible][status] = (taskStatusByResponsible[responsible][status] ?? 0) + 1;
       }
 
-      // Task count per responsible (all tasks)
+      // Task count per responsible (excluding COMM tasks)
       const tasksByResponsible: Record<string, number> = {};
-      for (const t of allTasks) {
+      for (const t of regularTasks) {
         const responsible = t.responsible ?? "Unassigned";
         tasksByResponsible[responsible] = (tasksByResponsible[responsible] ?? 0) + 1;
       }
@@ -205,7 +210,7 @@ export const traceabilityRouter = router({
         periodEnd,
         summary: {
           totalRequirements: allReqs.length,
-          totalTasks: allTasks.length,
+          totalTasks: regularTasks.length,
           totalIssues: allIssues.length,
           totalTestCases: allTests.length,
           totalCRs: allCRs.length,

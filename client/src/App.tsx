@@ -54,6 +54,7 @@ import EngagementPlan from "./pages/EngagementPlan";
 import CommunicationPlan from "./pages/CommunicationPlan";
 import TeamCharter from "./pages/TeamCharter";
 import WBS from "./pages/WBS";
+import StakeholderManagement from "./pages/StakeholderManagement";
 
 function Router() {
   return (
@@ -272,6 +273,11 @@ function Router() {
       </Route>
       <Route path={"/wbs"}>
         <WBS />
+      </Route>
+      <Route path={"/stakeholder-management"}>
+        <DashboardLayout>
+          <StakeholderManagement />
+        </DashboardLayout>
       </Route>
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />

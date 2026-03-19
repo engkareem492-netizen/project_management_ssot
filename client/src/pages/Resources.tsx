@@ -1983,7 +1983,7 @@ export default function Resources() {
         {/* ─── Resource Plan Tab ────────────────────────────────────────── */}
         <TabsContent value="plan" className="mt-0 space-y-4">
           <Card>
-            <CardHeader>
+            <CardHeader className="pb-3">
               <div className="flex items-center justify-between flex-wrap gap-3">
                 <div>
                   <CardTitle className="text-base flex items-center gap-2">
@@ -1992,29 +1992,38 @@ export default function Resources() {
                   </CardTitle>
                   <p className="text-xs text-muted-foreground mt-1">Cost, availability, utilization, and task assignment per resource</p>
                 </div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs text-muted-foreground whitespace-nowrap">RBS Category:</span>
-                    <Select value={planCategoryFilter} onValueChange={setPlanCategoryFilter}>
-                      <SelectTrigger className="w-36 h-7 text-xs"><SelectValue placeholder="All Categories" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Categories</SelectItem>
-                        {(rbsTypes as any[]).map((t: any) => (
-                          <SelectItem key={t.id} value={t.name}>
-                            <span className="flex items-center gap-1.5">
-                              {t.color && <span className="w-2 h-2 rounded-full shrink-0" style={{ background: t.color }} />}
-                              {t.name}
-                            </span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button size="sm" variant={planViewMode === "weekly" ? "default" : "outline"} onClick={() => setPlanViewMode("weekly")} className="text-xs h-7">Weekly</Button>
-                    <Button size="sm" variant={planViewMode === "monthly" ? "default" : "outline"} onClick={() => setPlanViewMode("monthly")} className="text-xs h-7">Monthly</Button>
-                  </div>
+                <div className="flex gap-2">
+                  <Button size="sm" variant={planViewMode === "weekly" ? "default" : "outline"} onClick={() => setPlanViewMode("weekly")} className="text-xs h-7">Weekly</Button>
+                  <Button size="sm" variant={planViewMode === "monthly" ? "default" : "outline"} onClick={() => setPlanViewMode("monthly")} className="text-xs h-7">Monthly</Button>
                 </div>
+              </div>
+              {/* RBS-style filter pills */}
+              <div className="flex flex-wrap gap-2 pt-2">
+                <button
+                  onClick={() => setPlanCategoryFilter("all")}
+                  className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors flex items-center gap-1.5 ${planCategoryFilter === "all" ? "bg-primary text-primary-foreground border-primary" : "bg-background text-muted-foreground border-border hover:border-muted-foreground"}`}
+                >
+                  All Resources
+                  <span className="opacity-70">({resourcePlan.length})</span>
+                </button>
+                {(rbsTypes as any[]).map((type: any) => {
+                  const count = resourcePlan.filter(r => {
+                    const node = (rbsNodes as any[]).find(n => n.stakeholderId === r.id && n.isLeaf === 1);
+                    const typeName = node?.resourceType ?? (r as any).classification;
+                    return typeName === type.name;
+                  }).length;
+                  return (
+                    <button
+                      key={type.id}
+                      onClick={() => setPlanCategoryFilter(type.name)}
+                      className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors flex items-center gap-1.5 ${planCategoryFilter === type.name ? "bg-primary text-primary-foreground border-primary" : "bg-background text-muted-foreground border-border hover:border-muted-foreground"}`}
+                    >
+                      {type.color && <span className="w-2 h-2 rounded-full shrink-0" style={{ background: planCategoryFilter === type.name ? "currentColor" : type.color }} />}
+                      {type.name}
+                      <span className="opacity-70">({count})</span>
+                    </button>
+                  );
+                })}
               </div>
             </CardHeader>
             <CardContent className="p-0">

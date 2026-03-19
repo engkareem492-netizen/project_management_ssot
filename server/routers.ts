@@ -1451,7 +1451,7 @@ export const appRouter = router({
             .where(and(eq(tasks.projectId, input.projectId), eq(tasks.communicationStakeholderId, newStakeholderId)))
             .limit(1) : [];
           if (existingCommTask.length === 0) {
-            const taskId = await db.getNextId('task', 'T', input.projectId);
+            const taskId = await db.getNextId('commTask', 'COMM', input.projectId);
             await db.createTask({
               projectId: input.projectId,
               taskId,
@@ -1538,7 +1538,7 @@ export const appRouter = router({
               recurringInterval,
             }).where(eq(tasks.id, existingCommTask[0].id));
           } else {
-            const taskId = await db.getNextId('task', 'T', stakeholder?.projectId ?? 1);
+            const taskId = await db.getNextId('commTask', 'COMM', stakeholder?.projectId ?? 1);
             await db.createTask({
               projectId: stakeholder?.projectId ?? 1,
               taskId,
