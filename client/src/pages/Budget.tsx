@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useProject } from "@/contexts/ProjectContext";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -62,13 +62,28 @@ export default function Budget() {
     { enabled: !!currentProjectId }
   );
 
-  // Local state (would be replaced by trpc mutations when endpoints exist)
+  const { data: budgetData } = trpc.budget.getSummary.useQuery(
+    { projectId: currentProjectId! },
+    { enabled: !!currentProjectId }
+  );
+
+  const upsertBudgetMutation = trpc.budget.upsertBudget.useMutation();
+
   const [summary, setSummary] = useState<BudgetSummary>({ totalBudget: 0, currency: "USD" });
   const [entries, setEntries] = useState<BudgetEntry[]>([]);
   const [showBudgetDialog, setShowBudgetDialog] = useState(false);
   const [showEntryDialog, setShowEntryDialog] = useState(false);
   const [editingEntry, setEditingEntry] = useState<BudgetEntry | null>(null);
   const [budgetForm, setBudgetForm] = useState({ totalBudget: 0, currency: "USD" });
+
+  // Sync summary from server when data loads
+  useEffect(() => {
+    if (budgetData?.budget) {
+      const b = budgetData.budget as any;
+      setSummary({ totalBudget: parseFloat(b.totalBudget ?? "0") || 0, currency: b.currency ?? "USD" });
+      setBudgetForm({ totalBudget: parseFloat(b.totalBudget ?? "0") || 0, currency: b.currency ?? "USD" });
+    }
+  }, [budgetData?.budget]);
   const [entryForm, setEntryForm] = useState<BudgetEntry>(emptyEntry());
 
   // Totals
@@ -126,6 +141,13 @@ export default function Budget() {
 
   function saveBudget() {
     setSummary({ totalBudget: budgetForm.totalBudget, currency: budgetForm.currency });
+    if (currentProjectId) {
+      upsertBudgetMutation.mutate({
+        projectId: currentProjectId,
+        totalBudget: String(budgetForm.totalBudget),
+        currency: budgetForm.currency,
+      });
+    }
     toast.success("Budget updated");
     setShowBudgetDialog(false);
   }

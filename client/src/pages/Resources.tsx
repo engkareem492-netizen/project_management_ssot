@@ -307,6 +307,8 @@ export default function Resources() {
   // Resource Plan state
   const [planViewMode, setPlanViewMode] = useState<"weekly" | "monthly">("weekly");
   const [planCategoryFilter, setPlanCategoryFilter] = useState<string>("all");
+  const [planResourceFilter, setPlanResourceFilter] = useState<number | null>(null);
+  const [planSearch, setPlanSearch] = useState<string>("");
 
   // Heatmap filter state
   const [heatmapTypeFilter, setHeatmapTypeFilter] = useState<"all" | "TeamMember" | "External" | "Stakeholder">("all");
@@ -431,6 +433,8 @@ export default function Resources() {
       const next2 = assigned.filter((t: any) => isInWeek(t.dueDate, 2)).length;
       const next3 = assigned.filter((t: any) => isInWeek(t.dueDate, 3)).length;
       const next4 = assigned.filter((t: any) => isInWeek(t.dueDate, 4)).length;
+      // Extended 12-week forecast
+      const weekCounts = Array.from({ length: 12 }, (_, i) => assigned.filter((t: any) => isInWeek(t.dueDate, i)).length);
       const cap = capacityMap[name] ?? DEFAULT_CAPACITY;
       const hourlyRate = parseFloat(s.costPerHour ?? "0") || 0;
       const dailyRate = parseFloat(s.costPerDay ?? "0") || (hourlyRate * (parseFloat(s.workingHoursPerDay ?? "8") || 8));
@@ -445,7 +449,7 @@ export default function Resources() {
         department: s.department ?? "",
         totalAssigned: assigned.length,
         nonCommAssigned,
-        thisWeek, nextWeek, next2, next3, next4,
+        thisWeek, nextWeek, next2, next3, next4, weekCounts,
         capacity: cap,
         hourlyRate,
         dailyRate,
@@ -738,17 +742,30 @@ export default function Resources() {
         </TabsList>
 
         {/* ─── Workload Tab ─────────────────────────────────────────────── */}
-        <TabsContent value="workload" className="mt-0 space-y-6">
+        <TabsContent value="workload" className="mt-0 space-y-4">
+          {/* Summary KPI strip */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card className="p-4"><div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Team Members</div><div className="text-3xl font-bold">{summaryStats.totalMembers}</div></Card>
-            <Card className="p-4"><div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Total Assigned Tasks</div><div className="text-3xl font-bold">{summaryStats.totalTasks}</div></Card>
-            <Card className="p-4"><div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Avg Load / Person</div><div className="text-3xl font-bold">{summaryStats.avgLoad}</div></Card>
-            <Card className="p-4"><div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Overloaded This Week</div><div className={`text-3xl font-bold ${summaryStats.overloaded > 0 ? "text-red-600" : "text-green-600"}`}>{summaryStats.overloaded}</div></Card>
+            <Card className="p-4">
+              <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Resources</div>
+              <div className="text-3xl font-bold">{summaryStats.totalMembers}</div>
+            </Card>
+            <Card className="p-4">
+              <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Total Assigned Tasks</div>
+              <div className="text-3xl font-bold">{summaryStats.totalTasks}</div>
+            </Card>
+            <Card className="p-4">
+              <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Avg Load / Person</div>
+              <div className="text-3xl font-bold">{summaryStats.avgLoad}</div>
+            </Card>
+            <Card className="p-4">
+              <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Overloaded This Week</div>
+              <div className={`text-3xl font-bold ${summaryStats.overloaded > 0 ? "text-red-600" : "text-green-600"}`}>{summaryStats.overloaded}</div>
+            </Card>
           </div>
 
-          {/* Classification filter pills */}
+          {/* Filter bar */}
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs text-muted-foreground font-medium">Filter:</span>
+            <span className="text-xs text-muted-foreground font-medium">Show:</span>
             {(["all", "TeamMember", "External", "Stakeholder"] as const).map(t => (
               <button
                 key={t}
@@ -767,121 +784,137 @@ export default function Resources() {
             ))}
           </div>
 
-          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-            <div className="px-5 py-3 bg-gray-50 border-b border-gray-200">
-              {/* Sortable column headers */}
-              {(() => {
-                const cols = [
-                  { key: "name", label: "Name", span: "col-span-2" },
-                  { key: "role", label: "Role", span: "col-span-1" },
-                  { key: "totalAssigned", label: "Assigned", span: "col-span-1 text-center" },
-                  { key: "thisWeek", label: "This Week", span: "col-span-1 text-center" },
-                  { key: "capacity", label: "Capacity", span: "col-span-1 text-center" },
-                  { key: "hourlyRate", label: "Cost Rate", span: "col-span-1 text-right" },
-                  { key: "weeklyCost", label: "Weekly Cost", span: "col-span-1 text-right" },
-                  { key: "perfScore", label: "Perf Score", span: "col-span-1 text-center" },
-                  { key: "load", label: "Load", span: "col-span-2" },
-                  { key: "_actions", label: "", span: "col-span-1 text-right" },
-                ];
-                return (
-                  <div className="grid grid-cols-12 gap-2 text-xs font-semibold text-muted-foreground uppercase">
-                    {cols.map(c => (
-                      <div
-                        key={c.key}
-                        className={`${c.span} ${c.key !== "_actions" && c.key !== "load" ? "cursor-pointer hover:text-foreground select-none flex items-center gap-1" : ""}`}
-                        onClick={() => {
-                          if (c.key === "_actions" || c.key === "load") return;
-                          setWorkloadSort(prev => prev.col === c.key ? { col: c.key, dir: prev.dir === "asc" ? "desc" : "asc" } : { col: c.key, dir: "desc" });
-                        }}
-                      >
-                        {c.label}
-                        {workloadSort.col === c.key && (workloadSort.dir === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />)}
-                      </div>
-                    ))}
-                  </div>
-                );
-              })()}
-            </div>
-            {isLoading ? (
-              <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
-            ) : workloadData.length === 0 ? (
-              <div className="py-16 text-center text-muted-foreground text-sm">No stakeholders found. Add stakeholders to see workload.</div>
-            ) : (
-              <div className="divide-y divide-gray-100">
-                {[...workloadData]
-                  .filter(w => workloadFilter === "all" || w.classification === workloadFilter)
-                  .sort((a, b) => {
-                    const dir = workloadSort.dir === "asc" ? 1 : -1;
-                    const col = workloadSort.col;
-                    if (col === "name" || col === "role") {
-                      return dir * ((a as any)[col] ?? "").localeCompare((b as any)[col] ?? "");
-                    }
-                    if (col === "weeklyCost") {
-                      const aCost = a.hourlyRate * a.hoursPerDay * (a.thisWeek / Math.max(a.capacity, 1));
-                      const bCost = b.hourlyRate * b.hoursPerDay * (b.thisWeek / Math.max(b.capacity, 1));
-                      return dir * (aCost - bCost);
-                    }
-                    if (col === "perfScore") {
-                      const aScore = latestScoreMap[a.id] ?? -1;
-                      const bScore = latestScoreMap[b.id] ?? -1;
-                      return dir * (aScore - bScore);
-                    }
-                    return dir * (((a as any)[col] ?? 0) - ((b as any)[col] ?? 0));
-                  })
-                  .map((w) => {
-                    const { label, className } = getLoadLabel(w.thisWeek, w.capacity);
-                    const weeklyCost = w.hourlyRate * w.hoursPerDay * (w.thisWeek / Math.max(w.capacity, 1));
-                    const perfScore = latestScoreMap[w.id];
-                    const perfBadgeCls = perfScore == null ? "bg-gray-100 text-gray-500"
-                      : perfScore >= 80 ? "bg-green-100 text-green-700"
-                      : perfScore >= 60 ? "bg-yellow-100 text-yellow-700"
-                      : "bg-red-100 text-red-700";
-                    return (
-                      <div key={w.id} className="px-5 py-4 hover:bg-gray-50/50 transition-colors">
-                        <div className="grid grid-cols-12 gap-2 items-center">
-                          <div className="col-span-2">
-                            <div className="font-medium text-sm">{w.name}</div>
-                            {w.email && <div className="text-xs text-muted-foreground">{w.email}</div>}
-                          </div>
-                          <div className="col-span-1 text-xs text-muted-foreground truncate">{w.role || "—"}</div>
-                          <div className="col-span-1 text-center"><div className="text-lg font-bold">{w.totalAssigned}</div></div>
-                          <div className="col-span-1 text-center"><div className="text-lg font-bold">{w.thisWeek}</div><div className="text-xs text-muted-foreground">tasks</div></div>
-                          <div className="col-span-1 text-center text-sm text-muted-foreground">{w.capacity}</div>
-                          <div className="col-span-1 text-right text-xs text-muted-foreground">{w.hourlyRate > 0 ? `${formatCurrency(w.hourlyRate)}/hr` : "—"}</div>
-                          <div className="col-span-1 text-right text-xs font-medium">{weeklyCost > 0 ? formatCurrency(weeklyCost) : "—"}</div>
-                          <div className="col-span-1 text-center">
-                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${perfBadgeCls}`}>
-                              {perfScore != null ? perfScore : "—"}
+          {/* Workload table */}
+          <Card>
+            <CardContent className="p-0">
+              {isLoading ? (
+                <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+              ) : workloadData.length === 0 ? (
+                <div className="py-16 text-center text-muted-foreground text-sm">No stakeholders found. Add stakeholders to see workload.</div>
+              ) : (
+                <div className="overflow-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        {[
+                          { key: "name", label: "Name" },
+                          { key: "role", label: "Role" },
+                          { key: "classification", label: "Type" },
+                          { key: "totalAssigned", label: "Total Tasks", align: "right" },
+                          { key: "thisWeek", label: "This Week", align: "right" },
+                          { key: "capacity", label: "Capacity", align: "right" },
+                          { key: "hourlyRate", label: "Cost Rate", align: "right" },
+                          { key: "weeklyCost", label: "Weekly Cost", align: "right" },
+                          { key: "perfScore", label: "Perf Score", align: "center" },
+                          { key: "load", label: "Utilization" },
+                          { key: "_actions", label: "" },
+                        ].map(col => (
+                          <TableHead
+                            key={col.key}
+                            className={`text-xs ${col.align === "right" ? "text-right" : col.align === "center" ? "text-center" : ""} ${col.key !== "_actions" && col.key !== "load" ? "cursor-pointer select-none hover:text-foreground" : ""}`}
+                            onClick={() => {
+                              if (col.key === "_actions" || col.key === "load") return;
+                              setWorkloadSort(prev => prev.col === col.key ? { col: col.key, dir: prev.dir === "asc" ? "desc" : "asc" } : { col: col.key, dir: "desc" });
+                            }}
+                          >
+                            <span className="flex items-center gap-1 justify-inherit">
+                              {col.label}
+                              {workloadSort.col === col.key && (workloadSort.dir === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />)}
                             </span>
-                          </div>
-                          <div className="col-span-2"><WorkloadBar assigned={w.thisWeek} capacity={w.capacity} /><Badge className={`text-xs mt-1 ${className}`}>{label}</Badge></div>
-                          <div className="col-span-1 text-right">
-                            <Button size="sm" variant="ghost" onClick={() => openCapacityDialog(w.name, w.capacity)} title="Set capacity">
-                              <Settings className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-              </div>
-            )}
-          </div>
+                          </TableHead>
+                        ))}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {[...workloadData]
+                        .filter(w => workloadFilter === "all" || w.classification === workloadFilter)
+                        .sort((a, b) => {
+                          const dir = workloadSort.dir === "asc" ? 1 : -1;
+                          const col = workloadSort.col;
+                          if (col === "name" || col === "role") return dir * ((a as any)[col] ?? "").localeCompare((b as any)[col] ?? "");
+                          if (col === "weeklyCost") {
+                            const aCost = a.hourlyRate * a.hoursPerDay * (a.thisWeek / Math.max(a.capacity, 1));
+                            const bCost = b.hourlyRate * b.hoursPerDay * (b.thisWeek / Math.max(b.capacity, 1));
+                            return dir * (aCost - bCost);
+                          }
+                          if (col === "perfScore") {
+                            const aScore = latestScoreMap[a.id] ?? -1;
+                            const bScore = latestScoreMap[b.id] ?? -1;
+                            return dir * (aScore - bScore);
+                          }
+                          return dir * (((a as any)[col] ?? 0) - ((b as any)[col] ?? 0));
+                        })
+                        .map((w) => {
+                          const { label, className } = getLoadLabel(w.thisWeek, w.capacity);
+                          const weeklyCost = w.hourlyRate * w.hoursPerDay * (w.thisWeek / Math.max(w.capacity, 1));
+                          const perfScore = latestScoreMap[w.id];
+                          const perfBadgeCls = perfScore == null ? "bg-gray-100 text-gray-500"
+                            : perfScore >= 80 ? "bg-green-100 text-green-700"
+                            : perfScore >= 60 ? "bg-yellow-100 text-yellow-700"
+                            : "bg-red-100 text-red-700";
+                          const typeBadge = w.classification === "TeamMember" ? "bg-blue-100 text-blue-700"
+                            : w.classification === "External" ? "bg-orange-100 text-orange-700"
+                            : "bg-purple-100 text-purple-700";
+                          return (
+                            <TableRow key={w.id}>
+                              <TableCell>
+                                <div className="font-medium text-sm">{w.name}</div>
+                                {w.email && <div className="text-xs text-muted-foreground">{w.email}</div>}
+                              </TableCell>
+                              <TableCell className="text-xs text-muted-foreground">{w.role || "—"}</TableCell>
+                              <TableCell>
+                                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${typeBadge}`}>
+                                  {w.classification === "TeamMember" ? "Team" : w.classification}
+                                </span>
+                              </TableCell>
+                              <TableCell className="text-right font-semibold">{w.totalAssigned}</TableCell>
+                              <TableCell className="text-right">
+                                <span className={w.thisWeek > w.capacity ? "text-red-600 font-bold" : "font-semibold"}>{w.thisWeek}</span>
+                              </TableCell>
+                              <TableCell className="text-right text-muted-foreground text-sm">{w.capacity}</TableCell>
+                              <TableCell className="text-right text-xs text-muted-foreground">{w.hourlyRate > 0 ? `${formatCurrency(w.hourlyRate)}/hr` : "—"}</TableCell>
+                              <TableCell className="text-right text-sm font-medium">{weeklyCost > 0 ? formatCurrency(weeklyCost) : "—"}</TableCell>
+                              <TableCell className="text-center">
+                                <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${perfBadgeCls}`}>
+                                  {perfScore != null ? perfScore : "—"}
+                                </span>
+                              </TableCell>
+                              <TableCell className="w-36">
+                                <WorkloadBar assigned={w.thisWeek} capacity={w.capacity} />
+                                <Badge className={`text-[10px] mt-1 ${className}`}>{label}</Badge>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <Button size="sm" variant="ghost" onClick={() => openCapacityDialog(w.name, w.capacity)} title="Set capacity">
+                                  <Settings className="w-4 h-4" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
+          {/* 8-Week Forecast */}
           <div>
-            <h2 className="text-base font-semibold mb-3">4-Week Forecast</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {[0, 1, 2, 3].map((offset) => {
+            <h2 className="text-base font-semibold mb-3">8-Week Forecast</h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
+              {[0, 1, 2, 3, 4, 5, 6, 7].map((offset) => {
                 const { start, end } = getWeekBounds(offset);
                 const label = offset === 0 ? "This Week" : offset === 1 ? "Next Week" : `Week +${offset}`;
-                const totalForWeek = workloadData.reduce((sum, w) => sum + [w.thisWeek, w.nextWeek, w.next2, w.next3][offset], 0);
+                const totalForWeek = workloadData.reduce((sum, w) => sum + ((w.weekCounts as number[])?.[offset] ?? 0), 0);
+                const overloaded = workloadData.filter(w => ((w.weekCounts as number[])?.[offset] ?? 0) > w.capacity).length;
                 return (
-                  <Card key={offset} className="p-4">
+                  <Card key={offset} className={`p-3 ${overloaded > 0 ? "border-red-200" : ""}`}>
                     <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">{label}</div>
-                    <div className="text-3xl font-bold">{totalForWeek}</div>
-                    <div className="text-xs text-muted-foreground mt-1">
+                    <div className="text-2xl font-bold">{totalForWeek}</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
                       {start.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – {end.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                     </div>
+                    {overloaded > 0 && <div className="text-xs text-red-600 font-medium mt-1">{overloaded} overloaded</div>}
                   </Card>
                 );
               })}
@@ -969,7 +1002,7 @@ export default function Resources() {
                   }).length;
                   const availableDays = Math.max(0, workerDaysPerWeek - leaveDaysThisWeek);
                   const availableHours = availableDays * workerHoursPerDay;
-                  const tasksInWeek = weekOffset === 0 ? w.thisWeek : weekOffset === 1 ? w.nextWeek : weekOffset === 2 ? w.next2 : weekOffset === 3 ? w.next3 : weekOffset === 4 ? w.next4 : 0;
+                  const tasksInWeek = (w.weekCounts as number[])?.[weekOffset] ?? 0;
                   const utilization = availableHours > 0 ? Math.min(100, Math.round((tasksInWeek * AVG_TASK_HOURS) / availableHours * 100)) : 0;
                   return { weekStart: weekStartDate, utilization };
                 });
@@ -1997,33 +2030,51 @@ export default function Resources() {
                   <Button size="sm" variant={planViewMode === "monthly" ? "default" : "outline"} onClick={() => setPlanViewMode("monthly")} className="text-xs h-7">Monthly</Button>
                 </div>
               </div>
-              {/* RBS-style filter pills */}
-              <div className="flex flex-wrap gap-2 pt-2">
-                <button
-                  onClick={() => setPlanCategoryFilter("all")}
-                  className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors flex items-center gap-1.5 ${planCategoryFilter === "all" ? "bg-primary text-primary-foreground border-primary" : "bg-background text-muted-foreground border-border hover:border-muted-foreground"}`}
-                >
-                  All Resources
-                  <span className="opacity-70">({resourcePlan.length})</span>
-                </button>
-                {(rbsTypes as any[]).map((type: any) => {
-                  const count = resourcePlan.filter(r => {
-                    const node = (rbsNodes as any[]).find(n => n.stakeholderId === r.id && n.isLeaf === 1);
-                    const typeName = node?.resourceType ?? (r as any).classification;
-                    return typeName === type.name;
-                  }).length;
-                  return (
-                    <button
-                      key={type.id}
-                      onClick={() => setPlanCategoryFilter(type.name)}
-                      className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors flex items-center gap-1.5 ${planCategoryFilter === type.name ? "bg-primary text-primary-foreground border-primary" : "bg-background text-muted-foreground border-border hover:border-muted-foreground"}`}
-                    >
-                      {type.color && <span className="w-2 h-2 rounded-full shrink-0" style={{ background: planCategoryFilter === type.name ? "currentColor" : type.color }} />}
-                      {type.name}
-                      <span className="opacity-70">({count})</span>
-                    </button>
-                  );
-                })}
+              {/* Dropdown filters */}
+              <div className="flex flex-wrap gap-3 items-end pt-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Search</Label>
+                  <div className="relative">
+                    <Input
+                      placeholder="Search resource..."
+                      value={planSearch}
+                      onChange={e => { setPlanSearch(e.target.value); setPlanResourceFilter(null); }}
+                      className="w-44 h-8 text-sm pl-8"
+                    />
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                    </span>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">RBS Category</Label>
+                  <Select value={planCategoryFilter} onValueChange={v => { setPlanCategoryFilter(v); setPlanResourceFilter(null); }}>
+                    <SelectTrigger className="w-40 h-8 text-sm"><SelectValue placeholder="All Categories" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Categories</SelectItem>
+                      {(rbsTypes as any[]).map((t: any) => (
+                        <SelectItem key={t.id} value={t.name}>
+                          <span className="flex items-center gap-1.5">
+                            {t.color && <span className="w-2 h-2 rounded-full shrink-0" style={{ background: t.color }} />}
+                            {t.name}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Resource</Label>
+                  <Select value={planResourceFilter ? String(planResourceFilter) : "all"} onValueChange={v => { setPlanResourceFilter(v === "all" ? null : Number(v)); setPlanSearch(""); }}>
+                    <SelectTrigger className="w-48 h-8 text-sm"><SelectValue placeholder="All Resources" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Resources</SelectItem>
+                      {resourcePlan.map((r: any) => (
+                        <SelectItem key={r.id} value={String(r.id)}>{r.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="p-0">
@@ -2032,12 +2083,15 @@ export default function Resources() {
               ) : resourcePlan.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground text-sm">No resources found. Add stakeholders first.</div>
               ) : (() => {
-                const filteredPlan = planCategoryFilter === "all"
-                  ? resourcePlan
-                  : resourcePlan.filter(r => {
-                      const node = (rbsNodes as any[]).find(n => n.stakeholderId === r.id && n.isLeaf === 1);
-                      const typeName = node?.resourceType ?? (r as any).classification;
-                      return typeName === planCategoryFilter;
+                const filteredPlan = resourcePlan.filter(r => {
+                      if (planResourceFilter && r.id !== planResourceFilter) return false;
+                      if (planSearch && !r.name.toLowerCase().includes(planSearch.toLowerCase())) return false;
+                      if (planCategoryFilter !== "all") {
+                        const node = (rbsNodes as any[]).find(n => n.stakeholderId === r.id && n.isLeaf === 1);
+                        const typeName = node?.resourceType ?? (r as any).classification;
+                        if (typeName !== planCategoryFilter) return false;
+                      }
+                      return true;
                     });
                 return (
                 <>

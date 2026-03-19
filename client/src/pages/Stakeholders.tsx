@@ -2531,11 +2531,10 @@ export default function Stakeholders() {
         </Card>
       </div>
 
-      {/* Main tabs: Register / Power-Interest Matrix */}
+      {/* Main tabs: Register only (Power/Interest Matrix moved to its own page) */}
       <Tabs defaultValue="register">
         <TabsList>
           <TabsTrigger value="register">Stakeholder Register</TabsTrigger>
-          <TabsTrigger value="matrix">Power/Interest Matrix</TabsTrigger>
         </TabsList>
 
         {/* Register Tab */}
@@ -2709,41 +2708,6 @@ export default function Stakeholders() {
         </Table>
       </div>
 
-        </TabsContent>
-
-        {/* Power/Interest Matrix Tab */}
-        <TabsContent value="matrix" className="mt-4 space-y-3">
-          {/* Classification filter */}
-          <div className="flex gap-1 border rounded-lg p-1 w-fit">
-            {([
-              { key: "all", label: "All Types" },
-              { key: "TeamMember", label: "Team Members" },
-              { key: "External", label: "External" },
-              { key: "Stakeholder", label: "Stakeholders" },
-            ] as const).map((t) => (
-              <button
-                key={t.key}
-                onClick={() => setMatrixClassFilter(t.key)}
-                className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-                  matrixClassFilter === t.key
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-          <PowerInterestMatrix
-            stakeholders={(stakeholders as any[]).filter((s) =>
-              matrixClassFilter === "all" ||
-              (s.classification ?? (s.isInternalTeam ? "TeamMember" : "Stakeholder")) === matrixClassFilter
-            )}
-            onUpdatePosition={(id, power, interest) =>
-              updatePositionMutation.mutate({ id, powerLevel: power, interestLevel: interest } as any)
-            }
-            onStakeholderClick={(s) => { setSelectedStakeholder(s); setDetailOpen(true); }}
-          />
         </TabsContent>
 
       </Tabs>

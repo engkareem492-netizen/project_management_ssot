@@ -165,7 +165,7 @@ export default function Dashboard() {
     const spent = parseFloat((budgetSummary as any).totalActual ?? "0");
     const committed = parseFloat((budgetSummary as any).totalCommitted ?? "0") + spent;
     const pct = total > 0 ? Math.round((committed / total) * 100) : 0;
-    return { total, spent, committed, pct, currency: (budgetSummary as any).currency ?? "USD" };
+    return { total, spent, committed, pct, currency: (budgetSummary as any).budget?.currency ?? "USD" };
   }, [budgetSummary]);
 
   // Milestone summary
