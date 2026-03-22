@@ -101,7 +101,8 @@ export const stakeholderEnhancementsRouter = router({
       const assessments = await db
         .select()
         .from(stakeholderAssessments)
-        .where(eq(stakeholderAssessments.stakeholderId, input.stakeholderId));
+        .where(eq(stakeholderAssessments.stakeholderId, input.stakeholderId))
+        .orderBy(desc(stakeholderAssessments.assessmentDate));
 
       // Enrich with scores
       const enriched = await Promise.all(
@@ -175,17 +176,12 @@ export const stakeholderEnhancementsRouter = router({
         overallScore,
       });
 
-      // Get the inserted ID
+      // Get the inserted ID (latest by id for this stakeholder)
       const [newAssessment] = await db
         .select()
         .from(stakeholderAssessments)
-        .where(
-          and(
-            eq(stakeholderAssessments.stakeholderId, input.stakeholderId),
-            sql`DATE(${stakeholderAssessments.assessmentDate}) = ${input.assessmentDate}`
-          )
-        )
-        .orderBy(stakeholderAssessments.createdAt)
+        .where(eq(stakeholderAssessments.stakeholderId, input.stakeholderId))
+        .orderBy(desc(stakeholderAssessments.id))
         .limit(1);
 
       if (newAssessment && input.scores.length > 0) {
@@ -533,16 +529,17 @@ export const stakeholderEnhancementsRouter = router({
       const db = await getDb();
       if (!db) return [];
 
-      // Get all assessments for the project
+      // Get all assessments for the project, ordered newest-first
       const assessments = await db
         .select({
           stakeholderId: stakeholderAssessments.stakeholderId,
           overallScore: stakeholderAssessments.overallScore,
           assessmentDate: stakeholderAssessments.assessmentDate,
+          id: stakeholderAssessments.id,
         })
         .from(stakeholderAssessments)
         .where(eq(stakeholderAssessments.projectId, input.projectId))
-        .orderBy(desc(stakeholderAssessments.assessmentDate));
+        .orderBy(desc(stakeholderAssessments.assessmentDate), desc(stakeholderAssessments.id));
 
       // Group by stakeholderId — first entry is latest, second is previous (already ordered desc)
       const latestByStakeholder = new Map<

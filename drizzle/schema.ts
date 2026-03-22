@@ -982,7 +982,7 @@ export const stakeholderAssessments = mysqlTable("stakeholderAssessments", {
   id: int("id").autoincrement().primaryKey(),
   stakeholderId: int("stakeholderId").notNull(),
   projectId: int("projectId").notNull(),
-  assessmentDate: date("assessmentDate").notNull(),
+  assessmentDate: timestamp("assessmentDate").notNull(),
   assessorName: varchar("assessorName", { length: 200 }),
   notes: text("notes"),
   overallScore: int("overallScore"),  // 0-100 weighted average
