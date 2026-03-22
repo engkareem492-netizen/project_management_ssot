@@ -617,7 +617,7 @@ export default function Requirements() {
             <ImportExportToolbar
               module="requirements"
               projectId={currentProjectId}
-              onImportSuccess={() => {}}
+              onImportSuccess={() => utils.requirements.list.invalidate()}
             />
           )}
         </div>

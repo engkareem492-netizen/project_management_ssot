@@ -416,7 +416,7 @@ export default function Assumptions() {
             <ImportExportToolbar
               module="assumptions"
               projectId={currentProjectId}
-              onImportSuccess={() => {}}
+              onImportSuccess={() => utils.assumptions.list.invalidate()}
             />
           )}
         </div>

@@ -11,10 +11,10 @@ import * as db from "../db";
 import {
   requirements, tasks, issues, dependencies, assumptions,
   stakeholders, deliverables, knowledgeBase, risks, taskGroups,
-  idSequences,
+  idSequences, stakeholderPositionOptions, commPlanRoleOptions,
 } from "../../drizzle/schema";
 
-// ─── Column definitions per module ────────────────────────────────────────────
+// ─── Column definitions per module (used for template downloads) ───────────────
 const TEMPLATES: Record<string, { headers: string[]; example: Record<string, string> }> = {
   requirements: {
     headers: ["description", "category", "type", "status", "priority", "source", "owner", "notes"],
@@ -86,14 +86,22 @@ const TEMPLATES: Record<string, { headers: string[]; example: Record<string, str
     },
   },
   stakeholders: {
-    headers: ["fullName", "email", "phone", "position", "role", "department"],
+    headers: [
+      "fullName", "email", "phone", "position", "role", "job",
+      "department", "classification", "notes", "costPerHour", "costPerDay",
+    ],
     example: {
       fullName: "John Doe",
       email: "john.doe@example.com",
       phone: "+1 234 567 8900",
       position: "Project Sponsor",
       role: "Decision Maker",
-      department: "Chief Executive Officer",
+      job: "Chief Executive Officer",
+      department: "Executive",
+      classification: "Stakeholder",
+      notes: "",
+      costPerHour: "",
+      costPerDay: "",
     },
   },
   deliverables: {
@@ -122,6 +130,20 @@ const TEMPLATES: Record<string, { headers: string[]; example: Record<string, str
       residualProbability: "2",
     },
   },
+};
+
+// ─── Extended headers for export (includes ID codes so users can reference records) ─
+// The first column is the auto-generated ID code (read-only reference — ignored on import).
+const EXPORT_HEADERS: Record<string, string[]> = {
+  requirements: ["idCode", ...TEMPLATES.requirements.headers],
+  tasks:        ["taskId", ...TEMPLATES.tasks.headers],
+  issues:       ["issueId", ...TEMPLATES.issues.headers],
+  dependencies: ["dependencyId", ...TEMPLATES.dependencies.headers],
+  assumptions:  ["assumptionId", ...TEMPLATES.assumptions.headers],
+  stakeholders: TEMPLATES.stakeholders.headers, // no auto-ID for stakeholders
+  deliverables: ["deliverableId", ...TEMPLATES.deliverables.headers],
+  knowledgeBase: ["code", ...TEMPLATES.knowledgeBase.headers],
+  risks:        ["riskId", ...TEMPLATES.risks.headers],
 };
 
 // ─── Helper: build xlsx buffer (single sheet) ─────────────────────────────────
@@ -216,19 +238,19 @@ export const bulkImportRouter = router({
     }))
     .query(async ({ input }) => {
       const { module, projectId } = input;
-      const tpl = TEMPLATES[module];
+      const exportHeaders = EXPORT_HEADERS[module] ?? TEMPLATES[module].headers;
       const rows = await fetchModuleData(module, projectId);
       // Tasks export includes a second sheet for Task Groups
       if (module === "tasks") {
         const dbConn = await db.getDb();
         const tgRows = dbConn ? await dbConn.select().from(taskGroups).where(eq(taskGroups.projectId, projectId)) : [];
         const buf = buildXlsxMultiSheet([
-          { name: "Tasks", headers: tpl.headers, rows },
+          { name: "Tasks", headers: exportHeaders, rows },
           { name: "Task Groups", headers: ["name", "description"], rows: tgRows.map((tg) => ({ name: tg.name ?? "", description: tg.description ?? "" })) },
         ]);
         return { base64: buf.toString("base64"), filename: "tasks_export.xlsx" };
       }
-      const buf = buildXlsx(module, tpl.headers, rows);
+      const buf = buildXlsx(module, exportHeaders, rows);
       return { base64: buf.toString("base64"), filename: `${module}_export.xlsx` };
     }),
 });
@@ -258,7 +280,6 @@ async function purgeModule(module: string, projectId: number) {
   // Delete all rows for this project
   await dbConn.delete(table).where(eq(table.projectId, projectId));
   // Reset ALL ID sequence rows for this module (handles duplicate rows with different casing)
-  // Use raw SQL LIKE so 'RISK' and 'risk' are both reset in one statement
   const entityType = MODULE_ENTITY_TYPE[module];
   if (entityType) {
     await dbConn.execute(
@@ -293,7 +314,6 @@ async function importRow(module: string, projectId: number, row: Record<string, 
       // requirementId is stored as the code string (e.g. "REQ-0001")
       const requirementIdStr = row.requirementCode?.trim() || null;
       // taskGroup is stored as the group name string
-      // If user provides a code like "TG-0001" try to resolve to the group name
       let taskGroupName: string | null = row.taskGroupCode?.trim() || null;
       if (taskGroupName) {
         const tgRows = await dbConn.select().from(taskGroups)
@@ -371,6 +391,23 @@ async function importRow(module: string, projectId: number, row: Record<string, 
     }
     case "stakeholders": {
       if (!row.fullName?.trim()) throw new Error("fullName is required");
+
+      // Normalise classification — accept common aliases
+      const classRaw = row.classification?.trim() || "Stakeholder";
+      const classMap: Record<string, "TeamMember" | "External" | "Stakeholder"> = {
+        teammember: "TeamMember",
+        "team member": "TeamMember",
+        team: "TeamMember",
+        external: "External",
+        stakeholder: "Stakeholder",
+      };
+      const classification: "TeamMember" | "External" | "Stakeholder" =
+        classMap[classRaw.toLowerCase()] ?? "Stakeholder";
+      const isInternalTeam = classification === "TeamMember";
+
+      const costPerHour = row.costPerHour?.trim() ? parseFloat(row.costPerHour) : null;
+      const costPerDay  = row.costPerDay?.trim()  ? parseFloat(row.costPerDay)  : null;
+
       await dbConn.insert(stakeholders).values({
         projectId,
         fullName: row.fullName.trim(),
@@ -378,9 +415,43 @@ async function importRow(module: string, projectId: number, row: Record<string, 
         phone: row.phone || null,
         position: row.position || null,
         role: row.role || null,
-        department: row.department || null,
         job: row.job || null,
+        department: row.department || null,
+        classification,
+        isInternalTeam,
+        notes: row.notes || null,
+        costPerHour: costPerHour !== null ? String(costPerHour) : null,
+        costPerDay: costPerDay !== null ? String(costPerDay) : null,
       });
+
+      // Auto-seed position into stakeholderPositionOptions if not already present
+      if (row.position?.trim()) {
+        const posLabel = row.position.trim();
+        const existing = await dbConn.select().from(stakeholderPositionOptions)
+          .where(and(
+            eq(stakeholderPositionOptions.projectId, projectId),
+            eq(stakeholderPositionOptions.label, posLabel)
+          ))
+          .limit(1);
+        if (!existing.length) {
+          await dbConn.insert(stakeholderPositionOptions).values({ projectId, label: posLabel });
+        }
+      }
+
+      // Auto-seed role into commPlanRoleOptions if not already present
+      if (row.role?.trim()) {
+        const roleLabel = row.role.trim();
+        const existing = await dbConn.select().from(commPlanRoleOptions)
+          .where(and(
+            eq(commPlanRoleOptions.projectId, projectId),
+            eq(commPlanRoleOptions.label, roleLabel)
+          ))
+          .limit(1);
+        if (!existing.length) {
+          await dbConn.insert(commPlanRoleOptions).values({ projectId, label: roleLabel });
+        }
+      }
+
       break;
     }
     case "deliverables": {
@@ -430,6 +501,7 @@ async function importRow(module: string, projectId: number, row: Record<string, 
 }
 
 // ─── Fetch for export ──────────────────────────────────────────────────────────
+// Each case returns all EXPORT_HEADERS fields (including the ID code as first column).
 async function fetchModuleData(module: string, projectId: number): Promise<Record<string, any>[]> {
   const dbConn = await db.getDb();
   if (!dbConn) return [];
@@ -438,6 +510,7 @@ async function fetchModuleData(module: string, projectId: number): Promise<Recor
     case "requirements": {
       const rows = await dbConn.select().from(requirements).where(eq(requirements.projectId, projectId));
       return rows.map((r) => ({
+        idCode: r.idCode ?? "",
         description: r.description ?? "",
         category: r.category ?? "",
         type: r.type ?? "",
@@ -450,12 +523,8 @@ async function fetchModuleData(module: string, projectId: number): Promise<Recor
     }
     case "tasks": {
       const rows = await dbConn.select().from(tasks).where(eq(tasks.projectId, projectId));
-      // Fetch requirements and task groups for code resolution
-      const allReqs = await dbConn.select().from(requirements).where(eq(requirements.projectId, projectId));
-      const allTgs = await dbConn.select().from(taskGroups).where(eq(taskGroups.projectId, projectId));
-      const reqMap = new Map(allReqs.map((r) => [r.id, r.idCode ?? ""]));
-      const tgMap = new Map(allTgs.map((tg) => [tg.id, tg.name ?? ""]));
       return rows.map((r) => ({
+        taskId: r.taskId ?? "",
         description: r.description ?? "",
         status: r.status ?? "",
         priority: r.priority ?? "",
@@ -473,6 +542,7 @@ async function fetchModuleData(module: string, projectId: number): Promise<Recor
     case "issues": {
       const rows = await dbConn.select().from(issues).where(eq(issues.projectId, projectId));
       return rows.map((r) => ({
+        issueId: r.issueId ?? "",
         description: r.description ?? "",
         status: r.status ?? "",
         priority: r.priority ?? "",
@@ -487,6 +557,7 @@ async function fetchModuleData(module: string, projectId: number): Promise<Recor
     case "dependencies": {
       const rows = await dbConn.select().from(dependencies).where(eq(dependencies.projectId, projectId));
       return rows.map((r) => ({
+        dependencyId: r.dependencyId ?? "",
         description: r.description ?? "",
         depGroup: r.depGroup ?? "",
         taskId: r.taskId ?? "",
@@ -502,6 +573,7 @@ async function fetchModuleData(module: string, projectId: number): Promise<Recor
     case "assumptions": {
       const rows = await dbConn.select().from(assumptions).where(eq(assumptions.projectId, projectId));
       return rows.map((r) => ({
+        assumptionId: r.assumptionId ?? "",
         description: r.description ?? "",
         category: r.category ?? "",
         status: r.status ?? "",
@@ -517,12 +589,18 @@ async function fetchModuleData(module: string, projectId: number): Promise<Recor
         phone: r.phone ?? "",
         position: r.position ?? "",
         role: r.role ?? "",
+        job: r.job ?? "",
         department: r.department ?? "",
+        classification: r.classification ?? "",
+        notes: r.notes ?? "",
+        costPerHour: r.costPerHour ?? "",
+        costPerDay: r.costPerDay ?? "",
       }));
     }
     case "deliverables": {
       const rows = await dbConn.select().from(deliverables).where(eq(deliverables.projectId, projectId));
       return rows.map((r) => ({
+        deliverableId: r.deliverableId ?? "",
         description: r.description ?? "",
         status: r.status ?? "",
         dueDate: r.dueDate ?? "",
@@ -531,6 +609,7 @@ async function fetchModuleData(module: string, projectId: number): Promise<Recor
     case "knowledgeBase": {
       const rows = await dbConn.select().from(knowledgeBase).where(eq(knowledgeBase.projectId, projectId));
       return rows.map((r) => ({
+        code: r.code ?? "",
         title: r.title ?? "",
         description: r.description ?? "",
       }));
@@ -538,6 +617,7 @@ async function fetchModuleData(module: string, projectId: number): Promise<Recor
     case "risks": {
       const rows = await dbConn.select().from(risks).where(eq(risks.projectId, projectId));
       return rows.map((r) => ({
+        riskId: r.riskId ?? "",
         title: r.title ?? "",
         impact: r.impact ?? "",
         probability: r.probability ?? "",

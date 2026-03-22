@@ -663,7 +663,7 @@ export default function Issues() {
             <ImportExportToolbar
               module="issues"
               projectId={currentProjectId}
-              onImportSuccess={() => {}}
+              onImportSuccess={() => utils.issues.list.invalidate()}
             />
           )}
         </div>

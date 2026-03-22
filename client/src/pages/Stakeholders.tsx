@@ -2496,7 +2496,15 @@ export default function Stakeholders() {
             <Plus className="h-4 w-4" /> Add Stakeholder
           </Button>
           {currentProjectId && (
-            <ImportExportToolbar module="stakeholders" projectId={currentProjectId} onImportSuccess={() => {}} />
+            <ImportExportToolbar
+              module="stakeholders"
+              projectId={currentProjectId}
+              onImportSuccess={() => {
+                utils.stakeholders.list.invalidate();
+                utils.commPlanOptions.positionOptions.list.invalidate();
+                utils.commPlanOptions.roleOptions.list.invalidate();
+              }}
+            />
           )}
         </div>
       </div>

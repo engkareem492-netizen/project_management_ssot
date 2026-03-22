@@ -1050,7 +1050,7 @@ export default function Tasks() {
             <ImportExportToolbar
               module="tasks"
               projectId={currentProjectId}
-              onImportSuccess={() => {}}
+              onImportSuccess={() => utils.tasks.list.invalidate()}
             />
           )}
         </div>

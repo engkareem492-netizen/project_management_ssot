@@ -595,7 +595,7 @@ export default function KnowledgeBase() {
             <ImportExportToolbar
               module="knowledgeBase"
               projectId={currentProjectId}
-              onImportSuccess={() => {}}
+              onImportSuccess={() => utils.knowledgeBase.list.invalidate()}
             />
           )}
         </div>
