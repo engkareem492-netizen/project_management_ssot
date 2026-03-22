@@ -107,7 +107,7 @@ export const stakeholderEnhancementsRouter = router({
         .select()
         .from(stakeholderAssessments)
         .where(eq(stakeholderAssessments.stakeholderId, input.stakeholderId))
-        .orderBy(desc(stakeholderAssessments.assessmentDate));
+        .orderBy(desc(stakeholderAssessments.assessmentDate), desc(stakeholderAssessments.id));
 
       // Enrich with scores
       const enriched = await Promise.all(
