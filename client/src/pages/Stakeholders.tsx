@@ -1693,12 +1693,12 @@ function DetailPanel({
                 {skills.length > 0 && (
                   <div className="space-y-1">
                     <Label className="text-xs">Link to Skill (optional)</Label>
-                    <Select value={devPlanForm.linkedSkillId} onValueChange={(v) => setDevPlanForm((p) => ({ ...p, linkedSkillId: v }))}>
+                    <Select value={devPlanForm.linkedSkillId || "__none__"} onValueChange={(v) => setDevPlanForm((p) => ({ ...p, linkedSkillId: v === "__none__" ? "" : v }))}>
                       <SelectTrigger className="h-8">
                         <SelectValue placeholder="Select skill..." />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">— None —</SelectItem>
+                        <SelectItem value="__none__">— None —</SelectItem>
                         {(skills as any[]).map((sk) => (
                           <SelectItem key={sk.id} value={String(sk.id)}>{sk.name} ({sk.level})</SelectItem>
                         ))}
@@ -1709,12 +1709,12 @@ function DetailPanel({
                 {swotItems.length > 0 && (
                   <div className="space-y-1">
                     <Label className="text-xs">Link to SWOT Item (optional)</Label>
-                    <Select value={devPlanForm.linkedSwotId} onValueChange={(v) => setDevPlanForm((p) => ({ ...p, linkedSwotId: v }))}>
+                    <Select value={devPlanForm.linkedSwotId || "__none__"} onValueChange={(v) => setDevPlanForm((p) => ({ ...p, linkedSwotId: v === "__none__" ? "" : v }))}>
                       <SelectTrigger className="h-8">
                         <SelectValue placeholder="Select SWOT item..." />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">— None —</SelectItem>
+                        <SelectItem value="__none__">— None —</SelectItem>
                         {(swotItems as any[]).map((sw) => (
                           <SelectItem key={sw.id} value={String(sw.id)}>[{sw.quadrant}] {sw.description.length > 50 ? sw.description.slice(0, 50) + "…" : sw.description}</SelectItem>
                         ))}
@@ -1845,12 +1845,12 @@ function DetailPanel({
                 {kpis.length > 0 && (
                   <div className="space-y-1">
                     <Label className="text-xs">Link to KPI (optional)</Label>
-                    <Select value={skillForm.linkedKpiId} onValueChange={(v) => setSkillForm((p) => ({ ...p, linkedKpiId: v }))}>
+                    <Select value={skillForm.linkedKpiId || "__none__"} onValueChange={(v) => setSkillForm((p) => ({ ...p, linkedKpiId: v === "__none__" ? "" : v }))}>
                       <SelectTrigger className="h-8">
                         <SelectValue placeholder="Select KPI..." />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">— None —</SelectItem>
+                        <SelectItem value="__none__">— None —</SelectItem>
                         {(kpis as any[]).map((kpi) => (
                           <SelectItem key={kpi.id} value={String(kpi.id)}>{kpi.name}</SelectItem>
                         ))}
@@ -1861,12 +1861,12 @@ function DetailPanel({
                 {swotItems.length > 0 && (
                   <div className="space-y-1">
                     <Label className="text-xs">Link to SWOT item (optional)</Label>
-                    <Select value={skillForm.linkedSwotId} onValueChange={(v) => setSkillForm((p) => ({ ...p, linkedSwotId: v }))}>
+                    <Select value={skillForm.linkedSwotId || "__none__"} onValueChange={(v) => setSkillForm((p) => ({ ...p, linkedSwotId: v === "__none__" ? "" : v }))}>
                       <SelectTrigger className="h-8">
                         <SelectValue placeholder="Select SWOT item..." />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">— None —</SelectItem>
+                        <SelectItem value="__none__">— None —</SelectItem>
                         {(swotItems as any[]).map((s) => (
                           <SelectItem key={s.id} value={String(s.id)}>[{s.quadrant}] {s.description}</SelectItem>
                         ))}
