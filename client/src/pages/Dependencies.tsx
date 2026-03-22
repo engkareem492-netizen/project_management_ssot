@@ -114,7 +114,7 @@ export default function Dependencies() {
             <ImportExportToolbar
               module="dependencies"
               projectId={currentProjectId}
-              onImportSuccess={() => {}}
+              onImportSuccess={() => refetch()}
             />
           )}
         </div>

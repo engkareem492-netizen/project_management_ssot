@@ -580,7 +580,7 @@ export default function RiskRegister() {
           <ImportExportToolbar
             module="risks"
             projectId={currentProjectId}
-            onImportSuccess={() => {}}
+            onImportSuccess={() => utils.risks.list.invalidate()}
           />
         )}
         </div>
