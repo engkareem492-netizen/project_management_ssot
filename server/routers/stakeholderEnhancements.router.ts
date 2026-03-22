@@ -44,12 +44,16 @@ export const stakeholderEnhancementsRouter = router({
         target: z.string().optional(),
         unit: z.string().optional(),
         weight: z.number().default(1),
+        linkedSkillId: z.number().nullable().optional(),
       })
     )
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new Error("DB unavailable");
-      const [result] = await db.insert(stakeholderKpis).values(input);
+      const [result] = await db.insert(stakeholderKpis).values({
+        ...input,
+        linkedSkillId: input.linkedSkillId ?? null,
+      });
       return result;
     }),
 
@@ -63,6 +67,7 @@ export const stakeholderEnhancementsRouter = router({
           target: z.string().optional(),
           unit: z.string().optional(),
           weight: z.number().optional(),
+          linkedSkillId: z.number().nullable().optional(),
         }),
       })
     )
@@ -450,6 +455,52 @@ export const stakeholderEnhancementsRouter = router({
       return { success: true };
     }),
 
+  // List all dev plans for a project (with stakeholder name) — used by DEV task creation
+  listDevPlansByProject: protectedProcedure
+    .input(z.object({ projectId: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+      return db
+        .select({
+          id: developmentPlans.id,
+          title: developmentPlans.title,
+          status: developmentPlans.status,
+          stakeholderId: developmentPlans.stakeholderId,
+          stakeholderName: stakeholders.fullName,
+          linkedSkillId: developmentPlans.linkedSkillId,
+          linkedSwotId: developmentPlans.linkedSwotId,
+        })
+        .from(developmentPlans)
+        .leftJoin(stakeholders, eq(developmentPlans.stakeholderId, stakeholders.id))
+        .where(eq(developmentPlans.projectId, input.projectId))
+        .orderBy(stakeholders.fullName, developmentPlans.title);
+    }),
+
+  // List SWOT items for a stakeholder (used by DEV task creation when dev plan selected)
+  listSwotByStakeholder: protectedProcedure
+    .input(z.object({ stakeholderId: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+      return db
+        .select()
+        .from(stakeholderSwot)
+        .where(eq(stakeholderSwot.stakeholderId, input.stakeholderId));
+    }),
+
+  // List skills for a stakeholder (used by DEV task creation when dev plan selected)
+  listSkillsByStakeholder: protectedProcedure
+    .input(z.object({ stakeholderId: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+      return db
+        .select()
+        .from(stakeholderSkills)
+        .where(eq(stakeholderSkills.stakeholderId, input.stakeholderId));
+    }),
+
   // ─── Skills ───────────────────────────────────────────────────────────────────
 
   listSkills: protectedProcedure
@@ -541,25 +592,31 @@ export const stakeholderEnhancementsRouter = router({
         .where(eq(stakeholderAssessments.projectId, input.projectId))
         .orderBy(desc(stakeholderAssessments.assessmentDate), desc(stakeholderAssessments.id));
 
-      // Group by stakeholderId — first entry is latest, second is previous (already ordered desc)
-      const latestByStakeholder = new Map<
+      // Group by stakeholderId — keep last 5 scores for trend, first entry is latest
+      const trendByStakeholder = new Map<
         number,
-        { overallScore: number | null; assessmentDate: Date | null; previousOverallScore: number | null }
+        { overallScore: number | null; assessmentDate: Date | null; previousOverallScore: number | null; trend: number[] }
       >();
       for (const a of assessments) {
-        if (!latestByStakeholder.has(a.stakeholderId)) {
-          latestByStakeholder.set(a.stakeholderId, {
+        if (!trendByStakeholder.has(a.stakeholderId)) {
+          trendByStakeholder.set(a.stakeholderId, {
             overallScore: a.overallScore,
             assessmentDate: a.assessmentDate,
             previousOverallScore: null,
+            trend: a.overallScore !== null ? [a.overallScore] : [],
           });
         } else {
-          const existing = latestByStakeholder.get(a.stakeholderId)!;
+          const existing = trendByStakeholder.get(a.stakeholderId)!;
           if (existing.previousOverallScore === null) {
             existing.previousOverallScore = a.overallScore;
           }
+          if (a.overallScore !== null && existing.trend.length < 5) {
+            existing.trend.push(a.overallScore);
+          }
         }
       }
+      // Alias for downstream use
+      const latestByStakeholder = trendByStakeholder;
 
       // Get KPI counts per stakeholder for this project
       const kpiRows = await db
@@ -593,11 +650,14 @@ export const stakeholderEnhancementsRouter = router({
       // Build the summary result
       return stakeholderIds.map((stakeholderId) => {
         const latest = latestByStakeholder.get(stakeholderId);
+        // trend is stored newest-first; reverse for chronological order for chart
+        const trendAsc = [...(latest?.trend ?? [])].reverse();
         return {
           stakeholderId,
           stakeholderName: nameMap.get(stakeholderId) ?? null,
           latestOverallScore: latest?.overallScore ?? null,
           previousOverallScore: latest?.previousOverallScore ?? null,
+          trend: trendAsc,
           kpiCount: kpiCountMap.get(stakeholderId) ?? 0,
         };
       });

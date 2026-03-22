@@ -288,6 +288,13 @@
       "when": 1742220300000,
       "tag": "0042_wbs_resource_assignments",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "6",
+      "when": 1742220400000,
+      "tag": "0043_kpi_skill_link_dev_tasks",
+      "breakpoints": true
     }
   ]
 }

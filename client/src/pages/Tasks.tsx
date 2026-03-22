@@ -157,8 +157,11 @@ export default function Tasks() {
     issueId: '',
     dueDate: '',
     assignDate: new Date().toISOString().split('T')[0],
-    taskCategory: 'task' as 'task' | 'communication',
+    taskCategory: 'task' as 'task' | 'communication' | 'development',
     recurringType: 'none' as string,
+    devPlanId: undefined as number | undefined,
+    devTaskSwotId: undefined as number | undefined,
+    devTaskSkillId: undefined as number | undefined,
   });
 
   // ── Resource Calendar & Dependency state ────────────────────────────────
@@ -181,10 +184,39 @@ export default function Tasks() {
   const [rescheduleMethod, setRescheduleMethod] = useState<'level' | 'crash' | 'fasttrack' | 'manual'>('level');
   const [manualRescheduleDate, setManualRescheduleDate] = useState('');
 
-  const [mainTab, setMainTab] = useState<'tasks' | 'communication'>('tasks');
+  const [mainTab, setMainTab] = useState<'tasks' | 'communication' | 'development'>('tasks');
   const { data: tasks, isLoading, refetch } = trpc.tasks.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
   const commTasks = (tasks || []).filter((t: any) => t.taskCategory === 'communication' || (t.taskId || '').startsWith('COMM-'));
-  const regularTasks = (tasks || []).filter((t: any) => t.taskCategory !== 'communication' && !(t.taskId || '').startsWith('COMM-'));
+  const devTasks = (tasks || []).filter((t: any) => t.taskCategory === 'development' || (t.taskId || '').startsWith('DEV-'));
+  const regularTasks = (tasks || []).filter((t: any) =>
+    t.taskCategory !== 'communication' && !(t.taskId || '').startsWith('COMM-') &&
+    t.taskCategory !== 'development' && !(t.taskId || '').startsWith('DEV-')
+  );
+
+  // Dev Plans for the current project (used in DEV task form)
+  const { data: devPlans = [] } = trpc.stakeholderEnhancements.listDevPlansByProject.useQuery(
+    { projectId: currentProjectId! },
+    { enabled: !!currentProjectId }
+  );
+  // Selected dev plan stakeholder id — drives SWOT/skill dropdowns
+  const selectedDevPlan = devPlans.find((p: any) => p.id === newTask.devPlanId);
+  const { data: devPlanSwot = [] } = trpc.stakeholderEnhancements.listSwotByStakeholder.useQuery(
+    { stakeholderId: selectedDevPlan?.stakeholderId ?? 0 },
+    { enabled: !!selectedDevPlan?.stakeholderId }
+  );
+  const { data: devPlanSkills = [] } = trpc.stakeholderEnhancements.listSkillsByStakeholder.useQuery(
+    { stakeholderId: selectedDevPlan?.stakeholderId ?? 0 },
+    { enabled: !!selectedDevPlan?.stakeholderId }
+  );
+
+  // Handle sessionStorage tab pre-selection (e.g. from Dev Plan link)
+  useEffect(() => {
+    const tab = sessionStorage.getItem('tasks_tab');
+    if (tab === 'development' || tab === 'communication') {
+      setMainTab(tab as 'tasks' | 'communication' | 'development');
+      sessionStorage.removeItem('tasks_tab');
+    }
+  }, []);
 
   // Handle taskId query parameter from URL
   useEffect(() => {
@@ -527,6 +559,7 @@ export default function Tasks() {
         status: 'Not Started', priority: 'Medium', requirementId: '', issueId: '',
         dueDate: '', assignDate: new Date().toISOString().split('T')[0],
         taskCategory: 'task' as const, recurringType: 'none',
+        devPlanId: undefined, devTaskSwotId: undefined, devTaskSkillId: undefined,
       });
       setNewTaskDependencies([]);
       setWarningDialogOpen(false);
@@ -641,9 +674,10 @@ export default function Tasks() {
 
   const getSubTasks = (parentId: number) => tasks?.filter((t: any) => t.parentTaskId === parentId) || [];
 
-  const filteredTasks = tasks?.filter(task => {
-    // Exclude COMM- tasks from the main Tasks tab — they live in Communication Tasks tab
+  const filteredTasks = tasks?.filter((task: any) => {
+    // Exclude COMM- and DEV- tasks — they live in their own tabs
     if ((task.taskId || '').startsWith('COMM-') || task.taskCategory === 'communication') return false;
+    if ((task.taskId || '').startsWith('DEV-') || task.taskCategory === 'development') return false;
     const matchesSearch =
       task.taskId.toLowerCase().includes(searchTerm.toLowerCase()) ||
       task.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -1069,6 +1103,12 @@ export default function Tasks() {
         >
           Communication Tasks ({commTasks.length})
         </button>
+        <button
+          className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 ${mainTab === 'development' ? 'border-teal-500 text-teal-600 bg-teal-50' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+          onClick={() => setMainTab('development')}
+        >
+          DEV Tasks ({devTasks.length})
+        </button>
       </div>
 
       {mainTab === 'communication' ? (
@@ -1133,6 +1173,73 @@ export default function Tasks() {
                         </TableCell>
                       </TableRow>
                     ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ) : mainTab === 'development' ? (
+        <Card className="border-teal-100">
+          <CardContent className="pt-4">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-lg font-semibold text-teal-700">DEV Tasks</h2>
+                <p className="text-sm text-gray-500">Development tasks linked to a Development Plan (DEV- prefix)</p>
+              </div>
+              <Button onClick={() => { setNewTask((p: any) => ({ ...p, taskCategory: 'development' })); setCreateDialogOpen(true); }} className="bg-teal-600 hover:bg-teal-700">
+                <Plus className="w-4 h-4 mr-2" />New DEV Task
+              </Button>
+            </div>
+            {devTasks.length === 0 ? (
+              <div className="text-center py-16 text-gray-400">
+                <CheckSquare className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                <p className="font-medium">No DEV tasks yet</p>
+                <p className="text-sm mt-1">Create development tasks linked to a Development Plan</p>
+              </div>
+            ) : (
+              <div className="rounded-md border border-teal-100 overflow-hidden">
+                <Table className="w-full text-sm">
+                  <TableHeader>
+                    <TableRow className="bg-teal-50">
+                      <TableHead className="px-3 font-semibold text-teal-700">Task ID</TableHead>
+                      <TableHead className="px-3 font-semibold text-teal-700">Description</TableHead>
+                      <TableHead className="px-3 font-semibold text-teal-700">Dev Plan</TableHead>
+                      <TableHead className="px-3 font-semibold text-teal-700">SWOT Item</TableHead>
+                      <TableHead className="px-3 font-semibold text-teal-700">Skill</TableHead>
+                      <TableHead className="px-3 font-semibold text-teal-700">Responsible</TableHead>
+                      <TableHead className="px-3 font-semibold text-teal-700">Due Date</TableHead>
+                      <TableHead className="px-3 font-semibold text-teal-700">Status</TableHead>
+                      <TableHead className="px-3 text-right font-semibold text-teal-700">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {devTasks.map((task: any) => {
+                      const linkedPlan = devPlans.find((p: any) => p.id === task.devPlanId);
+                      return (
+                        <TableRow key={task.id} className="hover:bg-teal-50/50">
+                          <TableCell className="px-3 py-2">
+                            <span className="font-mono text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded">{task.taskId}</span>
+                          </TableCell>
+                          <TableCell className="px-3 py-2 max-w-xs truncate">{task.description}</TableCell>
+                          <TableCell className="px-3 py-2 text-sm text-gray-600">{linkedPlan ? `${linkedPlan.title} (${linkedPlan.stakeholderName ?? '?'})` : '—'}</TableCell>
+                          <TableCell className="px-3 py-2 text-sm text-gray-600">{task.devTaskSwotId ? `SWOT #${task.devTaskSwotId}` : '—'}</TableCell>
+                          <TableCell className="px-3 py-2 text-sm text-gray-600">{task.devTaskSkillId ? `Skill #${task.devTaskSkillId}` : '—'}</TableCell>
+                          <TableCell className="px-3 py-2 text-sm text-gray-600">{task.responsible || '—'}</TableCell>
+                          <TableCell className="px-3 py-2 text-sm">{task.dueDate ? formatDate(task.dueDate) : '—'}</TableCell>
+                          <TableCell className="px-3 py-2">
+                            <Badge variant="secondary" className="text-xs">{task.status || 'Not Started'}</Badge>
+                          </TableCell>
+                          <TableCell className="px-3 py-2 text-right">
+                            <div className="flex justify-end gap-1">
+                              <Button size="sm" variant="ghost" onClick={() => handleViewDetails(task)}><Eye className="w-4 h-4" /></Button>
+                              <Button size="sm" variant="ghost" onClick={() => handleEditDetails(task)}><Edit className="w-4 h-4" /></Button>
+                              <Button size="sm" variant="ghost" className="text-destructive" onClick={() => { setDeletingId(task.id); setDeleteDialogOpen(true); }}><Trash2 className="w-4 h-4" /></Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
@@ -1926,7 +2033,7 @@ export default function Tasks() {
                   <Label>Task Category</Label>
                   <Select
                     value={newTask.taskCategory}
-                    onValueChange={(value) => setNewTask({ ...newTask, taskCategory: value as 'task' | 'communication' })}
+                    onValueChange={(value) => setNewTask({ ...newTask, taskCategory: value as 'task' | 'communication' | 'development', devPlanId: undefined, devTaskSwotId: undefined, devTaskSkillId: undefined })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select category..." />
@@ -1934,10 +2041,79 @@ export default function Tasks() {
                     <SelectContent>
                       <SelectItem value="task">Regular Task (T-)</SelectItem>
                       <SelectItem value="communication">Communication Task (COMM-)</SelectItem>
+                      <SelectItem value="development">DEV Task (DEV-)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
+
+              {/* DEV Task extra fields */}
+              {newTask.taskCategory === 'development' && (
+                <div className="space-y-3 border border-teal-200 rounded-lg p-3 bg-teal-50/50">
+                  <p className="text-xs font-semibold text-teal-700 uppercase tracking-wide">Development Plan Link</p>
+                  <div className="space-y-2">
+                    <Label>Development Plan <span className="text-destructive">*</span></Label>
+                    <Select
+                      value={newTask.devPlanId?.toString() ?? 'none'}
+                      onValueChange={(v) => setNewTask({ ...newTask, devPlanId: v === 'none' ? undefined : parseInt(v), devTaskSwotId: undefined, devTaskSkillId: undefined })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a development plan..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">— Select Dev Plan —</SelectItem>
+                        {devPlans.map((p: any) => (
+                          <SelectItem key={p.id} value={p.id.toString()}>
+                            {p.title} — {p.stakeholderName ?? 'Unknown'}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {selectedDevPlan && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label>SWOT Item (optional)</Label>
+                        <Select
+                          value={newTask.devTaskSwotId?.toString() ?? 'none'}
+                          onValueChange={(v) => setNewTask({ ...newTask, devTaskSwotId: v === 'none' ? undefined : parseInt(v) })}
+                        >
+                          <SelectTrigger className="text-sm">
+                            <SelectValue placeholder="Link SWOT item..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">— None —</SelectItem>
+                            {devPlanSwot.map((sw: any) => (
+                              <SelectItem key={sw.id} value={sw.id.toString()}>
+                                [{sw.quadrant}] {sw.description.slice(0, 40)}{sw.description.length > 40 ? '…' : ''}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Skill (optional)</Label>
+                        <Select
+                          value={newTask.devTaskSkillId?.toString() ?? 'none'}
+                          onValueChange={(v) => setNewTask({ ...newTask, devTaskSkillId: v === 'none' ? undefined : parseInt(v) })}
+                        >
+                          <SelectTrigger className="text-sm">
+                            <SelectValue placeholder="Link skill..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">— None —</SelectItem>
+                            {devPlanSkills.map((sk: any) => (
+                              <SelectItem key={sk.id} value={sk.id.toString()}>
+                                {sk.name} ({sk.level})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
               <div className="space-y-2">
                 <Label>Recurring Schedule</Label>
                 <Select
