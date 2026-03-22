@@ -389,9 +389,9 @@ export const stakeholderEnhancementsRouter = router({
         goals: z.string().optional(),
         startDate: z.string().optional(),
         endDate: z.string().optional(),
-        status: z
-          .enum(["Not Started", "In Progress", "Completed", "On Hold"])
-          .optional(),
+        status: z.enum(["Not Started", "In Progress", "Completed", "On Hold"]).optional(),
+        linkedSkillId: z.number().nullable().optional(),
+        linkedSwotId: z.number().nullable().optional(),
       })
     )
     .mutation(async ({ input }) => {
@@ -406,6 +406,8 @@ export const stakeholderEnhancementsRouter = router({
         startDate: input.startDate ? new Date(input.startDate) : undefined,
         endDate: input.endDate ? new Date(input.endDate) : undefined,
         status: input.status,
+        linkedSkillId: input.linkedSkillId ?? null,
+        linkedSwotId: input.linkedSwotId ?? null,
       });
       return result;
     }),
@@ -420,9 +422,9 @@ export const stakeholderEnhancementsRouter = router({
           goals: z.string().optional(),
           startDate: z.string().optional(),
           endDate: z.string().optional(),
-          status: z
-            .enum(["Not Started", "In Progress", "Completed", "On Hold"])
-            .optional(),
+          status: z.enum(["Not Started", "In Progress", "Completed", "On Hold"]).optional(),
+          linkedSkillId: z.number().nullable().optional(),
+          linkedSwotId: z.number().nullable().optional(),
         }),
       })
     )
@@ -471,15 +473,21 @@ export const stakeholderEnhancementsRouter = router({
         stakeholderId: z.number(),
         name: z.string(),
         level: z.enum(["Beginner", "Intermediate", "Advanced", "Expert"]),
-        linkedKpiId: z.number().optional(),
-        linkedSwotId: z.number().optional(),
+        linkedKpiId: z.number().nullable().optional(),
+        linkedSwotId: z.number().nullable().optional(),
       })
     )
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new Error("DB unavailable");
-      const [result] = await db.insert(stakeholderSkills).values(input);
-      return result;
+      await db.insert(stakeholderSkills).values({
+        stakeholderId: input.stakeholderId,
+        name: input.name,
+        level: input.level,
+        linkedKpiId: input.linkedKpiId ?? null,
+        linkedSwotId: input.linkedSwotId ?? null,
+      });
+      return { success: true };
     }),
 
   updateSkill: protectedProcedure
@@ -536,17 +544,23 @@ export const stakeholderEnhancementsRouter = router({
         .where(eq(stakeholderAssessments.projectId, input.projectId))
         .orderBy(desc(stakeholderAssessments.assessmentDate));
 
-      // Group by stakeholderId to get the latest assessment per stakeholder
+      // Group by stakeholderId — first entry is latest, second is previous (already ordered desc)
       const latestByStakeholder = new Map<
         number,
-        { overallScore: number | null; assessmentDate: Date | null }
+        { overallScore: number | null; assessmentDate: Date | null; previousOverallScore: number | null }
       >();
       for (const a of assessments) {
         if (!latestByStakeholder.has(a.stakeholderId)) {
           latestByStakeholder.set(a.stakeholderId, {
             overallScore: a.overallScore,
             assessmentDate: a.assessmentDate,
+            previousOverallScore: null,
           });
+        } else {
+          const existing = latestByStakeholder.get(a.stakeholderId)!;
+          if (existing.previousOverallScore === null) {
+            existing.previousOverallScore = a.overallScore;
+          }
         }
       }
 
@@ -586,6 +600,7 @@ export const stakeholderEnhancementsRouter = router({
           stakeholderId,
           stakeholderName: nameMap.get(stakeholderId) ?? null,
           latestOverallScore: latest?.overallScore ?? null,
+          previousOverallScore: latest?.previousOverallScore ?? null,
           kpiCount: kpiCountMap.get(stakeholderId) ?? 0,
         };
       });

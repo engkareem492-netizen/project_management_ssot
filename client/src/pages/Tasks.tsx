@@ -1127,6 +1127,7 @@ export default function Tasks() {
                         <TableCell className="px-3 py-2 text-right">
                           <div className="flex justify-end gap-1">
                             <Button size="sm" variant="ghost" onClick={() => handleViewDetails(task)}><Eye className="w-4 h-4" /></Button>
+                            <Button size="sm" variant="ghost" onClick={() => handleEditDetails(task)}><Edit className="w-4 h-4" /></Button>
                             <Button size="sm" variant="ghost" className="text-destructive" onClick={() => { setDeletingId(task.id); setDeleteDialogOpen(true); }}><Trash2 className="w-4 h-4" /></Button>
                           </div>
                         </TableCell>
