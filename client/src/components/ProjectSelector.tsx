@@ -28,6 +28,11 @@ export default function ProjectSelector({ onProjectSelected }: ProjectSelectorPr
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const [password, setPassword] = useState("");
 
+  // Delete captcha dialog state
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleteCaptchaCode, setDeleteCaptchaCode] = useState("");
+  const [deleteConfirmCode, setDeleteConfirmCode] = useState("");
+
   // Password management modal state
   const [showManagePassword, setShowManagePassword] = useState(false);
   const [manageMode, setManageMode] = useState<"set" | "change" | "remove">("set");
@@ -218,10 +223,15 @@ export default function ProjectSelector({ onProjectSelected }: ProjectSelectorPr
 
   const handleDeleteProject = () => {
     if (!selectedProjectId) return;
-    if (!confirm("Are you sure you want to delete this project? This action cannot be undone and will delete all associated data.")) {
-      return;
-    }
+    setDeleteConfirmCode("");
+    setDeleteCaptchaCode(String(Math.floor(100000 + Math.random() * 900000)));
+    setShowDeleteDialog(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (!selectedProjectId) return;
     deleteMutation.mutate({ projectId: selectedProjectId });
+    setShowDeleteDialog(false);
   };
 
   // ─── Create Project Form ───────────────────────────────────────────────────
@@ -488,6 +498,51 @@ export default function ProjectSelector({ onProjectSelected }: ProjectSelectorPr
             </CardContent>
           </Card>
         </div>
+
+        {/* Delete Captcha Dialog */}
+        {showDeleteDialog && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <Card className="w-full max-w-md">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-red-600">Delete Project</CardTitle>
+                <CardDescription>
+                  This will permanently delete the project and all its data. This action cannot be undone.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label className="text-sm">Enter this code to confirm deletion:</Label>
+                  <div className="flex items-center justify-center bg-muted rounded-md py-3">
+                    <span className="text-2xl font-mono font-bold tracking-widest text-red-600 select-none">{deleteCaptchaCode}</span>
+                  </div>
+                  <Input
+                    value={deleteConfirmCode}
+                    onChange={(e) => setDeleteConfirmCode(e.target.value)}
+                    placeholder="Enter the 6-digit code"
+                    maxLength={6}
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => { setShowDeleteDialog(false); setDeleteConfirmCode(""); }}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={handleConfirmDelete}
+                    disabled={deleteConfirmCode !== deleteCaptchaCode || deleteMutation.isPending}
+                    className="flex-1"
+                  >
+                    {deleteMutation.isPending ? "Deleting..." : "Delete Permanently"}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Change Password Dialog */}
         {showManagePassword && (

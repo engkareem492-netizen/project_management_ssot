@@ -287,7 +287,8 @@ export default function Settings() {
 
   // Delete project state
   const [showDeleteProject, setShowDeleteProject] = useState(false);
-  const [deleteConfirmName, setDeleteConfirmName] = useState("");
+  const [deleteConfirmCode, setDeleteConfirmCode] = useState("");
+  const [deleteCaptchaCode, setDeleteCaptchaCode] = useState("");
 
   // Copy from project state
   const [showCopyDialog, setShowCopyDialog] = useState(false);
@@ -1700,7 +1701,7 @@ export default function Settings() {
                   </div>
                   <Button
                     variant="destructive"
-                    onClick={() => { setDeleteConfirmName(""); setShowDeleteProject(true); }}
+                    onClick={() => { setDeleteConfirmCode(""); setDeleteCaptchaCode(String(Math.floor(100000 + Math.random() * 900000))); setShowDeleteProject(true); }}
                   >
                     <Trash2 className="w-4 h-4 mr-2" />
                     Delete Project
@@ -1850,18 +1851,22 @@ export default function Settings() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-2 px-1 pb-2">
-            <Label className="text-sm">Type the project name to confirm:</Label>
+            <Label className="text-sm">Enter this code to confirm deletion:</Label>
+            <div className="flex items-center justify-center bg-muted rounded-md py-3">
+              <span className="text-2xl font-mono font-bold tracking-widest text-red-600 select-none">{deleteCaptchaCode}</span>
+            </div>
             <Input
-              value={deleteConfirmName}
-              onChange={(e) => setDeleteConfirmName(e.target.value)}
-              placeholder={currentProject?.name ?? "Project name"}
+              value={deleteConfirmCode}
+              onChange={(e) => setDeleteConfirmCode(e.target.value)}
+              placeholder="Enter the 6-digit code"
+              maxLength={6}
             />
           </div>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setDeleteConfirmName("")}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setDeleteConfirmCode("")}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-red-600 hover:bg-red-700 text-white"
-              disabled={deleteConfirmName !== currentProject?.name || deleteProjectMutation.isPending}
+              disabled={deleteConfirmCode !== deleteCaptchaCode || deleteProjectMutation.isPending}
               onClick={() => currentProjectId && deleteProjectMutation.mutate({ projectId: currentProjectId })}
             >
               {deleteProjectMutation.isPending ? "Deleting…" : "Delete Permanently"}
