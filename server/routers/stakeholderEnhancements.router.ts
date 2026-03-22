@@ -536,17 +536,23 @@ export const stakeholderEnhancementsRouter = router({
         .where(eq(stakeholderAssessments.projectId, input.projectId))
         .orderBy(desc(stakeholderAssessments.assessmentDate));
 
-      // Group by stakeholderId to get the latest assessment per stakeholder
+      // Group by stakeholderId — first entry is latest, second is previous (already ordered desc)
       const latestByStakeholder = new Map<
         number,
-        { overallScore: number | null; assessmentDate: Date | null }
+        { overallScore: number | null; assessmentDate: Date | null; previousOverallScore: number | null }
       >();
       for (const a of assessments) {
         if (!latestByStakeholder.has(a.stakeholderId)) {
           latestByStakeholder.set(a.stakeholderId, {
             overallScore: a.overallScore,
             assessmentDate: a.assessmentDate,
+            previousOverallScore: null,
           });
+        } else {
+          const existing = latestByStakeholder.get(a.stakeholderId)!;
+          if (existing.previousOverallScore === null) {
+            existing.previousOverallScore = a.overallScore;
+          }
         }
       }
 
@@ -586,6 +592,7 @@ export const stakeholderEnhancementsRouter = router({
           stakeholderId,
           stakeholderName: nameMap.get(stakeholderId) ?? null,
           latestOverallScore: latest?.overallScore ?? null,
+          previousOverallScore: latest?.previousOverallScore ?? null,
           kpiCount: kpiCountMap.get(stakeholderId) ?? 0,
         };
       });

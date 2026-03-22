@@ -31,7 +31,7 @@ import {
   Plus, Trash2, Pencil, Search, Users, Mail, Phone,
   Target, Award, Activity, UserCheck, Briefcase,
   MoveRight, Download,
-  Brain, Star, Lightbulb, Shield, BookOpen, TrendingUp, Zap,
+  Brain, Star, Lightbulb, Shield, BookOpen, TrendingUp, TrendingDown, Zap,
 } from "lucide-react";
 import { ImportExportToolbar } from "@/components/ImportExportToolbar";
 import { StakeholderSelect } from "@/components/StakeholderSelect";
@@ -2272,6 +2272,16 @@ export default function Stakeholders() {
     { enabled: !!currentProjectId }
   );
 
+  const { data: kpiSummaries = [] } = trpc.stakeholderEnhancements.listProjectKpiSummary.useQuery(
+    { projectId: currentProjectId! },
+    { enabled: !!currentProjectId }
+  );
+  const kpiSummaryMap = useMemo(() => {
+    const map = new Map<number, { latestOverallScore: number | null; previousOverallScore: number | null }>();
+    for (const s of kpiSummaries) map.set(s.stakeholderId, { latestOverallScore: s.latestOverallScore, previousOverallScore: s.previousOverallScore });
+    return map;
+  }, [kpiSummaries]);
+
   const createMutation = trpc.stakeholders.create.useMutation({
     onSuccess: () => {
       utils.stakeholders.list.invalidate();
@@ -2630,13 +2640,14 @@ export default function Stakeholders() {
               <TableHead>Email</TableHead>
               <TableHead>Phone</TableHead>
               <TableHead>Remark</TableHead>
+              <TableHead>KPI Score</TableHead>
               <TableHead className="w-28">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredStakeholders.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8}>
+                <TableCell colSpan={9}>
                   <EmptyState
                     icon={Users}
                     title={searchTerm ? "No stakeholders match your search" : "No stakeholders yet"}
@@ -2700,6 +2711,35 @@ export default function Stakeholders() {
                       ) : (
                         <span className="text-muted-foreground text-xs">—</span>
                       )}
+                    </TableCell>
+                    <TableCell>
+                      {(() => {
+                        const kpi = kpiSummaryMap.get(s.id);
+                        if (!kpi || kpi.latestOverallScore === null) {
+                          return <span className="text-muted-foreground text-xs">—</span>;
+                        }
+                        const score = kpi.latestOverallScore;
+                        const prev = kpi.previousOverallScore;
+                        const diff = prev !== null ? score - prev : null;
+                        const scoreColor = score >= 75 ? "text-green-600" : score >= 50 ? "text-yellow-600" : "text-red-600";
+                        return (
+                          <div className="flex items-center gap-1.5">
+                            <span className={`font-semibold text-sm ${scoreColor}`}>{score}</span>
+                            {diff !== null && (
+                              <>
+                                {diff > 0
+                                  ? <TrendingUp className="w-3.5 h-3.5 text-green-500 shrink-0" />
+                                  : diff < 0
+                                  ? <TrendingDown className="w-3.5 h-3.5 text-red-500 shrink-0" />
+                                  : <span className="text-muted-foreground text-xs">→</span>}
+                                <span className={`text-xs font-medium ${diff > 0 ? "text-green-600" : diff < 0 ? "text-red-600" : "text-muted-foreground"}`}>
+                                  {diff > 0 ? `+${diff}` : diff}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center gap-1">
