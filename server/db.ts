@@ -1370,9 +1370,17 @@ export async function getProjectsByUser(userId: number) {
 export async function getProjectById(id: number) {
   const db = await getDb();
   if (!db) return null;
-  
+
   try {
-    const result = await db.select().from(projects).where(eq(projects.id, id)).limit(1);
+    const result = await db.select({
+      id: projects.id,
+      name: projects.name,
+      description: projects.description,
+      password: projects.password,
+      createdBy: projects.createdBy,
+      createdAt: projects.createdAt,
+      updatedAt: projects.updatedAt,
+    }).from(projects).where(eq(projects.id, id)).limit(1);
     return result[0] || null;
   } catch (error) {
     console.error("[Database] Failed to get project:", error);
@@ -1383,20 +1391,30 @@ export async function getProjectById(id: number) {
 export async function createProject(data: InsertProject) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  
+
+  const safeSelect = {
+    id: projects.id,
+    name: projects.name,
+    description: projects.description,
+    password: projects.password,
+    createdBy: projects.createdBy,
+    createdAt: projects.createdAt,
+    updatedAt: projects.updatedAt,
+  };
+
   try {
     const result = await db.insert(projects).values(data);
     const insertResult = result as any;
     const insertId = insertResult[0]?.insertId || insertResult.insertId;
     if (!insertId || isNaN(Number(insertId))) {
       // Fallback: get the latest created project by name
-      const [created] = await db.select().from(projects)
+      const [created] = await db.select(safeSelect).from(projects)
         .where(eq(projects.name, data.name))
         .orderBy(desc(projects.id))
         .limit(1);
       return created;
     }
-    const [created] = await db.select().from(projects).where(eq(projects.id, Number(insertId)));
+    const [created] = await db.select(safeSelect).from(projects).where(eq(projects.id, Number(insertId)));
     return created;
   } catch (error) {
     console.error("[Database] Failed to create project:", error);
@@ -1633,16 +1651,36 @@ export async function exportProjectData(projectId: number) {
 export async function deleteProject(projectId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  
+
   try {
-    // Delete all related data first
+    // Delete all related data first (order matters for tables with inter-dependencies)
     await db.delete(requirements).where(eq(requirements.projectId, projectId));
     await db.delete(tasks).where(eq(tasks.projectId, projectId));
     await db.delete(issues).where(eq(issues.projectId, projectId));
+    await db.delete(deliverables).where(eq(deliverables.projectId, projectId));
+    await db.delete(dependencies).where(eq(dependencies.projectId, projectId));
+    await db.delete(assumptions).where(eq(assumptions.projectId, projectId));
     await db.delete(stakeholders).where(eq(stakeholders.projectId, projectId));
     await db.delete(taskGroups).where(eq(taskGroups.projectId, projectId));
     await db.delete(issueGroups).where(eq(issueGroups.projectId, projectId));
-    
+    await db.delete(issueTypes).where(eq(issueTypes.projectId, projectId));
+    await db.delete(taskTypes).where(eq(taskTypes.projectId, projectId));
+    await db.delete(deliverableTypes).where(eq(deliverableTypes.projectId, projectId));
+    await db.delete(classOptions).where(eq(classOptions.projectId, projectId));
+    await db.delete(knowledgeBase).where(eq(knowledgeBase.projectId, projectId));
+    await db.delete(knowledgeBaseTypes).where(eq(knowledgeBaseTypes.projectId, projectId));
+    await db.delete(knowledgeBaseComponents).where(eq(knowledgeBaseComponents.projectId, projectId));
+    await db.delete(knowledgeBaseCodeConfig).where(eq(knowledgeBaseCodeConfig.projectId, projectId));
+    await db.delete(risks).where(eq(risks.projectId, projectId));
+    await db.delete(riskTypes).where(eq(riskTypes.projectId, projectId));
+    await db.delete(riskStatus).where(eq(riskStatus.projectId, projectId));
+    await db.delete(responseStrategy).where(eq(responseStrategy.projectId, projectId));
+    await db.delete(dropdownCategories).where(eq(dropdownCategories.projectId, projectId));
+    await db.delete(idSequences).where(eq(idSequences.projectId, projectId));
+    await db.delete(assumptionCategories).where(eq(assumptionCategories.projectId, projectId));
+    await db.delete(assumptionStatuses).where(eq(assumptionStatuses.projectId, projectId));
+    await db.delete(assumptionImpactLevels).where(eq(assumptionImpactLevels.projectId, projectId));
+
     // Finally delete the project itself
     await db.delete(projects).where(eq(projects.id, projectId));
     return { success: true };
