@@ -449,6 +449,16 @@ function DashboardLayoutContent({
   );
   const currentProject = projects?.find(p => p.id === currentProjectId);
 
+  // ── Stale project guard: if the stored project ID no longer exists, clear it ──
+  useEffect(() => {
+    if (projects && projects.length >= 0 && currentProjectId !== null) {
+      const exists = projects.some((p: any) => p.id === currentProjectId);
+      if (!exists) {
+        setCurrentProjectId(null);
+      }
+    }
+  }, [projects, currentProjectId]);
+
   const importMutation = trpc.excel.import.useMutation({
     onSuccess: (data) => {
       setUploading(false);
