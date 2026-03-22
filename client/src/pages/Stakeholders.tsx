@@ -636,6 +636,24 @@ function StakeholderFormDialog({
     onError: (e: any) => toast.error(`Failed: ${e.message}`),
   });
 
+  // Merge position options with unique positions from existing stakeholders (e.g. imported via CSV)
+  const allPositionOptions = useMemo(() => {
+    const knownLabels = new Set(positionOptions.map((o: any) => o.label));
+    const derived = [...new Set(
+      stakeholders.map((s: any) => s.position).filter((p: any) => p && !knownLabels.has(p))
+    )];
+    return [...positionOptions, ...derived.map((label: string) => ({ id: `derived-${label}`, label }))];
+  }, [positionOptions, stakeholders]);
+
+  // Merge role options with unique roles from existing stakeholders (e.g. imported via CSV)
+  const allRoleOptions = useMemo(() => {
+    const knownLabels = new Set(roleOptions.map((o: any) => o.label));
+    const derived = [...new Set(
+      stakeholders.map((s: any) => s.role).filter((r: any) => r && !knownLabels.has(r))
+    )];
+    return [...roleOptions, ...derived.map((label: string) => ({ id: `derived-${label}`, label }))];
+  }, [roleOptions, stakeholders]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
@@ -699,10 +717,10 @@ function StakeholderFormDialog({
                       <SelectValue placeholder="Select position..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {positionOptions.map((o: any) => (
+                      {allPositionOptions.map((o: any) => (
                         <SelectItem key={o.id} value={o.label}>{o.label}</SelectItem>
                       ))}
-                      {formData.position && !positionOptions.some((o: any) => o.label === formData.position) && (
+                      {formData.position && !allPositionOptions.some((o: any) => o.label === formData.position) && (
                         <SelectItem value={formData.position}>{formData.position}</SelectItem>
                       )}
                     </SelectContent>
@@ -739,10 +757,10 @@ function StakeholderFormDialog({
                       <SelectValue placeholder="Select role..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {roleOptions.map((o: any) => (
+                      {allRoleOptions.map((o: any) => (
                         <SelectItem key={o.id} value={o.label}>{o.label}</SelectItem>
                       ))}
-                      {formData.role && !roleOptions.some((o: any) => o.label === formData.role) && (
+                      {formData.role && !allRoleOptions.some((o: any) => o.label === formData.role) && (
                         <SelectItem value={formData.role}>{formData.role}</SelectItem>
                       )}
                     </SelectContent>
