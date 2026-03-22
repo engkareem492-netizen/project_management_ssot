@@ -36,7 +36,7 @@ import {
 import { ImportExportToolbar } from "@/components/ImportExportToolbar";
 import { StakeholderSelect } from "@/components/StakeholderSelect";
 import { EmptyState } from "@/components/EmptyState";
-import { formatDate } from "@/lib/dateUtils";
+import { formatDate, formatDateTime } from "@/lib/dateUtils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Classification = "TeamMember" | "External" | "Stakeholder";
@@ -173,7 +173,7 @@ function KpiManagementDialog({
   const [editingKpi, setEditingKpi] = useState<any>(null);
   const [assessmentOpen, setAssessmentOpen] = useState(false);
   const [assessmentForm, setAssessmentForm] = useState({
-    assessmentDate: new Date().toISOString().split("T")[0],
+    assessmentDate: new Date().toISOString().slice(0, 16),
     assessorName: "",
     notes: "",
     scores: {} as Record<number, { score: number; notes: string }>,
@@ -419,7 +419,7 @@ function KpiManagementDialog({
                 size="sm"
                 onClick={() => {
                   setAssessmentForm({
-                    assessmentDate: new Date().toISOString().split("T")[0],
+                    assessmentDate: new Date().toISOString().slice(0, 16),
                     assessorName: "",
                     notes: "",
                     scores: {},
@@ -447,7 +447,7 @@ function KpiManagementDialog({
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <Award className="h-4 w-4 text-primary" />
-                        <span className="font-medium">{formatDate(a.assessmentDate)}</span>
+                        <span className="font-medium">{formatDateTime(a.assessmentDate)}</span>
                         {a.assessorName && <span className="text-sm text-muted-foreground">by {a.assessorName}</span>}
                       </div>
                       <div className="flex items-center gap-2">
@@ -489,9 +489,9 @@ function KpiManagementDialog({
             <div className="space-y-4 py-2">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label>Assessment Date</Label>
+                  <Label>Assessment Date & Time</Label>
                   <Input
-                    type="date"
+                    type="datetime-local"
                     value={assessmentForm.assessmentDate}
                     onChange={(e) => setAssessmentForm({ ...assessmentForm, assessmentDate: e.target.value })}
                   />
@@ -1486,7 +1486,7 @@ function DetailPanel({
               <div className="rounded-lg border p-4 bg-muted/20 flex items-center justify-between">
                 <div>
                   <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">Latest Assessment</p>
-                  <p className="text-sm font-medium">{formatDate(latestAssessment.assessmentDate)}</p>
+                  <p className="text-sm font-medium">{formatDateTime(latestAssessment.assessmentDate)}</p>
                   {latestAssessment.assessorName && (
                     <p className="text-xs text-muted-foreground">by {latestAssessment.assessorName}</p>
                   )}
@@ -1537,7 +1537,7 @@ function DetailPanel({
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <Award className="h-4 w-4 text-primary" />
-                          <span className="font-medium text-sm">{formatDate(a.assessmentDate)}</span>
+                          <span className="font-medium text-sm">{formatDateTime(a.assessmentDate)}</span>
                           {a.assessorName && <span className="text-xs text-muted-foreground">by {a.assessorName}</span>}
                         </div>
                         {a.overallScore != null && (
@@ -2759,9 +2759,10 @@ export default function Stakeholders() {
                         if (!kpi || kpi.latestOverallScore === null) {
                           return <span className="text-muted-foreground text-xs">—</span>;
                         }
-                        const score = kpi.latestOverallScore;
-                        const prev = kpi.previousOverallScore;
-                        const diff = prev !== null ? score - prev : null;
+                        const score = Number(kpi.latestOverallScore);
+                        const prev = kpi.previousOverallScore !== null && kpi.previousOverallScore !== undefined ? Number(kpi.previousOverallScore) : null;
+                        const rawDiff = prev !== null ? score - prev : null;
+                        const diff = rawDiff !== null && !isNaN(rawDiff) ? rawDiff : null;
                         const scoreColor = score >= 75 ? "text-green-600" : score >= 50 ? "text-yellow-600" : "text-red-600";
                         return (
                           <div className="flex items-center gap-1.5">

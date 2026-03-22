@@ -743,7 +743,7 @@ function DashboardLayoutContent({
         <div className="relative" ref={sidebarRef}>
           <Sidebar collapsible="icon" className="border-r-0" disableTransition={isResizing}>
             <SidebarHeader className="h-16 justify-center">
-              <div className="flex items-center gap-3 px-2 transition-all w-full">
+              <div className="flex items-center gap-3 px-2 transition-all w-full overflow-hidden">
                 <button
                   onClick={toggleSidebar}
                   className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring shrink-0"
@@ -751,26 +751,27 @@ function DashboardLayoutContent({
                 >
                   <PanelLeft className="h-4 w-4 text-muted-foreground" />
                 </button>
-                {!isCollapsed ? (
-                  <div className="flex items-center gap-2 min-w-0 flex-1">
-                    {(currentProject as any)?.logoUrl && (
-                      <img src={(currentProject as any).logoUrl} alt="Project logo" className="h-6 w-6 object-contain rounded shrink-0" />
-                    )}
-                    <span className="font-semibold tracking-tight truncate">
-                      {currentProject?.name || "Navigation"}
-                    </span>
-                    <button
-                      onClick={handleSwitchProject}
-                      className="ml-auto h-7 px-2 text-xs hover:bg-accent rounded transition-colors flex items-center gap-1 shrink-0"
-                      title="Switch Project"
-                    >
-                      <Database className="h-3 w-3" />
-                      Switch
-                    </button>
-                  </div>
-                ) : (currentProject as any)?.logoUrl ? (
-                  <img src={(currentProject as any).logoUrl} alt="logo" className="h-6 w-6 object-contain rounded" />
-                ) : null}
+                {/* Expanded state — hidden via CSS when sidebar is icon-collapsed */}
+                <div className="flex items-center gap-2 min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
+                  {(currentProject as any)?.logoUrl && (
+                    <img src={(currentProject as any).logoUrl} alt="Project logo" className="h-6 w-6 object-contain rounded shrink-0" />
+                  )}
+                  <span className="font-semibold tracking-tight truncate">
+                    {currentProject?.name || "Navigation"}
+                  </span>
+                  <button
+                    onClick={handleSwitchProject}
+                    className="ml-auto h-7 px-2 text-xs hover:bg-accent rounded transition-colors flex items-center gap-1 shrink-0"
+                    title="Switch Project"
+                  >
+                    <Database className="h-3 w-3" />
+                    Switch
+                  </button>
+                </div>
+                {/* Collapsed icon-only state — shown only when sidebar is icon-collapsed */}
+                {(currentProject as any)?.logoUrl && (
+                  <img src={(currentProject as any).logoUrl} alt="logo" className="hidden group-data-[collapsible=icon]:block h-6 w-6 object-contain rounded shrink-0" />
+                )}
               </div>
             </SidebarHeader>
 
