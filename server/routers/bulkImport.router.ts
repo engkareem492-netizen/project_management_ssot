@@ -378,8 +378,8 @@ async function importRow(module: string, projectId: number, row: Record<string, 
         phone: row.phone || null,
         position: row.position || null,
         role: row.role || null,
-        // Accept both "department" (new) and "job" (legacy) column names
-        job: row.department || row.job || null,
+        department: row.department || null,
+        job: row.job || null,
       });
       break;
     }
@@ -517,7 +517,7 @@ async function fetchModuleData(module: string, projectId: number): Promise<Recor
         phone: r.phone ?? "",
         position: r.position ?? "",
         role: r.role ?? "",
-        department: r.job ?? "",
+        department: r.department ?? "",
       }));
     }
     case "deliverables": {

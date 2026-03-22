@@ -35,6 +35,7 @@ export default function Today() {
   const { data: issues } = trpc.issues.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
   const { data: deliverables } = trpc.deliverables.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
   const { data: risks } = trpc.risks.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
+  const { data: testCasesData } = trpc.testCases.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
   const { data: statusOptions } = trpc.dropdownOptions.status.getAll.useQuery();
 
   const updateTaskMutation = trpc.tasks.update.useMutation({
@@ -224,6 +225,10 @@ export default function Today() {
     }
   };
 
+  // Helper: detect if a requirement is a User Story by its type field
+  const isUserStory = (req: any) =>
+    typeof req.type === 'string' && req.type.toLowerCase().includes('user story');
+
   // Build relationship graph nodes and edges
   const relationshipNodes: EntityNode[] = useMemo(() => {
     const nodes: EntityNode[] = [];
@@ -242,33 +247,56 @@ export default function Today() {
       if (task.taskId) relatedIssueTaskCodes.add(task.taskId);
     });
 
-    // Find issues linked to filtered tasks
+    // Include requirements linked from test cases too
+    testCasesData?.forEach((tc) => {
+      if (tc.requirementId) relatedRequirementCodes.add(tc.requirementId);
+    });
+
+    // Find issues linked to filtered tasks or requirements
     const relatedIssues = issues?.filter((issue) => {
       if (issue.taskId && relatedIssueTaskCodes.has(issue.taskId)) return true;
       if (issue.requirementId && relatedRequirementCodes.has(issue.requirementId)) return true;
       return false;
     }) || [];
 
+    // Also include issues referenced by test cases as defects
+    const defectIssueIds = new Set<string>();
+    testCasesData?.forEach((tc) => {
+      if (tc.defectId) defectIssueIds.add(tc.defectId);
+    });
+    const defectIssues = issues?.filter((issue) => defectIssueIds.has(issue.issueId)) || [];
+    // Merge, avoiding duplicates
+    const allRelatedIssueIds = new Set(relatedIssues.map((i) => i.id));
+    defectIssues.forEach((issue) => {
+      if (!allRelatedIssueIds.has(issue.id)) relatedIssues.push(issue);
+    });
+
     // Find risks linked to filtered tasks
     const relatedRisks = risks?.filter((risk) => {
       if ((risk as any).taskId) {
-        const task = filteredTasks.find((t) => t.id === (risk as any).taskId);
-        if (task) return true;
+        return filteredTasks.some((t) => t.id === (risk as any).taskId);
       }
       return false;
     }) || [];
 
-    // Find requirements linked to filtered tasks
-    const relatedRequirements = requirements?.filter((req) => {
-      return relatedRequirementCodes.has(req.idCode);
-    }) || [];
+    // Find requirements (and user stories) linked to filtered tasks or test cases
+    const relatedRequirements = requirements?.filter((req) =>
+      relatedRequirementCodes.has(req.idCode)
+    ) || [];
 
     // Find deliverables linked to filtered tasks
-    const relatedDeliverables = deliverables?.filter((del) => {
-      return relatedDeliverableIds.has(del.id);
+    const relatedDeliverables = deliverables?.filter((del) =>
+      relatedDeliverableIds.has(del.id)
+    ) || [];
+
+    // Find test cases linked to related requirements or filtered tasks
+    const relatedReqCodes = new Set(relatedRequirements.map((r) => r.idCode));
+    const relatedTestCases = testCasesData?.filter((tc) => {
+      if (tc.requirementId && relatedReqCodes.has(tc.requirementId)) return true;
+      return false;
     }) || [];
 
-    // Add task nodes (only filtered tasks)
+    // Add task nodes
     filteredTasks.forEach((task) => {
       nodes.push({
         id: `task-${task.id}`,
@@ -280,11 +308,11 @@ export default function Today() {
       });
     });
 
-    // Add only related requirement nodes
+    // Add requirement / user story nodes (split by type)
     relatedRequirements.forEach((req) => {
       nodes.push({
         id: `requirement-${req.id}`,
-        type: 'requirement',
+        type: isUserStory(req) ? 'userStory' : 'requirement',
         title: req.idCode || `Req ${req.id}`,
         description: req.description || undefined,
         status: req.status || undefined,
@@ -292,7 +320,19 @@ export default function Today() {
       });
     });
 
-    // Add only related issue nodes
+    // Add test case nodes
+    relatedTestCases.forEach((tc) => {
+      nodes.push({
+        id: `testCase-${tc.id}`,
+        type: 'testCase',
+        title: tc.testId || `TC ${tc.id}`,
+        description: tc.title || tc.description || undefined,
+        status: tc.status || undefined,
+        priority: tc.priority || undefined,
+      });
+    });
+
+    // Add issue / defect nodes
     relatedIssues.forEach((issue) => {
       nodes.push({
         id: `issue-${issue.id}`,
@@ -304,7 +344,7 @@ export default function Today() {
       });
     });
 
-    // Add only related deliverable nodes
+    // Add deliverable nodes
     relatedDeliverables.forEach((del) => {
       nodes.push({
         id: `deliverable-${del.id}`,
@@ -315,7 +355,7 @@ export default function Today() {
       });
     });
 
-    // Add only related risk nodes
+    // Add risk nodes
     relatedRisks.forEach((risk) => {
       nodes.push({
         id: `risk-${risk.id}`,
@@ -327,7 +367,7 @@ export default function Today() {
     });
 
     return nodes;
-  }, [tasks, requirements, issues, deliverables, risks, filterResponsible, filterStatus, filterPriority, filterTaskCode]);
+  }, [tasks, requirements, issues, deliverables, risks, testCasesData, filterResponsible, filterStatus, filterPriority, filterTaskCode]);
 
   const relationshipEdges: EntityEdge[] = useMemo(() => {
     const edges: EntityEdge[] = [];
@@ -335,22 +375,26 @@ export default function Today() {
     // Apply filters to get filtered tasks
     const filteredTasks = applyFilters(tasks || []);
 
-    // Task -> Requirement connections (only for filtered tasks)
+    // Build a set of requirement idCodes that are user stories
+    const userStoryCodes = new Set(
+      (requirements || []).filter(isUserStory).map((r) => r.idCode)
+    );
+
+    // Task -> Requirement / User Story
     filteredTasks.forEach((task) => {
       if (task.requirementId) {
-        // requirementId is stored as string (idCode), find by idCode
         const req = requirements?.find((r) => r.idCode === task.requirementId);
         if (req) {
           edges.push({
             from: `task-${task.id}`,
             to: `requirement-${req.id}`,
-            label: 'implements',
+            label: userStoryCodes.has(req.idCode) ? 'implements user story' : 'implements',
           });
         }
       }
     });
 
-    // Task -> Deliverable connections (only for filtered tasks)
+    // Task -> Deliverable
     filteredTasks.forEach((task) => {
       if (task.deliverableId) {
         const del = deliverables?.find((d) => d.id === task.deliverableId);
@@ -364,25 +408,27 @@ export default function Today() {
       }
     });
 
-    // Issue -> Requirement connections
+    // Issue -> Requirement
     issues?.forEach((issue) => {
       if (issue.requirementId) {
-        // requirementId is stored as string (idCode), find by idCode
         const req = requirements?.find((r) => r.idCode === issue.requirementId);
         if (req) {
-          edges.push({
-            from: `issue-${issue.id}`,
-            to: `requirement-${req.id}`,
-            label: 'affects',
-          });
+          // Only add if req node is in the graph
+          const reqNodeId = `requirement-${req.id}`;
+          if (relationshipNodes.some((n) => n.id === reqNodeId)) {
+            edges.push({
+              from: `issue-${issue.id}`,
+              to: reqNodeId,
+              label: 'affects',
+            });
+          }
         }
       }
     });
 
-    // Issue -> Task connections (only if task is in filtered list)
+    // Issue -> Task (blocks)
     issues?.forEach((issue) => {
       if (issue.taskId) {
-        // taskId is stored as string (taskId code), find by taskId in filtered tasks
         const task = filteredTasks.find((t) => t.taskId === issue.taskId);
         if (task) {
           edges.push({
@@ -394,7 +440,7 @@ export default function Today() {
       }
     });
 
-    // Risk -> Task connections (only if task is in filtered list)
+    // Risk -> Task (threatens)
     risks?.forEach((risk) => {
       if ((risk as any).taskId) {
         const task = filteredTasks.find((t) => t.id === (risk as any).taskId);
@@ -408,7 +454,7 @@ export default function Today() {
       }
     });
 
-    // Deliverable -> Requirement connections
+    // Deliverable -> Requirement (fulfills)
     deliverables?.forEach((del) => {
       if ((del as any).requirementId) {
         const req = requirements?.find((r) => r.id === (del as any).requirementId);
@@ -422,8 +468,42 @@ export default function Today() {
       }
     });
 
+    // Test Case -> Requirement (validates)
+    testCasesData?.forEach((tc) => {
+      if (tc.requirementId) {
+        const req = requirements?.find((r) => r.idCode === tc.requirementId);
+        if (req) {
+          const tcNodeId = `testCase-${tc.id}`;
+          if (relationshipNodes.some((n) => n.id === tcNodeId)) {
+            edges.push({
+              from: tcNodeId,
+              to: `requirement-${req.id}`,
+              label: 'validates',
+            });
+          }
+        }
+      }
+    });
+
+    // Test Case -> Issue/Defect (found defect)
+    testCasesData?.forEach((tc) => {
+      if (tc.defectId) {
+        const issue = issues?.find((i) => i.issueId === tc.defectId);
+        if (issue) {
+          const tcNodeId = `testCase-${tc.id}`;
+          if (relationshipNodes.some((n) => n.id === tcNodeId)) {
+            edges.push({
+              from: tcNodeId,
+              to: `issue-${issue.id}`,
+              label: 'found defect',
+            });
+          }
+        }
+      }
+    });
+
     return edges;
-  }, [tasks, requirements, issues, deliverables, risks, filterResponsible, filterStatus, filterPriority, filterTaskCode]);
+  }, [tasks, requirements, issues, deliverables, risks, testCasesData, relationshipNodes, filterResponsible, filterStatus, filterPriority, filterTaskCode]);
 
   // Handle node click to open entity details
   const handleNodeClick = (node: EntityNode) => {
@@ -890,10 +970,12 @@ export default function Today() {
       {/* Relationship Map */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Relationship Map</CardTitle>
-          <CardDescription>Visual representation of connections between Tasks, Requirements, Issues, Risks, and Deliverables</CardDescription>
+          <CardTitle className="text-lg">Requirement Flow Map</CardTitle>
+          <CardDescription>
+            End-to-end traceability flow: Requirements → User Stories → Tasks → Test Cases → Defects
+          </CardDescription>
         </CardHeader>
-        <CardContent className="h-[600px]">
+        <CardContent className="h-[700px]">
           <RelationshipMap
             nodes={relationshipNodes}
             edges={relationshipEdges}
