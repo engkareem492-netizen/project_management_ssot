@@ -250,7 +250,8 @@ function SortableNavItem({
 
   return (
     <SidebarMenuItem ref={setNodeRef} style={style}>
-      <div className={`flex items-center group/item w-full rounded-md transition-all duration-150 ${
+      {/* Expanded layout: drag handle + menu button */}
+      <div className={`group-data-[collapsible=icon]:hidden flex items-center group/item w-full rounded-md transition-all duration-150 ${
         isDragging ? "shadow-lg ring-2 ring-primary/40 bg-background" : ""
       }`}>
         {/* Drag handle */}
@@ -272,7 +273,6 @@ function SortableNavItem({
           <SidebarMenuButton
             isActive={isActive}
             onClick={() => onNavigate(item.path)}
-            tooltip={item.label}
             className="h-8 transition-all font-normal text-sm w-full"
           >
             <item.icon className={`h-4 w-4 shrink-0 ${isActive ? "text-primary" : ""}`} />
@@ -284,6 +284,17 @@ function SortableNavItem({
             )}
           </SidebarMenuButton>
         </div>
+      </div>
+      {/* Collapsed icon-only layout: centered icon with tooltip */}
+      <div className="hidden group-data-[collapsible=icon]:flex justify-center">
+        <SidebarMenuButton
+          isActive={isActive}
+          onClick={() => onNavigate(item.path)}
+          tooltip={item.label}
+          className="h-8 w-8 p-0 flex items-center justify-center transition-all"
+        >
+          <item.icon className={`h-4 w-4 shrink-0 ${isActive ? "text-primary" : ""}`} />
+        </SidebarMenuButton>
       </div>
     </SidebarMenuItem>
   );
