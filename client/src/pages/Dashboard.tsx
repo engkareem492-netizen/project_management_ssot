@@ -94,6 +94,15 @@ export default function Dashboard() {
   const { data: deliverables = [] } = trpc.deliverables.list.useQuery({ projectId }, { enabled });
   const { data: budgetSummary } = trpc.budget.getSummary.useQuery({ projectId }, { enabled });
   const { data: actionItems = [] } = trpc.actionItems.list.useQuery({ projectId }, { enabled });
+  const { data: statusOptions = [] } = trpc.dropdownOptions.status.getAll.useQuery(undefined, { enabled });
+
+  // Helper: check if a status value is marked as "complete" in statusOptions DB
+  const isStatusComplete = useMemo(() => {
+    const completeSet = new Set(
+      (statusOptions as any[]).filter((s: any) => s.isComplete).map((s: any) => (s.value || '').toLowerCase())
+    );
+    return (status: string | null | undefined) => !!status && completeSet.has(status.toLowerCase());
+  }, [statusOptions]);
 
   const today = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
   const nextWeek = useMemo(() => { const d = new Date(today); d.setDate(d.getDate() + 7); return d; }, [today]);
@@ -105,32 +114,32 @@ export default function Dashboard() {
     ), [tasks]);
 
   const kpis = useMemo(() => {
-    const openIssues = issues.filter((i: any) => i.status !== "Closed" && i.status !== "Resolved").length;
+    const openIssues = issues.filter((i: any) => !isStatusComplete(i.status)).length;
     const overdueTasks = regularTasks.filter((t: any) => {
       if (!t.dueDate) return false;
       const due = new Date(t.dueDate); due.setHours(0, 0, 0, 0);
-      return due < today && t.status !== "Done" && t.status !== "Completed" && t.status !== "Closed";
+      return due < today && !isStatusComplete(t.status);
     }).length;
     const pendingCRs = changeRequests.filter((c: any) => c.status === "Submitted" || c.status === "Under Review").length;
-    const activeRisks = risks.filter((r: any) => r.status !== "Closed" && r.status !== "Mitigated").length;
+    const activeRisks = risks.filter((r: any) => !isStatusComplete(r.status)).length;
     const passedTests = testCases.filter((t: any) => t.status === "Passed").length;
     const testPassRate = testCases.length > 0 ? Math.round((passedTests / testCases.length) * 100) : 0;
-    const doneTasks = regularTasks.filter((t: any) => t.status === "Done" || t.status === "Completed" || t.status === "Closed").length;
+    const doneTasks = regularTasks.filter((t: any) => isStatusComplete(t.status)).length;
     const taskCompletion = regularTasks.length > 0 ? Math.round((doneTasks / regularTasks.length) * 100) : 0;
-    const openActionItems = actionItems.filter((a: any) => a.status === "Open" || a.status === "In Progress").length;
+    const openActionItems = actionItems.filter((a: any) => !isStatusComplete(a.status)).length;
     return { openIssues, overdueTasks, pendingCRs, activeRisks, testPassRate, taskCompletion, openActionItems };
-  }, [issues, regularTasks, changeRequests, risks, testCases, actionItems, today]);
+  }, [issues, regularTasks, changeRequests, risks, testCases, actionItems, today, isStatusComplete]);
 
   const healthScore = useMemo(() => {
     let score = 100;
-    const criticalRisks = risks.filter((r: any) => r.impact >= 4 && (r.status !== "Closed" && r.status !== "Mitigated")).length;
+    const criticalRisks = risks.filter((r: any) => r.impact >= 4 && !isStatusComplete(r.status)).length;
     score -= criticalRisks * 10;
     score -= Math.min(kpis.overdueTasks * 5, 30);
     const crPendingRate = changeRequests.length > 0 ? kpis.pendingCRs / changeRequests.length : 0;
     if (crPendingRate > 0.2) score -= 10;
     if (milestones.some((m: any) => m.ragStatus === "Red")) score -= 10;
     return Math.max(0, score);
-  }, [risks, kpis, changeRequests, milestones]);
+  }, [risks, kpis, changeRequests, milestones, isStatusComplete]);
 
   const reqByStatus = useMemo(() => {
     const map: Record<string, number> = {};
@@ -217,7 +226,7 @@ export default function Dashboard() {
       case "tasks-by-person":
         return <BarChartWidget data={tasksByPerson.map((d: any) => ({ name: d.name, value: d.count }))} />;
       case "task-done-ring":
-        return <StatusRingWidget label="Tasks Done" value={regularTasks.filter((t: any) => ["Done","Completed","Closed"].includes(t.status)).length} max={regularTasks.length} color="#22c55e" />;
+        return <StatusRingWidget label="Tasks Done" value={regularTasks.filter((t: any) => isStatusComplete(t.status)).length} max={regularTasks.length} color="#22c55e" />;
       default:
         return <div className="text-sm text-muted-foreground p-4">Unknown widget</div>;
     }
@@ -283,8 +292,8 @@ export default function Dashboard() {
                 {healthScore >= 80 ? "On track" : healthScore >= 60 ? "Needs attention" : "Immediate action required"}
               </div>
               <div className="mt-2 space-y-0.5 text-xs text-muted-foreground">
-                {risks.filter((r: any) => r.impact >= 4 && r.status !== "Closed").length > 0 && (
-                  <div>⚠ Critical risks: -{Math.min(risks.filter((r: any) => r.impact >= 4 && r.status !== "Closed").length * 10, 100)} pts</div>
+                {risks.filter((r: any) => r.impact >= 4 && !isStatusComplete(r.status)).length > 0 && (
+                  <div>⚠ Critical risks: -{Math.min(risks.filter((r: any) => r.impact >= 4 && !isStatusComplete(r.status)).length * 10, 100)} pts</div>
                 )}
                 {kpis.overdueTasks > 0 && <div>⚠ Overdue tasks: -{Math.min(kpis.overdueTasks * 5, 30)} pts</div>}
               </div>
@@ -404,7 +413,7 @@ export default function Dashboard() {
           ) : (
             <div className="space-y-2">
               {actionItems
-                .filter((a: any) => a.status === "Open" || a.status === "In Progress")
+                .filter((a: any) => !isStatusComplete(a.status))
                 .slice(0, 5)
                 .map((item: any) => {
                   const isOverdue = item.dueDate && new Date(item.dueDate) < today;
@@ -427,7 +436,7 @@ export default function Dashboard() {
       {/* RAID Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: "High Risks", value: risks.filter((r: any) => r.score >= 9 && r.status !== "Closed" && r.status !== "Mitigated").length, icon: ShieldAlert, color: "text-red-600", href: "/risk-register" },
+          { label: "High Risks", value: risks.filter((r: any) => r.score >= 9 && !isStatusComplete(r.status)).length, icon: ShieldAlert, color: "text-red-600", href: "/risk-register" },
           { label: "Open Issues", value: kpis.openIssues, icon: AlertTriangle, color: "text-orange-600", href: "/issues" },
           { label: "Active Assumptions", value: 0, icon: FileText, color: "text-blue-600", href: "/assumptions" },
           { label: "Open Actions", value: kpis.openActionItems, icon: CheckCircle2, color: "text-purple-600", href: "/action-items" },

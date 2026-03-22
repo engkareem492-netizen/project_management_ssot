@@ -516,9 +516,14 @@ export default function Issues() {
     });
   };
 
+  const isStatusComplete = (status: string | null | undefined) => {
+    if (!status) return false;
+    return statusOptions?.some((s: any) => (s.value || '').toLowerCase() === status.toLowerCase() && s.isComplete) ?? false;
+  };
+
   const getStatusColor = (status: string | null | undefined) => {
     if (!status) return "secondary";
-    if (status === "Closed" || status === "Resolved") return "default";
+    if (isStatusComplete(status)) return "default";
     if (status === "In Progress") return "outline";
     if (status === "Open") return "destructive";
     return "secondary";
@@ -873,7 +878,7 @@ export default function Issues() {
                               {issue.resolutionDate && (
                                 <div className="flex items-center gap-2">
                                   <span className="font-medium min-w-[100px] text-amber-700">Resolve By:</span>
-                                  <span className={`text-sm font-medium ${new Date(issue.resolutionDate) < new Date() && issue.status?.toLowerCase() !== 'closed' ? 'text-red-600' : 'text-amber-700'}`}>
+                                  <span className={`text-sm font-medium ${new Date(issue.resolutionDate) < new Date() && !isStatusComplete(issue.status) ? 'text-red-600' : 'text-amber-700'}`}>
                                     {formatDate(issue.resolutionDate)}
                                   </span>
                                 </div>

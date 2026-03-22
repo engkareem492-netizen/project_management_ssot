@@ -131,9 +131,9 @@ function todayStr(): string {
   return new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" });
 }
 
-function statusColor(s: string): string {
+function statusColor(s: string, completeStatuses?: Set<string>): string {
   const l = s.toLowerCase();
-  if (l.includes("done") || l.includes("completed") || l.includes("closed") || l.includes("passed") || l.includes("approved")) return "badge-green";
+  if (completeStatuses ? completeStatuses.has(l) : (l.includes("done") || l.includes("completed") || l.includes("closed") || l.includes("passed") || l.includes("approved"))) return "badge-green";
   if (l.includes("progress") || l.includes("review")) return "badge-blue";
   if (l.includes("open") || l.includes("pending") || l.includes("submitted")) return "badge-amber";
   if (l.includes("overdue") || l.includes("failed") || l.includes("rejected") || l.includes("blocked")) return "badge-red";

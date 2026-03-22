@@ -536,7 +536,14 @@ export default function Requirements() {
   const linkedIssues = issues?.filter(i => i.requirementId === selectedRequirement?.idCode) || [];
 
   // Status and Priority color helpers - Oracle theme colors
+  const isStatusComplete = (status: string | null | undefined) => {
+    if (!status) return false;
+    return statusOptions?.some((s: any) => (s.value || '').toLowerCase() === status.toLowerCase() && s.isComplete) ?? false;
+  };
+
   const getStatusColor = (status: string | null | undefined): "default" | "secondary" | "destructive" | "outline" => {
+    if (!status) return 'outline';
+    if (isStatusComplete(status)) return 'outline';
     switch (status?.toLowerCase()) {
       case 'open':
       case 'new':
@@ -544,10 +551,6 @@ export default function Requirements() {
       case 'in progress':
       case 'active':
         return 'secondary';
-      case 'closed':
-      case 'completed':
-      case 'done':
-        return 'outline';
       case 'blocked':
       case 'on hold':
         return 'destructive';
