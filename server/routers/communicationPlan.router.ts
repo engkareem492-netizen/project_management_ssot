@@ -7,14 +7,13 @@ import { communicationPlanEntries, tasks, stakeholders, commPlanItems, commPlanI
 // ---------------------------------------------------------------------------
 // Frequency → recurring task mapping
 // ---------------------------------------------------------------------------
+// "As needed" and "Ad hoc" are intentionally excluded — they must not generate recurring tasks
 const FREQ_TO_RECURRING: Record<string, "daily" | "weekly" | "monthly"> = {
   Daily: "daily",
   Weekly: "weekly",
   "Bi-weekly": "weekly",
   Monthly: "monthly",
   Quarterly: "monthly",
-  "As needed": "monthly",
-  "Ad hoc": "monthly",
 };
 
 const FREQ_TO_INTERVAL: Record<string, number> = {
@@ -23,8 +22,6 @@ const FREQ_TO_INTERVAL: Record<string, number> = {
   "Bi-weekly": 2,
   Monthly: 1,
   Quarterly: 3,
-  "As needed": 1,
-  "Ad hoc": 1,
 };
 
 // ---------------------------------------------------------------------------
@@ -252,17 +249,21 @@ export const communicationPlanRouter = router({
         .limit(1);
       const entry = rows[0];
 
-      // Upsert linked recurring task when frequency is set
+      // Sync linked recurring task based on updated frequency
       const freq = input.data.frequency ?? entry?.frequency;
-      if (freq) {
-        const targetType = input.data.targetType ?? entry?.targetType;
-        const targetValue = input.data.targetValue ?? entry?.targetValue;
-        const stakeholderId = input.data.stakeholderId ?? entry?.stakeholderId;
-        const responsibleId = input.data.responsibleStakeholderId ?? entry?.responsibleStakeholderId;
-        const responsibleName = input.data.responsible ?? await resolveStakeholderName(responsibleId ?? null);
-        const targetName = await resolveTargetName({ targetType, targetValue, stakeholderId });
-        const projectId = entry?.projectId;
-        if (projectId) {
+      const projectId = entry?.projectId;
+      if (projectId) {
+        if (freq === "As needed" || freq === "Ad hoc") {
+          // Delete any linked task — these frequencies must not generate tasks
+          await db.delete(tasks).where(eq(tasks.communicationStakeholderId, input.id));
+        } else if (freq) {
+          // Upsert the linked task, picking up any frequency or responsible changes
+          const targetType = input.data.targetType ?? entry?.targetType;
+          const targetValue = input.data.targetValue ?? entry?.targetValue;
+          const stakeholderId = input.data.stakeholderId ?? entry?.stakeholderId;
+          const responsibleId = input.data.responsibleStakeholderId ?? entry?.responsibleStakeholderId;
+          const responsibleName = input.data.responsible ?? await resolveStakeholderName(responsibleId ?? null);
+          const targetName = await resolveTargetName({ targetType, targetValue, stakeholderId });
           await upsertLinkedTask({
             projectId,
             commPlanEntryId: input.id,
