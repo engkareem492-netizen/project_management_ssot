@@ -1150,11 +1150,12 @@ function DetailPanel({
   const [devPlanForm, setDevPlanForm] = useState({
     title: "", description: "", goals: "", startDate: "", endDate: "",
     status: "Not Started" as string,
+    linkedSkillId: "", linkedSwotId: "",
   });
 
   // ── Skill state ──
   const [showSkillForm, setShowSkillForm] = useState(false);
-  const [skillForm, setSkillForm] = useState({ name: "", level: "Beginner" as string, linkedKpiId: "", linkedSwotId: "" });
+  const [skillForm, setSkillForm] = useState({ name: "", level: "Beginner" as "Beginner" | "Intermediate" | "Advanced" | "Expert", linkedKpiId: "", linkedSwotId: "" });
 
   // ── tRPC queries ──
   const { data: swotItems = [], refetch: refetchSwot } = trpc.stakeholderEnhancements.listSwot.useQuery(
@@ -1193,7 +1194,7 @@ function DetailPanel({
     onSuccess: () => {
       refetchDevPlans();
       setShowDevPlanForm(false);
-      setDevPlanForm({ title: "", description: "", goals: "", startDate: "", endDate: "", status: "Not Started" });
+      setDevPlanForm({ title: "", description: "", goals: "", startDate: "", endDate: "", status: "Not Started", linkedSkillId: "", linkedSwotId: "" });
       toast.success("Development plan added");
     },
     onError: (e) => toast.error(`Failed: ${e.message}`),
@@ -1208,7 +1209,7 @@ function DetailPanel({
     onSuccess: () => {
       refetchSkills();
       setShowSkillForm(false);
-      setSkillForm({ name: "", level: "Beginner", linkedKpiId: "", linkedSwotId: "" });
+      setSkillForm({ name: "", level: "Beginner" as "Beginner" | "Intermediate" | "Advanced" | "Expert", linkedKpiId: "", linkedSwotId: "" });
       toast.success("Skill added");
     },
     onError: (e) => toast.error(`Failed: ${e.message}`),
@@ -1689,6 +1690,38 @@ function DetailPanel({
                     <SelectItem value="On Hold">On Hold</SelectItem>
                   </SelectContent>
                 </Select>
+                {skills.length > 0 && (
+                  <div className="space-y-1">
+                    <Label className="text-xs">Link to Skill (optional)</Label>
+                    <Select value={devPlanForm.linkedSkillId} onValueChange={(v) => setDevPlanForm((p) => ({ ...p, linkedSkillId: v }))}>
+                      <SelectTrigger className="h-8">
+                        <SelectValue placeholder="Select skill..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">— None —</SelectItem>
+                        {(skills as any[]).map((sk) => (
+                          <SelectItem key={sk.id} value={String(sk.id)}>{sk.name} ({sk.level})</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                {swotItems.length > 0 && (
+                  <div className="space-y-1">
+                    <Label className="text-xs">Link to SWOT Item (optional)</Label>
+                    <Select value={devPlanForm.linkedSwotId} onValueChange={(v) => setDevPlanForm((p) => ({ ...p, linkedSwotId: v }))}>
+                      <SelectTrigger className="h-8">
+                        <SelectValue placeholder="Select SWOT item..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">— None —</SelectItem>
+                        {(swotItems as any[]).map((sw) => (
+                          <SelectItem key={sw.id} value={String(sw.id)}>[{sw.quadrant}] {sw.description.length > 50 ? sw.description.slice(0, 50) + "…" : sw.description}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <div className="flex gap-2">
                   <Button
                     size="sm"
@@ -1703,7 +1736,9 @@ function DetailPanel({
                         goals: devPlanForm.goals,
                         startDate: devPlanForm.startDate || undefined,
                         endDate: devPlanForm.endDate || undefined,
-                        status: devPlanForm.status,
+                        status: devPlanForm.status as "Not Started" | "In Progress" | "Completed" | "On Hold",
+                        linkedSkillId: devPlanForm.linkedSkillId ? parseInt(devPlanForm.linkedSkillId) : null,
+                        linkedSwotId: devPlanForm.linkedSwotId ? parseInt(devPlanForm.linkedSwotId) : null,
                       });
                     }}
                   >
@@ -1750,17 +1785,24 @@ function DetailPanel({
                         {plan.endDate && formatDate(plan.endDate)}
                       </p>
                     )}
-                    {/* Linked KPIs (visual) */}
-                    {kpis.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        <span className="text-[10px] text-muted-foreground uppercase tracking-wide mr-1 self-center">Linked KPIs:</span>
-                        {(kpis as any[]).map((kpi) => (
-                          <span key={kpi.id} className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
-                            {kpi.name}
-                          </span>
-                        ))}
-                      </div>
-                    )}
+                    {/* Linked Skill */}
+                    {plan.linkedSkillId && (() => {
+                      const sk = (skills as any[]).find((s) => s.id === plan.linkedSkillId);
+                      return sk ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded-full">
+                          <Zap className="h-2.5 w-2.5" /> Skill: {sk.name} ({sk.level})
+                        </span>
+                      ) : null;
+                    })()}
+                    {/* Linked SWOT Item */}
+                    {plan.linkedSwotId && (() => {
+                      const sw = (swotItems as any[]).find((s) => s.id === plan.linkedSwotId);
+                      return sw ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded-full">
+                          <Brain className="h-2.5 w-2.5" /> {sw.quadrant}: {sw.description.length > 40 ? sw.description.slice(0, 40) + "…" : sw.description}
+                        </span>
+                      ) : null;
+                    })()}
                   </div>
                 ))}
               </div>
@@ -1840,11 +1882,10 @@ function DetailPanel({
                       if (!currentProjectId) { toast.error("No project selected"); return; }
                       createSkill.mutate({
                         stakeholderId: stakeholder.id,
-                        projectId: currentProjectId,
                         name: skillForm.name,
                         level: skillForm.level,
-                        linkedKpiId: skillForm.linkedKpiId ? parseInt(skillForm.linkedKpiId) : undefined,
-                        linkedSwotId: skillForm.linkedSwotId ? parseInt(skillForm.linkedSwotId) : undefined,
+                        linkedKpiId: skillForm.linkedKpiId ? parseInt(skillForm.linkedKpiId) : null,
+                        linkedSwotId: skillForm.linkedSwotId ? parseInt(skillForm.linkedSwotId) : null,
                       });
                     }}
                   >
@@ -1887,7 +1928,7 @@ function DetailPanel({
                       <div className="flex items-center gap-1 shrink-0">
                         <Select
                           value={skill.level}
-                          onValueChange={(v) => updateSkill.mutate({ id: skill.id, data: { level: v } })}
+                          onValueChange={(v) => updateSkill.mutate({ id: skill.id, data: { level: v as "Beginner" | "Intermediate" | "Advanced" | "Expert" } })}
                         >
                           <SelectTrigger className="h-6 w-28 text-xs">
                             <SelectValue />

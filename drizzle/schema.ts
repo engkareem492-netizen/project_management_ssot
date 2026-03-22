@@ -1494,6 +1494,8 @@ export const developmentPlans = mysqlTable("developmentPlans", {
   endDate: date("endDate"),
   status: mysqlEnum("devPlanStatus", ["Not Started", "In Progress", "Completed", "On Hold"]).default("Not Started").notNull(),
   linkedTaskGroupId: int("linkedTaskGroupId"),
+  linkedSkillId: int("linkedSkillId"),
+  linkedSwotId: int("linkedSwotId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
