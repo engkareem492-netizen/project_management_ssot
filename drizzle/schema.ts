@@ -261,6 +261,10 @@ export const tasks = mysqlTable("tasks", {
   communicationStakeholderId: int("communicationStakeholderId"),
   // Subject (stakeholder name for COMM tasks)
   subject: varchar("subject", { length: 200 }),
+  // Development task links (DEV- tasks tied to a Dev Plan)
+  devPlanId: int("devPlanId"),
+  devTaskSwotId: int("devTaskSwotId"),
+  devTaskSkillId: int("devTaskSkillId"),
   // Resource effort
   manHours: decimal("manHours", { precision: 10, scale: 2 }),
   // Sprint association
@@ -969,6 +973,7 @@ export const stakeholderKpis = mysqlTable("stakeholderKpis", {
   target: varchar("target", { length: 100 }), // e.g. "95%", "10 tasks/week"
   unit: varchar("unit", { length: 50 }),       // e.g. "%", "tasks", "score"
   weight: int("weight").default(1),            // relative weight for weighted avg
+  linkedSkillId: int("linkedSkillId"),         // optional link to a stakeholder skill
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 

@@ -31,7 +31,7 @@ import {
   Plus, Trash2, Pencil, Search, Users, Mail, Phone,
   Target, Award, Activity, UserCheck, Briefcase,
   MoveRight, Download,
-  Brain, Star, Lightbulb, Shield, BookOpen, TrendingUp, TrendingDown, Zap,
+  Brain, Star, Lightbulb, Shield, BookOpen, TrendingUp, TrendingDown, Zap, CheckSquare,
 } from "lucide-react";
 import { ImportExportToolbar } from "@/components/ImportExportToolbar";
 import { StakeholderSelect } from "@/components/StakeholderSelect";
@@ -169,7 +169,9 @@ function KpiManagementDialog({
 }) {
   const { currentProjectId } = useProject();
   const utils = trpc.useUtils();
-  const [kpiForm, setKpiForm] = useState({ name: "", description: "", target: "", unit: "", weight: 1 });
+  const [kpiForm, setKpiForm] = useState<{ name: string; description: string; target: string; unit: string; weight: number; linkedSkillId: number | null }>(
+    { name: "", description: "", target: "", unit: "", weight: 1, linkedSkillId: null }
+  );
   const [editingKpi, setEditingKpi] = useState<any>(null);
   const [assessmentOpen, setAssessmentOpen] = useState(false);
   const [assessmentForm, setAssessmentForm] = useState({
@@ -187,11 +189,15 @@ function KpiManagementDialog({
     { stakeholderId: stakeholder?.id },
     { enabled: !!stakeholder?.id && open }
   );
+  const { data: skills = [] } = trpc.stakeholderEnhancements.listSkills.useQuery(
+    { stakeholderId: stakeholder?.id },
+    { enabled: !!stakeholder?.id && open }
+  );
 
   const createKpi = trpc.stakeholderEnhancements.createKpi.useMutation({
     onSuccess: () => {
       utils.stakeholderEnhancements.listKpis.invalidate({ stakeholderId: stakeholder.id });
-      setKpiForm({ name: "", description: "", target: "", unit: "", weight: 1 });
+      setKpiForm({ name: "", description: "", target: "", unit: "", weight: 1, linkedSkillId: null });
       toast.success("KPI added");
     },
   });
@@ -240,6 +246,35 @@ function KpiManagementDialog({
   };
 
   const latestScore = assessments[0]?.overallScore;
+  const previousScore = assessments[1]?.overallScore;
+  const scoreDelta = latestScore != null && previousScore != null ? latestScore - previousScore : null;
+
+  // Build trend array from assessments (chronological, up to 8 data points)
+  const trendScores = [...assessments]
+    .reverse()
+    .slice(-8)
+    .map((a: any) => a.overallScore)
+    .filter((s: any): s is number => s != null);
+
+  function SparkLine({ data }: { data: number[] }) {
+    if (data.length < 2) return null;
+    const min = Math.min(...data);
+    const max = Math.max(...data);
+    const range = max - min || 1;
+    const w = 80, h = 28;
+    const pts = data.map((v, i) => {
+      const x = (i / (data.length - 1)) * w;
+      const y = h - ((v - min) / range) * (h - 4) - 2;
+      return `${x},${y}`;
+    }).join(" ");
+    const lastColor = data[data.length - 1] >= data[0] ? "#22c55e" : "#ef4444";
+    return (
+      <svg width={w} height={h} className="inline-block">
+        <polyline points={pts} fill="none" stroke={lastColor} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
+        <circle cx={parseFloat(pts.split(" ").pop()!.split(",")[0])} cy={parseFloat(pts.split(" ").pop()!.split(",")[1])} r="2.5" fill={lastColor} />
+      </svg>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -270,6 +305,7 @@ function KpiManagementDialog({
                     <TableHead>Target</TableHead>
                     <TableHead>Unit</TableHead>
                     <TableHead>Weight</TableHead>
+                    <TableHead>Linked Skill</TableHead>
                     <TableHead className="w-20">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -316,6 +352,22 @@ function KpiManagementDialog({
                             />
                           </TableCell>
                           <TableCell>
+                            <Select
+                              value={editingKpi.linkedSkillId?.toString() ?? "none"}
+                              onValueChange={(v) => setEditingKpi({ ...editingKpi, linkedSkillId: v === "none" ? null : parseInt(v) })}
+                            >
+                              <SelectTrigger className="h-8 w-36 text-xs">
+                                <SelectValue placeholder="No skill" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">— None —</SelectItem>
+                                {skills.map((s) => (
+                                  <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell>
                             <div className="flex gap-1">
                               <Button size="sm" className="h-7 px-2" onClick={() => updateKpi.mutate({ id: kpi.id, data: editingKpi })}>
                                 Save
@@ -333,6 +385,16 @@ function KpiManagementDialog({
                           <TableCell>{kpi.unit || "—"}</TableCell>
                           <TableCell>
                             <Badge variant="outline">{kpi.weight}x</Badge>
+                          </TableCell>
+                          <TableCell>
+                            {kpi.linkedSkillId ? (
+                              <Badge variant="secondary" className="text-xs gap-1">
+                                <Zap className="h-2.5 w-2.5" />
+                                {skills.find((s) => s.id === kpi.linkedSkillId)?.name ?? `Skill #${kpi.linkedSkillId}`}
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground/40 text-xs">—</span>
+                            )}
                           </TableCell>
                           <TableCell>
                             <div className="flex gap-1">
@@ -391,13 +453,32 @@ function KpiManagementDialog({
                     className="w-20"
                   />
                 </div>
+                <div className="col-span-2 space-y-1">
+                  <Label className="text-sm">Link to Skill (optional)</Label>
+                  <Select
+                    value={kpiForm.linkedSkillId?.toString() ?? "none"}
+                    onValueChange={(v) => setKpiForm({ ...kpiForm, linkedSkillId: v === "none" ? null : parseInt(v) })}
+                  >
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue placeholder="Select a skill..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">— No skill link —</SelectItem>
+                      {skills.map((s) => (
+                        <SelectItem key={s.id} value={s.id.toString()}>
+                          {s.name} <span className="text-muted-foreground text-xs ml-1">({s.level})</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <Button
                 size="sm"
                 disabled={!kpiForm.name.trim() || createKpi.isPending}
                 onClick={() => {
                   if (!currentProjectId) return;
-                  createKpi.mutate({ ...kpiForm, stakeholderId: stakeholder.id, projectId: currentProjectId });
+                  createKpi.mutate({ ...kpiForm, linkedSkillId: kpiForm.linkedSkillId, stakeholderId: stakeholder.id, projectId: currentProjectId });
                 }}
               >
                 <Plus className="h-3.5 w-3.5 mr-1" />
@@ -410,9 +491,23 @@ function KpiManagementDialog({
           <TabsContent value="assessments" className="space-y-4 mt-4">
             <div className="flex items-center justify-between">
               {latestScore != null && (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Latest Score:</span>
-                  <span className={`text-2xl font-bold ${getScoreColor(latestScore)}`}>{latestScore}/100</span>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Latest Score:</span>
+                    <span className={`text-2xl font-bold ${getScoreColor(latestScore)}`}>{latestScore}/100</span>
+                  </div>
+                  {scoreDelta !== null && (
+                    <div className={`flex items-center gap-1 text-sm font-medium ${scoreDelta >= 0 ? "text-green-600" : "text-red-500"}`}>
+                      {scoreDelta >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+                      <span>{scoreDelta >= 0 ? "+" : ""}{scoreDelta} vs prev</span>
+                    </div>
+                  )}
+                  {trendScores.length >= 2 && (
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-muted-foreground">Trend:</span>
+                      <SparkLine data={trendScores} />
+                    </div>
+                  )}
                 </div>
               )}
               <Button
@@ -1803,6 +1898,19 @@ function DetailPanel({
                         </span>
                       ) : null;
                     })()}
+                    {/* DEV Tasks link */}
+                    <div className="pt-1 border-t border-dashed border-teal-200 mt-1">
+                      <button
+                        onClick={() => {
+                          sessionStorage.setItem('tasks_tab', 'development');
+                          window.location.href = '/tasks';
+                        }}
+                        className="inline-flex items-center gap-1 text-[10px] text-teal-600 hover:text-teal-700 hover:underline font-medium"
+                      >
+                        <CheckSquare className="h-2.5 w-2.5" />
+                        View / Create DEV Tasks →
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>

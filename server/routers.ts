@@ -758,7 +758,10 @@ export const appRouter = router({
         manHours: z.number().optional(),
         subject: z.string().optional(),
         subjectId: z.number().optional(),
-        taskCategory: z.enum(['task', 'communication']).optional(),
+        taskCategory: z.enum(['task', 'communication', 'development']).optional(),
+        devPlanId: z.number().nullable().optional(),
+        devTaskSwotId: z.number().nullable().optional(),
+        devTaskSkillId: z.number().nullable().optional(),
       }))
       .mutation(async ({ input }) => {
         try {
@@ -770,11 +773,14 @@ export const appRouter = router({
               cleanedInput[key] = value;
             }
           });
-          
-          // Use COMM prefix for communication tasks, T for regular tasks
+
+          // Choose prefix: COMM for communication, DEV for development, T for regular
           const isCommTask = input.taskCategory === 'communication';
+          const isDevTask = input.taskCategory === 'development';
           const taskId = isCommTask
             ? await db.getNextId('commTask', 'COMM', input.projectId)
+            : isDevTask
+            ? await db.getNextId('devTask', 'DEV', input.projectId)
             : await db.getNextId('task', 'T', input.projectId);
           await db.createTask({ ...cleanedInput, taskId, projectId: input.projectId });
           
@@ -836,7 +842,10 @@ export const appRouter = router({
           manHours: z.union([z.number(), z.string()]).nullable().optional(),
           subject: z.string().nullable().optional(),
           subjectId: z.number().nullable().optional(),
-          taskCategory: z.enum(['task', 'communication']).optional(),
+          taskCategory: z.enum(['task', 'communication', 'development']).optional(),
+          devPlanId: z.number().nullable().optional(),
+          devTaskSwotId: z.number().nullable().optional(),
+          devTaskSkillId: z.number().nullable().optional(),
         }),
       }))
       .mutation(async ({ input, ctx }) => {
