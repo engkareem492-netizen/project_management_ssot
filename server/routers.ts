@@ -1435,7 +1435,9 @@ export const appRouter = router({
           communicationResponsible: commResponsibleName,
         });
         // Auto-create recurring task if frequency + responsible are set
-        if (input.communicationFrequency && input.communicationFrequency !== 'None' && input.communicationResponsibleId) {
+        // "As needed" and "Ad hoc" must never generate tasks
+        const _skipFreqs = ['None', 'As needed', 'Ad hoc'];
+        if (input.communicationFrequency && !_skipFreqs.includes(input.communicationFrequency) && input.communicationResponsibleId) {
           const freqMap: Record<string, 'daily' | 'weekly' | 'monthly'> = {
             Daily: 'daily', Weekly: 'weekly', 'Bi-weekly': 'weekly',
             Monthly: 'monthly', Quarterly: 'monthly',
@@ -1443,26 +1445,28 @@ export const appRouter = router({
           const intervalMap: Record<string, number> = {
             Daily: 1, Weekly: 1, 'Bi-weekly': 2, Monthly: 1, Quarterly: 3,
           };
-          const recurringType = freqMap[input.communicationFrequency] ?? 'weekly';
+          const recurringType = freqMap[input.communicationFrequency];
           const recurringInterval = intervalMap[input.communicationFrequency] ?? 1;
-          const newStakeholderId = (result as any).id ?? (result as any).insertId;
-          const dbConn = await getDb();
-          const existingCommTask = dbConn ? await dbConn.select().from(tasks)
-            .where(and(eq(tasks.projectId, input.projectId), eq(tasks.communicationStakeholderId, newStakeholderId)))
-            .limit(1) : [];
-          if (existingCommTask.length === 0) {
-            const taskId = await db.getNextId('commTask', 'COMM', input.projectId);
-            await db.createTask({
-              projectId: input.projectId,
-              taskId,
-              description: `Communicate with ${input.fullName} (${input.communicationFrequency} via ${input.communicationChannel ?? 'TBD'})`,
-              responsibleId: input.communicationResponsibleId,
-              responsible: commResponsibleName ?? undefined,
-              recurringType,
-              recurringInterval,
-              status: 'Open',
-              communicationStakeholderId: newStakeholderId,
-            } as any);
+          if (recurringType) {
+            const newStakeholderId = (result as any).id ?? (result as any).insertId;
+            const dbConn = await getDb();
+            const existingCommTask = dbConn ? await dbConn.select().from(tasks)
+              .where(and(eq(tasks.projectId, input.projectId), eq(tasks.communicationStakeholderId, newStakeholderId)))
+              .limit(1) : [];
+            if (existingCommTask.length === 0) {
+              const taskId = await db.getNextId('commTask', 'COMM', input.projectId);
+              await db.createTask({
+                projectId: input.projectId,
+                taskId,
+                description: `Communicate with ${input.fullName} (${input.communicationFrequency} via ${input.communicationChannel ?? 'TBD'})`,
+                responsibleId: input.communicationResponsibleId,
+                responsible: commResponsibleName ?? undefined,
+                recurringType,
+                recurringInterval,
+                status: 'Open',
+                communicationStakeholderId: newStakeholderId,
+              } as any);
+            }
           }
         }
         return result;
@@ -1509,47 +1513,57 @@ export const appRouter = router({
           if (resp) updateData.communicationResponsible = resp.fullName ?? updateData.communicationResponsible;
         }
         const result = await db.updateStakeholder(input.id, updateData);
-        // Upsert recurring communication task (deduplication: one task per stakeholder)
+        // Sync recurring communication task based on updated frequency
+        // "As needed" and "Ad hoc" must never generate tasks — delete any existing one
         const freq = input.data.communicationFrequency;
-        const respId = input.data.communicationResponsibleId;
-        if (freq && freq !== 'None' && respId) {
-          const stakeholder = await db.getStakeholderById(input.id);
-          const freqMap: Record<string, 'daily' | 'weekly' | 'monthly'> = {
-            Daily: 'daily', Weekly: 'weekly', 'Bi-weekly': 'weekly',
-            Monthly: 'monthly', Quarterly: 'monthly',
-          };
-          const intervalMap: Record<string, number> = {
-            Daily: 1, Weekly: 1, 'Bi-weekly': 2, Monthly: 1, Quarterly: 3,
-          };
-          const recurringType = freqMap[freq] ?? 'weekly';
-          const recurringInterval = intervalMap[freq] ?? 1;
-          const newDesc = `Communicate with ${stakeholder?.fullName ?? 'Stakeholder'} (${freq} via ${input.data.communicationChannel ?? stakeholder?.communicationChannel ?? 'TBD'})`;
+        const skipFreqs = ['None', 'As needed', 'Ad hoc'];
+        if (freq) {
           const dbConn = await getDb();
+          const stakeholder = await db.getStakeholderById(input.id);
           const existingCommTask = dbConn ? await dbConn.select().from(tasks)
             .where(and(eq(tasks.projectId, stakeholder?.projectId ?? 1), eq(tasks.communicationStakeholderId, input.id)))
             .limit(1) : [];
-          if (existingCommTask.length > 0) {
-            // Update existing communication task instead of creating a duplicate
-            await dbConn!.update(tasks).set({
-              description: newDesc,
-              responsibleId: respId,
-              responsible: updateData.communicationResponsible ?? undefined,
-              recurringType,
-              recurringInterval,
-            }).where(eq(tasks.id, existingCommTask[0].id));
+          if (skipFreqs.includes(freq)) {
+            // Delete linked task if frequency is now "As needed" / "Ad hoc" / "None"
+            if (existingCommTask.length > 0 && dbConn) {
+              await dbConn.delete(tasks).where(eq(tasks.id, existingCommTask[0].id));
+            }
           } else {
-            const taskId = await db.getNextId('commTask', 'COMM', stakeholder?.projectId ?? 1);
-            await db.createTask({
-              projectId: stakeholder?.projectId ?? 1,
-              taskId,
-              description: newDesc,
-              responsibleId: respId,
-              responsible: updateData.communicationResponsible ?? undefined,
-              recurringType,
-              recurringInterval,
-              status: 'Open',
-              communicationStakeholderId: input.id,
-            } as any);
+            const respId = input.data.communicationResponsibleId;
+            const freqMap: Record<string, 'daily' | 'weekly' | 'monthly'> = {
+              Daily: 'daily', Weekly: 'weekly', 'Bi-weekly': 'weekly',
+              Monthly: 'monthly', Quarterly: 'monthly',
+            };
+            const intervalMap: Record<string, number> = {
+              Daily: 1, Weekly: 1, 'Bi-weekly': 2, Monthly: 1, Quarterly: 3,
+            };
+            const recurringType = freqMap[freq];
+            if (recurringType && respId) {
+              const recurringInterval = intervalMap[freq] ?? 1;
+              const newDesc = `Communicate with ${stakeholder?.fullName ?? 'Stakeholder'} (${freq} via ${input.data.communicationChannel ?? stakeholder?.communicationChannel ?? 'TBD'})`;
+              if (existingCommTask.length > 0 && dbConn) {
+                await dbConn.update(tasks).set({
+                  description: newDesc,
+                  responsibleId: respId,
+                  responsible: updateData.communicationResponsible ?? undefined,
+                  recurringType,
+                  recurringInterval,
+                }).where(eq(tasks.id, existingCommTask[0].id));
+              } else {
+                const taskId = await db.getNextId('commTask', 'COMM', stakeholder?.projectId ?? 1);
+                await db.createTask({
+                  projectId: stakeholder?.projectId ?? 1,
+                  taskId,
+                  description: newDesc,
+                  responsibleId: respId,
+                  responsible: updateData.communicationResponsible ?? undefined,
+                  recurringType,
+                  recurringInterval,
+                  status: 'Open',
+                  communicationStakeholderId: input.id,
+                } as any);
+              }
+            }
           }
         }
         return result;
