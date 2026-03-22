@@ -394,4 +394,29 @@ export const teamSkillsRouter = router({
 
       return { filledWorking, filledHoliday, total: filledWorking + filledHoliday };
     }),
+
+  // ─── Resource Availability Check ──────────────────────────────────────────
+  // Returns calendar entries for one or more stakeholders within a date range.
+  // Used by the Tasks page to validate resource availability before saving.
+  checkAvailability: protectedProcedure
+    .input(z.object({
+      projectId: z.number(),
+      stakeholderIds: z.array(z.number()),
+      startDate: z.string(), // YYYY-MM-DD
+      endDate: z.string(),   // YYYY-MM-DD
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+      const { and, eq, gte, lte, inArray } = await import("drizzle-orm");
+      if (input.stakeholderIds.length === 0) return [];
+      return await db.select().from(resourceCalendar).where(
+        and(
+          eq(resourceCalendar.projectId, input.projectId),
+          inArray(resourceCalendar.stakeholderId, input.stakeholderIds),
+          gte(resourceCalendar.date, input.startDate),
+          lte(resourceCalendar.date, input.endDate),
+        )
+      ).orderBy(resourceCalendar.date);
+    }),
 });
