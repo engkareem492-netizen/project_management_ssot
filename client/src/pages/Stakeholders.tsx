@@ -2818,15 +2818,14 @@ export default function Stakeholders() {
               <TableHead>Email</TableHead>
               <TableHead>Phone</TableHead>
               <TableHead>Remark</TableHead>
-              <TableHead>Trend</TableHead>
-              <TableHead>KPI Score</TableHead>
+              <TableHead>Trend / KPI Score</TableHead>
               <TableHead className="w-28">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredStakeholders.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={10}>
+                <TableCell colSpan={9}>
                   <EmptyState
                     icon={Users}
                     title={searchTerm ? "No stakeholders match your search" : "No stakeholders yet"}
@@ -2891,7 +2890,7 @@ export default function Stakeholders() {
                         <span className="text-muted-foreground text-xs">—</span>
                       )}
                     </TableCell>
-                    {/* Trend column: sparkline + direction arrow + diff */}
+                    {/* Trend + KPI Score combined column */}
                     <TableCell>
                       {(() => {
                         const kpi = kpiSummaryMap.get(s.id);
@@ -2902,45 +2901,33 @@ export default function Stakeholders() {
                         const prev = kpi.previousOverallScore !== null && kpi.previousOverallScore !== undefined ? Number(kpi.previousOverallScore) : null;
                         const rawDiff = prev !== null ? score - prev : null;
                         const diff = rawDiff !== null && !isNaN(rawDiff) ? rawDiff : null;
+                        const scoreColor = score >= 75 ? "text-green-600" : score >= 50 ? "text-yellow-600" : "text-red-600";
+                        const avg = kpi.averageOverallScore !== null && kpi.averageOverallScore !== undefined ? Number(kpi.averageOverallScore) : null;
+                        const avgBg = avg === null ? "" : avg >= 75 ? "bg-green-50 text-green-700 border-green-300" : avg >= 50 ? "bg-yellow-50 text-yellow-700 border-yellow-300" : "bg-red-50 text-red-600 border-red-300";
                         return (
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-2 flex-nowrap">
+                            {/* Sparkline */}
                             {kpi.trend.length >= 2 && (
                               <SparkLine data={kpi.trend} />
                             )}
-                            {diff !== null ? (
-                              <>
-                                {diff > 0
-                                  ? <TrendingUp className="w-3.5 h-3.5 text-green-500 shrink-0" />
-                                  : diff < 0
-                                  ? <TrendingDown className="w-3.5 h-3.5 text-red-500 shrink-0" />
-                                  : <span className="text-muted-foreground text-xs">→</span>}
-                                <span className={`text-xs font-medium ${diff > 0 ? "text-green-600" : diff < 0 ? "text-red-600" : "text-muted-foreground"}`}>
-                                  {diff > 0 ? `+${diff}` : diff}
-                                </span>
-                              </>
-                            ) : null}
-                          </div>
-                        );
-                      })()}
-                    </TableCell>
-                    {/* KPI Score column: latest score + average score */}
-                    <TableCell>
-                      {(() => {
-                        const kpi = kpiSummaryMap.get(s.id);
-                        if (!kpi || kpi.latestOverallScore === null) {
-                          return <span className="text-muted-foreground text-xs">—</span>;
-                        }
-                        const score = Number(kpi.latestOverallScore);
-                        const scoreColor = score >= 75 ? "text-green-600" : score >= 50 ? "text-yellow-600" : "text-red-600";
-                        const avg = kpi.averageOverallScore !== null && kpi.averageOverallScore !== undefined ? Number(kpi.averageOverallScore) : null;
-                        const avgColor = avg === null ? "" : avg >= 75 ? "bg-green-100 text-green-700 border-green-400" : avg >= 50 ? "bg-yellow-100 text-yellow-700 border-yellow-400" : "bg-red-100 text-red-700 border-red-400";
-                        return (
-                          <div className="flex flex-col gap-0.5">
-                            <span className={`font-semibold text-sm ${scoreColor}`}>{score}</span>
+                            {/* Delta badge */}
+                            {diff !== null && (
+                              <span className={`inline-flex items-center gap-0.5 text-[11px] font-semibold px-1 py-0.5 rounded ${
+                                diff > 0 ? "bg-green-50 text-green-700" : diff < 0 ? "bg-red-50 text-red-600" : "bg-muted text-muted-foreground"
+                              }`}>
+                                {diff > 0 ? <TrendingUp className="w-3 h-3" /> : diff < 0 ? <TrendingDown className="w-3 h-3" /> : null}
+                                {diff > 0 ? `+${diff}` : diff === 0 ? "=" : diff}
+                              </span>
+                            )}
+                            {/* Divider */}
+                            <span className="text-border text-muted-foreground/30 select-none">|</span>
+                            {/* Latest score */}
+                            <span className={`font-bold text-sm tabular-nums ${scoreColor}`}>{score}</span>
+                            {/* Average circle */}
                             {avg !== null && (
                               <span
-                                title={`Average of all assessments: ${avg}`}
-                                className={`inline-flex items-center justify-center w-7 h-7 rounded-full border text-[10px] font-bold shrink-0 ${avgColor}`}
+                                title={`Avg of all assessments: ${avg}`}
+                                className={`inline-flex items-center justify-center w-6 h-6 rounded-full border text-[10px] font-bold shrink-0 ${avgBg}`}
                               >
                                 {avg}
                               </span>
