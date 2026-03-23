@@ -501,6 +501,16 @@ function StakeholderAnalysisTab({
     [stakeholders, classFilter]
   );
 
+  // Split into placed (have explicit power+interest) vs unassigned (need to be placed)
+  const assignedStakeholders = useMemo(
+    () => mapStakeholders.filter((s) => s.powerLevel != null && s.interestLevel != null),
+    [mapStakeholders]
+  );
+  const unassignedStakeholders = useMemo(
+    () => mapStakeholders.filter((s) => s.powerLevel == null || s.interestLevel == null),
+    [mapStakeholders]
+  );
+
   const updateMut = trpc.stakeholders.update.useMutation({
     onSuccess: () => {
       utils.stakeholders.list.invalidate();
@@ -547,24 +557,71 @@ function StakeholderAnalysisTab({
             </button>
           ))}
         </div>
-        {/* Power/Interest Map */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Power / Interest Map</CardTitle>
-            <p className="text-xs text-muted-foreground">Click a bubble to view stakeholder details · Set Power &amp; Interest values in the Stakeholder Register</p>
-          </CardHeader>
-          <CardContent>
-            {mapStakeholders.length === 0 ? (
-              <EmptyState icon={Users} title="No stakeholders yet" description="Add stakeholders to see the map." />
-            ) : (
-              <PowerInterestMap
-                stakeholders={mapStakeholders}
-                onUpdate={handlePositionUpdate}
-                onStakeholderClick={setSelectedStakeholder}
-              />
-            )}
-          </CardContent>
-        </Card>
+        {/* Power/Interest Map + Unassigned Sidebar */}
+        <div className="flex gap-4 items-start">
+          {/* Map card — takes all remaining width */}
+          <Card className="flex-1 min-w-0">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Power / Interest Map</CardTitle>
+              <p className="text-xs text-muted-foreground">Click a bubble to view details · Drag to reposition · Set Power &amp; Interest in the Stakeholder Register</p>
+            </CardHeader>
+            <CardContent>
+              {assignedStakeholders.length === 0 ? (
+                <EmptyState icon={Users} title="No positioned stakeholders" description="Set Power &amp; Interest values in the Stakeholder Register to place stakeholders on the map." />
+              ) : (
+                <PowerInterestMap
+                  stakeholders={assignedStakeholders}
+                  onUpdate={handlePositionUpdate}
+                  onStakeholderClick={setSelectedStakeholder}
+                />
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Unassigned sidebar — only shown when there are unpositioned stakeholders */}
+          {unassignedStakeholders.length > 0 && (
+            <div className="w-56 shrink-0 flex flex-col gap-2">
+              <div className="rounded-xl border border-dashed border-amber-300 bg-amber-50/60 dark:bg-amber-950/20 dark:border-amber-700/50 p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-amber-500 text-base">⚠️</span>
+                  <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">Not Positioned</span>
+                  <span className="ml-auto text-xs font-bold text-amber-600 bg-amber-100 dark:bg-amber-900/40 rounded-full px-2 py-0.5">{unassignedStakeholders.length}</span>
+                </div>
+                <p className="text-[11px] text-amber-600/80 dark:text-amber-400/70 mb-3 leading-snug">
+                  These stakeholders are missing Power or Interest values. Edit their profile to place them on the map.
+                </p>
+                <div className="flex flex-col gap-1.5 max-h-[480px] overflow-y-auto pr-0.5">
+                  {unassignedStakeholders.map((s) => {
+                    const initials = (s.fullName || s.name || "?").split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
+                    const colors: Record<string, string> = { TeamMember: "#3b82f6", External: "#f97316", Stakeholder: "#8b5cf6" };
+                    const color = colors[s.classification] ?? "#64748b";
+                    return (
+                      <button
+                        key={s.id}
+                        onClick={() => setSelectedStakeholder(s)}
+                        className="flex items-center gap-2 w-full rounded-lg px-2 py-1.5 hover:bg-amber-100/60 dark:hover:bg-amber-900/30 transition-colors text-left group"
+                        title={`Click to edit ${s.fullName}`}
+                      >
+                        <div
+                          className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-bold shrink-0 shadow-sm"
+                          style={{ backgroundColor: color }}
+                        >
+                          {initials}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-xs font-medium truncate text-foreground group-hover:text-amber-700 dark:group-hover:text-amber-300">{s.fullName || s.name}</div>
+                          <div className="text-[10px] text-muted-foreground truncate">
+                            P: {s.powerLevel ?? <span className="text-red-400">—</span>} · I: {s.interestLevel ?? <span className="text-red-400">—</span>}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Engagement Matrix Table — Stakeholders only */}
         <Card>
