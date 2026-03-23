@@ -93,6 +93,10 @@ const DOMAIN_FIELD_KEYS: Record<string, string[]> = {
   stakeholders: ["engagement_status", "communication_frequency", "communication_channel"],
   test_cases: ["status", "priority"],
   assumptions: ["status", "impact"],
+  scope_items: ["phase", "process_area", "category", "status", "priority"],
+  wbs: ["status"],
+  meetings: ["status", "decision_status"],
+  dependencies: ["status"],
 };
 
 const DOMAIN_LABELS: Record<string, string> = {
@@ -107,6 +111,10 @@ const DOMAIN_LABELS: Record<string, string> = {
   stakeholders: "Stakeholders",
   test_cases: "Test Cases",
   assumptions: "Assumptions",
+  scope_items: "Scope Items",
+  wbs: "WBS",
+  meetings: "Meetings",
+  dependencies: "Dependencies",
 };
 
 function DropdownOptionsTab({ projectId }: { projectId: number }) {
