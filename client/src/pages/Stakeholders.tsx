@@ -2455,8 +2455,10 @@ export default function Stakeholders() {
     { enabled: !!currentProjectId }
   );
   const kpiSummaryMap = useMemo(() => {
+    console.log('[KPI DEBUG] kpiSummaries raw:', JSON.stringify(kpiSummaries));
     const map = new Map<number, { latestOverallScore: number | null; previousOverallScore: number | null; averageOverallScore: number | null; trend: number[] }>();
     for (const s of kpiSummaries) map.set(s.stakeholderId, { latestOverallScore: s.latestOverallScore, previousOverallScore: s.previousOverallScore, averageOverallScore: (s as any).averageOverallScore ?? null, trend: s.trend ?? [] });
+    console.log('[KPI DEBUG] map entries:', Array.from(map.entries()).map(([k,v]) => ({ id: k, trend: v.trend, avg: v.averageOverallScore, latest: v.latestOverallScore })));
     return map;
   }, [kpiSummaries]);
 
