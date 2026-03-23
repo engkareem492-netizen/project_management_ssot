@@ -2889,7 +2889,7 @@ export default function Stakeholders() {
                         <span className="text-muted-foreground text-xs">—</span>
                       )}
                     </TableCell>
-                    {/* Trend column: direction arrow + diff + average circle */}
+                    {/* Trend column: sparkline + direction arrow + diff */}
                     <TableCell>
                       {(() => {
                         const kpi = kpiSummaryMap.get(s.id);
@@ -2900,10 +2900,11 @@ export default function Stakeholders() {
                         const prev = kpi.previousOverallScore !== null && kpi.previousOverallScore !== undefined ? Number(kpi.previousOverallScore) : null;
                         const rawDiff = prev !== null ? score - prev : null;
                         const diff = rawDiff !== null && !isNaN(rawDiff) ? rawDiff : null;
-                        const avg = kpi.averageOverallScore !== null && kpi.averageOverallScore !== undefined ? Number(kpi.averageOverallScore) : null;
-                        const avgColor = avg === null ? "" : avg >= 75 ? "bg-green-100 text-green-700 border-green-400" : avg >= 50 ? "bg-yellow-100 text-yellow-700 border-yellow-400" : "bg-red-100 text-red-700 border-red-400";
                         return (
                           <div className="flex items-center gap-1.5">
+                            {kpi.trend.length >= 2 && (
+                              <SparkLine data={kpi.trend} />
+                            )}
                             {diff !== null ? (
                               <>
                                 {diff > 0
@@ -2915,22 +2916,12 @@ export default function Stakeholders() {
                                   {diff > 0 ? `+${diff}` : diff}
                                 </span>
                               </>
-                            ) : (
-                              <span className="text-muted-foreground text-xs">—</span>
-                            )}
-                            {avg !== null && (
-                              <span
-                                title={`Average of all assessments: ${avg}`}
-                                className={`inline-flex items-center justify-center w-7 h-7 rounded-full border text-[10px] font-bold shrink-0 ${avgColor}`}
-                              >
-                                {avg}
-                              </span>
-                            )}
+                            ) : null}
                           </div>
                         );
                       })()}
                     </TableCell>
-                    {/* KPI Score column: latest score only */}
+                    {/* KPI Score column: latest score + average score */}
                     <TableCell>
                       {(() => {
                         const kpi = kpiSummaryMap.get(s.id);
@@ -2939,11 +2930,18 @@ export default function Stakeholders() {
                         }
                         const score = Number(kpi.latestOverallScore);
                         const scoreColor = score >= 75 ? "text-green-600" : score >= 50 ? "text-yellow-600" : "text-red-600";
+                        const avg = kpi.averageOverallScore !== null && kpi.averageOverallScore !== undefined ? Number(kpi.averageOverallScore) : null;
+                        const avgColor = avg === null ? "" : avg >= 75 ? "bg-green-100 text-green-700 border-green-400" : avg >= 50 ? "bg-yellow-100 text-yellow-700 border-yellow-400" : "bg-red-100 text-red-700 border-red-400";
                         return (
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex flex-col gap-0.5">
                             <span className={`font-semibold text-sm ${scoreColor}`}>{score}</span>
-                            {kpi.trend.length >= 2 && (
-                              <SparkLine data={kpi.trend} />
+                            {avg !== null && (
+                              <span
+                                title={`Average of all assessments: ${avg}`}
+                                className={`inline-flex items-center justify-center w-7 h-7 rounded-full border text-[10px] font-bold shrink-0 ${avgColor}`}
+                              >
+                                {avg}
+                              </span>
                             )}
                           </div>
                         );
