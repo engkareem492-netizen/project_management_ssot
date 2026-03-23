@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Loader2, Save, FileText, Target, CheckCircle2, AlertTriangle, Users } from "lucide-react";
 import { CURRENCIES } from "@/lib/currencies";
+import { RegistrySelect } from "@/components/RegistrySelect";
 
 const RAG_COLORS: Record<string, string> = {
   Green: "bg-green-100 text-green-800 border-green-300",
@@ -282,15 +283,16 @@ export default function ProjectCharter() {
             <>
               <div>
                 <Label>Current Phase</Label>
-                <Select value={form.phase || ""} onValueChange={v => set("phase", v)}>
-                  <SelectTrigger><SelectValue placeholder="Select phase" /></SelectTrigger>
-                  <SelectContent>
-                    {["Initiation", "Planning", "Execution", "Monitoring & Control", "Closure",
-                      "Explore", "Realize", "Deploy", "Run"].map(p => (
-                      <SelectItem key={p} value={p}>{p}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <RegistrySelect
+                  projectId={projectId}
+                  domain="scope_items"
+                  fieldKey="phase"
+                  value={form.phase || ""}
+                  onValueChange={v => set("phase", v)}
+                  allowNone
+                  noneLabel="— None —"
+                  placeholder="Select phase"
+                />
               </div>
               <div>
                 <Label>Notes</Label>

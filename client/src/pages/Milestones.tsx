@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "sonner";
 import { Loader2, Plus, Pencil, Trash2, Flag, CheckCircle2, AlertTriangle, Clock } from "lucide-react";
 import { StakeholderSelect } from "@/components/StakeholderSelect";
+import { RegistrySelect } from "@/components/RegistrySelect";
 
 const RAG_COLORS: Record<string, string> = {
   Green: "bg-green-100 text-green-800",
@@ -208,14 +209,16 @@ export default function Milestones() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Phase</Label>
-                <Select value={form.phase || ""} onValueChange={v => set("phase", v)}>
-                  <SelectTrigger><SelectValue placeholder="Select phase" /></SelectTrigger>
-                  <SelectContent>
-                    {["Initiation", "Planning", "Execution", "Closure", "Explore", "Realize", "Deploy", "Run"].map(p => (
-                      <SelectItem key={p} value={p}>{p}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <RegistrySelect
+                  projectId={projectId}
+                  domain="scope_items"
+                  fieldKey="phase"
+                  value={form.phase || ""}
+                  onValueChange={v => set("phase", v)}
+                  allowNone
+                  noneLabel="— None —"
+                  placeholder="Select phase"
+                />
               </div>
               <div>
                 <Label>Status</Label>
