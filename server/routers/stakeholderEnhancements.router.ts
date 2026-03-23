@@ -609,7 +609,7 @@ export const stakeholderEnhancementsRouter = router({
           });
         } else {
           const existing = trendByStakeholder.get(a.stakeholderId)!;
-          if (existing.previousOverallScore === null) {
+          if (existing.previousOverallScore === null && a.overallScore !== null) {
             existing.previousOverallScore = a.overallScore;
           }
           if (a.overallScore !== null && existing.trend.length < 5) {
