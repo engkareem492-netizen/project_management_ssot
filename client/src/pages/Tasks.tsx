@@ -776,6 +776,12 @@ export default function Tasks() {
       return;
     }
 
+    // DEV tasks require a Development Plan link
+    if (newTask.taskCategory === 'development' && !newTask.devPlanId) {
+      toast.error('A Development Plan must be selected for DEV tasks');
+      return;
+    }
+
     // Validate dependency selections
     for (const dep of newTaskDependencies) {
       if (!dep.taskId) {
