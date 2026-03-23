@@ -2453,8 +2453,8 @@ export default function Stakeholders() {
     { enabled: !!currentProjectId }
   );
   const kpiSummaryMap = useMemo(() => {
-    const map = new Map<number, { latestOverallScore: number | null; previousOverallScore: number | null; trend: number[] }>();
-    for (const s of kpiSummaries) map.set(s.stakeholderId, { latestOverallScore: s.latestOverallScore, previousOverallScore: s.previousOverallScore, trend: s.trend ?? [] });
+    const map = new Map<number, { latestOverallScore: number | null; previousOverallScore: number | null; averageOverallScore: number | null; trend: number[] }>();
+    for (const s of kpiSummaries) map.set(s.stakeholderId, { latestOverallScore: s.latestOverallScore, previousOverallScore: s.previousOverallScore, averageOverallScore: (s as any).averageOverallScore ?? null, trend: s.trend ?? [] });
     return map;
   }, [kpiSummaries]);
 
@@ -2816,6 +2816,7 @@ export default function Stakeholders() {
               <TableHead>Email</TableHead>
               <TableHead>Phone</TableHead>
               <TableHead>Remark</TableHead>
+              <TableHead>Trend</TableHead>
               <TableHead>KPI Score</TableHead>
               <TableHead className="w-28">Actions</TableHead>
             </TableRow>
@@ -2823,7 +2824,7 @@ export default function Stakeholders() {
           <TableBody>
             {filteredStakeholders.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9}>
+                <TableCell colSpan={10}>
                   <EmptyState
                     icon={Users}
                     title={searchTerm ? "No stakeholders match your search" : "No stakeholders yet"}
@@ -2888,6 +2889,7 @@ export default function Stakeholders() {
                         <span className="text-muted-foreground text-xs">—</span>
                       )}
                     </TableCell>
+                    {/* Trend column: direction arrow + diff + average circle */}
                     <TableCell>
                       {(() => {
                         const kpi = kpiSummaryMap.get(s.id);
@@ -2898,11 +2900,11 @@ export default function Stakeholders() {
                         const prev = kpi.previousOverallScore !== null && kpi.previousOverallScore !== undefined ? Number(kpi.previousOverallScore) : null;
                         const rawDiff = prev !== null ? score - prev : null;
                         const diff = rawDiff !== null && !isNaN(rawDiff) ? rawDiff : null;
-                        const scoreColor = score >= 75 ? "text-green-600" : score >= 50 ? "text-yellow-600" : "text-red-600";
+                        const avg = kpi.averageOverallScore !== null && kpi.averageOverallScore !== undefined ? Number(kpi.averageOverallScore) : null;
+                        const avgColor = avg === null ? "" : avg >= 75 ? "bg-green-100 text-green-700 border-green-400" : avg >= 50 ? "bg-yellow-100 text-yellow-700 border-yellow-400" : "bg-red-100 text-red-700 border-red-400";
                         return (
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className={`font-semibold text-sm ${scoreColor}`}>{score}</span>
-                            {diff !== null && (
+                          <div className="flex items-center gap-1.5">
+                            {diff !== null ? (
                               <>
                                 {diff > 0
                                   ? <TrendingUp className="w-3.5 h-3.5 text-green-500 shrink-0" />
@@ -2913,7 +2915,33 @@ export default function Stakeholders() {
                                   {diff > 0 ? `+${diff}` : diff}
                                 </span>
                               </>
+                            ) : (
+                              <span className="text-muted-foreground text-xs">—</span>
                             )}
+                            {avg !== null && (
+                              <span
+                                title={`Average of all assessments: ${avg}`}
+                                className={`inline-flex items-center justify-center w-7 h-7 rounded-full border text-[10px] font-bold shrink-0 ${avgColor}`}
+                              >
+                                {avg}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </TableCell>
+                    {/* KPI Score column: latest score only */}
+                    <TableCell>
+                      {(() => {
+                        const kpi = kpiSummaryMap.get(s.id);
+                        if (!kpi || kpi.latestOverallScore === null) {
+                          return <span className="text-muted-foreground text-xs">—</span>;
+                        }
+                        const score = Number(kpi.latestOverallScore);
+                        const scoreColor = score >= 75 ? "text-green-600" : score >= 50 ? "text-yellow-600" : "text-red-600";
+                        return (
+                          <div className="flex items-center gap-1.5">
+                            <span className={`font-semibold text-sm ${scoreColor}`}>{score}</span>
                             {kpi.trend.length >= 2 && (
                               <SparkLine data={kpi.trend} />
                             )}

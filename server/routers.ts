@@ -782,7 +782,9 @@ export const appRouter = router({
             : isDevTask
             ? await db.getNextId('devTask', 'DEV', input.projectId)
             : await db.getNextId('task', 'T', input.projectId);
-          await db.createTask({ ...cleanedInput, taskId, projectId: input.projectId });
+          // Strip fields that are not columns in the tasks table
+          const { taskCategory: _cat, subjectId: _sid, issueId: _iid, ...dbInsertPayload } = cleanedInput;
+          await db.createTask({ ...dbInsertPayload, taskId, projectId: input.projectId });
           
           return { success: true, taskId };
         } catch (error: any) {
@@ -1443,10 +1445,17 @@ export const appRouter = router({
           ...input,
           communicationResponsible: commResponsibleName,
         });
-        // Auto-create recurring task if frequency + responsible are set
-        // "As needed" and "Ad hoc" must never generate tasks
+        // Auto-create recurring task only when ALL three conditions are met:
+        // 1. frequency is set and is not "As needed" / "Ad hoc" / "None"
+        // 2. a communication channel (via) is specified
+        // 3. a responsible person is assigned
         const _skipFreqs = ['None', 'As needed', 'Ad hoc'];
-        if (input.communicationFrequency && !_skipFreqs.includes(input.communicationFrequency) && input.communicationResponsibleId) {
+        if (
+          input.communicationFrequency &&
+          !_skipFreqs.includes(input.communicationFrequency) &&
+          input.communicationChannel && input.communicationChannel.trim() &&
+          input.communicationResponsibleId
+        ) {
           const freqMap: Record<string, 'daily' | 'weekly' | 'monthly'> = {
             Daily: 'daily', Weekly: 'weekly', 'Bi-weekly': 'weekly',
             Monthly: 'monthly', Quarterly: 'monthly',
@@ -1467,7 +1476,7 @@ export const appRouter = router({
               await db.createTask({
                 projectId: input.projectId,
                 taskId,
-                description: `Communicate with ${input.fullName} (${input.communicationFrequency} via ${input.communicationChannel ?? 'TBD'})`,
+                description: `Communicate with ${input.fullName} (${input.communicationFrequency} via ${input.communicationChannel})`,
                 responsibleId: input.communicationResponsibleId,
                 responsible: commResponsibleName ?? undefined,
                 recurringType,
@@ -1547,9 +1556,11 @@ export const appRouter = router({
               Daily: 1, Weekly: 1, 'Bi-weekly': 2, Monthly: 1, Quarterly: 3,
             };
             const recurringType = freqMap[freq];
-            if (recurringType && respId) {
+            const effectiveChannel = input.data.communicationChannel?.trim() || stakeholder?.communicationChannel?.trim();
+            // Require all three: valid recurring type, responsible, AND a communication channel
+            if (recurringType && respId && effectiveChannel) {
               const recurringInterval = intervalMap[freq] ?? 1;
-              const newDesc = `Communicate with ${stakeholder?.fullName ?? 'Stakeholder'} (${freq} via ${input.data.communicationChannel ?? stakeholder?.communicationChannel ?? 'TBD'})`;
+              const newDesc = `Communicate with ${stakeholder?.fullName ?? 'Stakeholder'} (${freq} via ${effectiveChannel})`;
               if (existingCommTask.length > 0 && dbConn) {
                 await dbConn.update(tasks).set({
                   description: newDesc,
