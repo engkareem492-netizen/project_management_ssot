@@ -238,6 +238,7 @@ function KpiManagementDialog({
   const createAssessment = trpc.stakeholderEnhancements.createAssessment.useMutation({
     onSuccess: (data) => {
       utils.stakeholderEnhancements.listAssessments.invalidate({ stakeholderId: stakeholder.id });
+      utils.stakeholderEnhancements.listProjectKpiSummary.invalidate();
       setAssessmentOpen(false);
       toast.success(`Assessment saved — Overall Score: ${data.overallScore}/100`);
     },
@@ -245,6 +246,7 @@ function KpiManagementDialog({
   const deleteAssessment = trpc.stakeholderEnhancements.deleteAssessment.useMutation({
     onSuccess: () => {
       utils.stakeholderEnhancements.listAssessments.invalidate({ stakeholderId: stakeholder.id });
+      utils.stakeholderEnhancements.listProjectKpiSummary.invalidate();
       toast.success("Assessment deleted");
     },
   });
