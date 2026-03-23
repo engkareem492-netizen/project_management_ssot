@@ -576,7 +576,15 @@ export const stakeholderEnhancementsRouter = router({
 
   listProjectKpiSummary: protectedProcedure
     .input(z.object({ projectId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input }): Promise<Array<{
+      stakeholderId: number;
+      stakeholderName: string | null;
+      latestOverallScore: number | null;
+      previousOverallScore: number | null;
+      averageOverallScore: number | null;
+      trend: number[];
+      kpiCount: number;
+    }>> => {
       const db = await getDb();
       if (!db) return [];
 
