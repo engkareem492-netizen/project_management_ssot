@@ -764,7 +764,7 @@ function DashboardLayoutContent({
         <div className="relative" ref={sidebarRef}>
           <Sidebar collapsible="icon" className="border-r-0" disableTransition={isResizing}>
             <SidebarHeader className="h-16 justify-center">
-              <div className="flex items-center gap-3 px-2 transition-all w-full overflow-hidden">
+              <div className="flex items-center gap-3 px-2 transition-all w-full overflow-hidden group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
                 <button
                   onClick={toggleSidebar}
                   className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring shrink-0"
@@ -789,14 +789,10 @@ function DashboardLayoutContent({
                     Switch
                   </button>
                 </div>
-                {/* Collapsed icon-only state — shown only when sidebar is icon-collapsed */}
-                {(currentProject as any)?.logoUrl && (
-                  <img src={(currentProject as any).logoUrl} alt="logo" className="hidden group-data-[collapsible=icon]:block h-6 w-6 object-contain rounded shrink-0" />
-                )}
               </div>
             </SidebarHeader>
 
-            <SidebarContent className="gap-0 overflow-y-auto">
+            <SidebarContent className="gap-0 overflow-y-auto group-data-[collapsible=icon]:hidden">
               {/* Global Search */}
               <div className="px-2 py-1 group-data-[collapsible=icon]:hidden">
                 <button
@@ -1065,13 +1061,14 @@ function DashboardLayoutContent({
                   </button>
                 </div>
               </div>
-              <div className="hidden group-data-[collapsible=icon]:flex flex-col gap-1 border-t pt-2">
-                <label htmlFor="sidebar-file-upload-icon" title="Import Excel" className="cursor-pointer flex items-center justify-center h-8 w-8 mx-auto rounded-md hover:bg-accent transition-colors text-muted-foreground hover:text-foreground">
-                  <input type="file" accept=".xlsx,.xls" onChange={handleFileUpload} className="hidden" id="sidebar-file-upload-icon" disabled={uploading} />
-                  <Upload className="h-4 w-4" />
-                </label>
-                <button onClick={handleExport} disabled={exportQuery.isLoading} title="Export Excel" className="flex items-center justify-center h-8 w-8 mx-auto rounded-md hover:bg-accent transition-colors text-muted-foreground hover:text-foreground disabled:opacity-50">
-                  <Download className="h-4 w-4" />
+              {/* Collapsed: Settings button only */}
+              <div className="hidden group-data-[collapsible=icon]:flex flex-col items-center gap-1 border-t pt-2">
+                <button
+                  onClick={() => setLocation("/settings")}
+                  title="Settings"
+                  className="flex items-center justify-center h-8 w-8 rounded-md hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+                >
+                  <SettingsIcon className="h-4 w-4" />
                 </button>
               </div>
               <DropdownMenu>

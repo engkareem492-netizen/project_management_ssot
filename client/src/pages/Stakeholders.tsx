@@ -157,6 +157,27 @@ function getScoreColor(score: number) {
   return "text-red-600";
 }
 
+function SparkLine({ data }: { data: number[] }) {
+  if (data.length < 2) return null;
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const range = max - min || 1;
+  const w = 80, h = 28;
+  const pts = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * w;
+    const y = h - ((v - min) / range) * (h - 4) - 2;
+    return `${x},${y}`;
+  }).join(" ");
+  const lastColor = data[data.length - 1] >= data[0] ? "#22c55e" : "#ef4444";
+  const lastPt = pts.split(" ").pop()!.split(",");
+  return (
+    <svg width={w} height={h} className="inline-block">
+      <polyline points={pts} fill="none" stroke={lastColor} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
+      <circle cx={parseFloat(lastPt[0])} cy={parseFloat(lastPt[1])} r="2.5" fill={lastColor} />
+    </svg>
+  );
+}
+
 // ─── KPI Management Dialog ────────────────────────────────────────────────────
 function KpiManagementDialog({
   stakeholder,
@@ -245,12 +266,18 @@ function KpiManagementDialog({
     });
   };
 
-  const latestScore = assessments[0]?.overallScore;
-  const previousScore = assessments[1]?.overallScore;
+  // Sort newest-first: by assessmentDate desc, then id desc
+  const sortedAssessments = [...assessments].sort((a: any, b: any) => {
+    const dateDiff = new Date(b.assessmentDate).getTime() - new Date(a.assessmentDate).getTime();
+    return dateDiff !== 0 ? dateDiff : b.id - a.id;
+  });
+
+  const latestScore = sortedAssessments[0]?.overallScore;
+  const previousScore = sortedAssessments[1]?.overallScore;
   const scoreDelta = latestScore != null && previousScore != null ? latestScore - previousScore : null;
 
   // Build trend array from assessments (chronological, up to 8 data points)
-  const trendScores = [...assessments]
+  const trendScores = [...sortedAssessments]
     .reverse()
     .slice(-8)
     .map((a: any) => a.overallScore)
@@ -534,10 +561,10 @@ function KpiManagementDialog({
             )}
 
             <div className="space-y-3">
-              {assessments.length === 0 ? (
+              {sortedAssessments.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">No assessments yet.</p>
               ) : (
-                assessments.map((a: any) => (
+                sortedAssessments.map((a: any) => (
                   <div key={a.id} className="border rounded-lg p-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
@@ -2426,8 +2453,8 @@ export default function Stakeholders() {
     { enabled: !!currentProjectId }
   );
   const kpiSummaryMap = useMemo(() => {
-    const map = new Map<number, { latestOverallScore: number | null; previousOverallScore: number | null }>();
-    for (const s of kpiSummaries) map.set(s.stakeholderId, { latestOverallScore: s.latestOverallScore, previousOverallScore: s.previousOverallScore });
+    const map = new Map<number, { latestOverallScore: number | null; previousOverallScore: number | null; trend: number[] }>();
+    for (const s of kpiSummaries) map.set(s.stakeholderId, { latestOverallScore: s.latestOverallScore, previousOverallScore: s.previousOverallScore, trend: s.trend ?? [] });
     return map;
   }, [kpiSummaries]);
 
@@ -2873,7 +2900,7 @@ export default function Stakeholders() {
                         const diff = rawDiff !== null && !isNaN(rawDiff) ? rawDiff : null;
                         const scoreColor = score >= 75 ? "text-green-600" : score >= 50 ? "text-yellow-600" : "text-red-600";
                         return (
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1.5 flex-wrap">
                             <span className={`font-semibold text-sm ${scoreColor}`}>{score}</span>
                             {diff !== null && (
                               <>
@@ -2886,6 +2913,9 @@ export default function Stakeholders() {
                                   {diff > 0 ? `+${diff}` : diff}
                                 </span>
                               </>
+                            )}
+                            {kpi.trend.length >= 2 && (
+                              <SparkLine data={kpi.trend} />
                             )}
                           </div>
                         );
