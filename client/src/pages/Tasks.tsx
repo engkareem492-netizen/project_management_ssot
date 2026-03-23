@@ -1546,6 +1546,14 @@ export default function Tasks() {
                         {task.currentStatus && task.currentStatus !== task.status && (
                           <p className="text-xs text-muted-foreground mt-0.5 truncate" title={task.currentStatus}>↳ {task.currentStatus}</p>
                         )}
+                        {(() => { const subs = getSubTasks(task.id); if (subs.length === 0) return null; const done = subs.filter((s: any) => isTaskComplete(s)).length; const pct = Math.round((done / subs.length) * 100); return (
+                          <div className="mt-1 flex items-center gap-1.5" title={`${done}/${subs.length} sub-tasks complete`}>
+                            <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden max-w-[80px]">
+                              <div className="h-full bg-green-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                            </div>
+                            <span className="text-[10px] text-muted-foreground whitespace-nowrap">{done}/{subs.length}</span>
+                          </div>
+                        ); })()}
                       </TableCell>
                       <TableCell className="px-3 py-2 overflow-hidden">
                         <span className="text-sm truncate block" title={task.responsible || ''}>{task.responsible || <span className="text-muted-foreground">—</span>}</span>

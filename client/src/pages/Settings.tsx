@@ -460,7 +460,15 @@ export default function Settings() {
     { projectId: currentProjectId || 0 },
     { enabled: !!currentProjectId }
   );
+  const { data: taskGroupUsageCounts } = trpc.dropdownOptions.taskGroups.getUsageCounts.useQuery(
+    { projectId: currentProjectId || 0 },
+    { enabled: !!currentProjectId }
+  );
   const { data: issueGroupsData, refetch: refetchIssueGroups } = trpc.dropdownOptions.issueGroups.getAll.useQuery(
+    { projectId: currentProjectId || 0 },
+    { enabled: !!currentProjectId }
+  );
+  const { data: issueGroupUsageCounts } = trpc.dropdownOptions.issueGroups.getUsageCounts.useQuery(
     { projectId: currentProjectId || 0 },
     { enabled: !!currentProjectId }
   );
@@ -1257,15 +1265,33 @@ export default function Settings() {
                       <TableHead>ID</TableHead>
                       <TableHead>Name</TableHead>
                       <TableHead>Description</TableHead>
+                      <TableHead>Tasks</TableHead>
+                      <TableHead>Requirements</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {taskGroupsData?.map((group) => (
+                    {taskGroupsData?.map((group) => {
+                      const usage = taskGroupUsageCounts?.find((u) => u.id === group.id);
+                      return (
                       <TableRow key={group.id}>
                         <TableCell className="font-mono text-sm">{group.idCode}</TableCell>
                         <TableCell className="font-medium">{group.name}</TableCell>
                         <TableCell className="text-muted-foreground">{group.description || "-"}</TableCell>
+                        <TableCell>
+                          {usage ? (
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${usage.taskCount > 0 ? 'bg-blue-100 text-blue-700' : 'bg-muted text-muted-foreground'}`}>
+                              {usage.taskCount}
+                            </span>
+                          ) : <span className="text-muted-foreground">—</span>}
+                        </TableCell>
+                        <TableCell>
+                          {usage ? (
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${usage.requirementCount > 0 ? 'bg-purple-100 text-purple-700' : 'bg-muted text-muted-foreground'}`}>
+                              {usage.requirementCount}
+                            </span>
+                          ) : <span className="text-muted-foreground">—</span>}
+                        </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-2">
                             <Button
@@ -1294,7 +1320,8 @@ export default function Settings() {
                           </div>
                         </TableCell>
                       </TableRow>
-                    ))}
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
@@ -1319,15 +1346,33 @@ export default function Settings() {
                       <TableHead>ID</TableHead>
                       <TableHead>Name</TableHead>
                       <TableHead>Description</TableHead>
+                      <TableHead>Issues</TableHead>
+                      <TableHead>Requirements</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {issueGroupsData?.map((group) => (
+                    {issueGroupsData?.map((group) => {
+                      const usage = issueGroupUsageCounts?.find((u) => u.id === group.id);
+                      return (
                       <TableRow key={group.id}>
                         <TableCell className="font-mono text-sm">{group.idCode}</TableCell>
                         <TableCell className="font-medium">{group.name}</TableCell>
                         <TableCell className="text-muted-foreground">{group.description || "-"}</TableCell>
+                        <TableCell>
+                          {usage ? (
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${usage.issueCount > 0 ? 'bg-orange-100 text-orange-700' : 'bg-muted text-muted-foreground'}`}>
+                              {usage.issueCount}
+                            </span>
+                          ) : <span className="text-muted-foreground">—</span>}
+                        </TableCell>
+                        <TableCell>
+                          {usage ? (
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${usage.requirementCount > 0 ? 'bg-purple-100 text-purple-700' : 'bg-muted text-muted-foreground'}`}>
+                              {usage.requirementCount}
+                            </span>
+                          ) : <span className="text-muted-foreground">—</span>}
+                        </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-2">
                             <Button
@@ -1356,7 +1401,8 @@ export default function Settings() {
                           </div>
                         </TableCell>
                       </TableRow>
-                    ))}
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
