@@ -317,6 +317,10 @@ export default function Resources() {
   // Workload sort state
   const [workloadSort, setWorkloadSort] = useState<{ col: string; dir: "asc" | "desc" }>({ col: "totalAssigned", dir: "desc" });
   const [workloadFilter, setWorkloadFilter] = useState<"all" | "TeamMember" | "External" | "Stakeholder">("all");
+  // Capacity overview period
+  const [capStart, setCapStart] = useState(() => { const d = new Date(); d.setDate(1); return d.toISOString().split("T")[0]; });
+  const [capEnd, setCapEnd] = useState(() => { const d = new Date(); d.setMonth(d.getMonth() + 1, 0); return d.toISOString().split("T")[0]; });
+  const [capTypeFilter, setCapTypeFilter] = useState<"all" | "TeamMember" | "External" | "Stakeholder">("all");
 
   // ─── RBS Wizard state ──────────────────────────────────────────────────────
   const [wizardStep, setWizardStep] = useState<1 | 2 | 3 | 4>(1);
@@ -380,6 +384,12 @@ export default function Resources() {
   const deleteAssignment = trpc.wbsResourceAssignments.delete.useMutation({
     onSuccess: () => { refetchAssignments(); toast.success("Assignment removed"); },
   });
+
+  // Capacity overview calendar — fetches ALL stakeholders for the selected capacity period
+  const { data: capCalendarEntries = [] } = trpc.teamSkills.listCalendar.useQuery(
+    { projectId, startDate: capStart, endDate: capEnd },
+    { enabled }
+  );
 
   // KPI summary query for performance scores
   const { data: kpiSummary = [] } = (trpc as any).stakeholderEnhancements?.listProjectKpiSummary?.useQuery
@@ -467,6 +477,104 @@ export default function Resources() {
     const overloaded = workloadData.filter((w) => w.thisWeek > w.capacity).length;
     return { totalMembers, totalTasks, avgLoad, overloaded };
   }, [workloadData]);
+
+  // ─── Capacity Overview (hour-based) ────────────────────────────────────────
+  const capacityData = useMemo(() => {
+    if (!capStart || !capEnd) return [];
+    const periodDates = getDatesInRange(capStart, capEnd);
+    const periodDays = periodDates.length;
+    return stakeholders
+      .filter((s: any) => capTypeFilter === "all" || s.classification === capTypeFilter)
+      .map((s: any) => {
+        const name = s.fullName ?? s.name ?? `Stakeholder ${s.id}`;
+        const hoursPerDay = parseFloat(s.workingHoursPerDay ?? "8") || 8;
+        const daysPerWeek = s.workingDaysPerWeek ?? 5;
+        // Calendar entries for this stakeholder in the period
+        const calEntries = (capCalendarEntries as any[]).filter((e: any) => {
+          const dateKey = e.date instanceof Date ? e.date.toISOString().split("T")[0] : String(e.date).split("T")[0];
+          return e.stakeholderId === s.id && dateKey >= capStart && dateKey <= capEnd;
+        });
+        const calMap: Record<string, any> = {};
+        calEntries.forEach((e: any) => {
+          const dk = e.date instanceof Date ? e.date.toISOString().split("T")[0] : String(e.date).split("T")[0];
+          calMap[dk] = e;
+        });
+        // Compute total capacity hours from calendar (or default)
+        let totalCapacityHours = 0;
+        let leaveDays = 0;
+        let holidayDays = 0;
+        let trainingDays = 0;
+        let partTimeDays = 0;
+        periodDates.forEach(dateStr => {
+          const dow = new Date(dateStr).getDay(); // 0=Sun, 6=Sat
+          const isWeekend = dow === 0 || dow === 6;
+          const entry = calMap[dateStr];
+          if (entry) {
+            const t = entry.type;
+            const h = parseFloat(entry.availableHours ?? "0") || 0;
+            if (t === "Leave") { leaveDays++; }
+            else if (t === "Holiday") { holidayDays++; }
+            else if (t === "Training") { trainingDays++; totalCapacityHours += h; }
+            else if (t === "PartTime") { partTimeDays++; totalCapacityHours += h; }
+            else { totalCapacityHours += h; } // Working
+          } else if (!isWeekend && daysPerWeek >= 5) {
+            totalCapacityHours += hoursPerDay;
+          } else if (!isWeekend && daysPerWeek < 5) {
+            // Partial week: distribute working days evenly Mon-Fri
+            const workDayIndex = dow - 1; // Mon=0 ... Fri=4
+            if (workDayIndex >= 0 && workDayIndex < daysPerWeek) {
+              totalCapacityHours += hoursPerDay;
+            }
+          }
+        });
+        // Allocated hours from tasks (use manHours if set, else 0 — no fake estimation)
+        const assignedTasks = (tasks as any[]).filter((t: any) => {
+          if (t.responsible !== name && t.responsibleId !== s.id) return false;
+          // Task falls in period if dueDate or assignDate is within range
+          const due = t.dueDate ? (t.dueDate instanceof Date ? t.dueDate.toISOString().split("T")[0] : String(t.dueDate).split("T")[0]) : null;
+          const assign = t.assignDate ? (t.assignDate instanceof Date ? t.assignDate.toISOString().split("T")[0] : String(t.assignDate).split("T")[0]) : null;
+          const inPeriod = (due && due >= capStart && due <= capEnd) || (assign && assign >= capStart && assign <= capEnd);
+          return inPeriod;
+        });
+        const allocatedHours = assignedTasks.reduce((sum: number, t: any) => sum + (parseFloat(t.manHours ?? "0") || 0), 0);
+        const freeHours = Math.max(totalCapacityHours - allocatedHours, 0);
+        const utilPct = totalCapacityHours > 0 ? Math.min(Math.round((allocatedHours / totalCapacityHours) * 100), 999) : 0;
+        const hourlyRate = parseFloat(s.costPerHour ?? "0") || 0;
+        const costCapacity = totalCapacityHours * hourlyRate;
+        const costAllocated = allocatedHours * hourlyRate;
+        return {
+          id: s.id,
+          name,
+          role: s.role ?? "",
+          department: s.department ?? "",
+          classification: s.classification ?? "Stakeholder",
+          hoursPerDay,
+          daysPerWeek,
+          totalCapacityHours,
+          allocatedHours,
+          freeHours,
+          utilPct,
+          leaveDays,
+          holidayDays,
+          trainingDays,
+          partTimeDays,
+          taskCount: assignedTasks.length,
+          hourlyRate,
+          costCapacity,
+          costAllocated,
+          periodDays,
+        };
+      });
+  }, [stakeholders, tasks, capCalendarEntries, capStart, capEnd, capTypeFilter]);
+
+  const capSummary = useMemo(() => {
+    const total = capacityData.length;
+    const totalCap = capacityData.reduce((s, r) => s + r.totalCapacityHours, 0);
+    const totalAlloc = capacityData.reduce((s, r) => s + r.allocatedHours, 0);
+    const overloaded = capacityData.filter(r => r.utilPct > 100).length;
+    const avgUtil = total > 0 ? Math.round(capacityData.reduce((s, r) => s + r.utilPct, 0) / total) : 0;
+    return { total, totalCap, totalAlloc, overloaded, avgUtil };
+  }, [capacityData]);
 
   // ─── Team Overview ─────────────────────────────────────────────────────────
   const teamOverview = useMemo(() => {
@@ -743,150 +851,126 @@ export default function Resources() {
 
         {/* ─── Workload Tab ─────────────────────────────────────────────── */}
         <TabsContent value="workload" className="mt-0 space-y-4">
-          {/* Summary KPI strip */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {/* ── Period selector + type filter ── */}
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-muted-foreground" />
+              <span className="text-xs font-medium text-muted-foreground">Period:</span>
+              <Input type="date" value={capStart} onChange={e => setCapStart(e.target.value)} className="h-8 w-36 text-xs" />
+              <span className="text-xs text-muted-foreground">–</span>
+              <Input type="date" value={capEnd} onChange={e => setCapEnd(e.target.value)} className="h-8 w-36 text-xs" />
+            </div>
+            <div className="flex items-center gap-2 ml-auto">
+              <span className="text-xs text-muted-foreground font-medium">Show:</span>
+              {(["all", "TeamMember", "External", "Stakeholder"] as const).map(t => (
+                <button key={t} onClick={() => setCapTypeFilter(t)}
+                  className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                    capTypeFilter === t
+                      ? t === "TeamMember" ? "bg-blue-100 text-blue-700 border-blue-300"
+                        : t === "External" ? "bg-orange-100 text-orange-700 border-orange-300"
+                        : t === "Stakeholder" ? "bg-purple-100 text-purple-700 border-purple-300"
+                        : "bg-primary text-primary-foreground border-primary"
+                      : "bg-background text-muted-foreground border-border hover:border-muted-foreground"
+                  }`}>
+                  {t === "all" ? "All" : t === "TeamMember" ? "Team Members" : t}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* ── KPI summary strip ── */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <Card className="p-4">
               <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Resources</div>
-              <div className="text-3xl font-bold">{summaryStats.totalMembers}</div>
+              <div className="text-3xl font-bold">{capSummary.total}</div>
             </Card>
             <Card className="p-4">
-              <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Total Assigned Tasks</div>
-              <div className="text-3xl font-bold">{summaryStats.totalTasks}</div>
+              <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Total Capacity</div>
+              <div className="text-3xl font-bold">{Math.round(capSummary.totalCap)}<span className="text-base font-normal text-muted-foreground ml-1">hrs</span></div>
             </Card>
             <Card className="p-4">
-              <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Avg Load / Person</div>
-              <div className="text-3xl font-bold">{summaryStats.avgLoad}</div>
+              <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Allocated Hours</div>
+              <div className="text-3xl font-bold">{Math.round(capSummary.totalAlloc)}<span className="text-base font-normal text-muted-foreground ml-1">hrs</span></div>
             </Card>
             <Card className="p-4">
-              <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Overloaded This Week</div>
-              <div className={`text-3xl font-bold ${summaryStats.overloaded > 0 ? "text-red-600" : "text-green-600"}`}>{summaryStats.overloaded}</div>
+              <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Avg Utilization</div>
+              <div className={`text-3xl font-bold ${capSummary.avgUtil > 100 ? "text-red-600" : capSummary.avgUtil >= 80 ? "text-yellow-600" : "text-green-600"}`}>{capSummary.avgUtil}<span className="text-base font-normal ml-0.5">%</span></div>
+            </Card>
+            <Card className="p-4">
+              <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Overloaded</div>
+              <div className={`text-3xl font-bold ${capSummary.overloaded > 0 ? "text-red-600" : "text-green-600"}`}>{capSummary.overloaded}</div>
             </Card>
           </div>
 
-          {/* Filter bar */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs text-muted-foreground font-medium">Show:</span>
-            {(["all", "TeamMember", "External", "Stakeholder"] as const).map(t => (
-              <button
-                key={t}
-                onClick={() => setWorkloadFilter(t)}
-                className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
-                  workloadFilter === t
-                    ? t === "TeamMember" ? "bg-blue-100 text-blue-700 border-blue-300"
-                      : t === "External" ? "bg-orange-100 text-orange-700 border-orange-300"
-                      : t === "Stakeholder" ? "bg-purple-100 text-purple-700 border-purple-300"
-                      : "bg-primary text-primary-foreground border-primary"
-                    : "bg-background text-muted-foreground border-border hover:border-muted-foreground"
-                }`}
-              >
-                {t === "all" ? "All" : t === "TeamMember" ? "Team Members" : t}
-              </button>
-            ))}
-          </div>
-
-          {/* Workload table */}
+          {/* ── Capacity table ── */}
           <Card>
             <CardContent className="p-0">
               {isLoading ? (
                 <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
-              ) : workloadData.length === 0 ? (
-                <div className="py-16 text-center text-muted-foreground text-sm">No stakeholders found. Add stakeholders to see workload.</div>
+              ) : capacityData.length === 0 ? (
+                <div className="py-16 text-center text-muted-foreground text-sm">No resources found for the selected period.</div>
               ) : (
                 <div className="overflow-auto">
                   <Table>
                     <TableHeader>
-                      <TableRow>
-                        {[
-                          { key: "name", label: "Name" },
-                          { key: "role", label: "Role" },
-                          { key: "classification", label: "Type" },
-                          { key: "totalAssigned", label: "Total Tasks", align: "right" },
-                          { key: "thisWeek", label: "This Week", align: "right" },
-                          { key: "capacity", label: "Capacity", align: "right" },
-                          { key: "hourlyRate", label: "Cost Rate", align: "right" },
-                          { key: "weeklyCost", label: "Weekly Cost", align: "right" },
-                          { key: "perfScore", label: "Perf Score", align: "center" },
-                          { key: "load", label: "Utilization" },
-                          { key: "_actions", label: "" },
-                        ].map(col => (
-                          <TableHead
-                            key={col.key}
-                            className={`text-xs ${col.align === "right" ? "text-right" : col.align === "center" ? "text-center" : ""} ${col.key !== "_actions" && col.key !== "load" ? "cursor-pointer select-none hover:text-foreground" : ""}`}
-                            onClick={() => {
-                              if (col.key === "_actions" || col.key === "load") return;
-                              setWorkloadSort(prev => prev.col === col.key ? { col: col.key, dir: prev.dir === "asc" ? "desc" : "asc" } : { col: col.key, dir: "desc" });
-                            }}
-                          >
-                            <span className="flex items-center gap-1 justify-inherit">
-                              {col.label}
-                              {workloadSort.col === col.key && (workloadSort.dir === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />)}
-                            </span>
-                          </TableHead>
-                        ))}
+                      <TableRow className="bg-muted/30">
+                        <TableHead className="text-xs font-semibold">Resource</TableHead>
+                        <TableHead className="text-xs font-semibold">Department</TableHead>
+                        <TableHead className="text-xs font-semibold">Type</TableHead>
+                        <TableHead className="text-xs font-semibold text-right">Capacity (hrs)</TableHead>
+                        <TableHead className="text-xs font-semibold text-right">Allocated (hrs)</TableHead>
+                        <TableHead className="text-xs font-semibold text-right">Free (hrs)</TableHead>
+                        <TableHead className="text-xs font-semibold text-right"># Tasks</TableHead>
+                        <TableHead className="text-xs font-semibold text-right">Leave Days</TableHead>
+                        <TableHead className="text-xs font-semibold text-right">Holiday Days</TableHead>
+                        <TableHead className="text-xs font-semibold">Utilization</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {[...workloadData]
-                        .filter(w => workloadFilter === "all" || w.classification === workloadFilter)
-                        .sort((a, b) => {
-                          const dir = workloadSort.dir === "asc" ? 1 : -1;
-                          const col = workloadSort.col;
-                          if (col === "name" || col === "role") return dir * ((a as any)[col] ?? "").localeCompare((b as any)[col] ?? "");
-                          if (col === "weeklyCost") {
-                            const aCost = a.hourlyRate * a.hoursPerDay * (a.thisWeek / Math.max(a.capacity, 1));
-                            const bCost = b.hourlyRate * b.hoursPerDay * (b.thisWeek / Math.max(b.capacity, 1));
-                            return dir * (aCost - bCost);
-                          }
-                          if (col === "perfScore") {
-                            const aScore = latestScoreMap[a.id] ?? -1;
-                            const bScore = latestScoreMap[b.id] ?? -1;
-                            return dir * (aScore - bScore);
-                          }
-                          return dir * (((a as any)[col] ?? 0) - ((b as any)[col] ?? 0));
-                        })
-                        .map((w) => {
-                          const { label, className } = getLoadLabel(w.thisWeek, w.capacity);
-                          const weeklyCost = w.hourlyRate * w.hoursPerDay * (w.thisWeek / Math.max(w.capacity, 1));
-                          const perfScore = latestScoreMap[w.id];
-                          const perfBadgeCls = perfScore == null ? "bg-gray-100 text-gray-500"
-                            : perfScore >= 80 ? "bg-green-100 text-green-700"
-                            : perfScore >= 60 ? "bg-yellow-100 text-yellow-700"
-                            : "bg-red-100 text-red-700";
-                          const typeBadge = w.classification === "TeamMember" ? "bg-blue-100 text-blue-700"
-                            : w.classification === "External" ? "bg-orange-100 text-orange-700"
-                            : "bg-purple-100 text-purple-700";
+                      {[...capacityData]
+                        .sort((a, b) => b.utilPct - a.utilPct)
+                        .map((r) => {
+                          const utilColor = r.utilPct > 100 ? "bg-red-500" : r.utilPct >= 80 ? "bg-yellow-500" : r.utilPct >= 40 ? "bg-blue-500" : "bg-green-400";
+                          const utilTextColor = r.utilPct > 100 ? "text-red-600 font-bold" : r.utilPct >= 80 ? "text-yellow-600 font-semibold" : "text-green-700";
+                          const statusLabel = r.utilPct > 100 ? "Overloaded" : r.utilPct >= 80 ? "Near Capacity" : r.utilPct >= 40 ? "In Use" : "Available";
+                          const statusCls = r.utilPct > 100 ? "bg-red-100 text-red-700" : r.utilPct >= 80 ? "bg-yellow-100 text-yellow-700" : r.utilPct >= 40 ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700";
+                          const typeBadge = r.classification === "TeamMember" ? "bg-blue-100 text-blue-700" : r.classification === "External" ? "bg-orange-100 text-orange-700" : "bg-purple-100 text-purple-700";
                           return (
-                            <TableRow key={w.id}>
+                            <TableRow key={r.id} className="hover:bg-muted/20">
                               <TableCell>
-                                <div className="font-medium text-sm">{w.name}</div>
-                                {w.email && <div className="text-xs text-muted-foreground">{w.email}</div>}
+                                <div className="font-medium text-sm">{r.name}</div>
+                                {r.role && <div className="text-xs text-muted-foreground">{r.role}</div>}
                               </TableCell>
-                              <TableCell className="text-xs text-muted-foreground">{w.role || "—"}</TableCell>
+                              <TableCell className="text-xs text-muted-foreground">{r.department || "—"}</TableCell>
                               <TableCell>
                                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${typeBadge}`}>
-                                  {w.classification === "TeamMember" ? "Team" : w.classification}
+                                  {r.classification === "TeamMember" ? "Team" : r.classification}
                                 </span>
                               </TableCell>
-                              <TableCell className="text-right font-semibold">{w.totalAssigned}</TableCell>
-                              <TableCell className="text-right">
-                                <span className={w.thisWeek > w.capacity ? "text-red-600 font-bold" : "font-semibold"}>{w.thisWeek}</span>
-                              </TableCell>
-                              <TableCell className="text-right text-muted-foreground text-sm">{w.capacity}</TableCell>
-                              <TableCell className="text-right text-xs text-muted-foreground">{w.hourlyRate > 0 ? `${formatCurrency(w.hourlyRate)}/hr` : "—"}</TableCell>
-                              <TableCell className="text-right text-sm font-medium">{weeklyCost > 0 ? formatCurrency(weeklyCost) : "—"}</TableCell>
-                              <TableCell className="text-center">
-                                <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${perfBadgeCls}`}>
-                                  {perfScore != null ? perfScore : "—"}
+                              <TableCell className="text-right font-semibold text-sm">{r.totalCapacityHours.toFixed(1)}</TableCell>
+                              <TableCell className="text-right text-sm">
+                                <span className={r.allocatedHours > r.totalCapacityHours ? "text-red-600 font-bold" : "font-medium"}>
+                                  {r.allocatedHours.toFixed(1)}
                                 </span>
                               </TableCell>
-                              <TableCell className="w-36">
-                                <WorkloadBar assigned={w.thisWeek} capacity={w.capacity} />
-                                <Badge className={`text-[10px] mt-1 ${className}`}>{label}</Badge>
+                              <TableCell className={`text-right text-sm font-medium ${r.freeHours === 0 ? "text-red-500" : "text-green-600"}`}>
+                                {r.freeHours.toFixed(1)}
                               </TableCell>
-                              <TableCell className="text-right">
-                                <Button size="sm" variant="ghost" onClick={() => openCapacityDialog(w.name, w.capacity)} title="Set capacity">
-                                  <Settings className="w-4 h-4" />
-                                </Button>
+                              <TableCell className="text-right text-sm">{r.taskCount}</TableCell>
+                              <TableCell className="text-right text-sm">
+                                {r.leaveDays > 0 ? <span className="text-yellow-600 font-medium">{r.leaveDays}</span> : <span className="text-muted-foreground">—</span>}
+                              </TableCell>
+                              <TableCell className="text-right text-sm">
+                                {r.holidayDays > 0 ? <span className="text-blue-600 font-medium">{r.holidayDays}</span> : <span className="text-muted-foreground">—</span>}
+                              </TableCell>
+                              <TableCell className="min-w-[180px]">
+                                <div className="flex items-center gap-2">
+                                  <div className="flex-1 h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                                    <div className={`h-full rounded-full transition-all ${utilColor}`} style={{ width: `${Math.min(r.utilPct, 100)}%` }} />
+                                  </div>
+                                  <span className={`text-xs w-10 shrink-0 ${utilTextColor}`}>{r.utilPct}%</span>
+                                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0 ${statusCls}`}>{statusLabel}</span>
+                                </div>
                               </TableCell>
                             </TableRow>
                           );
@@ -897,29 +981,6 @@ export default function Resources() {
               )}
             </CardContent>
           </Card>
-
-          {/* 8-Week Forecast */}
-          <div>
-            <h2 className="text-base font-semibold mb-3">8-Week Forecast</h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
-              {[0, 1, 2, 3, 4, 5, 6, 7].map((offset) => {
-                const { start, end } = getWeekBounds(offset);
-                const label = offset === 0 ? "This Week" : offset === 1 ? "Next Week" : `Week +${offset}`;
-                const totalForWeek = workloadData.reduce((sum, w) => sum + ((w.weekCounts as number[])?.[offset] ?? 0), 0);
-                const overloaded = workloadData.filter(w => ((w.weekCounts as number[])?.[offset] ?? 0) > w.capacity).length;
-                return (
-                  <Card key={offset} className={`p-3 ${overloaded > 0 ? "border-red-200" : ""}`}>
-                    <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">{label}</div>
-                    <div className="text-2xl font-bold">{totalForWeek}</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">
-                      {start.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – {end.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                    </div>
-                    {overloaded > 0 && <div className="text-xs text-red-600 font-medium mt-1">{overloaded} overloaded</div>}
-                  </Card>
-                );
-              })}
-            </div>
-          </div>
         </TabsContent>
 
         {/* ─── Heatmap Tab ──────────────────────────────────────────────── */}
