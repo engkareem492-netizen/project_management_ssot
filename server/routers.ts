@@ -1510,6 +1510,7 @@ export const appRouter = router({
           externalPartyId: z.number().nullable().optional(),
           powerLevel: z.number().min(1).max(5).optional(),
           interestLevel: z.number().min(1).max(5).optional(),
+          positionedOnMap: z.boolean().optional(),
           engagementStrategy: z.string().optional(),
           currentEngagementStatus: z.enum(["Unaware", "Resistant", "Neutral", "Supportive", "Leading"]).nullable().optional(),
           desiredEngagementStatus: z.enum(["Unaware", "Resistant", "Neutral", "Supportive", "Leading"]).nullable().optional(),
@@ -1526,6 +1527,10 @@ export const appRouter = router({
       .mutation(async ({ input, ctx }) => {
         // Resolve communicationResponsibleId to name
         let updateData: any = { ...input.data };
+        // Auto-mark as positioned when power or interest is explicitly set
+        if (input.data.powerLevel !== undefined || input.data.interestLevel !== undefined) {
+          updateData.positionedOnMap = true;
+        }
         if (input.data.communicationResponsibleId) {
           const resp = await db.getStakeholderById(input.data.communicationResponsibleId);
           if (resp) updateData.communicationResponsible = resp.fullName ?? updateData.communicationResponsible;

@@ -161,6 +161,7 @@ export const stakeholders = mysqlTable("stakeholders", {
   // Stakeholder engagement tracking
   powerLevel: int("powerLevel").default(3),       // 1-5
   interestLevel: int("interestLevel").default(3),  // 1-5
+  positionedOnMap: boolean("positionedOnMap").default(false), // true when user explicitly placed on Power/Interest map
   engagementStrategy: varchar("engagementStrategy", { length: 100 }), // Manage Closely | Keep Satisfied | Keep Informed | Monitor
   currentEngagementStatus: mysqlEnum("currentEngagementStatus", ["Unaware", "Resistant", "Neutral", "Supportive", "Leading"]),
   desiredEngagementStatus: mysqlEnum("desiredEngagementStatus", ["Unaware", "Resistant", "Neutral", "Supportive", "Leading"]),

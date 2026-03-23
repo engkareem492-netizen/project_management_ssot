@@ -501,13 +501,13 @@ function StakeholderAnalysisTab({
     [stakeholders, classFilter]
   );
 
-  // Split into placed (have explicit power+interest) vs unassigned (need to be placed)
+  // Split into placed (positionedOnMap=true) vs unassigned (never explicitly positioned)
   const assignedStakeholders = useMemo(
-    () => mapStakeholders.filter((s) => s.powerLevel != null && s.interestLevel != null),
+    () => mapStakeholders.filter((s) => s.positionedOnMap === true || s.positionedOnMap === 1),
     [mapStakeholders]
   );
   const unassignedStakeholders = useMemo(
-    () => mapStakeholders.filter((s) => s.powerLevel == null || s.interestLevel == null),
+    () => mapStakeholders.filter((s) => !s.positionedOnMap),
     [mapStakeholders]
   );
 
@@ -525,6 +525,7 @@ function StakeholderAnalysisTab({
         : power >= 3 && interest < 3 ? "Keep Satisfied"
         : power < 3 && interest >= 3 ? "Keep Informed"
         : "Monitor";
+      // positionedOnMap is auto-set to true by the server when powerLevel/interestLevel is updated
       updateMut.mutate({
         id,
         data: { powerLevel: power, interestLevel: interest, engagementStrategy: strategy },
