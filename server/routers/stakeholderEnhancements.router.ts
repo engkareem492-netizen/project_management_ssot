@@ -595,7 +595,7 @@ export const stakeholderEnhancementsRouter = router({
       // Group by stakeholderId — keep last 5 scores for trend, first entry is latest
       const trendByStakeholder = new Map<
         number,
-        { overallScore: number | null; assessmentDate: Date | null; previousOverallScore: number | null; trend: number[] }
+        { overallScore: number | null; assessmentDate: Date | null; previousOverallScore: number | null; trend: number[]; scoreSum: number; scoreCount: number }
       >();
       for (const a of assessments) {
         if (!trendByStakeholder.has(a.stakeholderId)) {
@@ -604,6 +604,8 @@ export const stakeholderEnhancementsRouter = router({
             assessmentDate: a.assessmentDate,
             previousOverallScore: null,
             trend: a.overallScore !== null ? [a.overallScore] : [],
+            scoreSum: a.overallScore !== null ? a.overallScore : 0,
+            scoreCount: a.overallScore !== null ? 1 : 0,
           });
         } else {
           const existing = trendByStakeholder.get(a.stakeholderId)!;
@@ -612,6 +614,10 @@ export const stakeholderEnhancementsRouter = router({
           }
           if (a.overallScore !== null && existing.trend.length < 5) {
             existing.trend.push(a.overallScore);
+          }
+          if (a.overallScore !== null) {
+            existing.scoreSum += a.overallScore;
+            existing.scoreCount += 1;
           }
         }
       }
@@ -652,11 +658,16 @@ export const stakeholderEnhancementsRouter = router({
         const latest = latestByStakeholder.get(stakeholderId);
         // trend is stored newest-first; reverse for chronological order for chart
         const trendAsc = [...(latest?.trend ?? [])].reverse();
+        const avgScore =
+          latest && latest.scoreCount > 0
+            ? Math.round(latest.scoreSum / latest.scoreCount)
+            : null;
         return {
           stakeholderId,
           stakeholderName: nameMap.get(stakeholderId) ?? null,
           latestOverallScore: latest?.overallScore ?? null,
           previousOverallScore: latest?.previousOverallScore ?? null,
+          averageOverallScore: avgScore,
           trend: trendAsc,
           kpiCount: kpiCountMap.get(stakeholderId) ?? 0,
         };
