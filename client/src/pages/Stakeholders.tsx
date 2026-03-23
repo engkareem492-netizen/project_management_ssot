@@ -31,12 +31,12 @@ import {
   Plus, Trash2, Pencil, Search, Users, Mail, Phone,
   Target, Award, Activity, UserCheck, Briefcase,
   MoveRight, Download,
-  Brain, Star, Lightbulb, Shield, BookOpen, TrendingUp, TrendingDown, Zap, CheckSquare,
+  Brain, Star, Lightbulb, Shield, BookOpen, TrendingUp, Zap,
 } from "lucide-react";
 import { ImportExportToolbar } from "@/components/ImportExportToolbar";
 import { StakeholderSelect } from "@/components/StakeholderSelect";
 import { EmptyState } from "@/components/EmptyState";
-import { formatDate, formatDateTime } from "@/lib/dateUtils";
+import { formatDate } from "@/lib/dateUtils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Classification = "TeamMember" | "External" | "Stakeholder";
@@ -102,7 +102,7 @@ const EMPTY_FORM: StakeholderFormData = {
 };
 
 const ENGAGEMENT_STRATEGIES = ["Manage Closely", "Keep Satisfied", "Keep Informed", "Monitor"];
-const ENGAGEMENT_STATUSES = ["Resistant", "Unaware", "Neutral", "Supportive", "Leading"];
+const ENGAGEMENT_STATUSES = ["Unaware", "Resistant", "Neutral", "Supportive", "Leading"];
 const COMM_FREQUENCIES = ["Daily", "Weekly", "Bi-weekly", "Monthly", "Quarterly", "As needed"];
 const COMM_CHANNELS = ["Email", "Meeting", "Phone", "Slack", "Teams", "Report", "Newsletter"];
 
@@ -157,27 +157,6 @@ function getScoreColor(score: number) {
   return "text-red-600";
 }
 
-function SparkLine({ data }: { data: number[] }) {
-  if (data.length < 2) return null;
-  const min = Math.min(...data);
-  const max = Math.max(...data);
-  const range = max - min || 1;
-  const w = 80, h = 28;
-  const pts = data.map((v, i) => {
-    const x = (i / (data.length - 1)) * w;
-    const y = h - ((v - min) / range) * (h - 4) - 2;
-    return `${x},${y}`;
-  }).join(" ");
-  const lastColor = data[data.length - 1] >= data[0] ? "#22c55e" : "#ef4444";
-  const lastPt = pts.split(" ").pop()!.split(",");
-  return (
-    <svg width={w} height={h} className="inline-block">
-      <polyline points={pts} fill="none" stroke={lastColor} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
-      <circle cx={parseFloat(lastPt[0])} cy={parseFloat(lastPt[1])} r="2.5" fill={lastColor} />
-    </svg>
-  );
-}
-
 // ─── KPI Management Dialog ────────────────────────────────────────────────────
 function KpiManagementDialog({
   stakeholder,
@@ -190,13 +169,11 @@ function KpiManagementDialog({
 }) {
   const { currentProjectId } = useProject();
   const utils = trpc.useUtils();
-  const [kpiForm, setKpiForm] = useState<{ name: string; description: string; target: string; unit: string; weight: number; linkedSkillId: number | null }>(
-    { name: "", description: "", target: "", unit: "", weight: 1, linkedSkillId: null }
-  );
+  const [kpiForm, setKpiForm] = useState({ name: "", description: "", target: "", unit: "", weight: 1 });
   const [editingKpi, setEditingKpi] = useState<any>(null);
   const [assessmentOpen, setAssessmentOpen] = useState(false);
   const [assessmentForm, setAssessmentForm] = useState({
-    assessmentDate: new Date().toISOString().slice(0, 16),
+    assessmentDate: new Date().toISOString().split("T")[0],
     assessorName: "",
     notes: "",
     scores: {} as Record<number, { score: number; notes: string }>,
@@ -210,15 +187,11 @@ function KpiManagementDialog({
     { stakeholderId: stakeholder?.id },
     { enabled: !!stakeholder?.id && open }
   );
-  const { data: skills = [] } = trpc.stakeholderEnhancements.listSkills.useQuery(
-    { stakeholderId: stakeholder?.id },
-    { enabled: !!stakeholder?.id && open }
-  );
 
   const createKpi = trpc.stakeholderEnhancements.createKpi.useMutation({
     onSuccess: () => {
       utils.stakeholderEnhancements.listKpis.invalidate({ stakeholderId: stakeholder.id });
-      setKpiForm({ name: "", description: "", target: "", unit: "", weight: 1, linkedSkillId: null });
+      setKpiForm({ name: "", description: "", target: "", unit: "", weight: 1 });
       toast.success("KPI added");
     },
   });
@@ -266,42 +239,7 @@ function KpiManagementDialog({
     });
   };
 
-  // Sort newest-first: by assessmentDate desc, then id desc
-  const sortedAssessments = [...assessments].sort((a: any, b: any) => {
-    const dateDiff = new Date(b.assessmentDate).getTime() - new Date(a.assessmentDate).getTime();
-    return dateDiff !== 0 ? dateDiff : b.id - a.id;
-  });
-
-  const latestScore = sortedAssessments[0]?.overallScore;
-  const previousScore = sortedAssessments[1]?.overallScore;
-  const scoreDelta = latestScore != null && previousScore != null ? latestScore - previousScore : null;
-
-  // Build trend array from assessments (chronological, up to 8 data points)
-  const trendScores = [...sortedAssessments]
-    .reverse()
-    .slice(-8)
-    .map((a: any) => a.overallScore)
-    .filter((s: any): s is number => s != null);
-
-  function SparkLine({ data }: { data: number[] }) {
-    if (data.length < 2) return null;
-    const min = Math.min(...data);
-    const max = Math.max(...data);
-    const range = max - min || 1;
-    const w = 80, h = 28;
-    const pts = data.map((v, i) => {
-      const x = (i / (data.length - 1)) * w;
-      const y = h - ((v - min) / range) * (h - 4) - 2;
-      return `${x},${y}`;
-    }).join(" ");
-    const lastColor = data[data.length - 1] >= data[0] ? "#22c55e" : "#ef4444";
-    return (
-      <svg width={w} height={h} className="inline-block">
-        <polyline points={pts} fill="none" stroke={lastColor} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
-        <circle cx={parseFloat(pts.split(" ").pop()!.split(",")[0])} cy={parseFloat(pts.split(" ").pop()!.split(",")[1])} r="2.5" fill={lastColor} />
-      </svg>
-    );
-  }
+  const latestScore = assessments[0]?.overallScore;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -332,7 +270,6 @@ function KpiManagementDialog({
                     <TableHead>Target</TableHead>
                     <TableHead>Unit</TableHead>
                     <TableHead>Weight</TableHead>
-                    <TableHead>Linked Skill</TableHead>
                     <TableHead className="w-20">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -379,22 +316,6 @@ function KpiManagementDialog({
                             />
                           </TableCell>
                           <TableCell>
-                            <Select
-                              value={editingKpi.linkedSkillId?.toString() ?? "none"}
-                              onValueChange={(v) => setEditingKpi({ ...editingKpi, linkedSkillId: v === "none" ? null : parseInt(v) })}
-                            >
-                              <SelectTrigger className="h-8 w-36 text-xs">
-                                <SelectValue placeholder="No skill" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="none">— None —</SelectItem>
-                                {skills.map((s) => (
-                                  <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </TableCell>
-                          <TableCell>
                             <div className="flex gap-1">
                               <Button size="sm" className="h-7 px-2" onClick={() => updateKpi.mutate({ id: kpi.id, data: editingKpi })}>
                                 Save
@@ -412,16 +333,6 @@ function KpiManagementDialog({
                           <TableCell>{kpi.unit || "—"}</TableCell>
                           <TableCell>
                             <Badge variant="outline">{kpi.weight}x</Badge>
-                          </TableCell>
-                          <TableCell>
-                            {kpi.linkedSkillId ? (
-                              <Badge variant="secondary" className="text-xs gap-1">
-                                <Zap className="h-2.5 w-2.5" />
-                                {skills.find((s) => s.id === kpi.linkedSkillId)?.name ?? `Skill #${kpi.linkedSkillId}`}
-                              </Badge>
-                            ) : (
-                              <span className="text-muted-foreground/40 text-xs">—</span>
-                            )}
                           </TableCell>
                           <TableCell>
                             <div className="flex gap-1">
@@ -480,32 +391,13 @@ function KpiManagementDialog({
                     className="w-20"
                   />
                 </div>
-                <div className="col-span-2 space-y-1">
-                  <Label className="text-sm">Link to Skill (optional)</Label>
-                  <Select
-                    value={kpiForm.linkedSkillId?.toString() ?? "none"}
-                    onValueChange={(v) => setKpiForm({ ...kpiForm, linkedSkillId: v === "none" ? null : parseInt(v) })}
-                  >
-                    <SelectTrigger className="h-8 text-sm">
-                      <SelectValue placeholder="Select a skill..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">— No skill link —</SelectItem>
-                      {skills.map((s) => (
-                        <SelectItem key={s.id} value={s.id.toString()}>
-                          {s.name} <span className="text-muted-foreground text-xs ml-1">({s.level})</span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
               <Button
                 size="sm"
                 disabled={!kpiForm.name.trim() || createKpi.isPending}
                 onClick={() => {
                   if (!currentProjectId) return;
-                  createKpi.mutate({ ...kpiForm, linkedSkillId: kpiForm.linkedSkillId, stakeholderId: stakeholder.id, projectId: currentProjectId });
+                  createKpi.mutate({ ...kpiForm, stakeholderId: stakeholder.id, projectId: currentProjectId });
                 }}
               >
                 <Plus className="h-3.5 w-3.5 mr-1" />
@@ -518,30 +410,16 @@ function KpiManagementDialog({
           <TabsContent value="assessments" className="space-y-4 mt-4">
             <div className="flex items-center justify-between">
               {latestScore != null && (
-                <div className="flex items-center gap-3 flex-wrap">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">Latest Score:</span>
-                    <span className={`text-2xl font-bold ${getScoreColor(latestScore)}`}>{latestScore}/100</span>
-                  </div>
-                  {scoreDelta !== null && (
-                    <div className={`flex items-center gap-1 text-sm font-medium ${scoreDelta >= 0 ? "text-green-600" : "text-red-500"}`}>
-                      {scoreDelta >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
-                      <span>{scoreDelta >= 0 ? "+" : ""}{scoreDelta} vs prev</span>
-                    </div>
-                  )}
-                  {trendScores.length >= 2 && (
-                    <div className="flex items-center gap-1">
-                      <span className="text-xs text-muted-foreground">Trend:</span>
-                      <SparkLine data={trendScores} />
-                    </div>
-                  )}
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Latest Score:</span>
+                  <span className={`text-2xl font-bold ${getScoreColor(latestScore)}`}>{latestScore}/100</span>
                 </div>
               )}
               <Button
                 size="sm"
                 onClick={() => {
                   setAssessmentForm({
-                    assessmentDate: new Date().toISOString().slice(0, 16),
+                    assessmentDate: new Date().toISOString().split("T")[0],
                     assessorName: "",
                     notes: "",
                     scores: {},
@@ -561,15 +439,15 @@ function KpiManagementDialog({
             )}
 
             <div className="space-y-3">
-              {sortedAssessments.length === 0 ? (
+              {assessments.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">No assessments yet.</p>
               ) : (
-                sortedAssessments.map((a: any) => (
+                assessments.map((a: any) => (
                   <div key={a.id} className="border rounded-lg p-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <Award className="h-4 w-4 text-primary" />
-                        <span className="font-medium">{formatDateTime(a.assessmentDate)}</span>
+                        <span className="font-medium">{formatDate(a.assessmentDate)}</span>
                         {a.assessorName && <span className="text-sm text-muted-foreground">by {a.assessorName}</span>}
                       </div>
                       <div className="flex items-center gap-2">
@@ -611,9 +489,9 @@ function KpiManagementDialog({
             <div className="space-y-4 py-2">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label>Assessment Date & Time</Label>
+                  <Label>Assessment Date</Label>
                   <Input
-                    type="datetime-local"
+                    type="date"
                     value={assessmentForm.assessmentDate}
                     onChange={(e) => setAssessmentForm({ ...assessmentForm, assessmentDate: e.target.value })}
                   />
@@ -758,24 +636,6 @@ function StakeholderFormDialog({
     onError: (e: any) => toast.error(`Failed: ${e.message}`),
   });
 
-  // Merge position options with unique positions from existing stakeholders (e.g. imported via CSV)
-  const allPositionOptions = useMemo(() => {
-    const knownLabels = new Set(positionOptions.map((o: any) => o.label));
-    const derived = [...new Set(
-      stakeholders.map((s: any) => s.position).filter((p: any) => p && !knownLabels.has(p))
-    )];
-    return [...positionOptions, ...derived.map((label: string) => ({ id: `derived-${label}`, label }))];
-  }, [positionOptions, stakeholders]);
-
-  // Merge role options with unique roles from existing stakeholders (e.g. imported via CSV)
-  const allRoleOptions = useMemo(() => {
-    const knownLabels = new Set(roleOptions.map((o: any) => o.label));
-    const derived = [...new Set(
-      stakeholders.map((s: any) => s.role).filter((r: any) => r && !knownLabels.has(r))
-    )];
-    return [...roleOptions, ...derived.map((label: string) => ({ id: `derived-${label}`, label }))];
-  }, [roleOptions, stakeholders]);
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
@@ -839,10 +699,10 @@ function StakeholderFormDialog({
                       <SelectValue placeholder="Select position..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {allPositionOptions.map((o: any) => (
+                      {positionOptions.map((o: any) => (
                         <SelectItem key={o.id} value={o.label}>{o.label}</SelectItem>
                       ))}
-                      {formData.position && !allPositionOptions.some((o: any) => o.label === formData.position) && (
+                      {formData.position && !positionOptions.some((o: any) => o.label === formData.position) && (
                         <SelectItem value={formData.position}>{formData.position}</SelectItem>
                       )}
                     </SelectContent>
@@ -879,10 +739,10 @@ function StakeholderFormDialog({
                       <SelectValue placeholder="Select role..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {allRoleOptions.map((o: any) => (
+                      {roleOptions.map((o: any) => (
                         <SelectItem key={o.id} value={o.label}>{o.label}</SelectItem>
                       ))}
-                      {formData.role && !allRoleOptions.some((o: any) => o.label === formData.role) && (
+                      {formData.role && !roleOptions.some((o: any) => o.label === formData.role) && (
                         <SelectItem value={formData.role}>{formData.role}</SelectItem>
                       )}
                     </SelectContent>
@@ -1272,12 +1132,11 @@ function DetailPanel({
   const [devPlanForm, setDevPlanForm] = useState({
     title: "", description: "", goals: "", startDate: "", endDate: "",
     status: "Not Started" as string,
-    linkedSkillId: "", linkedSwotId: "",
   });
 
   // ── Skill state ──
   const [showSkillForm, setShowSkillForm] = useState(false);
-  const [skillForm, setSkillForm] = useState({ name: "", level: "Beginner" as "Beginner" | "Intermediate" | "Advanced" | "Expert", linkedKpiId: "", linkedSwotId: "" });
+  const [skillForm, setSkillForm] = useState({ name: "", level: "Beginner" as string, linkedKpiId: "" });
 
   // ── tRPC queries ──
   const { data: swotItems = [], refetch: refetchSwot } = trpc.stakeholderEnhancements.listSwot.useQuery(
@@ -1316,7 +1175,7 @@ function DetailPanel({
     onSuccess: () => {
       refetchDevPlans();
       setShowDevPlanForm(false);
-      setDevPlanForm({ title: "", description: "", goals: "", startDate: "", endDate: "", status: "Not Started", linkedSkillId: "", linkedSwotId: "" });
+      setDevPlanForm({ title: "", description: "", goals: "", startDate: "", endDate: "", status: "Not Started" });
       toast.success("Development plan added");
     },
     onError: (e) => toast.error(`Failed: ${e.message}`),
@@ -1331,7 +1190,7 @@ function DetailPanel({
     onSuccess: () => {
       refetchSkills();
       setShowSkillForm(false);
-      setSkillForm({ name: "", level: "Beginner" as "Beginner" | "Intermediate" | "Advanced" | "Expert", linkedKpiId: "", linkedSwotId: "" });
+      setSkillForm({ name: "", level: "Beginner", linkedKpiId: "" });
       toast.success("Skill added");
     },
     onError: (e) => toast.error(`Failed: ${e.message}`),
@@ -1458,18 +1317,10 @@ function DetailPanel({
           <div className="px-4 pt-3 border-b">
             <TabsList className="w-full justify-start gap-0 bg-transparent p-0 h-auto">
               <TabsTrigger value="profile"    className="text-xs px-3 py-2 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent">Profile</TabsTrigger>
-              {classification === "TeamMember" && (
-                <TabsTrigger value="kpis"     className="text-xs px-3 py-2 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent">KPIs</TabsTrigger>
-              )}
-              {classification === "TeamMember" && (
-                <TabsTrigger value="swot"     className="text-xs px-3 py-2 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent">SWOT</TabsTrigger>
-              )}
-              {classification === "TeamMember" && (
-                <TabsTrigger value="devplan"  className="text-xs px-3 py-2 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent">Dev Plan</TabsTrigger>
-              )}
-              {classification === "TeamMember" && (
-                <TabsTrigger value="skills"   className="text-xs px-3 py-2 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent">Skills</TabsTrigger>
-              )}
+              <TabsTrigger value="kpis"       className="text-xs px-3 py-2 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent">KPIs</TabsTrigger>
+              <TabsTrigger value="swot"       className="text-xs px-3 py-2 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent">SWOT</TabsTrigger>
+              <TabsTrigger value="devplan"    className="text-xs px-3 py-2 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent">Dev Plan</TabsTrigger>
+              <TabsTrigger value="skills"     className="text-xs px-3 py-2 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent">Skills</TabsTrigger>
             </TabsList>
           </div>
 
@@ -1520,6 +1371,7 @@ function DetailPanel({
 
             {/* Engagement */}
             {(stakeholder.currentEngagementStatus || stakeholder.desiredEngagementStatus ||
+              stakeholder.powerLevel != null || stakeholder.interestLevel != null ||
               stakeholder.engagementStrategy) && (
               <div>
                 <SectionLabel label="Engagement" />
@@ -1541,6 +1393,31 @@ function DetailPanel({
                     )}
                   </div>
                 )}
+
+                <div className="grid grid-cols-2 gap-x-6 gap-y-3 mb-3">
+                  {stakeholder.powerLevel != null && (
+                    <div>
+                      <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Power Level</span>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        {[1,2,3,4,5].map(i => (
+                          <div key={i} className={`h-2 w-full rounded-sm ${i <= (stakeholder.powerLevel ?? 0) ? "bg-primary" : "bg-muted"}`} />
+                        ))}
+                        <span className="text-xs font-semibold ml-1">{stakeholder.powerLevel}/5</span>
+                      </div>
+                    </div>
+                  )}
+                  {stakeholder.interestLevel != null && (
+                    <div>
+                      <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Interest Level</span>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        {[1,2,3,4,5].map(i => (
+                          <div key={i} className={`h-2 w-full rounded-sm ${i <= (stakeholder.interestLevel ?? 0) ? "bg-primary" : "bg-muted"}`} />
+                        ))}
+                        <span className="text-xs font-semibold ml-1">{stakeholder.interestLevel}/5</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 {stakeholder.engagementStrategy && (
                   <div>
@@ -1608,7 +1485,7 @@ function DetailPanel({
               <div className="rounded-lg border p-4 bg-muted/20 flex items-center justify-between">
                 <div>
                   <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">Latest Assessment</p>
-                  <p className="text-sm font-medium">{formatDateTime(latestAssessment.assessmentDate)}</p>
+                  <p className="text-sm font-medium">{formatDate(latestAssessment.assessmentDate)}</p>
                   {latestAssessment.assessorName && (
                     <p className="text-xs text-muted-foreground">by {latestAssessment.assessorName}</p>
                   )}
@@ -1659,7 +1536,7 @@ function DetailPanel({
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <Award className="h-4 w-4 text-primary" />
-                          <span className="font-medium text-sm">{formatDateTime(a.assessmentDate)}</span>
+                          <span className="font-medium text-sm">{formatDate(a.assessmentDate)}</span>
                           {a.assessorName && <span className="text-xs text-muted-foreground">by {a.assessorName}</span>}
                         </div>
                         {a.overallScore != null && (
@@ -1812,38 +1689,6 @@ function DetailPanel({
                     <SelectItem value="On Hold">On Hold</SelectItem>
                   </SelectContent>
                 </Select>
-                {skills.length > 0 && (
-                  <div className="space-y-1">
-                    <Label className="text-xs">Link to Skill (optional)</Label>
-                    <Select value={devPlanForm.linkedSkillId || "__none__"} onValueChange={(v) => setDevPlanForm((p) => ({ ...p, linkedSkillId: v === "__none__" ? "" : v }))}>
-                      <SelectTrigger className="h-8">
-                        <SelectValue placeholder="Select skill..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">— None —</SelectItem>
-                        {(skills as any[]).map((sk) => (
-                          <SelectItem key={sk.id} value={String(sk.id)}>{sk.name} ({sk.level})</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-                {swotItems.length > 0 && (
-                  <div className="space-y-1">
-                    <Label className="text-xs">Link to SWOT Item (optional)</Label>
-                    <Select value={devPlanForm.linkedSwotId || "__none__"} onValueChange={(v) => setDevPlanForm((p) => ({ ...p, linkedSwotId: v === "__none__" ? "" : v }))}>
-                      <SelectTrigger className="h-8">
-                        <SelectValue placeholder="Select SWOT item..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">— None —</SelectItem>
-                        {(swotItems as any[]).map((sw) => (
-                          <SelectItem key={sw.id} value={String(sw.id)}>[{sw.quadrant}] {sw.description.length > 50 ? sw.description.slice(0, 50) + "…" : sw.description}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
                 <div className="flex gap-2">
                   <Button
                     size="sm"
@@ -1858,9 +1703,7 @@ function DetailPanel({
                         goals: devPlanForm.goals,
                         startDate: devPlanForm.startDate || undefined,
                         endDate: devPlanForm.endDate || undefined,
-                        status: devPlanForm.status as "Not Started" | "In Progress" | "Completed" | "On Hold",
-                        linkedSkillId: devPlanForm.linkedSkillId ? parseInt(devPlanForm.linkedSkillId) : null,
-                        linkedSwotId: devPlanForm.linkedSwotId ? parseInt(devPlanForm.linkedSwotId) : null,
+                        status: devPlanForm.status,
                       });
                     }}
                   >
@@ -1907,37 +1750,17 @@ function DetailPanel({
                         {plan.endDate && formatDate(plan.endDate)}
                       </p>
                     )}
-                    {/* Linked Skill */}
-                    {plan.linkedSkillId && (() => {
-                      const sk = (skills as any[]).find((s) => s.id === plan.linkedSkillId);
-                      return sk ? (
-                        <span className="inline-flex items-center gap-1 text-[10px] bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded-full">
-                          <Zap className="h-2.5 w-2.5" /> Skill: {sk.name} ({sk.level})
-                        </span>
-                      ) : null;
-                    })()}
-                    {/* Linked SWOT Item */}
-                    {plan.linkedSwotId && (() => {
-                      const sw = (swotItems as any[]).find((s) => s.id === plan.linkedSwotId);
-                      return sw ? (
-                        <span className="inline-flex items-center gap-1 text-[10px] bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded-full">
-                          <Brain className="h-2.5 w-2.5" /> {sw.quadrant}: {sw.description.length > 40 ? sw.description.slice(0, 40) + "…" : sw.description}
-                        </span>
-                      ) : null;
-                    })()}
-                    {/* DEV Tasks link */}
-                    <div className="pt-1 border-t border-dashed border-teal-200 mt-1">
-                      <button
-                        onClick={() => {
-                          sessionStorage.setItem('tasks_tab', 'development');
-                          window.location.href = '/tasks';
-                        }}
-                        className="inline-flex items-center gap-1 text-[10px] text-teal-600 hover:text-teal-700 hover:underline font-medium"
-                      >
-                        <CheckSquare className="h-2.5 w-2.5" />
-                        View / Create DEV Tasks →
-                      </button>
-                    </div>
+                    {/* Linked KPIs (visual) */}
+                    {kpis.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        <span className="text-[10px] text-muted-foreground uppercase tracking-wide mr-1 self-center">Linked KPIs:</span>
+                        {(kpis as any[]).map((kpi) => (
+                          <span key={kpi.id} className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
+                            {kpi.name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -1980,30 +1803,14 @@ function DetailPanel({
                 {kpis.length > 0 && (
                   <div className="space-y-1">
                     <Label className="text-xs">Link to KPI (optional)</Label>
-                    <Select value={skillForm.linkedKpiId || "__none__"} onValueChange={(v) => setSkillForm((p) => ({ ...p, linkedKpiId: v === "__none__" ? "" : v }))}>
+                    <Select value={skillForm.linkedKpiId} onValueChange={(v) => setSkillForm((p) => ({ ...p, linkedKpiId: v }))}>
                       <SelectTrigger className="h-8">
                         <SelectValue placeholder="Select KPI..." />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="__none__">— None —</SelectItem>
+                        <SelectItem value="">— None —</SelectItem>
                         {(kpis as any[]).map((kpi) => (
                           <SelectItem key={kpi.id} value={String(kpi.id)}>{kpi.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-                {swotItems.length > 0 && (
-                  <div className="space-y-1">
-                    <Label className="text-xs">Link to SWOT item (optional)</Label>
-                    <Select value={skillForm.linkedSwotId || "__none__"} onValueChange={(v) => setSkillForm((p) => ({ ...p, linkedSwotId: v === "__none__" ? "" : v }))}>
-                      <SelectTrigger className="h-8">
-                        <SelectValue placeholder="Select SWOT item..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">— None —</SelectItem>
-                        {(swotItems as any[]).map((s) => (
-                          <SelectItem key={s.id} value={String(s.id)}>[{s.quadrant}] {s.description}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -2017,10 +1824,10 @@ function DetailPanel({
                       if (!currentProjectId) { toast.error("No project selected"); return; }
                       createSkill.mutate({
                         stakeholderId: stakeholder.id,
+                        projectId: currentProjectId,
                         name: skillForm.name,
                         level: skillForm.level,
-                        linkedKpiId: skillForm.linkedKpiId ? parseInt(skillForm.linkedKpiId) : null,
-                        linkedSwotId: skillForm.linkedSwotId ? parseInt(skillForm.linkedSwotId) : null,
+                        linkedKpiId: skillForm.linkedKpiId ? parseInt(skillForm.linkedKpiId) : undefined,
                       });
                     }}
                   >
@@ -2041,7 +1848,6 @@ function DetailPanel({
               <div className="space-y-2">
                 {(skills as any[]).map((skill) => {
                   const linkedKpi = (kpis as any[]).find((k) => k.id === skill.linkedKpiId);
-                  const linkedSwot = (swotItems as any[]).find((s) => s.id === skill.linkedSwotId);
                   return (
                     <div key={skill.id} className="border rounded-lg px-3 py-2.5 flex items-center gap-2">
                       <div className="flex-1 min-w-0">
@@ -2053,17 +1859,12 @@ function DetailPanel({
                               <Target className="h-2.5 w-2.5" /> KPI: {linkedKpi.name}
                             </span>
                           )}
-                          {linkedSwot && (
-                            <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
-                              <Brain className="h-2.5 w-2.5" /> {linkedSwot.quadrant}: {linkedSwot.description.length > 30 ? linkedSwot.description.slice(0, 30) + "…" : linkedSwot.description}
-                            </span>
-                          )}
                         </div>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
                         <Select
                           value={skill.level}
-                          onValueChange={(v) => updateSkill.mutate({ id: skill.id, data: { level: v as "Beginner" | "Intermediate" | "Advanced" | "Expert" } })}
+                          onValueChange={(v) => updateSkill.mutate({ id: skill.id, data: { level: v } })}
                         >
                           <SelectTrigger className="h-6 w-28 text-xs">
                             <SelectValue />
@@ -2110,19 +1911,15 @@ const FALLBACK_COLORS = ['#3b82f6','#10b981','#f97316','#ef4444','#06b6d4','#f59
 function PowerInterestMatrix({
   stakeholders,
   onUpdatePosition,
-  onStakeholderClick,
 }: {
   stakeholders: any[];
   onUpdatePosition?: (id: number, power: number, interest: number) => void;
-  onStakeholderClick?: (s: any) => void;
 }) {
   const matrixRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState<{ id: number; startPower: number; startInterest: number } | null>(null);
   const [positions, setPositions] = useState<Record<number, { power: number; interest: number }>>({});
   const [hovered, setHovered] = useState<number | null>(null);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; id: number } | null>(null);
-  const dragStart = useRef<{ x: number; y: number } | null>(null);
-  const dragMoved = useRef(false);
 
   // Build effective positions: override with local drag state
   const getPos = useCallback((s: any) => {
@@ -2150,8 +1947,6 @@ function PowerInterestMatrix({
 
   function handleBubbleMouseDown(e: React.MouseEvent, s: any) {
     e.preventDefault();
-    dragStart.current = { x: e.clientX, y: e.clientY };
-    dragMoved.current = false;
     const pos = getPos(s);
     setDragging({ id: s.id, startPower: pos.power, startInterest: pos.interest });
     setHovered(s.id);
@@ -2161,12 +1956,6 @@ function PowerInterestMatrix({
   useEffect(() => {
     if (!dragging) return;
     function onMove(e: MouseEvent) {
-      if (!dragMoved.current && dragStart.current) {
-        const dx = Math.abs(e.clientX - dragStart.current.x);
-        const dy = Math.abs(e.clientY - dragStart.current.y);
-        if (dx > 5 || dy > 5) dragMoved.current = true;
-      }
-      if (!dragMoved.current) return;
       const xy = getMatrixXY(e.clientX, e.clientY);
       if (!xy) return;
       const interest = pctToValue(xy.xPct);
@@ -2174,20 +1963,13 @@ function PowerInterestMatrix({
       setPositions(prev => ({ ...prev, [dragging!.id]: { power, interest } }));
     }
     function onUp(e: MouseEvent) {
-      if (dragMoved.current) {
-        const xy = getMatrixXY(e.clientX, e.clientY);
-        if (xy) {
-          const interest = pctToValue(xy.xPct);
-          const power = pctToValue(1 - xy.yPct);
-          setPositions(prev => ({ ...prev, [dragging!.id]: { power, interest } }));
-          onUpdatePosition?.(dragging!.id, power, interest);
-        }
-      } else {
-        const clicked = stakeholders.find(x => x.id === dragging!.id);
-        if (clicked) onStakeholderClick?.(clicked);
+      const xy = getMatrixXY(e.clientX, e.clientY);
+      if (xy) {
+        const interest = pctToValue(xy.xPct);
+        const power = pctToValue(1 - xy.yPct);
+        setPositions(prev => ({ ...prev, [dragging!.id]: { power, interest } }));
+        onUpdatePosition?.(dragging!.id, power, interest);
       }
-      dragStart.current = null;
-      dragMoved.current = false;
       setDragging(null);
     }
     window.addEventListener("mousemove", onMove);
@@ -2286,29 +2068,29 @@ function PowerInterestMatrix({
 
           {/* Center cross-hair lines */}
           <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute left-1/2 top-0 bottom-0 w-[1.5px] bg-border/80" />
-            <div className="absolute top-1/2 left-0 right-0 h-[1.5px] bg-border/80" />
-            {/* Minor grid lines at values 2 and 4 only (skip 3=center and 5=edge) */}
-            {[1,3].map(n => (
+            <div className="absolute left-1/2 top-0 bottom-0 w-px bg-border/60" />
+            <div className="absolute top-1/2 left-0 right-0 h-px bg-border/60" />
+            {/* Grid lines at each unit */}
+            {[1,2,3,4].map(n => (
               <div key={`x${n}`} className="absolute top-0 bottom-0 w-px bg-border/20" style={{ left: `${(n / 4) * 100}%` }} />
             ))}
-            {[1,3].map(n => (
+            {[1,2,3,4].map(n => (
               <div key={`y${n}`} className="absolute left-0 right-0 h-px bg-border/20" style={{ top: `${(n / 4) * 100}%` }} />
             ))}
           </div>
 
-          {/* Axis tick values — absolutely positioned to match bubble coordinates */}
-          <div className="absolute left-0 right-0 bottom-0 pointer-events-none" style={{ height: 0 }}>
+          {/* Axis tick values */}
+          <div className="absolute left-0 right-0 bottom-0 flex pointer-events-none" style={{ height: 0 }}>
             {[1,2,3,4,5].map(n => (
-              <div key={n} className="absolute" style={{ left: `${((n - 1) / 4) * 100}%`, transform: "translateX(-50%) translateY(3px)" }}>
-                <span className="text-[9px] text-muted-foreground/50">{n}</span>
+              <div key={n} className="flex-1 flex justify-center" style={{ transform: "translateY(2px)" }}>
+                <span className="text-[9px] text-muted-foreground/40">{n}</span>
               </div>
             ))}
           </div>
-          <div className="absolute top-0 bottom-0 left-0 pointer-events-none" style={{ width: 0 }}>
+          <div className="absolute top-0 bottom-0 left-0 flex flex-col-reverse pointer-events-none" style={{ width: 0 }}>
             {[1,2,3,4,5].map(n => (
-              <div key={n} className="absolute flex items-center" style={{ top: `${((5 - n) / 4) * 100}%`, transform: "translateY(-50%) translateX(-16px)" }}>
-                <span className="text-[9px] text-muted-foreground/50">{n}</span>
+              <div key={n} className="flex-1 flex items-center" style={{ transform: "translateX(-14px)" }}>
+                <span className="text-[9px] text-muted-foreground/40">{n}</span>
               </div>
             ))}
           </div>
@@ -2433,7 +2215,6 @@ export default function Stakeholders() {
   const [searchTerm, setSearchTerm] = useState("");
   const [classificationFilter, setClassificationFilter] = useState<"all" | "TeamMember" | "External" | "Stakeholder">("all");
   const [strategyFilter, setStrategyFilter] = useState<string>("all");
-  const [matrixClassFilter, setMatrixClassFilter] = useState<"all" | "TeamMember" | "External" | "Stakeholder">("all");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -2447,16 +2228,6 @@ export default function Stakeholders() {
     { projectId: currentProjectId! },
     { enabled: !!currentProjectId }
   );
-
-  const { data: kpiSummaries = [] } = trpc.stakeholderEnhancements.listProjectKpiSummary.useQuery(
-    { projectId: currentProjectId! },
-    { enabled: !!currentProjectId }
-  );
-  const kpiSummaryMap = useMemo(() => {
-    const map = new Map<number, { latestOverallScore: number | null; previousOverallScore: number | null; averageOverallScore: number | null; trend: number[] }>();
-    for (const s of kpiSummaries) map.set(s.stakeholderId, { latestOverallScore: s.latestOverallScore, previousOverallScore: s.previousOverallScore, averageOverallScore: (s as any).averageOverallScore ?? null, trend: s.trend ?? [] });
-    return map;
-  }, [kpiSummaries]);
 
   const createMutation = trpc.stakeholders.create.useMutation({
     onSuccess: () => {
@@ -2682,15 +2453,7 @@ export default function Stakeholders() {
             <Plus className="h-4 w-4" /> Add Stakeholder
           </Button>
           {currentProjectId && (
-            <ImportExportToolbar
-              module="stakeholders"
-              projectId={currentProjectId}
-              onImportSuccess={() => {
-                utils.stakeholders.list.invalidate();
-                utils.commPlanOptions.positionOptions.list.invalidate();
-                utils.commPlanOptions.roleOptions.list.invalidate();
-              }}
-            />
+            <ImportExportToolbar module="stakeholders" projectId={currentProjectId} onImportSuccess={() => {}} />
           )}
         </div>
       </div>
@@ -2743,10 +2506,11 @@ export default function Stakeholders() {
         </Card>
       </div>
 
-      {/* Main tabs: Register only (Power/Interest Matrix moved to its own page) */}
+      {/* Main tabs: Register / Power-Interest Matrix */}
       <Tabs defaultValue="register">
         <TabsList>
           <TabsTrigger value="register">Stakeholder Register</TabsTrigger>
+          <TabsTrigger value="matrix">Power/Interest Matrix</TabsTrigger>
         </TabsList>
 
         {/* Register Tab */}
@@ -2816,15 +2580,13 @@ export default function Stakeholders() {
               <TableHead>Email</TableHead>
               <TableHead>Phone</TableHead>
               <TableHead>Remark</TableHead>
-              <TableHead>Trend</TableHead>
-              <TableHead>KPI Score</TableHead>
               <TableHead className="w-28">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredStakeholders.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={10}>
+                <TableCell colSpan={8}>
                   <EmptyState
                     icon={Users}
                     title={searchTerm ? "No stakeholders match your search" : "No stakeholders yet"}
@@ -2889,64 +2651,6 @@ export default function Stakeholders() {
                         <span className="text-muted-foreground text-xs">—</span>
                       )}
                     </TableCell>
-                    {/* Trend column: sparkline + direction arrow + diff */}
-                    <TableCell>
-                      {(() => {
-                        const kpi = kpiSummaryMap.get(s.id);
-                        if (!kpi || kpi.latestOverallScore === null) {
-                          return <span className="text-muted-foreground text-xs">—</span>;
-                        }
-                        const score = Number(kpi.latestOverallScore);
-                        const prev = kpi.previousOverallScore !== null && kpi.previousOverallScore !== undefined ? Number(kpi.previousOverallScore) : null;
-                        const rawDiff = prev !== null ? score - prev : null;
-                        const diff = rawDiff !== null && !isNaN(rawDiff) ? rawDiff : null;
-                        return (
-                          <div className="flex items-center gap-1.5">
-                            {kpi.trend.length >= 2 && (
-                              <SparkLine data={kpi.trend} />
-                            )}
-                            {diff !== null ? (
-                              <>
-                                {diff > 0
-                                  ? <TrendingUp className="w-3.5 h-3.5 text-green-500 shrink-0" />
-                                  : diff < 0
-                                  ? <TrendingDown className="w-3.5 h-3.5 text-red-500 shrink-0" />
-                                  : <span className="text-muted-foreground text-xs">→</span>}
-                                <span className={`text-xs font-medium ${diff > 0 ? "text-green-600" : diff < 0 ? "text-red-600" : "text-muted-foreground"}`}>
-                                  {diff > 0 ? `+${diff}` : diff}
-                                </span>
-                              </>
-                            ) : null}
-                          </div>
-                        );
-                      })()}
-                    </TableCell>
-                    {/* KPI Score column: latest score + average score */}
-                    <TableCell>
-                      {(() => {
-                        const kpi = kpiSummaryMap.get(s.id);
-                        if (!kpi || kpi.latestOverallScore === null) {
-                          return <span className="text-muted-foreground text-xs">—</span>;
-                        }
-                        const score = Number(kpi.latestOverallScore);
-                        const scoreColor = score >= 75 ? "text-green-600" : score >= 50 ? "text-yellow-600" : "text-red-600";
-                        const avg = kpi.averageOverallScore !== null && kpi.averageOverallScore !== undefined ? Number(kpi.averageOverallScore) : null;
-                        const avgColor = avg === null ? "" : avg >= 75 ? "bg-green-100 text-green-700 border-green-400" : avg >= 50 ? "bg-yellow-100 text-yellow-700 border-yellow-400" : "bg-red-100 text-red-700 border-red-400";
-                        return (
-                          <div className="flex flex-col gap-0.5">
-                            <span className={`font-semibold text-sm ${scoreColor}`}>{score}</span>
-                            {avg !== null && (
-                              <span
-                                title={`Average of all assessments: ${avg}`}
-                                className={`inline-flex items-center justify-center w-7 h-7 rounded-full border text-[10px] font-bold shrink-0 ${avgColor}`}
-                              >
-                                {avg}
-                              </span>
-                            )}
-                          </div>
-                        );
-                      })()}
-                    </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center gap-1">
                         <Button
@@ -2980,6 +2684,16 @@ export default function Stakeholders() {
         </Table>
       </div>
 
+        </TabsContent>
+
+        {/* Power/Interest Matrix Tab */}
+        <TabsContent value="matrix" className="mt-4">
+          <PowerInterestMatrix
+            stakeholders={stakeholders as any[]}
+            onUpdatePosition={(id, power, interest) =>
+              updatePositionMutation.mutate({ id, powerLevel: power, interestLevel: interest } as any)
+            }
+          />
         </TabsContent>
 
       </Tabs>

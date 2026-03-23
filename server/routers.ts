@@ -783,7 +783,8 @@ export const appRouter = router({
             ? await db.getNextId('devTask', 'DEV', input.projectId)
             : await db.getNextId('task', 'T', input.projectId);
           // Strip fields that are not columns in the tasks table
-          const { taskCategory: _cat, subjectId: _sid, issueId: _iid, ...dbInsertPayload } = cleanedInput;
+          // Note: issueId IS a valid column and must NOT be stripped
+          const { taskCategory: _cat, subjectId: _sid, ...dbInsertPayload } = cleanedInput;
           await db.createTask({ ...dbInsertPayload, taskId, projectId: input.projectId });
           
           return { success: true, taskId };

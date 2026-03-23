@@ -44,16 +44,12 @@ export const stakeholderEnhancementsRouter = router({
         target: z.string().optional(),
         unit: z.string().optional(),
         weight: z.number().default(1),
-        linkedSkillId: z.number().nullable().optional(),
       })
     )
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new Error("DB unavailable");
-      const [result] = await db.insert(stakeholderKpis).values({
-        ...input,
-        linkedSkillId: input.linkedSkillId ?? null,
-      });
+      const [result] = await db.insert(stakeholderKpis).values(input);
       return result;
     }),
 
@@ -67,7 +63,6 @@ export const stakeholderEnhancementsRouter = router({
           target: z.string().optional(),
           unit: z.string().optional(),
           weight: z.number().optional(),
-          linkedSkillId: z.number().nullable().optional(),
         }),
       })
     )
@@ -106,8 +101,7 @@ export const stakeholderEnhancementsRouter = router({
       const assessments = await db
         .select()
         .from(stakeholderAssessments)
-        .where(eq(stakeholderAssessments.stakeholderId, input.stakeholderId))
-        .orderBy(desc(stakeholderAssessments.assessmentDate), desc(stakeholderAssessments.id));
+        .where(eq(stakeholderAssessments.stakeholderId, input.stakeholderId));
 
       // Enrich with scores
       const enriched = await Promise.all(
@@ -181,12 +175,17 @@ export const stakeholderEnhancementsRouter = router({
         overallScore,
       });
 
-      // Get the inserted ID (latest by id for this stakeholder)
+      // Get the inserted ID
       const [newAssessment] = await db
         .select()
         .from(stakeholderAssessments)
-        .where(eq(stakeholderAssessments.stakeholderId, input.stakeholderId))
-        .orderBy(desc(stakeholderAssessments.id))
+        .where(
+          and(
+            eq(stakeholderAssessments.stakeholderId, input.stakeholderId),
+            sql`DATE(${stakeholderAssessments.assessmentDate}) = ${input.assessmentDate}`
+          )
+        )
+        .orderBy(stakeholderAssessments.createdAt)
         .limit(1);
 
       if (newAssessment && input.scores.length > 0) {
@@ -391,8 +390,6 @@ export const stakeholderEnhancementsRouter = router({
         startDate: z.string().optional(),
         endDate: z.string().optional(),
         status: z.enum(["Not Started", "In Progress", "Completed", "On Hold"]).optional(),
-        linkedSkillId: z.number().nullable().optional(),
-        linkedSwotId: z.number().nullable().optional(),
       })
     )
     .mutation(async ({ input }) => {
@@ -407,8 +404,6 @@ export const stakeholderEnhancementsRouter = router({
         startDate: input.startDate ? new Date(input.startDate) : undefined,
         endDate: input.endDate ? new Date(input.endDate) : undefined,
         status: input.status,
-        linkedSkillId: input.linkedSkillId ?? null,
-        linkedSwotId: input.linkedSwotId ?? null,
       });
       return result;
     }),
@@ -423,9 +418,9 @@ export const stakeholderEnhancementsRouter = router({
           goals: z.string().optional(),
           startDate: z.string().optional(),
           endDate: z.string().optional(),
-          status: z.enum(["Not Started", "In Progress", "Completed", "On Hold"]).optional(),
-          linkedSkillId: z.number().nullable().optional(),
-          linkedSwotId: z.number().nullable().optional(),
+          status: z
+            .enum(["Not Started", "In Progress", "Completed", "On Hold"])
+            .optional(),
         }),
       })
     )
