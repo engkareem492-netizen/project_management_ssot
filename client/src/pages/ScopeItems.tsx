@@ -241,6 +241,11 @@ export default function ScopeItems() {
     return matchesSearch && matchesPhase && matchesStatus;
   });
 
+  // Derive phase list from registry options (fallback to unique values in data)
+  const PHASES: string[] = phaseOptions.length > 0
+    ? (phaseOptions as any[]).map((p: any) => String(p.value))
+    : Array.from(new Set(scopeItems.map((i) => i.phase).filter(Boolean))) as string[];
+
   // Group by phase for summary
   const phaseGroups = PHASES.reduce<Record<string, number>>((acc, p) => {
     acc[p] = scopeItems.filter((i) => i.phase === p).length;
