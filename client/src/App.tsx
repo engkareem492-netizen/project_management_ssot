@@ -62,6 +62,7 @@ import PMPlan from "./pages/PMPlan";
 import Features from "./pages/Features";
 import TestPlans from "./pages/TestPlans";
 import Defects from "./pages/Defects";
+import CustomFields from "./pages/CustomFields";
 
 function Router() {
   return (
