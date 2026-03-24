@@ -21,7 +21,7 @@ import {
   Loader2, Search, Layers, BookOpen, FileText, AlertTriangle,
   CheckCircle2, AlertCircle, Circle, ChevronDown, ChevronRight, RefreshCw, CheckSquare,
 } from "lucide-react";
-import { useNavigate } from "wouter";
+import { useLocation } from "wouter";
 import { EmptyState } from "@/components/EmptyState";
 
 // ─── Health badge ────────────────────────────────────────────────────────────
@@ -141,7 +141,7 @@ function OrphanedItems({
 export default function ScopeCoverage() {
   const { currentProject } = useProject();
   const projectId = currentProject?.id;
-  const [navigate] = useNavigate ? [useNavigate()] : [() => {}];
+  const [, navigate] = useLocation();
 
   const [search, setSearch] = useState("");
   const [filterHealth, setFilterHealth] = useState("all");
