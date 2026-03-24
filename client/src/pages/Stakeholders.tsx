@@ -24,7 +24,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Sheet, SheetContent,
+  Sheet, SheetContent, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
@@ -36,7 +36,7 @@ import {
 } from "lucide-react";
 import { ImportExportToolbar } from "@/components/ImportExportToolbar";
 import { EmptyState } from "@/components/EmptyState";
-import { formatDate } from "@/lib/dateUtils";
+import { formatDate, formatDateTime } from "@/lib/dateUtils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type StakeholderFormData = {
@@ -873,7 +873,10 @@ function DetailPanel({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-[520px] sm:w-[580px] overflow-y-auto p-0">
+      <SheetContent className="w-[520px] sm:w-[580px] flex flex-col h-full p-0">
+        <SheetHeader className="sr-only">
+          <SheetTitle>Stakeholder Details</SheetTitle>
+        </SheetHeader>
         {/* ── Header banner ── */}
         <div className={`${clr.bg} px-6 pt-8 pb-5 relative`}>
           <button
@@ -920,7 +923,7 @@ function DetailPanel({
         </div>
 
         {/* ── Tabbed Body ── */}
-        <Tabs defaultValue="profile" className="flex flex-col">
+        <Tabs defaultValue="profile" className="flex flex-col flex-1 min-h-0">
           <div className="px-4 pt-3 border-b">
             <TabsList className="w-full justify-start gap-0 bg-transparent p-0 h-auto">
               <TabsTrigger value="profile"    className="text-xs px-3 py-2 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent">Profile</TabsTrigger>
@@ -940,7 +943,7 @@ function DetailPanel({
           </div>
 
           {/* ── Profile Tab ── */}
-          <TabsContent value="profile" className="px-6 py-5 space-y-6 mt-0">
+          <TabsContent value="profile" className="px-6 py-5 space-y-6 mt-0 overflow-y-auto flex-1">
 
             {/* Position & Role */}
             {(stakeholder.job || stakeholder.role || stakeholder.position || stakeholder.department) && (
@@ -1068,7 +1071,7 @@ function DetailPanel({
           </TabsContent>
 
           {/* ── KPIs & Assessments Tab ── */}
-          <TabsContent value="kpis" className="px-6 py-5 space-y-5 mt-0">
+          <TabsContent value="kpis" className="px-6 py-5 space-y-5 mt-0 overflow-y-auto flex-1">
             {/* Latest score card */}
             {latestAssessment && (
               <div className="rounded-lg border p-4 bg-muted/20 flex items-center justify-between">
@@ -1156,7 +1159,7 @@ function DetailPanel({
           </TabsContent>
 
           {/* ── SWOT Tab ── */}
-          <TabsContent value="swot" className="px-4 py-4 mt-0">
+          <TabsContent value="swot" className="px-4 py-4 mt-0 overflow-y-auto flex-1">
             <div className="flex items-center gap-2 mb-4">
               <Brain className="h-4 w-4 text-primary" />
               <h3 className="text-sm font-semibold">SWOT Analysis</h3>
@@ -1224,7 +1227,7 @@ function DetailPanel({
           </TabsContent>
 
           {/* ── Dev Plan Tab ── */}
-          <TabsContent value="devplan" className="px-4 py-4 space-y-4 mt-0">
+          <TabsContent value="devplan" className="px-4 py-4 space-y-4 mt-0 overflow-y-auto flex-1">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <TrendingUp className="h-4 w-4 text-primary" />
@@ -1411,7 +1414,7 @@ function DetailPanel({
           </TabsContent>
 
           {/* ── Skills Tab ── */}
-          <TabsContent value="skills" className="px-4 py-4 space-y-4 mt-0">
+          <TabsContent value="skills" className="px-4 py-4 space-y-4 mt-0 overflow-y-auto flex-1">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Zap className="h-4 w-4 text-primary" />
