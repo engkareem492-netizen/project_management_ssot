@@ -32,6 +32,7 @@ import {
   Plus, Trash2, Pencil, Search, Users, Mail, Phone, Briefcase,
   Target, ClipboardList, Star, TrendingUp, UserCheck, Link2, Unlink,
   BarChart2, ChevronRight, Award, Activity, Brain, Lightbulb, Shield, BookOpen, Zap,
+  MoveRight, CheckSquare,
 } from "lucide-react";
 import { ImportExportToolbar } from "@/components/ImportExportToolbar";
 import { EmptyState } from "@/components/EmptyState";
