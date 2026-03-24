@@ -1896,3 +1896,231 @@ export const userStoryTasks = mysqlTable("userStoryTasks", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type UserStoryTask = typeof userStoryTasks.$inferSelect;
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CUSTOM FIELDS
+// ═══════════════════════════════════════════════════════════════════════════════
+export const customFieldDefs = mysqlTable("customFieldDefs", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  entityType: mysqlEnum("entityType", [
+    "task", "issue", "risk", "requirement", "stakeholder",
+    "deliverable", "milestone", "action_item", "change_request",
+  ]).notNull(),
+  fieldKey: varchar("fieldKey", { length: 100 }).notNull(),
+  label: varchar("label", { length: 150 }).notNull(),
+  fieldType: mysqlEnum("fieldType", [
+    "text", "number", "date", "select", "multi_select",
+    "checkbox", "url", "email", "textarea", "rating",
+  ]).notNull().default("text"),
+  options: json("options").$type<string[]>(),
+  required: boolean("required").default(false),
+  sortOrder: int("sortOrder").default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type CustomFieldDef = typeof customFieldDefs.$inferSelect;
+export type InsertCustomFieldDef = typeof customFieldDefs.$inferInsert;
+
+export const customFieldValues = mysqlTable("customFieldValues", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  fieldDefId: int("fieldDefId").notNull(),
+  entityType: varchar("entityType", { length: 50 }).notNull(),
+  entityId: varchar("entityId", { length: 100 }).notNull(),
+  value: text("value"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type CustomFieldValue = typeof customFieldValues.$inferSelect;
+export type InsertCustomFieldValue = typeof customFieldValues.$inferInsert;
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PM PLAN SECTIONS
+// ═══════════════════════════════════════════════════════════════════════════════
+export const pmPlanSections = mysqlTable("pmPlanSections", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  sectionKey: varchar("sectionKey", { length: 60 }).notNull(),
+  content: json("content").$type<Record<string, string>>().default({}),
+  lastUpdatedBy: varchar("lastUpdatedBy", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type PmPlanSection = typeof pmPlanSections.$inferSelect;
+export type InsertPmPlanSection = typeof pmPlanSections.$inferInsert;
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MULTI-CURRENCY
+// ═══════════════════════════════════════════════════════════════════════════════
+export const projectCurrencies = mysqlTable("projectCurrencies", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  currencyCode: varchar("currencyCode", { length: 10 }).notNull(),
+  currencyName: varchar("currencyName", { length: 80 }).notNull(),
+  symbol: varchar("symbol", { length: 10 }).notNull().default(""),
+  isBase: boolean("isBase").notNull().default(false),
+  sortOrder: int("sortOrder").notNull().default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ProjectCurrency = typeof projectCurrencies.$inferSelect;
+export type InsertProjectCurrency = typeof projectCurrencies.$inferInsert;
+
+export const exchangeRates = mysqlTable("exchangeRates", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  fromCurrencyCode: varchar("fromCurrencyCode", { length: 10 }).notNull(),
+  toCurrencyCode: varchar("toCurrencyCode", { length: 10 }).notNull(),
+  baselineRate: decimal("baselineRate", { precision: 18, scale: 6 }).notNull().default("1"),
+  currentRate: decimal("currentRate", { precision: 18, scale: 6 }).notNull().default("1"),
+  predictedRate: decimal("predictedRate", { precision: 18, scale: 6 }).notNull().default("1"),
+  effectiveDate: varchar("effectiveDate", { length: 20 }),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ExchangeRate = typeof exchangeRates.$inferSelect;
+export type InsertExchangeRate = typeof exchangeRates.$inferInsert;
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// EVM (EARNED VALUE MANAGEMENT)
+// ═══════════════════════════════════════════════════════════════════════════════
+export const evmBaseline = mysqlTable("evmBaseline", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  bac: decimal("bac", { precision: 18, scale: 2 }).notNull().default("0"),
+  startDate: date("startDate"),
+  endDate: date("endDate"),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type EvmBaseline = typeof evmBaseline.$inferSelect;
+export type InsertEvmBaseline = typeof evmBaseline.$inferInsert;
+
+export const evmSnapshots = mysqlTable("evmSnapshots", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  periodLabel: varchar("periodLabel", { length: 100 }).notNull(),
+  periodDate: date("periodDate").notNull(),
+  pv: decimal("pv", { precision: 18, scale: 2 }).notNull().default("0"),
+  ev: decimal("ev", { precision: 18, scale: 2 }).notNull().default("0"),
+  ac: decimal("ac", { precision: 18, scale: 2 }).notNull().default("0"),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type EvmSnapshot = typeof evmSnapshots.$inferSelect;
+export type InsertEvmSnapshot = typeof evmSnapshots.$inferInsert;
+
+export const evmWbsEntries = mysqlTable("evmWbsEntries", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  wbsElementId: int("wbsElementId"),
+  wbsCode: varchar("wbsCode", { length: 50 }),
+  wbsTitle: varchar("wbsTitle", { length: 255 }),
+  bac: decimal("bac", { precision: 18, scale: 2 }).default("0"),
+  pv: decimal("pv", { precision: 18, scale: 2 }).default("0"),
+  ev: decimal("ev", { precision: 18, scale: 2 }).default("0"),
+  ac: decimal("ac", { precision: 18, scale: 2 }).default("0"),
+  percentComplete: decimal("percentComplete", { precision: 5, scale: 2 }).default("0"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type EvmWbsEntry = typeof evmWbsEntries.$inferSelect;
+export type InsertEvmWbsEntry = typeof evmWbsEntries.$inferInsert;
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// FEATURES, TEST PLANS, DEFECTS
+// ═══════════════════════════════════════════════════════════════════════════════
+export const features = mysqlTable("features", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  featureCode: varchar("featureCode", { length: 30 }),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  status: varchar("status", { length: 50 }).default("Draft"),
+  priority: varchar("priority", { length: 20 }).default("Medium"),
+  owner: varchar("owner", { length: 100 }),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type Feature = typeof features.$inferSelect;
+export type InsertFeature = typeof features.$inferInsert;
+
+export const testPlans = mysqlTable("testPlans", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  status: varchar("status", { length: 50 }).default("Draft"),
+  startDate: varchar("startDate", { length: 20 }),
+  endDate: varchar("endDate", { length: 20 }),
+  owner: varchar("owner", { length: 100 }),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type TestPlan = typeof testPlans.$inferSelect;
+export type InsertTestPlan = typeof testPlans.$inferInsert;
+
+export const defects = mysqlTable("defects", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  defectCode: varchar("defectCode", { length: 30 }),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  severity: varchar("severity", { length: 20 }).default("Medium"),
+  priority: varchar("priority", { length: 20 }).default("Medium"),
+  status: varchar("status", { length: 50 }).default("Open"),
+  reportedBy: varchar("reportedBy", { length: 100 }),
+  assignedTo: varchar("assignedTo", { length: 100 }),
+  stepsToReproduce: text("stepsToReproduce"),
+  expectedResult: text("expectedResult"),
+  actualResult: text("actualResult"),
+  resolution: text("resolution"),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type Defect = typeof defects.$inferSelect;
+export type InsertDefect = typeof defects.$inferInsert;
+
+export const testPlanTestCases = mysqlTable("testPlanTestCases", {
+  id: int("id").autoincrement().primaryKey(),
+  testPlanId: int("testPlanId").notNull(),
+  testCaseId: int("testCaseId").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const defectTestCases = mysqlTable("defectTestCases", {
+  id: int("id").autoincrement().primaryKey(),
+  defectId: int("defectId").notNull(),
+  testCaseId: int("testCaseId").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const featureRequirements = mysqlTable("featureRequirements", {
+  id: int("id").autoincrement().primaryKey(),
+  featureId: int("featureId").notNull(),
+  requirementId: int("requirementId").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CUMULATIVE FLOW DIAGRAM — daily task status snapshots
+// ═══════════════════════════════════════════════════════════════════════════════
+export const taskStatusHistory = mysqlTable("taskStatusHistory", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  snapshotDate: date("snapshotDate").notNull(),
+  statusOpen: int("statusOpen").default(0).notNull(),
+  statusInProgress: int("statusInProgress").default(0).notNull(),
+  statusBlocked: int("statusBlocked").default(0).notNull(),
+  statusDone: int("statusDone").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type TaskStatusHistory = typeof taskStatusHistory.$inferSelect;
+export type InsertTaskStatusHistory = typeof taskStatusHistory.$inferInsert;

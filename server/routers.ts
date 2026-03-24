@@ -64,6 +64,13 @@ import { communicationLogRouter } from "./routers/communicationLog.router";
 import { dropdownRegistryRouter } from "./routers/dropdownRegistry.router";
 import { wbsResourceAssignmentsRouter } from "./routers/wbsResourceAssignments.router";
 import { userStoriesRouter } from "./routers/userStories.router";
+import { evmRouter } from "./routers/evm.router";
+import { cfdRouter } from "./routers/cfd.router";
+import { featuresRouter } from "./routers/features.router";
+import { testPlansRouter } from "./routers/testPlans.router";
+import { defectsRouter } from "./routers/defects.router";
+import { pmPlanRouter } from "./routers/pmPlan.router";
+import { currenciesRouter } from "./routers/currencies.router";
 
 export const appRouter = router({
   system: systemRouter,
@@ -122,6 +129,13 @@ export const appRouter = router({
   dropdownRegistry: dropdownRegistryRouter,
   wbsResourceAssignments: wbsResourceAssignmentsRouter,
   userStories: userStoriesRouter,
+  evm: evmRouter,
+  cfd: cfdRouter,
+  features: featuresRouter,
+  testPlans: testPlansRouter,
+  defects: defectsRouter,
+  pmPlan: pmPlanRouter,
+  currencies: currenciesRouter,
   scopeItems: router({
     list: protectedProcedure
       .input(z.object({ projectId: z.number() }))

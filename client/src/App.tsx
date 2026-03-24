@@ -57,6 +57,11 @@ import CommunicationPlan from "./pages/CommunicationPlan";
 import TeamCharter from "./pages/TeamCharter";
 import WBS from "./pages/WBS";
 import StakeholderManagement from "./pages/StakeholderManagement";
+import EVM from "./pages/EVM";
+import PMPlan from "./pages/PMPlan";
+import Features from "./pages/Features";
+import TestPlans from "./pages/TestPlans";
+import Defects from "./pages/Defects";
 
 function Router() {
   return (
@@ -285,6 +290,21 @@ function Router() {
       </Route>
       <Route path={"/wbs"}>
         <WBS />
+      </Route>
+      <Route path={"/evm"}>
+        <DashboardLayout><EVM /></DashboardLayout>
+      </Route>
+      <Route path={"/pm-plan"}>
+        <DashboardLayout><PMPlan /></DashboardLayout>
+      </Route>
+      <Route path={"/features"}>
+        <DashboardLayout><Features /></DashboardLayout>
+      </Route>
+      <Route path={"/test-plans"}>
+        <DashboardLayout><TestPlans /></DashboardLayout>
+      </Route>
+      <Route path={"/defects"}>
+        <DashboardLayout><Defects /></DashboardLayout>
       </Route>
       <Route path={"/stakeholder-management"}>
         <DashboardLayout>

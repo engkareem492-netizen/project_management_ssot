@@ -84,6 +84,10 @@ import {
   Trash2,
   ChevronDown,
   ChevronUp,
+  TrendingUp,
+  Bug,
+  ClipboardList,
+  Puzzle,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -147,6 +151,9 @@ const SIDEBAR_SECTIONS: SidebarSection[] = [
       { icon: BarChart2, label: "Gantt Chart", path: "/gantt" },
       { icon: AlertTriangle, label: "Risk Register", path: "/risk-register" },
       { icon: DollarSign, label: "Budget", path: "/budget" },
+      { icon: TrendingUp, label: "EVM Dashboard", path: "/evm" },
+      { icon: Puzzle, label: "Features", path: "/features" },
+      { icon: ClipboardList, label: "PM Plan", path: "/pm-plan" },
       { icon: Radio, label: "Communication Plan", path: "/communication-plan" },
       { icon: Network, label: "RBS & Resources", path: "/resources" },
       { icon: Users, label: "Stakeholder Management", path: "/stakeholder-management" },
@@ -174,6 +181,8 @@ const SIDEBAR_SECTIONS: SidebarSection[] = [
       { icon: Link2, label: "Dependencies", path: "/dependencies" },
       { icon: FileCheck, label: "Assumptions", path: "/assumptions" },
       { icon: FlaskConical, label: "Test Cases", path: "/test-cases" },
+      { icon: ClipboardList, label: "Test Plans", path: "/test-plans" },
+      { icon: Bug, label: "Defects", path: "/defects" },
       { icon: Layers, label: "Traceability Matrix", path: "/traceability" },
       { icon: Crosshair, label: "Scope Coverage", path: "/scope-coverage" },
       { icon: FileBarChart, label: "Periodic Report", path: "/periodic-report" },
