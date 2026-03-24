@@ -512,8 +512,12 @@ export const teamSkillsRouter = router({
 
       let filledWorking = 0;
       let filledHoliday = 0;
+      let propagatedCount = 0;
 
       for (const sid of input.stakeholderIds) {
+        // Resolve sibling pooled stakeholders once per stakeholder
+        const siblings = await getSiblingPooledStakeholders(db, sid, input.projectId);
+
         for (const { date, isWeekend } of allDates) {
           // Check if an entry already exists
           const existing = await db
@@ -540,6 +544,11 @@ export const teamSkillsRouter = router({
                 notes: "Weekend",
               });
               filledHoliday++;
+              // Propagate to siblings
+              for (const sib of siblings) {
+                await upsertCalendarForStakeholder(db, sib.stakeholderId, sib.projectId, date, "Holiday", "0", "Weekend [Propagated]");
+                propagatedCount++;
+              }
             }
           } else {
             await db.insert(resourceCalendar).values({
@@ -551,11 +560,16 @@ export const teamSkillsRouter = router({
               notes: "",
             });
             filledWorking++;
+            // Propagate to siblings
+            for (const sib of siblings) {
+              await upsertCalendarForStakeholder(db, sib.stakeholderId, sib.projectId, date, "Working", input.fullTimeHours, "[Propagated]");
+              propagatedCount++;
+            }
           }
         }
       }
 
-      return { filledWorking, filledHoliday, total: filledWorking + filledHoliday };
+      return { filledWorking, filledHoliday, total: filledWorking + filledHoliday, propagatedCount };
     }),
 
   // ─── Resource Availability Check ──────────────────────────────────────────

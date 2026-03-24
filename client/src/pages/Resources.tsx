@@ -371,6 +371,12 @@ export default function Resources() {
     { enabled }
   );
 
+  // Cross-project pooled calendar — only fetched when a single pooled resource is selected
+  const { data: pooledCalEntries = [] } = trpc.teamSkills.listPooledCalendar.useQuery(
+    { stakeholderId: calStakeholderId!, projectId, startDate: calStart, endDate: calEnd },
+    { enabled: enabled && calStakeholderId != null }
+  );
+
   const { data: wbsNodes = [] } = trpc.wbsNodes.list.useQuery({ projectId }, { enabled });
   const { data: wbsAssignments = [], refetch: refetchAssignments } = trpc.wbsResourceAssignments.list.useQuery({ projectId }, { enabled });
   const upsertAssignment = trpc.wbsResourceAssignments.upsert.useMutation({
@@ -399,25 +405,33 @@ export default function Resources() {
   const isLoading = stLoading || tasksLoading;
 
   const upsertCalEntry = trpc.teamSkills.upsertCalendarEntry.useMutation({
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       refetchCal();
       setShowCalDialog(false);
-      toast.success("Calendar entry saved");
+      const propagated = data?.propagatedTo ?? 0;
+      toast.success(
+        propagated > 0
+          ? `Calendar entry saved · propagated to ${propagated} sibling project${propagated > 1 ? "s" : ""}`
+          : "Calendar entry saved"
+      );
     },
   });
 
   const upsertCalRange = trpc.teamSkills.upsertCalendarRange.useMutation({
-    onSuccess: (data) => {
+    onSuccess: (data: any) => {
       refetchCal();
       setShowCalDialog(false);
-      toast.success(`Calendar entries saved for ${data.count} day(s)`);
+      const propagated = data?.propagatedTo ?? 0;
+      const propMsg = propagated > 0 ? ` · propagated to ${propagated} sibling project${propagated > 1 ? "s" : ""}` : "";
+      toast.success(`Calendar entries saved for ${data.count} day(s)${propMsg}`);
     },
   });
   const massUpsertWorking = trpc.teamSkills.massUpsertWorking.useMutation({
-    onSuccess: (data) => {
+    onSuccess: (data: any) => {
       refetchCal();
       setShowMassDialog(false);
-      toast.success(`Mass fill done: ${data.filledWorking} working day(s) + ${data.filledHoliday} weekend holiday(s) created`);
+      const propMsg = (data?.propagatedCount ?? 0) > 0 ? ` · ${data.propagatedCount} entries propagated to sibling projects` : "";
+      toast.success(`Mass fill done: ${data.filledWorking} working day(s) + ${data.filledHoliday} weekend holiday(s) created${propMsg}`);
     },
     onError: (e) => toast.error(e.message ?? "Mass fill failed"),
   });
@@ -555,6 +569,25 @@ export default function Resources() {
     return map;
   }, [calendarEntries]);
 
+  /**
+   * For a selected pooled resource: map date → array of cross-project entries
+   * (includes entries from other projects that share this pooled resource).
+   * Used to render an impact row/banner below the main calendar row.
+   */
+  const pooledImpactByDate = useMemo(() => {
+    if (!calStakeholderId || pooledCalEntries.length === 0) return {} as Record<string, any[]>;
+    const map: Record<string, any[]> = {};
+    (pooledCalEntries as any[]).forEach((e: any) => {
+      if (e.projectId === projectId) return; // skip own project entries
+      const dateKey = e.date instanceof Date
+        ? e.date.toISOString().split("T")[0]
+        : String(e.date).split("T")[0];
+      if (!map[dateKey]) map[dateKey] = [];
+      map[dateKey].push(e);
+    });
+    return map;
+  }, [pooledCalEntries, calStakeholderId, projectId]);
+
   const calDates = useMemo(() => {
     if (!calStart || !calEnd) return [];
     return getDatesInRange(calStart, calEnd).slice(0, 60); // max 60 days
@@ -574,6 +607,8 @@ export default function Resources() {
         subtitle: s.role || s.classification || '',
         rbsNodeId: null,
         resourceType: s.classification ?? 'Human',
+        isPooled: s.isPooledResource ?? false,
+        email: s.email ?? '',
       }));
       let filtered = base;
       if (calCategoryFilter !== "all") filtered = filtered.filter(r => r.resourceType === calCategoryFilter);
@@ -589,6 +624,8 @@ export default function Resources() {
         subtitle: n.resourceType + (n.unit ? ` · ${n.unit}` : '') + (n.availability ? ` · ${n.availability}` : ''),
         rbsNodeId: n.id,
         resourceType: n.resourceType,
+        isPooled: linkedSh?.isPooledResource ?? false,
+        email: linkedSh?.email ?? '',
       };
     });
     let filtered = base;
@@ -1941,66 +1978,104 @@ export default function Resources() {
                         </thead>
                         <tbody>
                           {calResources.map((r: any) => {
-                            // Build a task-count-by-date map for this resource
                             const resourceName = r.name;
+                            // For pooled resources with a single-resource filter, show cross-project impact row
+                            const hasCrossProjectImpact = r.isPooled && Object.keys(pooledImpactByDate).length > 0 && calStakeholderId === r.id;
                             return (
-                              <tr key={r.id} className="hover:bg-gray-50/50">
-                                <td className="p-2 border border-gray-200 font-medium whitespace-nowrap">
-                                  <div className="flex items-center gap-1.5">
-                                    <div className="flex-1 min-w-0">
-                                      <div className="text-sm truncate">{r.name}</div>
-                                      <div className="text-[10px] text-muted-foreground truncate">{r.subtitle}</div>
-                                    </div>
-                                    <button
-                                      className="shrink-0 w-5 h-5 rounded-full bg-primary/10 hover:bg-primary/20 text-primary flex items-center justify-center transition-colors"
-                                      title={`Add calendar entry for ${r.name}`}
-                                      onClick={() => openCalDialogForResource(r.id, r.name)}
-                                    >
-                                      <span className="text-xs font-bold leading-none">+</span>
-                                    </button>
-                                  </div>
-                                </td>
-                                {calDates.map(date => {
-                                  const entry = calendarMap[r.id]?.[date];
-                                  const d = new Date(date + "T00:00:00");
-                                  const isWeekend = d.getDay() === 0 || d.getDay() === 6;
-                                  const isToday = date === todayStr;
-                                  const cellCls = entry
-                                    ? CAL_TYPE_COLORS[entry.type] ?? "bg-gray-100 text-gray-600 border-gray-200"
-                                    : isToday ? "bg-red-50 border-red-200"
-                                    : isWeekend ? "bg-gray-100 text-gray-300" : "";
-                                  // Task count for this resource on this date
-                                  const taskCount = (tasks as any[]).filter((t: any) => {
-                                    if (!t.dueDate) return false;
-                                    const dueStr = t.dueDate instanceof Date ? t.dueDate.toISOString().split("T")[0] : String(t.dueDate).split("T")[0];
-                                    return dueStr === date && (t.responsible === resourceName);
-                                  }).length;
-                                  return (
-                                    <td
-                                      key={date}
-                                      className={`p-1 border border-gray-200 text-center cursor-pointer hover:opacity-80 transition-opacity relative ${cellCls} ${isToday ? "border-red-300" : ""}`}
-                                      onClick={() => openCalDialog(r.id, r.name, date, entry, "single")}
-                                      title={entry
-                                        ? `${entry.type}${entry.availableHours ? " · " + entry.availableHours + "h" : ""}${entry.notes ? " — " + entry.notes : ""}`
-                                        : "Click to mark"}
-                                    >
-                                      {entry ? (
-                                        <div>
-                                          <div className="font-medium text-[10px]">{entry.type.slice(0, 3)}</div>
-                                          {entry.availableHours !== undefined && entry.availableHours !== "8.0" && (
-                                            <div className="text-[9px]">{entry.availableHours}h</div>
+                              <React.Fragment key={r.id}>
+                                <tr className="hover:bg-gray-50/50">
+                                  <td className="p-2 border border-gray-200 font-medium whitespace-nowrap">
+                                    <div className="flex items-center gap-1.5">
+                                      <div className="flex-1 min-w-0">
+                                        <div className="text-sm truncate flex items-center gap-1">
+                                          {r.name}
+                                          {r.isPooled && (
+                                            <span className="inline-flex items-center rounded px-1 py-0 text-[9px] font-semibold bg-indigo-100 text-indigo-700 border border-indigo-200 ml-1" title="Pooled resource — calendar changes propagate to sibling projects">
+                                              ⇄ Pooled
+                                            </span>
                                           )}
                                         </div>
-                                      ) : isWeekend ? <span>—</span> : null}
-                                      {taskCount > 0 && (
-                                        <span className="absolute top-0 right-0 w-3.5 h-3.5 bg-blue-500 text-white text-[9px] font-bold rounded-bl flex items-center justify-center leading-none">
-                                          {taskCount}
-                                        </span>
-                                      )}
+                                        <div className="text-[10px] text-muted-foreground truncate">{r.subtitle}</div>
+                                      </div>
+                                      <button
+                                        className="shrink-0 w-5 h-5 rounded-full bg-primary/10 hover:bg-primary/20 text-primary flex items-center justify-center transition-colors"
+                                        title={`Add calendar entry for ${r.name}`}
+                                        onClick={() => openCalDialogForResource(r.id, r.name)}
+                                      >
+                                        <span className="text-xs font-bold leading-none">+</span>
+                                      </button>
+                                    </div>
+                                  </td>
+                                  {calDates.map(date => {
+                                    const entry = calendarMap[r.id]?.[date];
+                                    const d = new Date(date + "T00:00:00");
+                                    const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+                                    const isToday = date === todayStr;
+                                    const isPropagated = typeof entry?.notes === "string" && entry.notes.startsWith("[Propagated");
+                                    const cellCls = entry
+                                      ? CAL_TYPE_COLORS[entry.type] ?? "bg-gray-100 text-gray-600 border-gray-200"
+                                      : isToday ? "bg-red-50 border-red-200"
+                                      : isWeekend ? "bg-gray-100 text-gray-300" : "";
+                                    const taskCount = (tasks as any[]).filter((t: any) => {
+                                      if (!t.dueDate) return false;
+                                      const dueStr = t.dueDate instanceof Date ? t.dueDate.toISOString().split("T")[0] : String(t.dueDate).split("T")[0];
+                                      return dueStr === date && (t.responsible === resourceName);
+                                    }).length;
+                                    return (
+                                      <td
+                                        key={date}
+                                        className={`p-1 border border-gray-200 text-center cursor-pointer hover:opacity-80 transition-opacity relative ${cellCls} ${isToday ? "border-red-300" : ""} ${isPropagated ? "ring-1 ring-inset ring-indigo-300" : ""}`}
+                                        onClick={() => openCalDialog(r.id, r.name, date, entry, "single")}
+                                        title={entry
+                                          ? `${entry.type}${entry.availableHours ? " · " + entry.availableHours + "h" : ""}${entry.notes ? " — " + entry.notes : ""}${isPropagated ? " (from sibling project)" : ""}`
+                                          : "Click to mark"}
+                                      >
+                                        {entry ? (
+                                          <div>
+                                            <div className="font-medium text-[10px]">{entry.type.slice(0, 3)}</div>
+                                            {entry.availableHours !== undefined && entry.availableHours !== "8.0" && (
+                                              <div className="text-[9px]">{entry.availableHours}h</div>
+                                            )}
+                                            {isPropagated && <div className="text-[8px] text-indigo-600">⇄</div>}
+                                          </div>
+                                        ) : isWeekend ? <span>—</span> : null}
+                                        {taskCount > 0 && (
+                                          <span className="absolute top-0 right-0 w-3.5 h-3.5 bg-blue-500 text-white text-[9px] font-bold rounded-bl flex items-center justify-center leading-none">
+                                            {taskCount}
+                                          </span>
+                                        )}
+                                      </td>
+                                    );
+                                  })}
+                                </tr>
+                                {/* Cross-project impact row for pooled resources */}
+                                {hasCrossProjectImpact && (
+                                  <tr className="bg-indigo-50/60 dark:bg-indigo-950/20">
+                                    <td className="p-1.5 border border-indigo-100 text-[10px] text-indigo-700 font-medium whitespace-nowrap">
+                                      <span title="Calendar entries from other projects sharing this pooled resource">⇄ Other projects</span>
                                     </td>
-                                  );
-                                })}
-                              </tr>
+                                    {calDates.map(date => {
+                                      const crossEntries: any[] = pooledImpactByDate[date] ?? [];
+                                      if (crossEntries.length === 0) {
+                                        return <td key={date} className="border border-indigo-100 p-0.5" />;
+                                      }
+                                      const types = crossEntries.map((e: any) => e.type);
+                                      const hasConflict = types.some((t: string) => t === "Leave" || t === "Holiday" || t === "Training");
+                                      return (
+                                        <td
+                                          key={date}
+                                          className={`p-0.5 border border-indigo-100 text-center text-[9px] ${hasConflict ? "bg-red-100 text-red-700" : "bg-indigo-100 text-indigo-700"}`}
+                                          title={crossEntries.map((e: any) => `${e.projectName ?? "?"}: ${e.type}${e.availableHours ? " " + e.availableHours + "h" : ""}`).join("\n")}
+                                        >
+                                          {crossEntries.map((e: any) => (
+                                            <div key={e.id} className="leading-tight truncate">{(e.projectName ?? "?").slice(0, 6)} {e.type.slice(0, 3)}</div>
+                                          ))}
+                                        </td>
+                                      );
+                                    })}
+                                  </tr>
+                                )}
+                              </React.Fragment>
                             );
                           })}
                         </tbody>
