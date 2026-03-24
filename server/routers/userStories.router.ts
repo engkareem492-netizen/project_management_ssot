@@ -11,9 +11,11 @@ import { getNextId } from "../db";
 import {
   userStories,
   userStoryRequirements,
+  userStoryTasks,
   requirements,
   scopeItems,
   stakeholders,
+  tasks,
 } from "../../drizzle/schema";
 import { eq, and, inArray, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
@@ -105,9 +107,37 @@ export const userStoriesRouter = router({
         });
       }
 
+      // Attach linked task IDs for each story
+      const taskLinks =
+        storyIds.length > 0
+          ? await db
+              .select({
+                userStoryId: userStoryTasks.userStoryId,
+                taskId: userStoryTasks.taskId,
+                taskCode: tasks.taskId,
+                taskDescription: tasks.description,
+                taskStatus: tasks.status,
+              })
+              .from(userStoryTasks)
+              .leftJoin(tasks, eq(userStoryTasks.taskId, tasks.id))
+              .where(inArray(userStoryTasks.userStoryId, storyIds))
+          : [];
+
+      const taskMap = new Map<number, { id: number; taskId: string; description: string | null; status: string | null }[]>();
+      for (const t of taskLinks) {
+        if (!taskMap.has(t.userStoryId)) taskMap.set(t.userStoryId, []);
+        taskMap.get(t.userStoryId)!.push({
+          id: t.taskId,
+          taskId: t.taskCode ?? "",
+          description: t.taskDescription ?? null,
+          status: t.taskStatus ?? null,
+        });
+      }
+
       return rows.map((r) => ({
         ...r,
         requirements: reqMap.get(r.id) ?? [],
+        linkedTasks: taskMap.get(r.id) ?? [],
       }));
     }),
 
@@ -195,6 +225,9 @@ export const userStoriesRouter = router({
       await db
         .delete(userStoryRequirements)
         .where(eq(userStoryRequirements.userStoryId, input.id));
+      await db
+        .delete(userStoryTasks)
+        .where(eq(userStoryTasks.userStoryId, input.id));
       await db.delete(userStories).where(eq(userStories.id, input.id));
       return { success: true };
     }),
@@ -235,6 +268,44 @@ export const userStoriesRouter = router({
           and(
             eq(userStoryRequirements.userStoryId, input.userStoryId),
             eq(userStoryRequirements.requirementId, input.requirementId)
+          )
+        );
+      return { success: true };
+    }),
+
+  // ── Link / Unlink a task to a user story ─────────────────────────────────
+  linkTask: protectedProcedure
+    .input(
+      z.object({
+        userStoryId: z.number(),
+        taskId: z.number(),
+        projectId: z.number(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      try {
+        await db.insert(userStoryTasks).values(input);
+      } catch (e: any) {
+        if (e.code !== "ER_DUP_ENTRY") throw e;
+      }
+      return { success: true };
+    }),
+
+  unlinkTask: protectedProcedure
+    .input(z.object({ userStoryId: z.number(), taskId: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      await db
+        .delete(userStoryTasks)
+        .where(
+          and(
+            eq(userStoryTasks.userStoryId, input.userStoryId),
+            eq(userStoryTasks.taskId, input.taskId)
           )
         );
       return { success: true };
@@ -304,6 +375,20 @@ export const userStoriesRouter = router({
       );
       const issueRows = (issueRaw as any[]) as { scopeItemId: number; total: number; openCount: number }[];
 
+      // Task completion per scope item (via user stories → userStoryTasks → tasks)
+      const [taskRaw] = await db.execute(
+        sql`SELECT si.id as scopeItemId,
+            COUNT(DISTINCT ust.taskId) as taskTotal,
+            SUM(CASE WHEN t.status IN ('Done','Completed','Closed','Cancelled') THEN 1 ELSE 0 END) as taskDone
+            FROM scopeItems si
+            JOIN userStories us ON us.scopeItemId = si.id AND us.projectId = ${projectId}
+            JOIN userStoryTasks ust ON ust.userStoryId = us.id
+            JOIN tasks t ON t.id = ust.taskId
+            WHERE si.projectId = ${projectId}
+            GROUP BY si.id`
+      );
+      const taskRows = (taskRaw as any[]) as { scopeItemId: number; taskTotal: number; taskDone: number }[];
+
       const reqMap = new Map<number, number>();
       for (const r of reqCounts) if (r.scopeItemId != null) reqMap.set(r.scopeItemId, Number(r.total));
 
@@ -313,12 +398,16 @@ export const userStoriesRouter = router({
       const issueMap = new Map<number, { total: number; open: number }>();
       for (const i of issueRows) issueMap.set(Number(i.scopeItemId), { total: Number(i.total), open: Number(i.openCount) });
 
+      const taskMap = new Map<number, { total: number; done: number }>();
+      for (const t of taskRows) taskMap.set(Number(t.scopeItemId), { total: Number(t.taskTotal), done: Number(t.taskDone ?? 0) });
+
       return scopes.map((sc) => {
         const reqCount = reqMap.get(sc.id) ?? 0;
         const story = storyMap.get(sc.id) ?? { total: 0, done: 0 };
         const issue = issueMap.get(sc.id) ?? { total: 0, open: 0 };
+        const task = taskMap.get(sc.id) ?? { total: 0, done: 0 };
         const health = reqCount === 0 ? "red" : story.total === 0 ? "yellow" : "green";
-        return { scopeItem: sc, requirementCount: reqCount, userStoryCount: story.total, userStoryDoneCount: story.done, issueCount: issue.total, openIssueCount: issue.open, health };
+        return { scopeItem: sc, requirementCount: reqCount, userStoryCount: story.total, userStoryDoneCount: story.done, issueCount: issue.total, openIssueCount: issue.open, taskCount: task.total, taskDoneCount: task.done, health };
       });
     }),
 });

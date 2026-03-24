@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Search, Edit, History, Loader2, Plus, Trash2, Settings, Eye, Save, X, CheckSquare, Info, AlertCircle, Link2, GitBranch, RefreshCw, ArrowRight, ChevronDown, ChevronRight, ListTree, LayoutList, AlignJustify, Users, CalendarDays } from "lucide-react";
+import { Search, Edit, History, Loader2, Plus, Trash2, Settings, Eye, Save, X, CheckSquare, Info, AlertCircle, Link2, GitBranch, RefreshCw, ArrowRight, ChevronDown, ChevronRight, ListTree, LayoutList, AlignJustify, Users, CalendarDays, BookOpen } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -277,6 +277,11 @@ export default function Tasks() {
     { enabled: !!currentProjectId }
   );
   // All project tasks for dependency selector (predecessor/successor picker)
+  const { data: allUserStories = [] } = trpc.userStories.list.useQuery(
+    { projectId: currentProjectId! },
+    { enabled: !!currentProjectId }
+  );
+
   const { data: allTasksForDeps } = trpc.taskDependencies.ganttData.useQuery(
     { projectId: currentProjectId! },
     { enabled: !!currentProjectId }
@@ -2530,6 +2535,9 @@ export default function Tasks() {
               <TabsTrigger value="team">Team & Contacts</TabsTrigger>
               <TabsTrigger value="decisions">Decisions {allDecisions?.filter(d => d.taskId === selectedTask?.taskId).length ? `(${allDecisions.filter(d => d.taskId === selectedTask?.taskId).length})` : ""}</TabsTrigger>
               <TabsTrigger value="issues">Issues & Updates</TabsTrigger>
+              <TabsTrigger value="userstories">
+                Stories {(() => { const c = (allUserStories as any[]).filter(s => s.linkedTasks?.some((t: any) => t.id === selectedTask?.id)).length; return c ? `(${c})` : ""; })()}
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="details" className="flex-1 overflow-y-auto space-y-4 pr-1">
@@ -3111,6 +3119,48 @@ export default function Tasks() {
                 )}
               </div>
             </div>
+            </TabsContent>
+
+            {/* ── User Stories Tab ────────────────────────────────────────── */}
+            <TabsContent value="userstories" className="flex-1 overflow-y-auto space-y-3 pr-1">
+              {(() => {
+                const linkedStories = (allUserStories as any[]).filter(
+                  (s) => s.linkedTasks?.some((t: any) => t.id === selectedTask?.id)
+                );
+                if (linkedStories.length === 0) {
+                  return (
+                    <div className="flex flex-col items-center justify-center py-12 text-muted-foreground gap-2">
+                      <BookOpen className="w-8 h-8 opacity-30" />
+                      <p className="text-sm">No user stories linked to this task.</p>
+                      <p className="text-xs">Link stories from the User Stories page.</p>
+                    </div>
+                  );
+                }
+                return linkedStories.map((story: any) => (
+                  <div key={story.id} className="border rounded-lg p-3 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs font-bold text-primary">{story.storyId}</span>
+                      <span className="text-sm font-medium flex-1 truncate">{story.title}</span>
+                      <Badge className={`text-[10px] ${story.status === "Done" || story.status === "Accepted" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}`}>
+                        {story.status ?? "New"}
+                      </Badge>
+                      <Badge variant="outline" className="text-[10px]">{story.priority ?? "Medium"}</Badge>
+                    </div>
+                    {story.scopeItemName && (
+                      <p className="text-xs text-muted-foreground">
+                        Scope: <span className="font-mono">{story.scopeItemCode}</span> {story.scopeItemName}
+                      </p>
+                    )}
+                    {story.requirements?.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {story.requirements.map((r: any) => (
+                          <Badge key={r.id} variant="secondary" className="text-[10px] font-mono">{r.idCode}</Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ));
+              })()}
             </TabsContent>
           </Tabs>
         </DialogContent>

@@ -104,6 +104,8 @@ export default function Requirements() {
   const { data: issues } = trpc.issues.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
   const { data: scopeItemsList = [] } = trpc.scopeItems.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
   const { data: userStoriesList = [] } = trpc.userStories.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
+  const { data: testCasesList = [] } = trpc.testCases.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
+  const { data: changeRequestsList = [] } = trpc.changeRequests.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
   const linkUserStoryMut = trpc.userStories.linkRequirement.useMutation({ onSuccess: () => utils.userStories.list.invalidate() });
   const unlinkUserStoryMut = trpc.userStories.unlinkRequirement.useMutation({ onSuccess: () => utils.userStories.list.invalidate() });
   const { data: statusOptions } = trpc.dropdownOptions.status.getAll.useQuery();
@@ -916,7 +918,7 @@ export default function Requirements() {
           </DialogHeader>
           
           <Tabs defaultValue="details" className="mt-4 flex-1 flex flex-col overflow-hidden">
-            <TabsList className="grid w-full grid-cols-5 flex-shrink-0">
+            <TabsList className="grid w-full grid-cols-7 flex-shrink-0">
               <TabsTrigger value="details">Details</TabsTrigger>
               <TabsTrigger value="tasks">
                 Tasks ({linkedTasks.length})
@@ -926,6 +928,12 @@ export default function Requirements() {
               </TabsTrigger>
               <TabsTrigger value="userstories">
                 Stories ({userStoriesList.filter((s: any) => s.requirements?.some((r: any) => r.id === selectedRequirement?.id)).length})
+              </TabsTrigger>
+              <TabsTrigger value="tests">
+                Tests ({(testCasesList as any[]).filter((tc) => tc.requirementId === selectedRequirement?.idCode).length})
+              </TabsTrigger>
+              <TabsTrigger value="changes">
+                Changes ({(changeRequestsList as any[]).filter((cr) => cr.requirementId === selectedRequirement?.idCode).length})
               </TabsTrigger>
               <TabsTrigger value="history">
                 History
@@ -1404,6 +1412,70 @@ export default function Requirements() {
                     })}
                   </div>
                 )}
+              </div>
+            </TabsContent>
+
+            {/* ── Test Cases Tab ─────────────────────────────────────────── */}
+            <TabsContent value="tests" className="mt-4">
+              <div className="space-y-3">
+                {(() => {
+                  const linked = (testCasesList as any[]).filter(
+                    (tc) => tc.requirementId === selectedRequirement?.idCode
+                  );
+                  if (linked.length === 0) {
+                    return (
+                      <div className="text-center py-8 text-muted-foreground border border-dashed border-primary/20 rounded-lg">
+                        <p className="text-sm">No test cases linked to this requirement.</p>
+                        <p className="text-xs mt-1">Link test cases from the Test Cases page.</p>
+                      </div>
+                    );
+                  }
+                  return linked.map((tc: any) => (
+                    <div key={tc.id} className="flex items-center gap-3 p-3 border rounded-lg">
+                      <span className="font-mono text-xs font-bold text-primary w-20 flex-shrink-0">{tc.testId}</span>
+                      <span className="flex-1 text-sm truncate">{tc.title}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-semibold flex-shrink-0 ${
+                        tc.status === "Passed" ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300" :
+                        tc.status === "Failed" ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" :
+                        tc.status === "In Progress" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" :
+                        "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                      }`}>{tc.status ?? "Not Executed"}</span>
+                      {tc.tester && <span className="text-xs text-muted-foreground flex-shrink-0">{tc.tester}</span>}
+                    </div>
+                  ));
+                })()}
+              </div>
+            </TabsContent>
+
+            {/* ── Change Requests Tab ────────────────────────────────────── */}
+            <TabsContent value="changes" className="mt-4">
+              <div className="space-y-3">
+                {(() => {
+                  const linked = (changeRequestsList as any[]).filter(
+                    (cr) => cr.requirementId === selectedRequirement?.idCode
+                  );
+                  if (linked.length === 0) {
+                    return (
+                      <div className="text-center py-8 text-muted-foreground border border-dashed border-primary/20 rounded-lg">
+                        <p className="text-sm">No change requests linked to this requirement.</p>
+                        <p className="text-xs mt-1">Set the Requirement ID when creating a change request.</p>
+                      </div>
+                    );
+                  }
+                  return linked.map((cr: any) => (
+                    <div key={cr.id} className="flex items-center gap-3 p-3 border rounded-lg">
+                      <span className="font-mono text-xs font-bold text-primary w-24 flex-shrink-0">{cr.crId}</span>
+                      <span className="flex-1 text-sm truncate">{cr.title}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-semibold flex-shrink-0 ${
+                        cr.status === "Approved" || cr.status === "Implemented" ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300" :
+                        cr.status === "Rejected" || cr.status === "Closed" ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" :
+                        cr.status === "Under Review" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" :
+                        "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300"
+                      }`}>{cr.status ?? "Draft"}</span>
+                      {cr.requestedBy && <span className="text-xs text-muted-foreground flex-shrink-0">{cr.requestedBy}</span>}
+                    </div>
+                  ));
+                })()}
               </div>
             </TabsContent>
 

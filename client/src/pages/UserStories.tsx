@@ -15,7 +15,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Plus, Trash2, Pencil, Search, Loader2, BookOpen, Link2, Unlink,
-  Layers, ChevronRight, X, Eye,
+  Layers, ChevronRight, X, Eye, CheckSquare,
 } from "lucide-react";
 import { toast } from "sonner";
 import { EmptyState } from "@/components/EmptyState";
@@ -79,6 +79,9 @@ export default function UserStories() {
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [linkStory, setLinkStory] = useState<any>(null);
   const [reqSearchTerm, setReqSearchTerm] = useState("");
+  const [linkTaskDialogOpen, setLinkTaskDialogOpen] = useState(false);
+  const [linkTaskStory, setLinkTaskStory] = useState<any>(null);
+  const [taskSearchTerm, setTaskSearchTerm] = useState("");
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [viewStory, setViewStory] = useState<any>(null);
 
@@ -99,6 +102,11 @@ export default function UserStories() {
   );
 
   const { data: requirementsList = [] } = trpc.requirements.list.useQuery(
+    { projectId: projectId! },
+    { enabled: !!projectId }
+  );
+
+  const { data: tasksList = [] } = trpc.tasks.list.useQuery(
     { projectId: projectId! },
     { enabled: !!projectId }
   );
@@ -147,6 +155,22 @@ export default function UserStories() {
   const unlinkReqMut = trpc.userStories.unlinkRequirement.useMutation({
     onSuccess: () => {
       toast.success("Requirement unlinked");
+      utils.userStories.list.invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const linkTaskMut = trpc.userStories.linkTask.useMutation({
+    onSuccess: () => {
+      toast.success("Task linked");
+      utils.userStories.list.invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const unlinkTaskMut = trpc.userStories.unlinkTask.useMutation({
+    onSuccess: () => {
+      toast.success("Task unlinked");
       utils.userStories.list.invalidate();
     },
     onError: (e) => toast.error(e.message),
@@ -210,6 +234,12 @@ export default function UserStories() {
     setLinkDialogOpen(true);
   }
 
+  function openLinkTasks(story: any) {
+    setLinkTaskStory(story);
+    setTaskSearchTerm("");
+    setLinkTaskDialogOpen(true);
+  }
+
   function handleSubmit() {
     if (!form.title.trim()) {
       toast.error("Title is required");
@@ -248,6 +278,22 @@ export default function UserStories() {
         (r.description ?? "").toLowerCase().includes(q)
     );
   }, [requirementsList, reqSearchTerm]);
+
+  const linkedTaskIds = useMemo(
+    () => new Set((linkTaskStory?.linkedTasks ?? []).map((t: any) => t.id)),
+    [linkTaskStory]
+  );
+
+  const filteredTasks = useMemo(() => {
+    const topLevel = (tasksList as any[]).filter((t) => !t.parentTaskId);
+    if (!taskSearchTerm) return topLevel;
+    const q = taskSearchTerm.toLowerCase();
+    return topLevel.filter(
+      (t: any) =>
+        (t.taskId ?? "").toLowerCase().includes(q) ||
+        (t.description ?? "").toLowerCase().includes(q)
+    );
+  }, [tasksList, taskSearchTerm]);
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -347,6 +393,7 @@ export default function UserStories() {
                   <TableHead className="w-24">Priority</TableHead>
                   <TableHead className="w-20 text-center">Points</TableHead>
                   <TableHead className="w-24 text-center">Reqs</TableHead>
+                  <TableHead className="w-24 text-center">Tasks</TableHead>
                   <TableHead className="w-32 text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -416,6 +463,15 @@ export default function UserStories() {
                           {story.requirements?.length ?? 0}
                         </button>
                       </TableCell>
+                      <TableCell className="text-center">
+                        <button
+                          className="inline-flex items-center gap-1 text-xs text-orange-600 hover:underline"
+                          onClick={() => openLinkTasks(story)}
+                        >
+                          <CheckSquare className="w-3 h-3" />
+                          {story.linkedTasks?.length ?? 0}
+                        </button>
+                      </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
                           <Button
@@ -435,6 +491,15 @@ export default function UserStories() {
                             title="Link requirements"
                           >
                             <Link2 className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 w-7 p-0"
+                            onClick={() => openLinkTasks(story)}
+                            title="Link tasks"
+                          >
+                            <CheckSquare className="w-3.5 h-3.5" />
                           </Button>
                           <Button
                             size="sm"
@@ -750,6 +815,24 @@ export default function UserStories() {
                   </div>
                 </div>
               )}
+              {viewStory.linkedTasks?.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+                    Linked Tasks ({viewStory.linkedTasks.length})
+                  </p>
+                  <div className="space-y-1">
+                    {viewStory.linkedTasks.map((t: any) => (
+                      <div key={t.id} className="flex items-center gap-2 text-sm">
+                        <span className="font-mono text-xs text-orange-600 font-bold">{t.taskId}</span>
+                        <span className="truncate text-foreground">{t.description}</span>
+                        {t.status && (
+                          <Badge variant="outline" className="text-[10px] ml-auto flex-shrink-0">{t.status}</Badge>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
           <div className="flex justify-end gap-2 mt-4">
@@ -853,6 +936,102 @@ export default function UserStories() {
 
           <div className="flex justify-end mt-3">
             <Button variant="outline" onClick={() => setLinkDialogOpen(false)}>Done</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Link Tasks Dialog ──────────────────────────────────────────────── */}
+      <Dialog open={linkTaskDialogOpen} onOpenChange={setLinkTaskDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckSquare className="w-4 h-4 text-primary" />
+              Link Tasks — {linkTaskStory?.storyId}
+            </DialogTitle>
+          </DialogHeader>
+
+          {/* Currently linked */}
+          {(linkTaskStory?.linkedTasks?.length ?? 0) > 0 && (
+            <div className="mt-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+                Currently Linked
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {linkTaskStory?.linkedTasks?.map((t: any) => (
+                  <div
+                    key={t.id}
+                    className="flex items-center gap-1 px-2 py-1 bg-orange-100 dark:bg-orange-900/40 rounded text-xs font-mono text-orange-700 dark:text-orange-300"
+                  >
+                    {t.taskId}
+                    <button
+                      className="ml-1 text-orange-400 hover:text-red-500"
+                      onClick={() =>
+                        unlinkTaskMut.mutate({
+                          userStoryId: linkTaskStory.id,
+                          taskId: t.id,
+                        })
+                      }
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <Separator className="mt-3" />
+            </div>
+          )}
+
+          <div className="relative mt-2">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              className="pl-9"
+              placeholder="Search tasks..."
+              value={taskSearchTerm}
+              onChange={(e) => setTaskSearchTerm(e.target.value)}
+            />
+          </div>
+
+          <ScrollArea className="flex-1 mt-2 border rounded">
+            <div className="p-1">
+              {filteredTasks.length === 0 ? (
+                <p className="text-sm text-muted-foreground p-4 text-center">No tasks found</p>
+              ) : (
+                filteredTasks.map((task: any) => {
+                  const isLinked = linkedTaskIds.has(task.id);
+                  return (
+                    <div
+                      key={task.id}
+                      className={`flex items-start gap-3 p-2.5 rounded hover:bg-muted/50 cursor-pointer ${isLinked ? "opacity-50" : ""}`}
+                      onClick={() => {
+                        if (!isLinked && linkTaskStory) {
+                          linkTaskMut.mutate({
+                            userStoryId: linkTaskStory.id,
+                            taskId: task.id,
+                            projectId: projectId!,
+                          });
+                        }
+                      }}
+                    >
+                      <Checkbox checked={isLinked} readOnly className="mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <span className="font-mono text-xs text-orange-600 font-bold">{task.taskId}</span>
+                        <p className="text-sm text-foreground truncate">{task.description}</p>
+                        {task.status && (
+                          <Badge variant="outline" className="text-[10px] mt-0.5">{task.status}</Badge>
+                        )}
+                      </div>
+                      {!isLinked && (
+                        <Link2 className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0 mt-1" />
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </ScrollArea>
+
+          <div className="flex justify-end mt-3">
+            <Button variant="outline" onClick={() => setLinkTaskDialogOpen(false)}>Done</Button>
           </div>
         </DialogContent>
       </Dialog>

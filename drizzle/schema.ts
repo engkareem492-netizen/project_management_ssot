@@ -1885,3 +1885,13 @@ export const userStoryRequirements = mysqlTable("userStoryRequirements", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type UserStoryRequirement = typeof userStoryRequirements.$inferSelect;
+
+// Many-to-many: user stories ↔ tasks
+export const userStoryTasks = mysqlTable("userStoryTasks", {
+  id: int("id").autoincrement().primaryKey(),
+  userStoryId: int("userStoryId").notNull(),
+  taskId: int("taskId").notNull(),
+  projectId: int("projectId").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type UserStoryTask = typeof userStoryTasks.$inferSelect;

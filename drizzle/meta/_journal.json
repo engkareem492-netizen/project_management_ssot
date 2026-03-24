@@ -302,6 +302,20 @@
       "when": 1742900000000,
       "tag": "0047_user_stories_scope_links",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1742910000000,
+      "tag": "0048_user_story_tasks",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1742920000000,
+      "tag": "0049_change_requests_requirement",
+      "breakpoints": true
     }
   ]
 }

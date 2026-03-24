@@ -19,7 +19,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Progress } from "@/components/ui/progress";
 import {
   Loader2, Search, Layers, BookOpen, FileText, AlertTriangle,
-  CheckCircle2, AlertCircle, Circle, ChevronDown, ChevronRight, RefreshCw,
+  CheckCircle2, AlertCircle, Circle, ChevronDown, ChevronRight, RefreshCw, CheckSquare,
 } from "lucide-react";
 import { useNavigate } from "wouter";
 import { EmptyState } from "@/components/EmptyState";
@@ -310,6 +310,11 @@ export default function ScopeCoverage() {
                     </span>
                   </TableHead>
                   <TableHead className="w-28 text-center">Story Progress</TableHead>
+                  <TableHead className="w-28 text-center">
+                    <span className="flex items-center justify-center gap-1">
+                      <CheckSquare className="w-3.5 h-3.5" />Tasks
+                    </span>
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -318,6 +323,9 @@ export default function ScopeCoverage() {
                     row.userStoryCount > 0
                       ? Math.round((row.userStoryDoneCount / row.userStoryCount) * 100)
                       : 0;
+                  const taskCount = (row as any).taskCount ?? 0;
+                  const taskDone = (row as any).taskDoneCount ?? 0;
+                  const taskPct = taskCount > 0 ? Math.round((taskDone / taskCount) * 100) : 0;
                   return (
                     <TableRow key={row.scopeItem.id} className="hover:bg-primary/5">
                       <TableCell className="py-3">
@@ -398,6 +406,24 @@ export default function ScopeCoverage() {
                             </div>
                             <p className="text-[10px] text-muted-foreground">
                               {row.userStoryDoneCount}/{row.userStoryCount} done
+                            </p>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">—</span>
+                        )}
+                      </TableCell>
+                      {/* Task completion */}
+                      <TableCell className="py-3 text-center">
+                        {taskCount > 0 ? (
+                          <div className="space-y-1">
+                            <div className="h-1.5 bg-muted rounded-full overflow-hidden w-full max-w-[80px] mx-auto">
+                              <div
+                                className="h-full bg-orange-500 rounded-full"
+                                style={{ width: `${taskPct}%` }}
+                              />
+                            </div>
+                            <p className="text-[10px] text-muted-foreground">
+                              {taskDone}/{taskCount} done
                             </p>
                           </div>
                         ) : (
