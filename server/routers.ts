@@ -1508,7 +1508,6 @@ export const appRouter = router({
         }
         return result;
       }),
-
     update: protectedProcedure
       .input(z.object({
         id: z.number(),

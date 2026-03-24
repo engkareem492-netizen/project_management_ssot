@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Search, Edit, History, Loader2, Plus, Trash2, Settings, Eye, Save, X, CheckSquare, Info, AlertCircle, Link2, GitBranch, RefreshCw, ArrowRight, ChevronDown, ChevronRight, ListTree, LayoutList, AlignJustify, Users, CalendarDays, BookOpen } from "lucide-react";
+import { Search, Edit, History, Loader2, Plus, Trash2, Settings, Eye, Save, X, CheckSquare, Info, AlertCircle, Link2, GitBranch, RefreshCw, ArrowRight, ChevronDown, ChevronRight, ListTree, LayoutList, AlignJustify, Users, CalendarDays } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -150,73 +150,15 @@ export default function Tasks() {
     consultedId: undefined,
     informedId: undefined,
     ownerId: undefined,
-    subjectId: undefined,
     status: 'Not Started',
     priority: 'Medium',
     requirementId: '',
     issueId: '',
     dueDate: '',
     assignDate: new Date().toISOString().split('T')[0],
-    taskCategory: 'task' as 'task' | 'communication' | 'development',
-    recurringType: 'none' as string,
-    devPlanId: undefined as number | undefined,
-    devTaskSwotId: undefined as number | undefined,
-    devTaskSkillId: undefined as number | undefined,
   });
 
-  // ── Resource Calendar & Dependency state ────────────────────────────────
-  type DepEntry = {
-    direction: 'predecessor' | 'successor';
-    taskId: string;
-    dependencyType: 'Finish-to-Start' | 'Start-to-Start' | 'Finish-to-Finish' | 'Start-to-Finish';
-    lagDays: number;
-  };
-  const [newTaskDependencies, setNewTaskDependencies] = useState<DepEntry[]>([]);
-
-  type ResourceWarning = {
-    subject?: { name: string; unavailableDays: string[]; availableHours: number };
-    responsible?: { name: string; unavailableDays: string[]; availableHours: number; requiredHours: number; shortfallHours: number };
-  };
-  const [resourceWarning, setResourceWarning] = useState<ResourceWarning | null>(null);
-  const [warningDialogOpen, setWarningDialogOpen] = useState(false);
-  const [pendingTaskData, setPendingTaskData] = useState<any>(null);
-  const [rescheduleDialogOpen, setRescheduleDialogOpen] = useState(false);
-  const [rescheduleMethod, setRescheduleMethod] = useState<'level' | 'crash' | 'fasttrack' | 'manual'>('level');
-  const [manualRescheduleDate, setManualRescheduleDate] = useState('');
-
-  const [mainTab, setMainTab] = useState<'tasks' | 'communication' | 'development'>('tasks');
   const { data: tasks, isLoading, refetch } = trpc.tasks.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
-  const commTasks = (tasks || []).filter((t: any) => t.taskCategory === 'communication' || (t.taskId || '').startsWith('COMM-'));
-  const devTasks = (tasks || []).filter((t: any) => t.taskCategory === 'development' || (t.taskId || '').startsWith('DEV-'));
-  const regularTasks = (tasks || []).filter((t: any) =>
-    t.taskCategory !== 'communication' && !(t.taskId || '').startsWith('COMM-') &&
-    t.taskCategory !== 'development' && !(t.taskId || '').startsWith('DEV-')
-  );
-
-  // Dev Plans for the current project (used in DEV task form)
-  const { data: devPlans = [] } = trpc.stakeholderEnhancements.listDevPlansByProject.useQuery(
-    { projectId: currentProjectId! },
-    { enabled: !!currentProjectId }
-  );
-  // Selected dev plan stakeholder id — drives SWOT/skill dropdowns
-  const selectedDevPlan = devPlans.find((p: any) => p.id === newTask.devPlanId);
-  const { data: devPlanSwot = [] } = trpc.stakeholderEnhancements.listSwotByStakeholder.useQuery(
-    { stakeholderId: selectedDevPlan?.stakeholderId ?? 0 },
-    { enabled: !!selectedDevPlan?.stakeholderId }
-  );
-  const { data: devPlanSkills = [] } = trpc.stakeholderEnhancements.listSkillsByStakeholder.useQuery(
-    { stakeholderId: selectedDevPlan?.stakeholderId ?? 0 },
-    { enabled: !!selectedDevPlan?.stakeholderId }
-  );
-
-  // Handle sessionStorage tab pre-selection (e.g. from Dev Plan link)
-  useEffect(() => {
-    const tab = sessionStorage.getItem('tasks_tab');
-    if (tab === 'development' || tab === 'communication') {
-      setMainTab(tab as 'tasks' | 'communication' | 'development');
-      sessionStorage.removeItem('tasks_tab');
-    }
-  }, []);
 
   // Handle taskId query parameter from URL
   useEffect(() => {
@@ -270,22 +212,6 @@ export default function Tasks() {
     return match?.isComplete === true;
   };
   const { data: priorityOptions } = trpc.dropdownOptions.priority.getAll.useQuery();
-
-  // Calendar entries for resource availability checks
-  const { data: calendarEntries } = trpc.teamSkills.listCalendar.useQuery(
-    { projectId: currentProjectId! },
-    { enabled: !!currentProjectId }
-  );
-  // All project tasks for dependency selector (predecessor/successor picker)
-  const { data: allUserStories = [] } = trpc.userStories.list.useQuery(
-    { projectId: currentProjectId! },
-    { enabled: !!currentProjectId }
-  );
-
-  const { data: allTasksForDeps } = trpc.taskDependencies.ganttData.useQuery(
-    { projectId: currentProjectId! },
-    { enabled: !!currentProjectId }
-  );
 
   const utils = trpc.useUtils();
 
@@ -458,125 +384,30 @@ export default function Tasks() {
   });
 
   const createMutation = trpc.tasks.create.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Task ${data.taskId} created successfully`);
+      setCreateDialogOpen(false);
+      setLinkRequirement(false);
+      setNewTask({
+        taskGroup: '',
+        description: '',
+        responsible: '',
+        accountable: '',
+        consulted: '',
+        informed: '',
+        owner: '',
+        status: 'Not Started',
+        priority: 'Medium',
+        requirementId: '',
+        dueDate: '',
+        assignDate: new Date().toISOString().split('T')[0],
+      });
+      refetch();
+    },
     onError: (error) => {
       toast.error(`Create failed: ${error.message}`);
     },
   });
-  const createDependencyMutation = trpc.taskDependencies.create.useMutation();
-
-  // ── Helper: get working days (Mon–Fri) in a date range ───────────────────
-  const getWorkingDaysInRange = (startDate: string, endDate: string): string[] => {
-    const days: string[] = [];
-    const current = new Date(startDate + 'T00:00:00');
-    const end = new Date(endDate + 'T00:00:00');
-    while (current <= end) {
-      const dow = current.getDay();
-      if (dow !== 0 && dow !== 6) days.push(current.toISOString().split('T')[0]);
-      current.setDate(current.getDate() + 1);
-    }
-    return days;
-  };
-
-  // ── Helper: check one person's availability in the task window ────────────
-  const checkPersonAvailability = (stakeholderId: number, startDate: string, endDate: string, requiredHours: number) => {
-    if (!calendarEntries) return null;
-    const entries = (calendarEntries as any[]).filter(e => e.stakeholderId === stakeholderId);
-    const workingDays = getWorkingDaysInRange(startDate, endDate);
-
-    const unavailableDays = workingDays.filter(day => {
-      const entry = entries.find(e => e.date === day);
-      return entry && ['Leave', 'Holiday', 'Training'].includes(entry.type);
-    });
-
-    const availableHours = workingDays.reduce((sum, day) => {
-      const entry = entries.find(e => e.date === day);
-      if (!entry) return sum + 8;
-      if (['Leave', 'Holiday', 'Training'].includes(entry.type)) return sum;
-      return sum + parseFloat(entry.availableHours || '8');
-    }, 0);
-
-    return {
-      unavailableDays,
-      availableHours,
-      totalWorkingDays: workingDays.length,
-      hasConflict: unavailableDays.length > 0 || (requiredHours > 0 && availableHours < requiredHours),
-      shortfallHours: Math.max(0, requiredHours - availableHours),
-    };
-  };
-
-  // ── Helper: PMP Resource Leveling — extend due date to absorb shortfall ───
-  const computeResourceLevelingDate = (startDate: string, responsibleId: number, requiredHours: number): string => {
-    if (!calendarEntries) return startDate;
-    const entries = (calendarEntries as any[]).filter(e => e.stakeholderId === responsibleId);
-    let accumulated = 0;
-    const current = new Date(startDate + 'T00:00:00');
-    let lastDate = startDate;
-    // Safety limit: don't scan more than 365 days
-    for (let i = 0; i < 365; i++) {
-      const dow = current.getDay();
-      if (dow !== 0 && dow !== 6) {
-        const dateStr = current.toISOString().split('T')[0];
-        const entry = entries.find(e => e.date === dateStr);
-        if (!entry || !['Leave', 'Holiday', 'Training'].includes(entry.type)) {
-          accumulated += parseFloat(entry?.availableHours || '8');
-        }
-        lastDate = dateStr;
-        if (accumulated >= requiredHours) break;
-      }
-      current.setDate(current.getDate() + 1);
-    }
-    return lastDate;
-  };
-
-  // ── Core create: saves task then its dependencies ─────────────────────────
-  const doCreateTask = async (taskData: any) => {
-    const pendingDeps = [...newTaskDependencies];
-    try {
-      const result = await createMutation.mutateAsync(taskData);
-      toast.success(`Task ${result.taskId} created successfully`);
-
-      // Create any pending predecessor/successor links
-      if (pendingDeps.length > 0 && currentProjectId) {
-        for (const dep of pendingDeps) {
-          const predId = dep.direction === 'predecessor' ? dep.taskId : result.taskId;
-          const succId = dep.direction === 'successor' ? dep.taskId : result.taskId;
-          try {
-            await createDependencyMutation.mutateAsync({
-              projectId: currentProjectId,
-              predecessorTaskId: predId,
-              successorTaskId: succId,
-              dependencyType: dep.dependencyType,
-              lagDays: dep.lagDays,
-            });
-          } catch {
-            // Log but don't block — task was already saved
-          }
-        }
-        if (pendingDeps.length > 0) toast.success(`${pendingDeps.length} dependency link(s) created`);
-      }
-
-      // Reset form state
-      setCreateDialogOpen(false);
-      setLinkRequirement(false);
-      setNewTask({
-        taskGroup: '', description: '', responsibleId: undefined, accountableId: undefined,
-        consultedId: undefined, informedId: undefined, ownerId: undefined, subjectId: undefined,
-        status: 'Not Started', priority: 'Medium', requirementId: '', issueId: '',
-        dueDate: '', assignDate: new Date().toISOString().split('T')[0],
-        taskCategory: 'task' as const, recurringType: 'none',
-        devPlanId: undefined, devTaskSwotId: undefined, devTaskSkillId: undefined,
-      });
-      setNewTaskDependencies([]);
-      setWarningDialogOpen(false);
-      setRescheduleDialogOpen(false);
-      setPendingTaskData(null);
-      setResourceWarning(null);
-      setManualRescheduleDate('');
-      refetch();
-    } catch {
-      // Error already shown by onError handler
-    }
-  };
 
   const deleteMutation = trpc.tasks.delete.useMutation({
     onSuccess: () => {
@@ -679,10 +510,7 @@ export default function Tasks() {
 
   const getSubTasks = (parentId: number) => tasks?.filter((t: any) => t.parentTaskId === parentId) || [];
 
-  const filteredTasks = tasks?.filter((task: any) => {
-    // Exclude COMM- and DEV- tasks — they live in their own tabs
-    if ((task.taskId || '').startsWith('COMM-') || task.taskCategory === 'communication') return false;
-    if ((task.taskId || '').startsWith('DEV-') || task.taskCategory === 'development') return false;
+  const filteredTasks = tasks?.filter(task => {
     const matchesSearch =
       task.taskId.toLowerCase().includes(searchTerm.toLowerCase()) ||
       task.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -780,105 +608,24 @@ export default function Tasks() {
       toast.error('Description is required');
       return;
     }
-
-    // Validate dependency selections
-    for (const dep of newTaskDependencies) {
-      if (!dep.taskId) {
-        toast.error('All dependency rows must have a task selected. Remove empty rows before saving.');
-        return;
-      }
-    }
-
+    // Only include requirementId if linkRequirement checkbox is checked
     const taskData: any = {
       ...newTask,
       projectId: currentProjectId!,
       requirementId: linkRequirement && newTask.requirementId && newTask.requirementId !== "none" ? newTask.requirementId : undefined,
       dueDate: newTask.dueDate || undefined,
+      // Preserve assignDate default value (today's date) if not changed
       assignDate: newTask.assignDate,
     };
-
-    // Clean up empty strings
+    
+    // Clean up empty strings and convert to undefined to prevent SQL errors
     Object.keys(taskData).forEach(key => {
-      if (taskData[key] === '' || taskData[key] === 'none') taskData[key] = undefined;
+      if (taskData[key] === '' || taskData[key] === 'none') {
+        taskData[key] = undefined;
+      }
     });
-
-    // ── Resource Calendar Availability Check ──────────────────────────────
-    if (taskData.assignDate && taskData.dueDate) {
-      const workingDays = getWorkingDaysInRange(taskData.assignDate, taskData.dueDate);
-
-      if (workingDays.length === 0) {
-        toast.warning('The selected date range contains no working days (Mon–Fri). Please check your dates.');
-      }
-
-      const requiredHours = taskData.manHours || workingDays.length * 8;
-      const warnings: ResourceWarning = {};
-
-      // Check Subject Person — just flag unavailable days (no hour-requirement)
-      if (taskData.subjectId) {
-        const person = (stakeholders as any[])?.find(s => s.id === taskData.subjectId);
-        const avail = checkPersonAvailability(taskData.subjectId, taskData.assignDate, taskData.dueDate, 0);
-        if (avail && avail.unavailableDays.length > 0) {
-          warnings.subject = {
-            name: person?.fullName || 'Subject Person',
-            unavailableDays: avail.unavailableDays,
-            availableHours: avail.availableHours,
-          };
-        }
-      }
-
-      // Check Responsible Person — flag if they have insufficient available hours
-      if (taskData.responsibleId) {
-        const person = (stakeholders as any[])?.find(s => s.id === taskData.responsibleId);
-        const avail = checkPersonAvailability(taskData.responsibleId, taskData.assignDate, taskData.dueDate, requiredHours);
-        if (avail && avail.hasConflict) {
-          warnings.responsible = {
-            name: person?.fullName || 'Responsible Person',
-            unavailableDays: avail.unavailableDays,
-            availableHours: avail.availableHours,
-            requiredHours,
-            shortfallHours: avail.shortfallHours,
-          };
-        }
-      }
-
-      if (Object.keys(warnings).length > 0) {
-        setResourceWarning(warnings);
-        setPendingTaskData(taskData);
-        setWarningDialogOpen(true);
-        return; // Pause — wait for user decision
-      }
-    }
-
-    doCreateTask(taskData);
-  };
-
-  // ── Reschedule handler — applies PMP method then saves ───────────────────
-  const handleReschedule = () => {
-    if (!pendingTaskData || !resourceWarning?.responsible) return;
-    let updatedData = { ...pendingTaskData };
-
-    if (rescheduleMethod === 'level') {
-      const newDue = computeResourceLevelingDate(
-        pendingTaskData.assignDate,
-        pendingTaskData.responsibleId,
-        resourceWarning.responsible.requiredHours
-      );
-      updatedData = { ...updatedData, dueDate: newDue };
-      toast.info(`Due date extended to ${newDue} using PMP Resource Leveling`);
-    } else if (rescheduleMethod === 'crash') {
-      // Schedule Compression (Crashing): reduce man-hours to what's available
-      updatedData = { ...updatedData, manHours: Math.round(resourceWarning.responsible.availableHours * 10) / 10 };
-      toast.info(`Man-hours reduced to ${resourceWarning.responsible.availableHours}h via Schedule Compression`);
-    } else if (rescheduleMethod === 'fasttrack') {
-      // Fast-Tracking: keep schedule, accept resource risk (save with a note)
-      toast.info('Fast-Tracking selected — task saved with noted resource conflict');
-    } else if (rescheduleMethod === 'manual') {
-      if (!manualRescheduleDate) { toast.error('Please pick a new due date'); return; }
-      updatedData = { ...updatedData, dueDate: manualRescheduleDate };
-    }
-
-    setRescheduleDialogOpen(false);
-    doCreateTask(updatedData);
+    
+    createMutation.mutate(taskData);
   };
 
   const handleDelete = (id: number) => {
@@ -1061,7 +808,7 @@ export default function Tasks() {
     <div className="space-y-6">
       {/* Dashboard Chart */}
       <TasksByResponsibleChart
-        tasks={regularTasks}
+        tasks={tasks || []}
         selectedResponsible={responsibleFilter}
         onResponsibleSelect={(name) => {
           setResponsibleFilter(prev => prev === name ? null : name);
@@ -1089,170 +836,11 @@ export default function Tasks() {
             <ImportExportToolbar
               module="tasks"
               projectId={currentProjectId}
-              onImportSuccess={() => utils.tasks.list.invalidate()}
+              onImportSuccess={() => {}}
             />
           )}
         </div>
       </div>
-      {/* Main Tab Bar */}
-      <div className="flex border-b border-gray-200 bg-white rounded-t-xl overflow-hidden">
-        <button
-          className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 ${mainTab === 'tasks' ? 'border-primary text-primary bg-primary/5' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-          onClick={() => setMainTab('tasks')}
-        >
-          Tasks ({regularTasks.length})
-        </button>
-        <button
-          className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 ${mainTab === 'communication' ? 'border-orange-500 text-orange-600 bg-orange-50' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-          onClick={() => setMainTab('communication')}
-        >
-          Communication Tasks ({commTasks.length})
-        </button>
-        <button
-          className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 ${mainTab === 'development' ? 'border-teal-500 text-teal-600 bg-teal-50' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-          onClick={() => setMainTab('development')}
-        >
-          DEV Tasks ({devTasks.length})
-        </button>
-      </div>
-
-      {mainTab === 'communication' ? (
-        <Card className="border-orange-100">
-          <CardContent className="pt-4">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className="text-lg font-semibold text-orange-700">Communication Tasks</h2>
-                <p className="text-sm text-gray-500">Tasks generated from the Communication Plan (COMM- prefix)</p>
-              </div>
-              <Button onClick={() => { setNewTask((p: any) => ({ ...p, taskCategory: 'communication' })); setCreateDialogOpen(true); }} className="bg-orange-600 hover:bg-orange-700">
-                <Plus className="w-4 h-4 mr-2" />New COMM Task
-              </Button>
-            </div>
-            {commTasks.length === 0 ? (
-              <div className="text-center py-16 text-gray-400">
-                <RefreshCw className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                <p className="font-medium">No communication tasks yet</p>
-                <p className="text-sm mt-1">Tasks created from the Communication Plan will appear here</p>
-              </div>
-            ) : (
-              <div className="rounded-md border border-orange-100 overflow-hidden">
-                <Table className="w-full text-sm">
-                  <TableHeader>
-                    <TableRow className="bg-orange-50">
-                      <TableHead className="px-3 font-semibold text-orange-700">Task ID</TableHead>
-                      <TableHead className="px-3 font-semibold text-orange-700">Description</TableHead>
-                      <TableHead className="px-3 font-semibold text-orange-700">Subject</TableHead>
-                      <TableHead className="px-3 font-semibold text-orange-700">Responsible</TableHead>
-                      <TableHead className="px-3 font-semibold text-orange-700">Due Date</TableHead>
-                      <TableHead className="px-3 font-semibold text-orange-700">Recurring</TableHead>
-                      <TableHead className="px-3 font-semibold text-orange-700">Status</TableHead>
-                      <TableHead className="px-3 text-right font-semibold text-orange-700">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {commTasks.map((task: any) => (
-                      <TableRow key={task.id} className="hover:bg-orange-50/50">
-                        <TableCell className="px-3 py-2">
-                          <span className="font-mono text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded">{task.taskId}</span>
-                        </TableCell>
-                        <TableCell className="px-3 py-2 max-w-xs truncate">{task.description}</TableCell>
-                        <TableCell className="px-3 py-2 text-sm text-gray-600">{task.subject || '—'}</TableCell>
-                        <TableCell className="px-3 py-2 text-sm text-gray-600">{task.responsible || '—'}</TableCell>
-                        <TableCell className="px-3 py-2 text-sm">{task.dueDate ? formatDate(task.dueDate) : '—'}</TableCell>
-                        <TableCell className="px-3 py-2">
-                          {task.recurringType && task.recurringType !== 'none' ? (
-                            <Badge variant="outline" className="text-orange-600 border-orange-300 text-xs">
-                              <RefreshCw className="w-3 h-3 mr-1" />{task.recurringType}
-                            </Badge>
-                          ) : <span className="text-gray-400 text-xs">—</span>}
-                        </TableCell>
-                        <TableCell className="px-3 py-2">
-                          <Badge variant="secondary" className="text-xs">{task.status || 'Not Started'}</Badge>
-                        </TableCell>
-                        <TableCell className="px-3 py-2 text-right">
-                          <div className="flex justify-end gap-1">
-                            <Button size="sm" variant="ghost" onClick={() => handleViewDetails(task)}><Eye className="w-4 h-4" /></Button>
-                            <Button size="sm" variant="ghost" onClick={() => handleEditDetails(task)}><Edit className="w-4 h-4" /></Button>
-                            <Button size="sm" variant="ghost" className="text-destructive" onClick={() => { setDeletingId(task.id); setDeleteDialogOpen(true); }}><Trash2 className="w-4 h-4" /></Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      ) : mainTab === 'development' ? (
-        <Card className="border-teal-100">
-          <CardContent className="pt-4">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className="text-lg font-semibold text-teal-700">DEV Tasks</h2>
-                <p className="text-sm text-gray-500">Development tasks linked to a Development Plan (DEV- prefix)</p>
-              </div>
-              <Button onClick={() => { setNewTask((p: any) => ({ ...p, taskCategory: 'development' })); setCreateDialogOpen(true); }} className="bg-teal-600 hover:bg-teal-700">
-                <Plus className="w-4 h-4 mr-2" />New DEV Task
-              </Button>
-            </div>
-            {devTasks.length === 0 ? (
-              <div className="text-center py-16 text-gray-400">
-                <CheckSquare className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                <p className="font-medium">No DEV tasks yet</p>
-                <p className="text-sm mt-1">Create development tasks linked to a Development Plan</p>
-              </div>
-            ) : (
-              <div className="rounded-md border border-teal-100 overflow-hidden">
-                <Table className="w-full text-sm">
-                  <TableHeader>
-                    <TableRow className="bg-teal-50">
-                      <TableHead className="px-3 font-semibold text-teal-700">Task ID</TableHead>
-                      <TableHead className="px-3 font-semibold text-teal-700">Description</TableHead>
-                      <TableHead className="px-3 font-semibold text-teal-700">Dev Plan</TableHead>
-                      <TableHead className="px-3 font-semibold text-teal-700">SWOT Item</TableHead>
-                      <TableHead className="px-3 font-semibold text-teal-700">Skill</TableHead>
-                      <TableHead className="px-3 font-semibold text-teal-700">Responsible</TableHead>
-                      <TableHead className="px-3 font-semibold text-teal-700">Due Date</TableHead>
-                      <TableHead className="px-3 font-semibold text-teal-700">Status</TableHead>
-                      <TableHead className="px-3 text-right font-semibold text-teal-700">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {devTasks.map((task: any) => {
-                      const linkedPlan = devPlans.find((p: any) => p.id === task.devPlanId);
-                      return (
-                        <TableRow key={task.id} className="hover:bg-teal-50/50">
-                          <TableCell className="px-3 py-2">
-                            <span className="font-mono text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded">{task.taskId}</span>
-                          </TableCell>
-                          <TableCell className="px-3 py-2 max-w-xs truncate">{task.description}</TableCell>
-                          <TableCell className="px-3 py-2 text-sm text-gray-600">{linkedPlan ? `${linkedPlan.title} (${linkedPlan.stakeholderName ?? '?'})` : '—'}</TableCell>
-                          <TableCell className="px-3 py-2 text-sm text-gray-600">{task.devTaskSwotId ? `SWOT #${task.devTaskSwotId}` : '—'}</TableCell>
-                          <TableCell className="px-3 py-2 text-sm text-gray-600">{task.devTaskSkillId ? `Skill #${task.devTaskSkillId}` : '—'}</TableCell>
-                          <TableCell className="px-3 py-2 text-sm text-gray-600">{task.responsible || '—'}</TableCell>
-                          <TableCell className="px-3 py-2 text-sm">{task.dueDate ? formatDate(task.dueDate) : '—'}</TableCell>
-                          <TableCell className="px-3 py-2">
-                            <Badge variant="secondary" className="text-xs">{task.status || 'Not Started'}</Badge>
-                          </TableCell>
-                          <TableCell className="px-3 py-2 text-right">
-                            <div className="flex justify-end gap-1">
-                              <Button size="sm" variant="ghost" onClick={() => handleViewDetails(task)}><Eye className="w-4 h-4" /></Button>
-                              <Button size="sm" variant="ghost" onClick={() => handleEditDetails(task)}><Edit className="w-4 h-4" /></Button>
-                              <Button size="sm" variant="ghost" className="text-destructive" onClick={() => { setDeletingId(task.id); setDeleteDialogOpen(true); }}><Trash2 className="w-4 h-4" /></Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      ) : (
-      <>
       <Card className="border-blue-100">
         <CardContent>
           <div className="flex items-center gap-4 mb-4">
@@ -1551,14 +1139,6 @@ export default function Tasks() {
                         {task.currentStatus && task.currentStatus !== task.status && (
                           <p className="text-xs text-muted-foreground mt-0.5 truncate" title={task.currentStatus}>↳ {task.currentStatus}</p>
                         )}
-                        {(() => { const subs = getSubTasks(task.id); if (subs.length === 0) return null; const done = subs.filter((s: any) => isTaskComplete(s)).length; const pct = Math.round((done / subs.length) * 100); return (
-                          <div className="mt-1 flex items-center gap-1.5" title={`${done}/${subs.length} sub-tasks complete`}>
-                            <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden max-w-[80px]">
-                              <div className="h-full bg-green-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
-                            </div>
-                            <span className="text-[10px] text-muted-foreground whitespace-nowrap">{done}/{subs.length}</span>
-                          </div>
-                        ); })()}
                       </TableCell>
                       <TableCell className="px-3 py-2 overflow-hidden">
                         <span className="text-sm truncate block" title={task.responsible || ''}>{task.responsible || <span className="text-muted-foreground">—</span>}</span>
@@ -2028,147 +1608,12 @@ export default function Tasks() {
               </div>
             </div>
 
-            {/* Subject & Task Category Section */}
-            <div className="space-y-4">
-              <h4 className="text-sm font-semibold border-b pb-2">Subject & Category</h4>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Subject (Stakeholder)</Label>
-                  <SelectWithCreate
-                    type="stakeholder"
-                    value={newTask.subjectId?.toString() || ''}
-                    onValueChange={(value) => setNewTask({ ...newTask, subjectId: value ? parseInt(value) : undefined })}
-                    placeholder="Select subject stakeholder..."
-                    projectId={currentProjectId || undefined}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Task Category</Label>
-                  <Select
-                    value={newTask.taskCategory}
-                    onValueChange={(value) => setNewTask({ ...newTask, taskCategory: value as 'task' | 'communication' | 'development', devPlanId: undefined, devTaskSwotId: undefined, devTaskSkillId: undefined })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select category..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="task">Regular Task (T-)</SelectItem>
-                      <SelectItem value="communication">Communication Task (COMM-)</SelectItem>
-                      <SelectItem value="development">DEV Task (DEV-)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* DEV Task extra fields */}
-              {newTask.taskCategory === 'development' && (
-                <div className="space-y-3 border border-teal-200 rounded-lg p-3 bg-teal-50/50">
-                  <p className="text-xs font-semibold text-teal-700 uppercase tracking-wide">Development Plan Link</p>
-                  <div className="space-y-2">
-                    <Label>Development Plan <span className="text-destructive">*</span></Label>
-                    <Select
-                      value={newTask.devPlanId?.toString() ?? 'none'}
-                      onValueChange={(v) => setNewTask({ ...newTask, devPlanId: v === 'none' ? undefined : parseInt(v), devTaskSwotId: undefined, devTaskSkillId: undefined })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a development plan..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">— Select Dev Plan —</SelectItem>
-                        {devPlans.map((p: any) => (
-                          <SelectItem key={p.id} value={p.id.toString()}>
-                            {p.title} — {p.stakeholderName ?? 'Unknown'}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  {selectedDevPlan && (
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-2">
-                        <Label>SWOT Item (optional)</Label>
-                        <Select
-                          value={newTask.devTaskSwotId?.toString() ?? 'none'}
-                          onValueChange={(v) => setNewTask({ ...newTask, devTaskSwotId: v === 'none' ? undefined : parseInt(v) })}
-                        >
-                          <SelectTrigger className="text-sm">
-                            <SelectValue placeholder="Link SWOT item..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">— None —</SelectItem>
-                            {devPlanSwot.map((sw: any) => (
-                              <SelectItem key={sw.id} value={sw.id.toString()}>
-                                [{sw.quadrant}] {sw.description.slice(0, 40)}{sw.description.length > 40 ? '…' : ''}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Skill (optional)</Label>
-                        <Select
-                          value={newTask.devTaskSkillId?.toString() ?? 'none'}
-                          onValueChange={(v) => setNewTask({ ...newTask, devTaskSkillId: v === 'none' ? undefined : parseInt(v) })}
-                        >
-                          <SelectTrigger className="text-sm">
-                            <SelectValue placeholder="Link skill..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">— None —</SelectItem>
-                            {devPlanSkills.map((sk: any) => (
-                              <SelectItem key={sk.id} value={sk.id.toString()}>
-                                {sk.name} ({sk.level})
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-              <div className="space-y-2">
-                <Label>Recurring Schedule</Label>
-                <Select
-                  value={newTask.recurringType || 'none'}
-                  onValueChange={(value) => {
-                    // Auto-set default due date based on frequency
-                    let defaultDue = newTask.dueDate;
-                    if (value === 'daily') {
-                      defaultDue = new Date().toISOString().split('T')[0];
-                    } else if (value === 'weekly') {
-                      // End of current week = Thursday (Saudi work week)
-                      const d = new Date();
-                      const day = d.getDay(); // 0=Sun,1=Mon,...,4=Thu,5=Fri,6=Sat
-                      const daysUntilThu = (4 - day + 7) % 7 || 7;
-                      d.setDate(d.getDate() + daysUntilThu);
-                      defaultDue = d.toISOString().split('T')[0];
-                    } else if (value === 'monthly') {
-                      const d = new Date();
-                      defaultDue = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().split('T')[0];
-                    }
-                    setNewTask({ ...newTask, recurringType: value, dueDate: defaultDue });
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="None (one-time)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None (one-time)</SelectItem>
-                    <SelectItem value="daily">Daily (due: end of today)</SelectItem>
-                    <SelectItem value="weekly">Weekly (due: end of week — Thursday)</SelectItem>
-                    <SelectItem value="monthly">Monthly (due: end of month)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
             {/* Dates Section */}
             <div className="space-y-4">
               <h4 className="text-sm font-semibold border-b pb-2">Dates</h4>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="assignDate">Start Date</Label>
+                  <Label htmlFor="assignDate">Assign Date</Label>
                   <Input
                     id="assignDate"
                     type="date"
@@ -2224,211 +1669,12 @@ export default function Tasks() {
                 />
               </div>
             </div>
-
-            {/* Dependencies Section */}
-            <div className="space-y-4">
-              <h4 className="text-sm font-semibold border-b pb-2">Task Dependencies (Predecessor / Successor)</h4>
-              <p className="text-xs text-muted-foreground">Link this task to others. Changes will reflect in the Gantt chart.</p>
-              {newTaskDependencies.map((dep, idx) => (
-                <div key={idx} className="flex items-center gap-2 p-2 border rounded-md bg-muted/30">
-                  <span className={`text-xs font-semibold px-2 py-0.5 rounded ${dep.direction === 'predecessor' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
-                    {dep.direction === 'predecessor' ? 'Before' : 'After'}
-                  </span>
-                  <Select
-                    value={dep.taskId}
-                    onValueChange={(val) => {
-                      const updated = [...newTaskDependencies];
-                      updated[idx] = { ...updated[idx], taskId: val };
-                      setNewTaskDependencies(updated);
-                    }}
-                  >
-                    <SelectTrigger className="flex-1 h-8 text-xs">
-                      <SelectValue placeholder="Select task..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {allTasksForDeps?.tasks?.map((t) => (
-                        <SelectItem key={t.taskId} value={t.taskId}>
-                          {t.taskId} — {t.description?.substring(0, 40) || 'Untitled'}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Select
-                    value={dep.dependencyType}
-                    onValueChange={(val) => {
-                      const updated = [...newTaskDependencies];
-                      updated[idx] = { ...updated[idx], dependencyType: val as any };
-                      setNewTaskDependencies(updated);
-                    }}
-                  >
-                    <SelectTrigger className="w-36 h-8 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Finish-to-Start">Finish→Start (FS)</SelectItem>
-                      <SelectItem value="Start-to-Start">Start→Start (SS)</SelectItem>
-                      <SelectItem value="Finish-to-Finish">Finish→Finish (FF)</SelectItem>
-                      <SelectItem value="Start-to-Finish">Start→Finish (SF)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <div className="flex items-center gap-1">
-                    <Input
-                      type="number"
-                      min="0"
-                      step="1"
-                      value={dep.lagDays}
-                      onChange={(e) => {
-                        const updated = [...newTaskDependencies];
-                        updated[idx] = { ...updated[idx], lagDays: parseInt(e.target.value) || 0 };
-                        setNewTaskDependencies(updated);
-                      }}
-                      className="w-16 h-8 text-xs"
-                      title="Lag days"
-                    />
-                    <span className="text-xs text-muted-foreground">lag days</span>
-                  </div>
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    className="h-7 w-7 text-destructive hover:bg-destructive/10"
-                    onClick={() => setNewTaskDependencies(newTaskDependencies.filter((_, i) => i !== idx))}
-                  >
-                    <X className="w-3 h-3" />
-                  </Button>
-                </div>
-              ))}
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setNewTaskDependencies([...newTaskDependencies, { direction: 'predecessor', taskId: '', dependencyType: 'Finish-to-Start', lagDays: 0 }])}
-                >
-                  <Plus className="w-3 h-3 mr-1" /> Add Predecessor
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setNewTaskDependencies([...newTaskDependencies, { direction: 'successor', taskId: '', dependencyType: 'Finish-to-Start', lagDays: 0 }])}
-                >
-                  <Plus className="w-3 h-3 mr-1" /> Add Successor
-                </Button>
-              </div>
-            </div>
           </div>
           <div className="flex justify-end gap-2">
             <Button onClick={handleCreate} disabled={createMutation.isPending}>
               {createMutation.isPending ? 'Creating...' : 'Create'}
             </Button>
           </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Resource Warning Dialog */}
-      <Dialog open={warningDialogOpen} onOpenChange={setWarningDialogOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-amber-600">
-              ⚠️ Resource Availability Conflict
-            </DialogTitle>
-            <DialogDescription>
-              The following availability issues were detected before saving this task.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            {resourceWarning?.subject && (
-              <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm">
-                <p className="font-semibold text-amber-800">Subject Person: {resourceWarning.subject.name}</p>
-                <p className="text-amber-700 mt-1">
-                  Unavailable on: <span className="font-mono">{resourceWarning.subject.unavailableDays.slice(0, 5).join(', ')}{resourceWarning.subject.unavailableDays.length > 5 ? ` +${resourceWarning.subject.unavailableDays.length - 5} more` : ''}</span>
-                </p>
-                <p className="text-xs text-amber-600 mt-1">This person has calendar entries (Leave/Holiday/Training) during the task window. Consider adjusting the task period or reassigning.</p>
-              </div>
-            )}
-            {resourceWarning?.responsible && (
-              <div className="rounded-md border border-red-300 bg-red-50 p-3 text-sm">
-                <p className="font-semibold text-red-800">Responsible Person: {resourceWarning.responsible.name}</p>
-                <p className="text-red-700 mt-1">
-                  Required: <span className="font-semibold">{resourceWarning.responsible.requiredHours}h</span> · Available: <span className="font-semibold">{resourceWarning.responsible.availableHours}h</span> · Shortfall: <span className="font-semibold text-red-600">{resourceWarning.responsible.shortfallHours}h</span>
-                </p>
-                {resourceWarning.responsible.unavailableDays.length > 0 && (
-                  <p className="text-red-700 mt-1">
-                    Unavailable on: <span className="font-mono">{resourceWarning.responsible.unavailableDays.slice(0, 5).join(', ')}{resourceWarning.responsible.unavailableDays.length > 5 ? ` +${resourceWarning.responsible.unavailableDays.length - 5} more` : ''}</span>
-                  </p>
-                )}
-                <p className="text-xs text-red-600 mt-1">PMP Tip: Use Resource Leveling to extend due date, Schedule Compression to reduce scope, or Fast-Tracking to accept the risk.</p>
-              </div>
-            )}
-          </div>
-          <DialogFooter className="flex gap-2 flex-wrap">
-            <Button variant="outline" onClick={() => setWarningDialogOpen(false)}>Cancel</Button>
-            <Button variant="default" onClick={() => { setWarningDialogOpen(false); if (pendingTaskData) doCreateTask(pendingTaskData); }}>
-              Save Anyway
-            </Button>
-            {resourceWarning?.responsible && (
-              <Button variant="secondary" onClick={() => { setWarningDialogOpen(false); setRescheduleDialogOpen(true); }}>
-                Reschedule (PMP Options)
-              </Button>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Reschedule Dialog */}
-      <Dialog open={rescheduleDialogOpen} onOpenChange={setRescheduleDialogOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>PMP Rescheduling Options</DialogTitle>
-            <DialogDescription>
-              Choose a schedule compression or resource management method to resolve the availability conflict.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-3">
-              <label className={`flex items-start gap-3 p-3 rounded-md border cursor-pointer ${rescheduleMethod === 'level' ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'}`}>
-                <input type="radio" name="reschedule" value="level" checked={rescheduleMethod === 'level'} onChange={() => setRescheduleMethod('level')} className="mt-1" />
-                <div>
-                  <p className="font-semibold text-sm">Resource Leveling</p>
-                  <p className="text-xs text-muted-foreground">Extends the due date until the responsible person accumulates enough available hours. No scope change.</p>
-                </div>
-              </label>
-              <label className={`flex items-start gap-3 p-3 rounded-md border cursor-pointer ${rescheduleMethod === 'crash' ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'}`}>
-                <input type="radio" name="reschedule" value="crash" checked={rescheduleMethod === 'crash'} onChange={() => setRescheduleMethod('crash')} className="mt-1" />
-                <div>
-                  <p className="font-semibold text-sm">Schedule Compression / Crashing</p>
-                  <p className="text-xs text-muted-foreground">Reduces man-hours to match available hours within the original date window. Scope or quality may be impacted.</p>
-                </div>
-              </label>
-              <label className={`flex items-start gap-3 p-3 rounded-md border cursor-pointer ${rescheduleMethod === 'fasttrack' ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'}`}>
-                <input type="radio" name="reschedule" value="fasttrack" checked={rescheduleMethod === 'fasttrack'} onChange={() => setRescheduleMethod('fasttrack')} className="mt-1" />
-                <div>
-                  <p className="font-semibold text-sm">Fast-Tracking</p>
-                  <p className="text-xs text-muted-foreground">Accept the risk and save as-is. Work may proceed in parallel or with reduced availability. Use with awareness of increased risk.</p>
-                </div>
-              </label>
-              <label className={`flex items-start gap-3 p-3 rounded-md border cursor-pointer ${rescheduleMethod === 'manual' ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'}`}>
-                <input type="radio" name="reschedule" value="manual" checked={rescheduleMethod === 'manual'} onChange={() => setRescheduleMethod('manual')} className="mt-1" />
-                <div className="flex-1">
-                  <p className="font-semibold text-sm">Manual Date</p>
-                  <p className="text-xs text-muted-foreground">Specify a new due date manually.</p>
-                  {rescheduleMethod === 'manual' && (
-                    <Input
-                      type="date"
-                      className="mt-2 h-8 text-sm"
-                      value={manualRescheduleDate}
-                      onChange={(e) => setManualRescheduleDate(e.target.value)}
-                    />
-                  )}
-                </div>
-              </label>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setRescheduleDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleReschedule}>Apply &amp; Save</Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -2535,9 +1781,6 @@ export default function Tasks() {
               <TabsTrigger value="team">Team & Contacts</TabsTrigger>
               <TabsTrigger value="decisions">Decisions {allDecisions?.filter(d => d.taskId === selectedTask?.taskId).length ? `(${allDecisions.filter(d => d.taskId === selectedTask?.taskId).length})` : ""}</TabsTrigger>
               <TabsTrigger value="issues">Issues & Updates</TabsTrigger>
-              <TabsTrigger value="userstories">
-                Stories {(() => { const c = (allUserStories as any[]).filter(s => s.linkedTasks?.some((t: any) => t.id === selectedTask?.id)).length; return c ? `(${c})` : ""; })()}
-              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="details" className="flex-1 overflow-y-auto space-y-4 pr-1">
@@ -2711,7 +1954,7 @@ export default function Tasks() {
                 )}
               </div>
               <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
-                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Start Date</Label>
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Assign Date</Label>
                 {isEditMode ? (
                   <Input type="date" value={editFormData.assignDate} onChange={(e) => setEditFormData({...editFormData, assignDate: e.target.value})} className="h-8" />
                 ) : (
@@ -3119,48 +2362,6 @@ export default function Tasks() {
                 )}
               </div>
             </div>
-            </TabsContent>
-
-            {/* ── User Stories Tab ────────────────────────────────────────── */}
-            <TabsContent value="userstories" className="flex-1 overflow-y-auto space-y-3 pr-1">
-              {(() => {
-                const linkedStories = (allUserStories as any[]).filter(
-                  (s) => s.linkedTasks?.some((t: any) => t.id === selectedTask?.id)
-                );
-                if (linkedStories.length === 0) {
-                  return (
-                    <div className="flex flex-col items-center justify-center py-12 text-muted-foreground gap-2">
-                      <BookOpen className="w-8 h-8 opacity-30" />
-                      <p className="text-sm">No user stories linked to this task.</p>
-                      <p className="text-xs">Link stories from the User Stories page.</p>
-                    </div>
-                  );
-                }
-                return linkedStories.map((story: any) => (
-                  <div key={story.id} className="border rounded-lg p-3 space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs font-bold text-primary">{story.storyId}</span>
-                      <span className="text-sm font-medium flex-1 truncate">{story.title}</span>
-                      <Badge className={`text-[10px] ${story.status === "Done" || story.status === "Accepted" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}`}>
-                        {story.status ?? "New"}
-                      </Badge>
-                      <Badge variant="outline" className="text-[10px]">{story.priority ?? "Medium"}</Badge>
-                    </div>
-                    {story.scopeItemName && (
-                      <p className="text-xs text-muted-foreground">
-                        Scope: <span className="font-mono">{story.scopeItemCode}</span> {story.scopeItemName}
-                      </p>
-                    )}
-                    {story.requirements?.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {story.requirements.map((r: any) => (
-                          <Badge key={r.id} variant="secondary" className="text-[10px] font-mono">{r.idCode}</Badge>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ));
-              })()}
             </TabsContent>
           </Tabs>
         </DialogContent>
@@ -4004,8 +3205,6 @@ export default function Tasks() {
           </div>
         </DialogContent>
       </Dialog>
-      </>
-      )}
     </div>
   );
 }

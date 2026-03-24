@@ -99,6 +99,7 @@ import { toast } from "sonner";
 import { useProject } from "@/contexts/ProjectContext";
 import { ThemeSelector } from "./ThemeSelector";
 import { GlobalSearch } from "./GlobalSearch";
+import { NotificationBell } from "./NotificationBell";
 import { Search } from "lucide-react";
 import {
   DndContext,

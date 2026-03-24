@@ -325,7 +325,8 @@ export default function ScopeItems() {
               icon={Crosshair}
               title="No scope items"
               description="Create scope items to organise requirements, test cases, and change requests under project phases and process areas."
-              action={<Button size="sm" onClick={() => { setForm(emptyForm()); setCreateOpen(true); }}><Plus className="h-4 w-4 mr-1" />New Scope Item</Button>}
+              actionLabel="New Scope Item"
+              onAction={() => { setForm(emptyForm()); setCreateOpen(true); }}
             />
           ) : (
             <Table>

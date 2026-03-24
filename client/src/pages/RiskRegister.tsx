@@ -27,7 +27,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Edit, Trash2, FileText, AlertTriangle, ShieldAlert, Grid3X3, Search, X } from "lucide-react";
+import { Plus, Edit, Trash2, FileText, AlertTriangle, ShieldAlert, Grid3X3, LayoutGrid } from "lucide-react";
+import { KanbanBoard, KanbanItem, KanbanColumn } from "@/components/KanbanBoard";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
@@ -39,8 +40,6 @@ import { EmptyState } from "@/components/EmptyState";
 export default function RiskRegister() {
 
   const { currentProjectId } = useProject();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isAnalysisDialogOpen, setIsAnalysisDialogOpen] = useState(false);
@@ -580,7 +579,7 @@ export default function RiskRegister() {
           <ImportExportToolbar
             module="risks"
             projectId={currentProjectId}
-            onImportSuccess={() => utils.risks.list.invalidate()}
+            onImportSuccess={() => {}}
           />
         )}
         </div>
@@ -590,6 +589,7 @@ export default function RiskRegister() {
         <TabsList className="mb-4">
           <TabsTrigger value="table"><FileText className="w-3.5 h-3.5 mr-1.5" />Risk Table</TabsTrigger>
           <TabsTrigger value="heatmap"><Grid3X3 className="w-3.5 h-3.5 mr-1.5" />Heat Map</TabsTrigger>
+          <TabsTrigger value="board"><LayoutGrid className="w-3.5 h-3.5 mr-1.5" />Board</TabsTrigger>
         </TabsList>
 
         <TabsContent value="heatmap">
@@ -597,38 +597,6 @@ export default function RiskRegister() {
         </TabsContent>
 
         <TabsContent value="table">
-          <div className="flex items-center gap-2 mb-4 flex-wrap">
-            <div className="relative flex-1 min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
-              <Input
-                placeholder="Search by ID, title, or owner..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 h-9"
-              />
-            </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-36 h-9">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                {riskStatuses.map((s) => (
-                  <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {(searchTerm || statusFilter !== "all") && (
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-9 text-muted-foreground"
-                onClick={() => { setSearchTerm(""); setStatusFilter("all"); }}
-              >
-                <X className="w-3.5 h-3.5 mr-1" />Clear
-              </Button>
-            )}
-          </div>
       {isLoading ? (
         <Card>
           <CardContent className="pt-6">
@@ -669,16 +637,7 @@ export default function RiskRegister() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {risks.filter((risk) => {
-                  const riskOwner = stakeholders.find((s) => s.id === risk.riskOwnerId);
-                  const riskStatus = riskStatuses.find((s) => s.id === risk.riskStatusId);
-                  const matchesSearch = !searchTerm ||
-                    risk.riskId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    risk.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    riskOwner?.fullName?.toLowerCase().includes(searchTerm.toLowerCase());
-                  const matchesStatus = statusFilter === "all" || riskStatus?.name === statusFilter;
-                  return matchesSearch && matchesStatus;
-                }).map((risk) => {
+                {risks.map((risk) => {
                   const riskType = riskTypes.find((t) => t.id === risk.riskTypeId);
                   const riskOwner = stakeholders.find((s) => s.id === risk.riskOwnerId);
                   const riskStatus = riskStatuses.find((s) => s.id === risk.riskStatusId);
@@ -735,8 +694,67 @@ export default function RiskRegister() {
         </Card>
       )}
         </TabsContent>
+        <TabsContent value="board">
+          {(() => {
+            const palette = [
+              { color: 'bg-slate-200 dark:bg-slate-700', text: 'text-slate-700 dark:text-slate-200' },
+              { color: 'bg-blue-100 dark:bg-blue-900/50', text: 'text-blue-700 dark:text-blue-300' },
+              { color: 'bg-amber-100 dark:bg-amber-900/50', text: 'text-amber-700 dark:text-amber-300' },
+              { color: 'bg-green-100 dark:bg-green-900/50', text: 'text-green-700 dark:text-green-300' },
+              { color: 'bg-red-100 dark:bg-red-900/50', text: 'text-red-700 dark:text-red-300' },
+            ];
+            const kanbanColumns: KanbanColumn[] = riskStatuses.length > 0
+              ? riskStatuses.map((s: any, idx: number) => ({
+                  id: String(s.id), label: s.name,
+                  color: palette[idx % palette.length].color,
+                  textColor: palette[idx % palette.length].text,
+                }))
+              : [{ id: 'open', label: 'Open', color: palette[0].color, textColor: palette[0].text }];
+            const scoreColor = (score: number) => {
+              if (score >= 20) return 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300';
+              if (score >= 12) return 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300';
+              if (score >= 6) return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300';
+              return 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300';
+            };
+            const kanbanItems: KanbanItem[] = risks.map((risk) => ({
+              ...risk,
+              id: risk.id,
+              columnId: risk.riskStatusId ? String(risk.riskStatusId) : (kanbanColumns[0]?.id ?? 'open'),
+            }));
+            return (
+              <KanbanBoard
+                columns={kanbanColumns}
+                items={kanbanItems}
+                isLoading={isLoading}
+                onMove={(itemId, newColumnId) => {
+                  updateRisk.mutate({ id: itemId as number, riskStatusId: parseInt(newColumnId) });
+                }}
+                renderCard={(item) => {
+                  const risk = item as any;
+                  const riskType = riskTypes.find((t: any) => t.id === risk.riskTypeId);
+                  const score = risk.score ?? 0;
+                  return (
+                    <div className="bg-card border border-border/60 rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing select-none">
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <span className="text-xs font-mono text-orange-600 font-semibold">{risk.riskId || `R-${risk.id}`}</span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0 ${scoreColor(score)}`}>
+                          Score: {score}
+                        </span>
+                      </div>
+                      <p className="text-sm text-foreground leading-snug mb-2 line-clamp-2">{risk.title || risk.description}</p>
+                      <div className="flex items-center justify-between gap-2 mt-1">
+                        {riskType && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300 font-medium truncate max-w-[100px]">{riskType.name}</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }}
+              />
+            );
+          })()}
+        </TabsContent>
       </Tabs>
-
       {/* Edit Dialog - Same structure as Create Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">

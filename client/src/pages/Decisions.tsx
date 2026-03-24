@@ -209,7 +209,7 @@ export default function Decisions() {
 
       {/* Table */}
       <Card className="overflow-hidden">
-        <div className="rounded-xl border bg-white shadow-sm overflow-x-auto">
+        <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow className="bg-gray-50">

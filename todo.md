@@ -407,3 +407,92 @@
 - [x] Compact view: smaller row height, fewer visible columns (ID, Task Group, Description, Responsible, Status, Due Date, Actions), dense typography
 - [x] Fix main Tasks table to never require horizontal scroll — use flexible column widths that fill available space
 - [x] Collapse less-critical columns (RACI details, Requirement, Deliverable) into a popover/tooltip in compact mode
+
+## Merge: Claude Branch Features (Mar 9, 2026)
+
+- [x] Executive KPI Dashboard page with health score, 6 KPI cards, bar/pie charts
+- [x] Decisions CRUD page with action items checklist and status tracking
+- [x] Calendar view with color-coded events (tasks, issues, deliverables, risks)
+- [x] Budget & Cost Tracking page with total budget, entries, and spending summary
+- [x] Resource Management page with workload view and capacity settings
+- [x] NotificationBell component wired into mobile header
+- [x] DB tables: decisions, notifications, projectBudget, budgetEntries, resourceCapacity
+- [x] tRPC routers: decisions, notifications, budget, resources
+- [x] New sidebar items: Dashboard, Decisions, Calendar, Budget, Resources
+
+## Merge: Claude Branch Phase 3 & 4 (Mar 9, 2026)
+
+- [x] Sidebar: combined Stakeholders + Resources into collapsible "Team" tree group
+- [x] Action Log: full rewrite with entity type filter, date range, search, expandable field diffs, pagination
+- [x] Deliverables: added Timeline tab with milestone view, progress bar, color-coded nodes
+- [x] Risk Register: added Heat Map tab (5×5 probability/impact matrix)
+- [x] Resources: Team Overview enhancements
+
+## Fix: Tasks Full-Width Layout (Mar 9, 2026)
+
+- [x] Match Requirements page layout: full viewport width table, no card-style rows, all columns fit on screen
+- [x] Keep compact view toggle (original + compact)
+- [x] Original view: all columns visible without any horizontal scroll
+- [x] Compact view: dense single-line rows, fewer columns
+
+## Fix: Stakeholder Name Display (Mar 9, 2026)
+- [x] Find all pages showing "Stakeholder XXXXXX" codes instead of actual names
+- [x] Fix stakeholder display to show fullName (with role/position as subtitle) — fixed in SelectWithCreate trigger and db.ts update helpers
+- [x] Ensure fallback to code if stakeholder record not found
+
+## Fix: Completed Task Visual Style + Resources Workload Name (Mar 9, 2026)
+
+- [x] Tasks page: completed tasks (status with isComplete=true) must be visually distinct — dimmed row opacity, strikethrough on description, muted badge color
+- [x] Resources Workload tab: show stakeholder fullName instead of raw ID code ("Stakeholder 390027")
+
+## Feature: Communication Responsible as Stakeholder + Auto Recurring Task (Mar 9, 2026)
+
+- [ ] DB schema: add communicationResponsibleId (FK to stakeholders) to stakeholders table
+- [ ] Update stakeholders create/update router to accept communicationResponsibleId and auto-create recurring task
+- [ ] Stakeholders form: replace communicationResponsible free-text with stakeholder dropdown (communicationResponsibleId)
+- [ ] Auto-create recurring task: title = "Communicate with [Stakeholder Name]", assigned to responsible, recurrence = communication frequency, linked to project
+- [ ] Map frequency values (Daily/Weekly/Bi-weekly/Monthly/Quarterly) to recurringType/recurringInterval on the task
+- [ ] Avoid duplicate task creation: if a recurring task already exists for this stakeholder+responsible combo, skip creation
+
+## Feature: Communication Responsible as Stakeholder (Mar 9, 2026)
+
+- [x] Change Communication Responsible field from free-text Input to a Stakeholder Select dropdown
+- [x] Add communicationResponsibleId (FK to stakeholders) to stakeholders schema
+- [x] Run db:push to add communicationResponsibleId column
+- [x] Update stakeholders create router to accept communicationResponsibleId and resolve to name
+- [x] Update stakeholders update router to accept communicationResponsibleId and resolve to name
+- [x] Auto-create a recurring task when communication frequency + responsible are set on create
+- [x] Auto-create a recurring task when communication frequency + responsible are updated (edit)
+- [x] Task description: "Communicate with [Stakeholder Name] ([Frequency] via [Channel])"
+- [x] Task responsible = communicationResponsibleId, recurringType mapped from frequency
+- [x] Frequency mapping: Daily→daily/1, Weekly→weekly/1, Bi-weekly→weekly/2, Monthly→monthly/1, Quarterly→monthly/3
+
+## Bug Fix: Duplicate Communication Tasks & ID Reuse (Mar 9, 2026)
+
+- [x] Fix: duplicate communication tasks created on every stakeholder save (create + update both fire)
+- [x] Fix: add deduplication check — skip task creation if a communication task already exists for this stakeholder (uses communicationStakeholderId FK)
+- [x] Fix: task ID generator reuses IDs from closed/completed tasks — getNextId now always syncs with actual max before incrementing
+
+## Merge: Claude Branch Phase 3&4 Part 2 (Mar 10, 2026)
+
+- [x] MS Project-style Gantt Chart rewrite (GanttChart.tsx overhaul)
+- [x] New Periodic Report page (PeriodicReport.tsx)
+- [x] Decisions merged into Meetings page (separate Decisions sidebar item removed)
+- [x] Tasks: link tasks to decisions, RACI contact cards on hover
+- [x] Nav updates in App.tsx and DashboardLayout.tsx
+- [x] Fix: Tasks.tsx decisionDate Date→string type error after merge
+
+## Pillar 1 — Universal Graphical Interaction (Mar 2026)
+- [x] Kanban Board view for Tasks (drag cards between status columns)
+- [x] Kanban Board view for Issues
+- [x] Kanban Board view for Risks
+- [x] Stakeholder drag-and-drop engagement matrix (pool → quadrant) — upgraded with richer cards, power/interest bars, unassigned pool
+- [x] Gantt resize handles (left/right edge drag to change start/end dates)
+- [x] Gantt dependency arrow drawing (already existed)
+- [x] Gantt baseline overlay (toggle button + ghost bars)
+- [x] Calendar view for Tasks (month/week, priority color coding, click to open detail)
+
+## Pillar 2 — Deep Customization Engine (Mar 2026)
+- [x] Custom fields engine (DB schema: customFieldDefs + customFieldValues, backend router, Settings UI page)
+- [x] Custom workflow statuses per entity type (already fully implemented in Settings)
+- [x] Saved views and filters per module (SavedViews component + quick-filter chips: Overdue, High Priority, Open, My Tasks)

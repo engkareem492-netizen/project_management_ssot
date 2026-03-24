@@ -234,8 +234,8 @@ export default function Budget() {
         <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
           <h3 className="font-semibold text-sm">Cost Items ({entries.length})</h3>
         </div>
-        <div className="overflow-x-auto">
-          <Table>
+        <div className="overflow-hidden">
+          <Table className="table-fixed w-full">
             <TableHeader>
               <TableRow className="bg-gray-50">
                 <TableHead className="font-semibold">Category</TableHead>

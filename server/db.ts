@@ -216,7 +216,17 @@ export async function createRequirement(data: InsertRequirement) {
 export async function updateRequirement(id: number, data: Partial<Requirement>) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await db.update(requirements).set(data).where(eq(requirements.id, id));
+  // Populate owner name from ownerId when updating
+  const enrichedData: any = { ...data };
+  if (data.ownerId !== undefined) {
+    if (data.ownerId) {
+      const stakeholder = await getStakeholderById(data.ownerId);
+      if (stakeholder) enrichedData.owner = stakeholder.fullName;
+    } else {
+      enrichedData.owner = null;
+    }
+  }
+  await db.update(requirements).set(enrichedData).where(eq(requirements.id, id));
 }
 
 export async function deleteRequirement(id: number) {
@@ -301,7 +311,49 @@ export async function createTask(data: InsertTask) {
 export async function updateTask(id: number, data: Partial<Task>) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await db.update(tasks).set(data).where(eq(tasks.id, id));
+  // Populate stakeholder name fields from IDs when updating
+  const enrichedData: any = { ...data };
+  if (data.responsibleId !== undefined) {
+    if (data.responsibleId) {
+      const stakeholder = await getStakeholderById(data.responsibleId);
+      if (stakeholder) enrichedData.responsible = stakeholder.fullName;
+    } else {
+      enrichedData.responsible = null;
+    }
+  }
+  if (data.accountableId !== undefined) {
+    if (data.accountableId) {
+      const stakeholder = await getStakeholderById(data.accountableId);
+      if (stakeholder) enrichedData.accountable = stakeholder.fullName;
+    } else {
+      enrichedData.accountable = null;
+    }
+  }
+  if (data.informedId !== undefined) {
+    if (data.informedId) {
+      const stakeholder = await getStakeholderById(data.informedId);
+      if (stakeholder) enrichedData.informed = stakeholder.fullName;
+    } else {
+      enrichedData.informed = null;
+    }
+  }
+  if (data.consultedId !== undefined) {
+    if (data.consultedId) {
+      const stakeholder = await getStakeholderById(data.consultedId);
+      if (stakeholder) enrichedData.consulted = stakeholder.fullName;
+    } else {
+      enrichedData.consulted = null;
+    }
+  }
+  if (data.ownerId !== undefined) {
+    if (data.ownerId) {
+      const stakeholder = await getStakeholderById(data.ownerId);
+      if (stakeholder) enrichedData.owner = stakeholder.fullName;
+    } else {
+      enrichedData.owner = null;
+    }
+  }
+  await db.update(tasks).set(enrichedData).where(eq(tasks.id, id));
 }
 
 export async function deleteTask(id: number) {

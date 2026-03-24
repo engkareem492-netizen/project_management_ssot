@@ -238,6 +238,11 @@ function Router() {
           <LessonsLearned />
         </DashboardLayout>
       </Route>
+      <Route path={"/custom-fields"}>
+        <DashboardLayout>
+          <CustomFields />
+        </DashboardLayout>
+      </Route>
       <Route path={"/documents"}>
         <DashboardLayout>
           <DocumentLibrary />
