@@ -32,6 +32,8 @@ import CalendarPage from "./pages/Calendar";
 import Budget from "./pages/Budget";
 import Resources from "./pages/Resources";
 import ScopeItems from "./pages/ScopeItems";
+import UserStories from "./pages/UserStories";
+import ScopeCoverage from "./pages/ScopeCoverage";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -194,6 +196,16 @@ function Router() {
       <Route path={"/scope"}>
         <DashboardLayout>
           <ScopeItems />
+        </DashboardLayout>
+      </Route>
+      <Route path={"/user-stories"}>
+        <DashboardLayout>
+          <UserStories />
+        </DashboardLayout>
+      </Route>
+      <Route path={"/scope-coverage"}>
+        <DashboardLayout>
+          <ScopeCoverage />
         </DashboardLayout>
       </Route>
       <Route path={"/charter"}>

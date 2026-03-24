@@ -126,7 +126,7 @@
 - [x] Display all existing Issue Groups with their IDs and names
 - [x] Implement edit functionality to rename groups
 - [x] Implement delete functionality to remove unused groups
-- [ ] Show usage count (how many requirements/tasks/issues use each group)
+- [x] Show usage count (how many requirements/tasks/issues use each group)
 
 ## Feature Requests (Jan 25, 2026 - Batch 10)
 
@@ -349,15 +349,15 @@
 ## Feature: Recurring Tasks, Sub-Tasks, Follow-up Tasks + Short-Term Improvements (Mar 8, 2026)
 
 ### Task Enhancements
-- [ ] DB schema: add parentTaskId (sub-tasks), followUpOfId (follow-up), recurringType, recurringInterval, recurringEndDate, seriesId to tasks table
-- [ ] Server: createSubTask, createFollowUpTask procedures
-- [ ] Server: recurring task auto-generation (create next occurrence on completion)
-- [ ] Server: badge counts query (overdue tasks, open issues, high-severity risks)
-- [ ] Tasks UI: sub-task indentation with progress bar on parent task row
-- [ ] Tasks UI: "Add Sub-task" button on each task row / detail panel
-- [ ] Tasks UI: "Create Follow-up" button on completed/closed tasks
-- [ ] Tasks UI: Recurring config panel (frequency, interval, end date) in create/edit form
-- [ ] Tasks UI: recurring badge on task rows (e.g. "↻ Weekly")
+- [x] DB schema: add parentTaskId (sub-tasks), followUpOfId (follow-up), recurringType, recurringInterval, recurringEndDate, seriesId to tasks table
+- [x] Server: createSubTask, createFollowUpTask procedures
+- [x] Server: recurring task auto-generation (create next occurrence on completion)
+- [x] Server: badge counts query (overdue tasks, open issues, high-severity risks)
+- [x] Tasks UI: sub-task indentation with progress bar on parent task row
+- [x] Tasks UI: "Add Sub-task" button on each task row / detail panel
+- [x] Tasks UI: "Create Follow-up" button on completed/closed tasks
+- [x] Tasks UI: Recurring config panel (frequency, interval, end date) in create/edit form
+- [x] Tasks UI: recurring badge on task rows (e.g. "↻ Weekly")
 
 ### Short-Term Improvements
 - [x] Global date fix: apply formatDate helper to Issues, Risks, Assumptions, Deliverables, Meetings pages

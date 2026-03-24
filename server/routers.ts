@@ -5,8 +5,8 @@ import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import * as db from "./db";
 import { getDb } from "./db";
-import { tasks } from "../drizzle/schema";
-import { eq, and } from "drizzle-orm";
+import { tasks, issues, requirements, taskGroups, issueGroups } from "../drizzle/schema";
+import { eq, and, sql } from "drizzle-orm";
 import * as XLSX from "xlsx";
 import { TRPCError } from "@trpc/server";
 import { projectsRouter } from "./projects.router";
@@ -63,6 +63,7 @@ import { commRaciMatrixRouter } from "./routers/commRaciMatrix.router";
 import { communicationLogRouter } from "./routers/communicationLog.router";
 import { dropdownRegistryRouter } from "./routers/dropdownRegistry.router";
 import { wbsResourceAssignmentsRouter } from "./routers/wbsResourceAssignments.router";
+import { userStoriesRouter } from "./routers/userStories.router";
 
 export const appRouter = router({
   system: systemRouter,
@@ -120,6 +121,7 @@ export const appRouter = router({
   communicationLog: communicationLogRouter,
   dropdownRegistry: dropdownRegistryRouter,
   wbsResourceAssignments: wbsResourceAssignmentsRouter,
+  userStories: userStoriesRouter,
   scopeItems: router({
     list: protectedProcedure
       .input(z.object({ projectId: z.number() }))
@@ -783,7 +785,8 @@ export const appRouter = router({
             ? await db.getNextId('devTask', 'DEV', input.projectId)
             : await db.getNextId('task', 'T', input.projectId);
           // Strip fields that are not columns in the tasks table
-          const { taskCategory: _cat, subjectId: _sid, issueId: _iid, ...dbInsertPayload } = cleanedInput;
+          // Note: issueId IS a valid column and must NOT be stripped
+          const { taskCategory: _cat, subjectId: _sid, ...dbInsertPayload } = cleanedInput;
           await db.createTask({ ...dbInsertPayload, taskId, projectId: input.projectId });
           
           return { success: true, taskId };
@@ -1051,6 +1054,7 @@ export const appRouter = router({
         lastUpdate: z.string().optional(),
         updateDate: z.string().optional(),
         resolutionDate: z.string().optional(),
+        scopeItemId: z.number().optional().nullable(),
       }))
       .mutation(async ({ input }) => {
         try {
@@ -1119,6 +1123,7 @@ export const appRouter = router({
           deliverableId: z.number().optional(),
           taskId: z.string().optional(),
           knowledgeBaseCode: z.string().optional(),
+          scopeItemId: z.number().optional().nullable(),
         }),
       }))
       .mutation(async ({ input, ctx }) => {
@@ -2275,6 +2280,21 @@ export const appRouter = router({
         .query(async ({ input }) => {
           return await db.getAllTaskGroups(input.projectId);
         }),
+      getUsageCounts: publicProcedure
+        .input(z.object({ projectId: z.number() }))
+        .query(async ({ input }) => {
+          const dbConn = await getDb();
+          if (!dbConn) return [];
+          const groups = await dbConn.select().from(taskGroups).where(eq(taskGroups.projectId, input.projectId));
+          const counts = await Promise.all(groups.map(async (g) => {
+            const [taskCount] = await dbConn.select({ count: sql<number>`COUNT(*)` }).from(tasks)
+              .where(and(eq(tasks.projectId, input.projectId), eq(tasks.taskGroup, g.name)));
+            const [reqCount] = await dbConn.select({ count: sql<number>`COUNT(*)` }).from(requirements)
+              .where(and(eq(requirements.projectId, input.projectId), eq(requirements.taskGroup, g.name)));
+            return { id: g.id, name: g.name, taskCount: Number(taskCount?.count ?? 0), requirementCount: Number(reqCount?.count ?? 0) };
+          }));
+          return counts;
+        }),
       create: protectedProcedure
         .input(z.object({
           projectId: z.number(),
@@ -2308,6 +2328,21 @@ export const appRouter = router({
         .input(z.object({ projectId: z.number() }))
         .query(async ({ input }) => {
           return await db.getAllIssueGroups(input.projectId);
+        }),
+      getUsageCounts: publicProcedure
+        .input(z.object({ projectId: z.number() }))
+        .query(async ({ input }) => {
+          const dbConn = await getDb();
+          if (!dbConn) return [];
+          const groups = await dbConn.select().from(issueGroups).where(eq(issueGroups.projectId, input.projectId));
+          const counts = await Promise.all(groups.map(async (g) => {
+            const [issueCount] = await dbConn.select({ count: sql<number>`COUNT(*)` }).from(issues)
+              .where(and(eq(issues.projectId, input.projectId), eq(issues.issueGroup, g.name)));
+            const [reqCount] = await dbConn.select({ count: sql<number>`COUNT(*)` }).from(requirements)
+              .where(and(eq(requirements.projectId, input.projectId), eq(requirements.issueGroup, g.name)));
+            return { id: g.id, name: g.name, issueCount: Number(issueCount?.count ?? 0), requirementCount: Number(reqCount?.count ?? 0) };
+          }));
+          return counts;
         }),
       create: protectedProcedure
         .input(z.object({
