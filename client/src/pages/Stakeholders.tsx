@@ -649,7 +649,7 @@ function DevPlanDialog({
     { enabled: !!stakeholder?.id && open }
   );
   const { data: allTaskGroups = [] } = trpc.dropdownOptions.taskGroups.getAll.useQuery(
-    { projectId: currentProjectId! },
+    { projectId: currentProjectId ?? 0 },
     { enabled: !!currentProjectId && open }
   );
   const { data: allTasks = [] } = trpc.tasks.list.useQuery(
@@ -805,7 +805,7 @@ function DetailPanel({
   const [devPlanForm, setDevPlanForm] = useState({
     title: "", description: "", goals: "", startDate: "", endDate: "",
     status: "Not Started" as string,
-    linkedSkillId: "", linkedSwotId: "",
+    linkedSkillId: "", linkedSwotId: "", linkedTaskGroupId: "",
   });
 
   // ── Skill state ──
@@ -833,6 +833,14 @@ function DetailPanel({
     { stakeholderId: stakeholder?.id ?? 0 },
     { enabled: !!stakeholder?.id && open }
   );
+  const { data: allTaskGroups = [] } = trpc.dropdownOptions.taskGroups.getAll.useQuery(
+    { projectId: currentProjectId ?? 0 },
+    { enabled: !!currentProjectId && open }
+  );
+  const { data: taskGroupLinks = [], refetch: refetchTaskGroupLinks } = trpc.stakeholderEnhancements.listTaskGroupLinks.useQuery(
+    { stakeholderId: stakeholder?.id ?? 0 },
+    { enabled: !!stakeholder?.id && open }
+  );
 
   // ── SWOT mutations ──
   const createSwot = trpc.stakeholderEnhancements.createSwot.useMutation({
@@ -849,7 +857,8 @@ function DetailPanel({
     onSuccess: () => {
       refetchDevPlans();
       setShowDevPlanForm(false);
-      setDevPlanForm({ title: "", description: "", goals: "", startDate: "", endDate: "", status: "Not Started", linkedSkillId: "", linkedSwotId: "" });
+      setDevPlanForm({ title: "", description: "", goals: "", startDate: "", endDate: "", status: "Not Started", linkedSkillId: "", linkedSwotId: "", linkedTaskGroupId: "" });
+      refetchTaskGroupLinks();
       toast.success("Development plan added");
     },
     onError: (e) => toast.error(`Failed: ${e.message}`),
@@ -1380,6 +1389,22 @@ function DetailPanel({
                     </Select>
                   </div>
                 )}
+                {allTaskGroups.length > 0 && (
+                  <div className="space-y-1">
+                    <Label className="text-xs">Link to Task Group (optional)</Label>
+                    <Select value={devPlanForm.linkedTaskGroupId || "__none__"} onValueChange={(v) => setDevPlanForm((p) => ({ ...p, linkedTaskGroupId: v === "__none__" ? "" : v }))}>
+                      <SelectTrigger className="h-8">
+                        <SelectValue placeholder="Select task group..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">— None —</SelectItem>
+                        {(allTaskGroups as any[]).map((tg) => (
+                          <SelectItem key={tg.id} value={String(tg.id)}>{tg.name}{tg.idCode ? ` (${tg.idCode})` : ""}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <div className="flex gap-2">
                   <Button
                     size="sm"
@@ -1397,6 +1422,7 @@ function DetailPanel({
                         status: devPlanForm.status as "Not Started" | "In Progress" | "Completed" | "On Hold",
                         linkedSkillId: devPlanForm.linkedSkillId ? parseInt(devPlanForm.linkedSkillId) : null,
                         linkedSwotId: devPlanForm.linkedSwotId ? parseInt(devPlanForm.linkedSwotId) : null,
+                        linkedTaskGroupId: devPlanForm.linkedTaskGroupId ? parseInt(devPlanForm.linkedTaskGroupId) : null,
                       });
                     }}
                   >
@@ -1461,19 +1487,31 @@ function DetailPanel({
                         </span>
                       ) : null;
                     })()}
-                    {/* DEV Tasks link */}
-                    <div className="pt-1 border-t border-dashed border-teal-200 mt-1">
-                      <button
-                        onClick={() => {
-                          sessionStorage.setItem('tasks_tab', 'development');
-                          window.location.href = '/tasks';
-                        }}
-                        className="inline-flex items-center gap-1 text-[10px] text-teal-600 hover:text-teal-700 hover:underline font-medium"
-                      >
-                        <CheckSquare className="h-2.5 w-2.5" />
-                        View / Create DEV Tasks →
-                      </button>
-                    </div>
+                     {/* Linked Task Group */}
+                     {plan.linkedTaskGroupId && (() => {
+                       const tg = (allTaskGroups as any[]).find((t) => t.id === plan.linkedTaskGroupId);
+                       return tg ? (
+                         <span className="inline-flex items-center gap-1 text-[10px] bg-teal-50 text-teal-700 px-1.5 py-0.5 rounded-full">
+                           <CheckSquare className="h-2.5 w-2.5" /> Task Group: {tg.name}{tg.idCode ? ` (${tg.idCode})` : ""}
+                         </span>
+                       ) : null;
+                     })()}
+                     {/* DEV Tasks link */}
+                     <div className="pt-1 border-t border-dashed border-teal-200 mt-1">
+                       <button
+                         onClick={() => {
+                           sessionStorage.setItem('tasks_tab', 'development');
+                           if (plan.linkedTaskGroupId) {
+                             sessionStorage.setItem('tasks_group_filter', String(plan.linkedTaskGroupId));
+                           }
+                           window.location.href = '/tasks';
+                         }}
+                         className="inline-flex items-center gap-1 text-[10px] text-teal-600 hover:text-teal-700 hover:underline font-medium"
+                       >
+                         <CheckSquare className="h-2.5 w-2.5" />
+                         {plan.linkedTaskGroupId ? "View Task Group →" : "View / Create DEV Tasks →"}
+                       </button>
+                     </div>
                   </div>
                 ))}
               </div>
@@ -2381,7 +2419,7 @@ export default function Stakeholders() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                       <Button
                         variant="ghost" size="icon" className="h-7 w-7"
                         title="Edit"
@@ -2389,7 +2427,7 @@ export default function Stakeholders() {
                       >
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
-                      {s.isInternalTeam && (
+                      {(s.isInternalTeam || s.classification === "TeamMember") && (
                         <Button
                           variant="ghost" size="icon" className="h-7 w-7 text-blue-600"
                           title="Development Plan"

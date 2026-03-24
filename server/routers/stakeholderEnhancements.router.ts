@@ -390,6 +390,9 @@ export const stakeholderEnhancementsRouter = router({
         startDate: z.string().optional(),
         endDate: z.string().optional(),
         status: z.enum(["Not Started", "In Progress", "Completed", "On Hold"]).optional(),
+        linkedTaskGroupId: z.number().nullable().optional(),
+        linkedSkillId: z.number().nullable().optional(),
+        linkedSwotId: z.number().nullable().optional(),
       })
     )
     .mutation(async ({ input }) => {
@@ -404,7 +407,28 @@ export const stakeholderEnhancementsRouter = router({
         startDate: input.startDate ? new Date(input.startDate) : undefined,
         endDate: input.endDate ? new Date(input.endDate) : undefined,
         status: input.status,
+        linkedTaskGroupId: input.linkedTaskGroupId ?? null,
+        linkedSkillId: input.linkedSkillId ?? null,
+        linkedSwotId: input.linkedSwotId ?? null,
       });
+      // If a task group was linked, also create the stakeholderTaskGroups entry
+      if (input.linkedTaskGroupId) {
+        const existing = await db
+          .select()
+          .from(stakeholderTaskGroups)
+          .where(
+            and(
+              eq(stakeholderTaskGroups.stakeholderId, input.stakeholderId),
+              eq(stakeholderTaskGroups.taskGroupId, input.linkedTaskGroupId)
+            )
+          );
+        if (existing.length === 0) {
+          await db.insert(stakeholderTaskGroups).values({
+            stakeholderId: input.stakeholderId,
+            taskGroupId: input.linkedTaskGroupId,
+          });
+        }
+      }
       return result;
     }),
 
@@ -421,6 +445,9 @@ export const stakeholderEnhancementsRouter = router({
           status: z
             .enum(["Not Started", "In Progress", "Completed", "On Hold"])
             .optional(),
+          linkedTaskGroupId: z.number().nullable().optional(),
+          linkedSkillId: z.number().nullable().optional(),
+          linkedSwotId: z.number().nullable().optional(),
         }),
       })
     )
@@ -436,6 +463,31 @@ export const stakeholderEnhancementsRouter = router({
           ...(endDate !== undefined ? { endDate: new Date(endDate) } : {}),
         })
         .where(eq(developmentPlans.id, input.id));
+      // Sync task group link if linkedTaskGroupId changed
+      if (input.data.linkedTaskGroupId !== undefined) {
+        // Get the dev plan to find the stakeholderId
+        const [plan] = await db
+          .select({ stakeholderId: developmentPlans.stakeholderId })
+          .from(developmentPlans)
+          .where(eq(developmentPlans.id, input.id));
+        if (plan && input.data.linkedTaskGroupId) {
+          const existing = await db
+            .select()
+            .from(stakeholderTaskGroups)
+            .where(
+              and(
+                eq(stakeholderTaskGroups.stakeholderId, plan.stakeholderId),
+                eq(stakeholderTaskGroups.taskGroupId, input.data.linkedTaskGroupId)
+              )
+            );
+          if (existing.length === 0) {
+            await db.insert(stakeholderTaskGroups).values({
+              stakeholderId: plan.stakeholderId,
+              taskGroupId: input.data.linkedTaskGroupId,
+            });
+          }
+        }
+      }
       return { success: true };
     }),
 
