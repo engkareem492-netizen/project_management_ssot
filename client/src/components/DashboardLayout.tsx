@@ -1053,7 +1053,7 @@ function DashboardLayoutContent({
                       type="file" accept=".xlsx,.xls"
                       onChange={handleFileUpload}
                       onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
-                      className="hidden" id="sidebar-file-upload" disabled={uploading}
+                      className="hidden" id="sidebar-file-upload"
                     />
                     <label
                       htmlFor="sidebar-file-upload"

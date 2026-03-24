@@ -312,6 +312,7 @@ export const issues = mysqlTable("issues", {
   lastUpdate: text("lastUpdate"),
   updateDate: varchar("updateDate", { length: 50 }),
   resolutionDate: varchar("resolutionDate", { length: 50 }),
+  requiredResolutionDate: varchar("requiredResolutionDate", { length: 50 }),
   knowledgeBaseCode: varchar("knowledgeBaseCode", { length: 50 }),
   scopeItemId: int("scopeItemId"),
   importedAt: timestamp("importedAt").defaultNow().notNull(),

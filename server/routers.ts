@@ -1072,6 +1072,7 @@ export const appRouter = router({
         lastUpdate: z.string().optional(),
         updateDate: z.string().optional(),
         resolutionDate: z.string().optional(),
+        requiredResolutionDate: z.string().optional(),
         scopeItemId: z.number().optional().nullable(),
       }))
       .mutation(async ({ input }) => {
@@ -1127,6 +1128,7 @@ export const appRouter = router({
           lastUpdate: z.string().optional(),
           updateDate: z.string().optional(),
           resolutionDate: z.string().optional(),
+          requiredResolutionDate: z.string().optional(),
           description: z.string().optional(),
           owner: z.string().optional(),
           ownerId: z.number().optional(),
@@ -1151,7 +1153,7 @@ export const appRouter = router({
         }
 
         const changedFields: Record<string, { oldValue: any; newValue: any }> = {};
-        const trackFields = ['status', 'priority', 'deliverables1', 'd1Status', 'deliverables2', 'd2Status', 'lastUpdate', 'updateDate', 'resolutionDate', 'description', 'owner', 'openDate'];
+        const trackFields = ['status', 'priority', 'deliverables1', 'd1Status', 'deliverables2', 'd2Status', 'lastUpdate', 'updateDate', 'resolutionDate', 'requiredResolutionDate', 'description', 'owner', 'openDate'];
         
         for (const field of trackFields) {
           if (input.data[field as keyof typeof input.data] !== undefined && 
