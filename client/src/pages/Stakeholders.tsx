@@ -39,6 +39,8 @@ import { EmptyState } from "@/components/EmptyState";
 import { formatDate, formatDateTime } from "@/lib/dateUtils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+type Classification = "TeamMember" | "External" | "Stakeholder";
+
 type StakeholderFormData = {
   fullName: string;
   email: string;
@@ -46,15 +48,24 @@ type StakeholderFormData = {
   role: string;
   job: string;
   phone: string;
+  department: string;
+  classification: Classification;
   isInternalTeam: boolean;
+  isPooledResource: boolean;
+  workingHoursPerDay: string;
+  workingDaysPerWeek: number;
+  stakeholderManagerId: number | null;
+  externalPartyId: number | null;
   powerLevel: number;
   interestLevel: number;
   engagementStrategy: string;
+  currentEngagementStatus: string;
+  desiredEngagementStatus: string;
   communicationFrequency: string;
   communicationChannel: string;
   communicationMessage: string;
   communicationResponsible: string;
-  communicationResponsibleId: number | undefined;
+  communicationResponsibleId: number | null;
   notes: string;
   costPerHour: string;
   costPerDay: string;
@@ -62,9 +73,13 @@ type StakeholderFormData = {
 
 const EMPTY_FORM: StakeholderFormData = {
   fullName: "", email: "", position: "", role: "", job: "", phone: "",
-  isInternalTeam: false, powerLevel: 3, interestLevel: 3,
-  engagementStrategy: "", communicationFrequency: "", communicationChannel: "",
-  communicationMessage: "", communicationResponsible: "", communicationResponsibleId: undefined, notes: "",
+  department: "", classification: "Stakeholder", isInternalTeam: false,
+  isPooledResource: false, workingHoursPerDay: "8", workingDaysPerWeek: 5,
+  stakeholderManagerId: null, externalPartyId: null,
+  powerLevel: 3, interestLevel: 3,
+  engagementStrategy: "", currentEngagementStatus: "", desiredEngagementStatus: "",
+  communicationFrequency: "", communicationChannel: "",
+  communicationMessage: "", communicationResponsible: "", communicationResponsibleId: null, notes: "",
   costPerHour: "", costPerDay: "",
 };
 
@@ -167,7 +182,9 @@ function KpiManagementDialog({
 }) {
   const { currentProjectId } = useProject();
   const utils = trpc.useUtils();
-  const [kpiForm, setKpiForm] = useState({ name: "", description: "", target: "", unit: "", weight: 1 });
+  const [kpiForm, setKpiForm] = useState<{ name: string; description: string; target: string; unit: string; weight: number; linkedSkillId: number | null }>(
+    { name: "", description: "", target: "", unit: "", weight: 1, linkedSkillId: null }
+  );
   const [editingKpi, setEditingKpi] = useState<any>(null);
   const [assessmentOpen, setAssessmentOpen] = useState(false);
   const [assessmentForm, setAssessmentForm] = useState({
@@ -181,6 +198,10 @@ function KpiManagementDialog({
     { stakeholderId: stakeholder?.id },
     { enabled: !!stakeholder?.id && open }
   );
+  const { data: skills = [] } = trpc.stakeholderEnhancements.listSkills.useQuery(
+    { stakeholderId: stakeholder?.id },
+    { enabled: !!stakeholder?.id && open }
+  );
   const { data: assessments = [] } = trpc.stakeholderEnhancements.listAssessments.useQuery(
     { stakeholderId: stakeholder?.id },
     { enabled: !!stakeholder?.id && open }
@@ -189,7 +210,7 @@ function KpiManagementDialog({
   const createKpi = trpc.stakeholderEnhancements.createKpi.useMutation({
     onSuccess: () => {
       utils.stakeholderEnhancements.listKpis.invalidate({ stakeholderId: stakeholder.id });
-      setKpiForm({ name: "", description: "", target: "", unit: "", weight: 1 });
+      setKpiForm({ name: "", description: "", target: "", unit: "", weight: 1, linkedSkillId: null });
       toast.success("KPI added");
     },
   });
@@ -268,15 +289,16 @@ function KpiManagementDialog({
                     <TableHead>Target</TableHead>
                     <TableHead>Unit</TableHead>
                     <TableHead>Weight</TableHead>
+                    <TableHead>Linked Skill</TableHead>
                     <TableHead className="w-20">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {kpis.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                       <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                         No KPIs defined yet. Add one below.
-                      </TableCell>
+                       </TableCell>
                     </TableRow>
                   ) : (
                     kpis.map((kpi) =>
@@ -314,6 +336,22 @@ function KpiManagementDialog({
                             />
                           </TableCell>
                           <TableCell>
+                            <Select
+                              value={editingKpi.linkedSkillId?.toString() ?? "none"}
+                              onValueChange={(v) => setEditingKpi({ ...editingKpi, linkedSkillId: v === "none" ? null : parseInt(v) })}
+                            >
+                              <SelectTrigger className="h-8 w-36 text-xs">
+                                <SelectValue placeholder="No skill" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">— None —</SelectItem>
+                                {skills.map((s: any) => (
+                                  <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell>
                             <div className="flex gap-1">
                               <Button size="sm" className="h-7 px-2" onClick={() => updateKpi.mutate({ id: kpi.id, data: editingKpi })}>
                                 Save
@@ -331,6 +369,16 @@ function KpiManagementDialog({
                           <TableCell>{kpi.unit || "—"}</TableCell>
                           <TableCell>
                             <Badge variant="outline">{kpi.weight}x</Badge>
+                          </TableCell>
+                          <TableCell>
+                            {kpi.linkedSkillId ? (
+                              <Badge variant="secondary" className="text-xs gap-1">
+                                <Zap className="h-2.5 w-2.5" />
+                                {(skills as any[]).find((s) => s.id === kpi.linkedSkillId)?.name ?? `Skill #${kpi.linkedSkillId}`}
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground/40 text-xs">—</span>
+                            )}
                           </TableCell>
                           <TableCell>
                             <div className="flex gap-1">
@@ -389,13 +437,32 @@ function KpiManagementDialog({
                     className="w-20"
                   />
                 </div>
+                <div className="col-span-2 space-y-1">
+                  <Label className="text-sm">Link to Skill (optional)</Label>
+                  <Select
+                    value={kpiForm.linkedSkillId?.toString() ?? "none"}
+                    onValueChange={(v) => setKpiForm({ ...kpiForm, linkedSkillId: v === "none" ? null : parseInt(v) })}
+                  >
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue placeholder="Select a skill..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">— No skill link —</SelectItem>
+                      {skills.map((s: any) => (
+                        <SelectItem key={s.id} value={s.id.toString()}>
+                          {s.name} {s.level && <span className="text-muted-foreground text-xs ml-1">({s.level})</span>}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <Button
                 size="sm"
                 disabled={!kpiForm.name.trim() || createKpi.isPending}
                 onClick={() => {
                   if (!currentProjectId) return;
-                  createKpi.mutate({ ...kpiForm, stakeholderId: stakeholder.id, projectId: currentProjectId });
+                  createKpi.mutate({ ...kpiForm, linkedSkillId: kpiForm.linkedSkillId, stakeholderId: stakeholder.id, projectId: currentProjectId });
                 }}
               >
                 <Plus className="h-3.5 w-3.5 mr-1" />
@@ -1643,15 +1710,24 @@ export default function Stakeholders() {
       role: s.role || "",
       job: s.job || "",
       phone: s.phone || "",
+      department: s.department || "",
+      classification: (s.classification as Classification) || "Stakeholder",
       isInternalTeam: s.isInternalTeam || false,
+      isPooledResource: s.isPooledResource || false,
+      workingHoursPerDay: s.workingHoursPerDay != null ? String(s.workingHoursPerDay) : "8",
+      workingDaysPerWeek: s.workingDaysPerWeek ?? 5,
+      stakeholderManagerId: s.stakeholderManagerId ?? null,
+      externalPartyId: s.externalPartyId ?? null,
       powerLevel: s.powerLevel ?? 3,
       interestLevel: s.interestLevel ?? 3,
       engagementStrategy: s.engagementStrategy || "",
+      currentEngagementStatus: s.currentEngagementStatus || "",
+      desiredEngagementStatus: s.desiredEngagementStatus || "",
       communicationFrequency: s.communicationFrequency || "",
       communicationChannel: s.communicationChannel || "",
       communicationMessage: s.communicationMessage || "",
       communicationResponsible: s.communicationResponsible || "",
-      communicationResponsibleId: s.communicationResponsibleId ?? undefined,
+      communicationResponsibleId: s.communicationResponsibleId ?? null,
       notes: s.notes || "",
       costPerHour: s.costPerHour != null ? String(s.costPerHour) : "",
       costPerDay: s.costPerDay != null ? String(s.costPerDay) : "",
@@ -1778,19 +1854,51 @@ export default function Stakeholders() {
         </div>
       </div>
 
-      {/* Internal Team */}
+      {/* Classification */}
       <div className="space-y-3 border-t pt-3">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Team Classification</p>
-        <div className="flex items-center gap-3">
-          <Switch
-            checked={formData.isInternalTeam}
-            onCheckedChange={(v) => setFormData({ ...formData, isInternalTeam: v })}
-          />
-          <Label>Internal Team Member</Label>
-          {formData.isInternalTeam && (
-            <Badge className="bg-blue-100 text-blue-700 border-blue-200">Internal</Badge>
-          )}
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Classification</p>
+        <div className="space-y-2">
+          <Label>Stakeholder Type</Label>
+          <Select
+            value={formData.classification}
+            onValueChange={(v) => setFormData({
+              ...formData,
+              classification: v as Classification,
+              isInternalTeam: classificationToIsInternal(v as Classification),
+            })}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="TeamMember">Team Member</SelectItem>
+              <SelectItem value="External">External</SelectItem>
+              <SelectItem value="Stakeholder">Stakeholder</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
+        {formData.classification === "TeamMember" && (
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label>Working Hours/Day</Label>
+              <Input
+                type="number" min="1" max="24" step="0.5"
+                value={formData.workingHoursPerDay}
+                onChange={(e) => setFormData({ ...formData, workingHoursPerDay: e.target.value })}
+                placeholder="8"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Working Days/Week</Label>
+              <Input
+                type="number" min="1" max="7"
+                value={formData.workingDaysPerWeek}
+                onChange={(e) => setFormData({ ...formData, workingDaysPerWeek: parseInt(e.target.value) || 5 })}
+                placeholder="5"
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Engagement */}
@@ -1826,6 +1934,30 @@ export default function Stakeholders() {
               ))}
             </SelectContent>
           </Select>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <Label>Current Engagement</Label>
+            <Select value={formData.currentEngagementStatus} onValueChange={(v) => setFormData({ ...formData, currentEngagementStatus: v })}>
+              <SelectTrigger><SelectValue placeholder="Current status..." /></SelectTrigger>
+              <SelectContent>
+                {["Unaware", "Resistant", "Neutral", "Supportive", "Leading"].map((s) => (
+                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Desired Engagement</Label>
+            <Select value={formData.desiredEngagementStatus} onValueChange={(v) => setFormData({ ...formData, desiredEngagementStatus: v })}>
+              <SelectTrigger><SelectValue placeholder="Desired status..." /></SelectTrigger>
+              <SelectContent>
+                {["Unaware", "Resistant", "Neutral", "Supportive", "Leading"].map((s) => (
+                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
