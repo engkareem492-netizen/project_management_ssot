@@ -71,6 +71,8 @@ import { testPlansRouter } from "./routers/testPlans.router";
 import { defectsRouter } from "./routers/defects.router";
 import { pmPlanRouter } from "./routers/pmPlan.router";
 import { currenciesRouter } from "./routers/currencies.router";
+import { portfoliosRouter } from "./routers/portfolios.router";
+import { programsRouter } from "./routers/programs.router";
 
 export const appRouter = router({
   system: systemRouter,
@@ -136,6 +138,8 @@ export const appRouter = router({
   defects: defectsRouter,
   pmPlan: pmPlanRouter,
   currencies: currenciesRouter,
+  portfolios: portfoliosRouter,
+  programs: programsRouter,
   scopeItems: router({
     list: protectedProcedure
       .input(z.object({ projectId: z.number() }))

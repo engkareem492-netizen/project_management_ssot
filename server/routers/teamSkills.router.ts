@@ -1,13 +1,104 @@
 import { protectedProcedure, router } from "../_core/trpc";
 import { z } from "zod";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { getDb } from "../db";
 import {
   stakeholderSkills,
   stakeholderSwot,
   developmentPlans,
   resourceCalendar,
+  stakeholders,
+  projects,
 } from "../../drizzle/schema";
+
+type DbHandle = Exclude<Awaited<ReturnType<typeof getDb>>, null>;
+
+/**
+ * For a pooled resource stakeholder, find all sibling stakeholders (same email)
+ * in projects that share the same programId or portfolioId.
+ * Returns array of { stakeholderId, projectId } for propagation.
+ */
+async function getSiblingPooledStakeholders(
+  db: DbHandle | null,
+  sourceStakeholderId: number,
+  sourceProjectId: number,
+): Promise<Array<{ stakeholderId: number; projectId: number }>> {
+  if (!db) return [];
+
+  // Load the source stakeholder
+  const [srcStakeholder] = await db.select().from(stakeholders)
+    .where(eq(stakeholders.id, sourceStakeholderId)).limit(1);
+  if (!srcStakeholder || !srcStakeholder.isPooledResource) return [];
+
+  // Load source project to get programId / portfolioId
+  const [srcProject] = await db.select().from(projects)
+    .where(eq(projects.id, sourceProjectId)).limit(1);
+  if (!srcProject) return [];
+
+  const { programId, portfolioId } = srcProject;
+  if (!programId && !portfolioId) return [];
+
+  // Fetch all projects, then filter in JS to avoid complex drizzle OR/ne combinations
+  const allProjects = await db.select({ id: projects.id, programId: projects.programId, portfolioId: projects.portfolioId })
+    .from(projects);
+
+  const siblingProjectIds = allProjects
+    .filter((p) =>
+      p.id !== sourceProjectId &&
+      ((programId && p.programId === programId) || (portfolioId && p.portfolioId === portfolioId))
+    )
+    .map((p) => p.id);
+
+  if (siblingProjectIds.length === 0) return [];
+
+  // If no email to match on, return empty (can't identify same person)
+  if (!srcStakeholder.email) return [];
+
+  // Find sibling stakeholders with same email in sibling projects
+  const siblings = await db.select({ id: stakeholders.id, projectId: stakeholders.projectId })
+    .from(stakeholders)
+    .where(
+      and(
+        inArray(stakeholders.projectId, siblingProjectIds),
+        eq(stakeholders.email, srcStakeholder.email),
+        eq(stakeholders.isPooledResource, true),
+      )
+    );
+
+  return siblings.map((s) => ({ stakeholderId: s.id, projectId: s.projectId! }));
+}
+
+/**
+ * Upsert a calendar entry for a specific stakeholder/date, reusing the given db handle.
+ */
+async function upsertCalendarForStakeholder(
+  db: DbHandle,
+  stakeholderId: number,
+  projectId: number,
+  date: string,
+  type: "Working" | "Leave" | "Holiday" | "Training" | "PartTime",
+  availableHours: string | undefined,
+  notes: string | undefined,
+) {
+  const existing = await db.select().from(resourceCalendar).where(
+    and(
+      eq(resourceCalendar.stakeholderId, stakeholderId),
+      eq(resourceCalendar.date, date),
+    )
+  ).limit(1);
+
+  if (existing.length > 0) {
+    await db.update(resourceCalendar)
+      .set({ type, availableHours: availableHours ?? null, notes: notes ?? null })
+      .where(eq(resourceCalendar.id, existing[0].id));
+  } else {
+    await db.insert(resourceCalendar).values({
+      stakeholderId, projectId, date, type,
+      availableHours: availableHours ?? null,
+      notes: notes ?? null,
+    });
+  }
+}
 
 const SKILL_LEVELS = ["Beginner", "Intermediate", "Advanced", "Expert"] as const;
 const SWOT_QUADRANTS = ["Strength", "Weakness", "Opportunity", "Threat"] as const;
@@ -198,6 +289,56 @@ export const teamSkillsRouter = router({
       return await db.select().from(resourceCalendar).where(and(...conditions)).orderBy(resourceCalendar.date);
     }),
 
+  /**
+   * Returns calendar entries for a pooled stakeholder across ALL projects they
+   * belong to in the same program/portfolio. Useful for showing cross-project
+   * availability impact on the resource calendar UI.
+   */
+  listPooledCalendar: protectedProcedure
+    .input(z.object({
+      stakeholderId: z.number(),
+      projectId: z.number(),
+      startDate: z.string().optional(),
+      endDate: z.string().optional(),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+      const { gte, lte } = await import("drizzle-orm");
+
+      // Collect self + sibling stakeholder IDs
+      const siblings = await getSiblingPooledStakeholders(db, input.stakeholderId, input.projectId);
+      const allIds = [input.stakeholderId, ...siblings.map((s) => s.stakeholderId)];
+
+      const conditions: ReturnType<typeof eq>[] = [];
+      if (input.startDate) conditions.push(gte(resourceCalendar.date, input.startDate) as any);
+      if (input.endDate) conditions.push(lte(resourceCalendar.date, input.endDate) as any);
+
+      const rows = await db.select({
+        id: resourceCalendar.id,
+        stakeholderId: resourceCalendar.stakeholderId,
+        projectId: resourceCalendar.projectId,
+        date: resourceCalendar.date,
+        type: resourceCalendar.type,
+        availableHours: resourceCalendar.availableHours,
+        notes: resourceCalendar.notes,
+        projectName: projects.name,
+        stakeholderName: stakeholders.fullName,
+      })
+      .from(resourceCalendar)
+      .leftJoin(projects, eq(projects.id, resourceCalendar.projectId))
+      .leftJoin(stakeholders, eq(stakeholders.id, resourceCalendar.stakeholderId))
+      .where(
+        and(
+          inArray(resourceCalendar.stakeholderId, allIds),
+          ...conditions,
+        )
+      )
+      .orderBy(resourceCalendar.date);
+
+      return rows;
+    }),
+
   upsertCalendarEntry: protectedProcedure
     .input(z.object({
       stakeholderId: z.number(),
@@ -210,27 +351,31 @@ export const teamSkillsRouter = router({
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new Error("DB unavailable");
-      const { eq, and } = await import("drizzle-orm");
-      const existing = await db.select().from(resourceCalendar).where(
+
+      // Upsert for the primary stakeholder/project
+      await upsertCalendarForStakeholder(
+        db, input.stakeholderId, input.projectId,
+        input.date, input.type, input.availableHours, input.notes,
+      );
+      const rows = await db.select().from(resourceCalendar).where(
         and(
           eq(resourceCalendar.stakeholderId, input.stakeholderId),
           eq(resourceCalendar.date, input.date),
         )
       ).limit(1);
+      const saved = rows[0];
 
-      if (existing.length > 0) {
-        await db.update(resourceCalendar).set({
-          type: input.type,
-          availableHours: input.availableHours,
-          notes: input.notes,
-        }).where(eq(resourceCalendar.id, existing[0].id));
-        const rows = await db.select().from(resourceCalendar).where(eq(resourceCalendar.id, existing[0].id)).limit(1);
-        return rows[0];
-      } else {
-        const result = await db.insert(resourceCalendar).values(input);
-        const rows = await db.select().from(resourceCalendar).where(eq(resourceCalendar.id, result[0].insertId)).limit(1);
-        return rows[0];
+      // Propagate to pooled-resource siblings in same program/portfolio
+      const siblings = await getSiblingPooledStakeholders(db, input.stakeholderId, input.projectId);
+      for (const sib of siblings) {
+        await upsertCalendarForStakeholder(
+          db, sib.stakeholderId, sib.projectId,
+          input.date, input.type, input.availableHours,
+          input.notes ? `[Propagated] ${input.notes}` : "[Propagated from sibling project]",
+        );
       }
+
+      return { ...saved, propagatedTo: siblings.length };
     }),
 
   // Upsert a range of dates at once (e.g. a week of leave)
@@ -268,37 +413,33 @@ export const teamSkillsRouter = router({
         current.setDate(current.getDate() + 1);
       }
 
+      // Resolve pooled siblings once (before the loop)
+      const siblings = await getSiblingPooledStakeholders(db, input.stakeholderId, input.projectId);
+
       const results = [];
       for (const date of dates) {
-        const existing = await db.select().from(resourceCalendar).where(
+        await upsertCalendarForStakeholder(
+          db, input.stakeholderId, input.projectId,
+          date, input.type, input.availableHours, input.notes,
+        );
+        const rows = await db.select().from(resourceCalendar).where(
           and(
             eq(resourceCalendar.stakeholderId, input.stakeholderId),
             eq(resourceCalendar.date, date),
           )
         ).limit(1);
+        if (rows[0]) results.push(rows[0]);
 
-        if (existing.length > 0) {
-          await db.update(resourceCalendar).set({
-            type: input.type,
-            availableHours: input.availableHours,
-            notes: input.notes,
-          }).where(eq(resourceCalendar.id, existing[0].id));
-          const rows = await db.select().from(resourceCalendar).where(eq(resourceCalendar.id, existing[0].id)).limit(1);
-          results.push(rows[0]);
-        } else {
-          const result = await db.insert(resourceCalendar).values({
-            stakeholderId: input.stakeholderId,
-            projectId: input.projectId,
-            date,
-            type: input.type,
-            availableHours: input.availableHours,
-            notes: input.notes,
-          });
-          const rows = await db.select().from(resourceCalendar).where(eq(resourceCalendar.id, result[0].insertId)).limit(1);
-          results.push(rows[0]);
+        // Propagate to siblings
+        for (const sib of siblings) {
+          await upsertCalendarForStakeholder(
+            db, sib.stakeholderId, sib.projectId,
+            date, input.type, input.availableHours,
+            input.notes ? `[Propagated] ${input.notes}` : "[Propagated from sibling project]",
+          );
         }
       }
-      return { count: results.length, dates };
+      return { count: results.length, dates, propagatedTo: siblings.length };
     }),
 
   deleteCalendarEntry: protectedProcedure
@@ -306,7 +447,29 @@ export const teamSkillsRouter = router({
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new Error("DB unavailable");
+
+      // Load the entry before deletion to know stakeholder/project/date for propagation
+      const [entry] = await db.select().from(resourceCalendar)
+        .where(eq(resourceCalendar.id, input.id)).limit(1);
+
       await db.delete(resourceCalendar).where(eq(resourceCalendar.id, input.id));
+
+      // Propagate deletion to sibling pooled-resource stakeholders
+      if (entry) {
+        const siblings = await getSiblingPooledStakeholders(db, entry.stakeholderId, entry.projectId);
+        for (const sib of siblings) {
+          const [sibEntry] = await db.select().from(resourceCalendar).where(
+            and(
+              eq(resourceCalendar.stakeholderId, sib.stakeholderId),
+              eq(resourceCalendar.date, entry.date),
+            )
+          ).limit(1);
+          if (sibEntry) {
+            await db.delete(resourceCalendar).where(eq(resourceCalendar.id, sibEntry.id));
+          }
+        }
+      }
+
       return { success: true };
     }),
 

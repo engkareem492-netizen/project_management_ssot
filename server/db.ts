@@ -1474,7 +1474,7 @@ export async function createProject(data: InsertProject) {
   }
 }
 
-export async function updateProject(projectId: number, data: { programName?: string | null; portfolioName?: string | null; logoUrl?: string | null; name?: string; description?: string | null }) {
+export async function updateProject(projectId: number, data: { programName?: string | null; portfolioName?: string | null; programId?: number | null; portfolioId?: number | null; logoUrl?: string | null; name?: string; description?: string | null }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   try {
