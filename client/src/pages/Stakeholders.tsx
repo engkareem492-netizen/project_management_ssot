@@ -77,6 +77,45 @@ const ENGAGEMENT_STRATEGIES = [
 const COMM_FREQUENCIES = ["Daily", "Weekly", "Bi-weekly", "Monthly", "Quarterly", "As needed"];
 const COMM_CHANNELS = ["Email", "Meeting", "Phone", "Slack", "Teams", "Report", "Newsletter"];
 
+function proposeEngagementStrategy(power: number, interest: number): string {
+  const highPower = power >= 3;
+  const highInterest = interest >= 3;
+  if (highPower && highInterest) return "Manage Closely";
+  if (highPower && !highInterest) return "Keep Satisfied";
+  if (!highPower && highInterest) return "Keep Informed";
+  return "Monitor";
+}
+function classificationToIsInternal(c: string): boolean {
+  return c === "TeamMember";
+}
+function getClassificationBadge(classification: string | null | undefined) {
+  if (classification === "TeamMember") {
+    return <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-xs">Team Member</Badge>;
+  }
+  if (classification === "External") {
+    return <Badge className="bg-orange-100 text-orange-700 border-orange-200 text-xs">External</Badge>;
+  }
+  return <Badge className="bg-purple-100 text-purple-700 border-purple-200 text-xs">Stakeholder</Badge>;
+}
+function getEngagementBadgeClass(strategy: string | null | undefined) {
+  const map: Record<string, string> = {
+    "Manage Closely": "bg-red-100 text-red-700 border-red-200",
+    "Keep Satisfied": "bg-orange-100 text-orange-700 border-orange-200",
+    "Keep Informed": "bg-blue-100 text-blue-700 border-blue-200",
+    "Monitor": "bg-gray-100 text-gray-600 border-gray-200",
+  };
+  return map[strategy || ""] || "bg-muted text-muted-foreground border-border";
+}
+function getEngagementStatusBadgeClass(status: string | null | undefined) {
+  const map: Record<string, string> = {
+    "Unaware": "bg-gray-100 text-gray-600 border-gray-200",
+    "Resistant": "bg-red-100 text-red-700 border-red-200",
+    "Neutral": "bg-yellow-100 text-yellow-700 border-yellow-200",
+    "Supportive": "bg-green-100 text-green-700 border-green-200",
+    "Leading": "bg-emerald-100 text-emerald-700 border-emerald-200",
+  };
+  return map[status || ""] || "bg-muted text-muted-foreground border-border";
+}
 function getEngagementBadge(strategy: string | null | undefined) {
   const map: Record<string, string> = {
     "Manage Closely": "bg-red-100 text-red-700 border-red-200",
