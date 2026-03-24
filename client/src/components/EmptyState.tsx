@@ -1,5 +1,5 @@
+import React, { ReactNode } from "react";
 import { LucideIcon } from "lucide-react";
-import { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 
 interface EmptyStateProps {
@@ -15,11 +15,11 @@ interface EmptyStateProps {
 }
 
 export function EmptyState({ icon, title, description, actionLabel, onAction, action }: EmptyStateProps) {
-  // Determine whether icon is a component constructor or a rendered element
-  const isComponent = typeof icon === "function";
-  const IconElement = isComponent
-    ? (() => { const Icon = icon as LucideIcon; return <Icon className="w-8 h-8 text-muted-foreground" />; })()
-    : (icon as ReactNode);
+  // Lucide icons are forwardRef objects (typeof === 'object'), not plain functions.
+  // Use React.isValidElement to detect pre-rendered JSX; otherwise treat as a component type.
+  const IconElement = React.isValidElement(icon)
+    ? icon
+    : React.createElement(icon as React.ElementType, { className: "w-8 h-8 text-muted-foreground" });
 
   return (
     <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
