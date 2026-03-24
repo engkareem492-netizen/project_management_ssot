@@ -44,6 +44,8 @@ export const projects = mysqlTable("projects", {
   createdBy: int("createdBy").notNull(),
   programName: varchar("programName", { length: 200 }),
   portfolioName: varchar("portfolioName", { length: 200 }),
+  programId: int("programId"),    // FK to programs.id (object link)
+  portfolioId: int("portfolioId"), // FK to portfolios.id (object link)
   logoUrl: text("logoUrl"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -1875,6 +1877,37 @@ export const userStories = mysqlTable("userStories", {
 });
 export type UserStory = typeof userStories.$inferSelect;
 export type InsertUserStory = typeof userStories.$inferInsert;
+
+/**
+ * Portfolios table - top-level grouping of programs and projects
+ */
+export const portfolios = mysqlTable("portfolios", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 200 }).notNull(),
+  description: text("description"),
+  createdBy: int("createdBy").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Portfolio = typeof portfolios.$inferSelect;
+export type InsertPortfolio = typeof portfolios.$inferInsert;
+
+/**
+ * Programs table - mid-level grouping of related projects under a portfolio
+ */
+export const programs = mysqlTable("programs", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 200 }).notNull(),
+  description: text("description"),
+  portfolioId: int("portfolioId"),   // FK to portfolios.id (nullable: program can exist outside a portfolio)
+  createdBy: int("createdBy").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Program = typeof programs.$inferSelect;
+export type InsertProgram = typeof programs.$inferInsert;
 
 // Many-to-many: user stories ↔ requirements
 export const userStoryRequirements = mysqlTable("userStoryRequirements", {

@@ -234,6 +234,8 @@ export const projectsRouter = router({
       description: z.string().optional().nullable(),
       programName: z.string().optional().nullable(),
       portfolioName: z.string().optional().nullable(),
+      programId: z.number().optional().nullable(),
+      portfolioId: z.number().optional().nullable(),
       logoUrl: z.string().optional().nullable(),
     }))
     .mutation(async ({ input, ctx }) => {

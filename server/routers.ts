@@ -64,6 +64,8 @@ import { communicationLogRouter } from "./routers/communicationLog.router";
 import { dropdownRegistryRouter } from "./routers/dropdownRegistry.router";
 import { wbsResourceAssignmentsRouter } from "./routers/wbsResourceAssignments.router";
 import { userStoriesRouter } from "./routers/userStories.router";
+import { portfoliosRouter } from "./routers/portfolios.router";
+import { programsRouter } from "./routers/programs.router";
 
 export const appRouter = router({
   system: systemRouter,
@@ -122,6 +124,8 @@ export const appRouter = router({
   dropdownRegistry: dropdownRegistryRouter,
   wbsResourceAssignments: wbsResourceAssignmentsRouter,
   userStories: userStoriesRouter,
+  portfolios: portfoliosRouter,
+  programs: programsRouter,
   scopeItems: router({
     list: protectedProcedure
       .input(z.object({ projectId: z.number() }))
