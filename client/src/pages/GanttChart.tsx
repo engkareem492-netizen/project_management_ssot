@@ -208,15 +208,23 @@ export default function GanttChart() {
   const allTasks = useMemo(() => {
     const ganttTasks = ganttData?.tasks ?? [];
     const fullMap = new Map(fullTasks.map((t: any) => [t.taskId, t]));
-    return ganttTasks.map((gt) => {
-      const full = fullMap.get(gt.taskId) as any;
-      return {
-        ...gt,
-        parentTaskId: full?.parentTaskId ?? null,
-        responsible: full?.responsible ?? gt.responsible ?? null,
-        priority: full?.priority ?? null,
-      };
-    });
+    return ganttTasks
+      .filter((gt) => {
+        // Exclude COMM tasks (communication plan tasks)
+        if ((gt.taskId ?? "").startsWith("COMM-")) return false;
+        // Exclude DEV tasks (stakeholder development plan tasks)
+        if ((gt.taskId ?? "").startsWith("DEV-")) return false;
+        return true;
+      })
+      .map((gt) => {
+        const full = fullMap.get(gt.taskId) as any;
+        return {
+          ...gt,
+          parentTaskId: full?.parentTaskId ?? null,
+          responsible: full?.responsible ?? gt.responsible ?? null,
+          priority: full?.priority ?? null,
+        };
+      });
   }, [ganttData, fullTasks]);
 
   // Build WBS map
