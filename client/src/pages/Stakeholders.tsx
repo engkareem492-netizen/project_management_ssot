@@ -33,6 +33,7 @@ import {
   MoveRight, Download,
   Brain, Star, Lightbulb, Shield, BookOpen, TrendingUp, Zap,
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ImportExportToolbar } from "@/components/ImportExportToolbar";
 import { StakeholderSelect } from "@/components/StakeholderSelect";
 import { EmptyState } from "@/components/EmptyState";
@@ -2215,6 +2216,7 @@ export default function Stakeholders() {
   const [searchTerm, setSearchTerm] = useState("");
   const [classificationFilter, setClassificationFilter] = useState<"all" | "TeamMember" | "External" | "Stakeholder">("all");
   const [strategyFilter, setStrategyFilter] = useState<string>("all");
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -2420,6 +2422,18 @@ export default function Stakeholders() {
     URL.revokeObjectURL(url);
   };
 
+  const handleSendEmail = () => {
+    const emails = filteredStakeholders
+      .filter((s) => selectedIds.has(s.id) && s.email)
+      .map((s) => s.email)
+      .join(",");
+    if (!emails) {
+      toast.error("No email addresses found for the selected stakeholders");
+      return;
+    }
+    window.location.href = `mailto:${emails}`;
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -2443,6 +2457,12 @@ export default function Stakeholders() {
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Badge variant="outline">{stakeholders.length} Total</Badge>
+          {selectedIds.size > 0 && (
+            <Button variant="outline" size="sm" onClick={handleSendEmail} className="gap-2 text-blue-600 border-blue-300 hover:bg-blue-50">
+              <Mail className="h-4 w-4" />
+              Send Email ({selectedIds.size})
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={handleExportCSV}>
             <Download className="h-4 w-4 mr-1" /> Export Register
           </Button>
@@ -2573,6 +2593,19 @@ export default function Stakeholders() {
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
+              <TableHead className="w-10">
+                <Checkbox
+                  checked={filteredStakeholders.length > 0 && filteredStakeholders.every((s) => selectedIds.has(s.id))}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      setSelectedIds(new Set(filteredStakeholders.map((s) => s.id)));
+                    } else {
+                      setSelectedIds(new Set());
+                    }
+                  }}
+                  aria-label="Select all"
+                />
+              </TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Department</TableHead>
               <TableHead>Job / Role</TableHead>
@@ -2586,7 +2619,7 @@ export default function Stakeholders() {
           <TableBody>
             {filteredStakeholders.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8}>
+                <TableCell colSpan={9}>
                   <EmptyState
                     icon={Users}
                     title={searchTerm ? "No stakeholders match your search" : "No stakeholders yet"}
@@ -2602,9 +2635,23 @@ export default function Stakeholders() {
                 return (
                   <TableRow
                     key={s.id}
-                    className="hover:bg-muted/30 cursor-pointer"
+                    className={`hover:bg-muted/30 cursor-pointer ${selectedIds.has(s.id) ? "bg-blue-50/40" : ""}`}
                     onClick={() => handleRowClick(s)}
                   >
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <Checkbox
+                        checked={selectedIds.has(s.id)}
+                        onCheckedChange={(checked) => {
+                          setSelectedIds((prev) => {
+                            const next = new Set(prev);
+                            if (checked) next.add(s.id);
+                            else next.delete(s.id);
+                            return next;
+                          });
+                        }}
+                        aria-label={`Select ${s.fullName}`}
+                      />
+                    </TableCell>
                     <TableCell>
                       <div>
                         <p className="font-medium">{s.fullName}</p>
