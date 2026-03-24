@@ -58,6 +58,7 @@ export default function Issues() {
     knowledgeBaseCode: '',
     taskId: '',
     resolutionDate: '',
+    scopeItemId: undefined as number | undefined,
   });
   const [addStakeholderDialogOpen, setAddStakeholderDialogOpen] = useState(false);
   const [newStakeholder, setNewStakeholder] = useState({ fullName: '', position: '', role: '' });
@@ -124,9 +125,11 @@ export default function Issues() {
     openDate: new Date().toISOString().split('T')[0],
     knowledgeBaseCode: '',
     resolutionDate: '',
+    scopeItemId: undefined as number | undefined,
   });  const { data: issues, isLoading, refetch } = trpc.issues.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
   const { data: stakeholders } = trpc.stakeholders.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
   const { data: requirements } = trpc.requirements.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
+  const { data: scopeItemsList = [] } = trpc.scopeItems.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
   const { data: deliverables } = trpc.deliverables.list.useQuery(
     { projectId: currentProjectId || 0 },
     { enabled: !!currentProjectId }
@@ -471,6 +474,7 @@ export default function Issues() {
       knowledgeBaseCode: issue.knowledgeBaseCode || '',
       taskId: issue.taskId || '',
       resolutionDate: issue.resolutionDate || '',
+      scopeItemId: issue.scopeItemId ?? undefined,
     });
     setViewDialogOpen(true);
   };
@@ -478,7 +482,7 @@ export default function Issues() {
   const handleEditDetails = (issue: any) => {
     setSelectedIssue(issue);
     setIsEditMode(true);
-    setEditFormData({
+    setEditFormData({ scopeItemId: issue.scopeItemId ?? undefined,
       issueGroup: issue.issueGroup || '',
       description: issue.description || '',
       source: issue.source || '',
@@ -1026,6 +1030,26 @@ export default function Issues() {
                     </Button>
                   </div>
                 </div>
+                {/* Scope Item */}
+                <div className="space-y-2">
+                  <Label>Scope Item</Label>
+                  <Select
+                    value={newIssue.scopeItemId ? String(newIssue.scopeItemId) : '__none__'}
+                    onValueChange={(v) => setNewIssue({ ...newIssue, scopeItemId: v === '__none__' ? undefined : Number(v) })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select scope item..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">— None —</SelectItem>
+                      {scopeItemsList.map((si) => (
+                        <SelectItem key={si.id} value={String(si.id)}>
+                          {si.idCode} – {si.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="description">Description *</Label>
                   <Input
@@ -1381,6 +1405,33 @@ export default function Issues() {
                   </Select>
                 ) : (
                   <p className="font-medium">{selectedIssue?.issueGroup || '-'}</p>
+                )}
+              </div>
+              <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Scope Item</Label>
+                {isEditMode ? (
+                  <Select
+                    value={editFormData.scopeItemId ? String(editFormData.scopeItemId) : '__none__'}
+                    onValueChange={(v) => setEditFormData({ ...editFormData, scopeItemId: v === '__none__' ? undefined : Number(v) })}
+                  >
+                    <SelectTrigger className="h-8">
+                      <SelectValue placeholder="Select scope item" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">— None —</SelectItem>
+                      {scopeItemsList.map((si) => (
+                        <SelectItem key={si.id} value={String(si.id)}>
+                          {si.idCode} – {si.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="font-medium text-sm">
+                    {selectedIssue?.scopeItemId
+                      ? (() => { const si = scopeItemsList.find((s) => s.id === selectedIssue.scopeItemId); return si ? `${si.idCode} – ${si.name}` : `#${selectedIssue.scopeItemId}`; })()
+                      : '—'}
+                  </p>
                 )}
               </div>
               <div className="space-y-1 p-3 bg-muted/50 rounded-lg">

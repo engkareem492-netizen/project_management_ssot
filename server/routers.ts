@@ -63,6 +63,7 @@ import { commRaciMatrixRouter } from "./routers/commRaciMatrix.router";
 import { communicationLogRouter } from "./routers/communicationLog.router";
 import { dropdownRegistryRouter } from "./routers/dropdownRegistry.router";
 import { wbsResourceAssignmentsRouter } from "./routers/wbsResourceAssignments.router";
+import { userStoriesRouter } from "./routers/userStories.router";
 
 export const appRouter = router({
   system: systemRouter,
@@ -120,6 +121,7 @@ export const appRouter = router({
   communicationLog: communicationLogRouter,
   dropdownRegistry: dropdownRegistryRouter,
   wbsResourceAssignments: wbsResourceAssignmentsRouter,
+  userStories: userStoriesRouter,
   scopeItems: router({
     list: protectedProcedure
       .input(z.object({ projectId: z.number() }))
@@ -1052,6 +1054,7 @@ export const appRouter = router({
         lastUpdate: z.string().optional(),
         updateDate: z.string().optional(),
         resolutionDate: z.string().optional(),
+        scopeItemId: z.number().optional().nullable(),
       }))
       .mutation(async ({ input }) => {
         try {
@@ -1120,6 +1123,7 @@ export const appRouter = router({
           deliverableId: z.number().optional(),
           taskId: z.string().optional(),
           knowledgeBaseCode: z.string().optional(),
+          scopeItemId: z.number().optional().nullable(),
         }),
       }))
       .mutation(async ({ input, ctx }) => {

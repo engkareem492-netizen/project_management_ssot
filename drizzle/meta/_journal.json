@@ -295,6 +295,13 @@
       "when": 1742220400000,
       "tag": "0043_kpi_skill_link_dev_tasks",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1742900000000,
+      "tag": "0047_user_stories_scope_links",
+      "breakpoints": true
     }
   ]
 }

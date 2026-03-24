@@ -308,6 +308,7 @@ export const issues = mysqlTable("issues", {
   updateDate: varchar("updateDate", { length: 50 }),
   resolutionDate: varchar("resolutionDate", { length: 50 }),
   knowledgeBaseCode: varchar("knowledgeBaseCode", { length: 50 }),
+  scopeItemId: int("scopeItemId"),
   importedAt: timestamp("importedAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -1846,3 +1847,41 @@ export const dropdownRegistry = mysqlTable("dropdown_registry", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 export type InsertCommunicationLog = typeof communicationLog.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────
+// User Stories — SAP Cloud ALM-style user stories linked to
+// scope items and requirements.
+// ─────────────────────────────────────────────────────────────
+export const userStories = mysqlTable("userStories", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  storyId: varchar("storyId", { length: 50 }).notNull(),           // US-0001
+  title: varchar("title", { length: 500 }).notNull(),
+  description: text("description"),                                 // "As a [role], I want..."
+  acceptanceCriteria: text("acceptanceCriteria"),
+  priority: varchar("priority", { length: 50 }).default("Medium"), // Critical/High/Medium/Low
+  status: varchar("status", { length: 100 }).default("New"),       // New/In Analysis/In Development/In Test/Done/Rejected
+  storyPoints: int("storyPoints"),
+  effortDays: decimal("effortDays", { precision: 5, scale: 1 }),
+  scopeItemId: int("scopeItemId"),                                  // FK to scopeItems
+  sprintId: int("sprintId"),                                        // optional link to sprint
+  assignedToId: int("assignedToId"),                               // FK to stakeholders
+  assignedTo: varchar("assignedTo", { length: 200 }),
+  processStep: varchar("processStep", { length: 255 }),            // SAP process step / activity
+  businessRole: varchar("businessRole", { length: 255 }),          // business role the story targets
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type UserStory = typeof userStories.$inferSelect;
+export type InsertUserStory = typeof userStories.$inferInsert;
+
+// Many-to-many: user stories ↔ requirements
+export const userStoryRequirements = mysqlTable("userStoryRequirements", {
+  id: int("id").autoincrement().primaryKey(),
+  userStoryId: int("userStoryId").notNull(),
+  requirementId: int("requirementId").notNull(),                   // FK to requirements.id
+  projectId: int("projectId").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type UserStoryRequirement = typeof userStoryRequirements.$inferSelect;

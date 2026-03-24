@@ -93,6 +93,7 @@ export default function Requirements() {
     refSource: '',
     createdAt: new Date().toISOString().split('T')[0],
     knowledgeBaseCode: '',
+    scopeItemId: undefined as number | undefined,
   });
   const [viewMode, setViewMode] = useState<'compact' | 'full'>('full');
 
@@ -101,6 +102,10 @@ export default function Requirements() {
   const { data: stakeholders } = trpc.stakeholders.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
   const { data: tasks } = trpc.tasks.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
   const { data: issues } = trpc.issues.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
+  const { data: scopeItemsList = [] } = trpc.scopeItems.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
+  const { data: userStoriesList = [] } = trpc.userStories.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
+  const linkUserStoryMut = trpc.userStories.linkRequirement.useMutation({ onSuccess: () => utils.userStories.list.invalidate() });
+  const unlinkUserStoryMut = trpc.userStories.unlinkRequirement.useMutation({ onSuccess: () => utils.userStories.list.invalidate() });
   const { data: statusOptions } = trpc.dropdownOptions.status.getAll.useQuery();
   const { data: priorityOptions } = trpc.dropdownOptions.priority.getAll.useQuery();
   const { data: typeOptions } = trpc.dropdownOptions.type.getAll.useQuery();
@@ -763,6 +768,14 @@ export default function Requirements() {
                               <span className="font-medium min-w-[120px]">Owner:</span>
                               <span>{req.owner || '-'}</span>
                             </div>
+                            {req.scopeItemId && (
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium min-w-[120px]">Scope Item:</span>
+                                <span className="text-primary font-mono text-xs">
+                                  {(() => { const si = scopeItemsList.find((s: any) => s.id === req.scopeItemId); return si ? `${si.idCode} – ${si.name}` : `#${req.scopeItemId}`; })()}
+                                </span>
+                              </div>
+                            )}
                             <div className="flex items-center gap-2">
                               <span className="font-medium min-w-[120px]">Source Type:</span>
                               <span>{req.sourceType || '-'}</span>
@@ -903,13 +916,16 @@ export default function Requirements() {
           </DialogHeader>
           
           <Tabs defaultValue="details" className="mt-4 flex-1 flex flex-col overflow-hidden">
-            <TabsList className="grid w-full grid-cols-4 flex-shrink-0">
+            <TabsList className="grid w-full grid-cols-5 flex-shrink-0">
               <TabsTrigger value="details">Details</TabsTrigger>
               <TabsTrigger value="tasks">
                 Tasks ({linkedTasks.length})
               </TabsTrigger>
               <TabsTrigger value="issues">
                 Issues ({linkedIssues.length})
+              </TabsTrigger>
+              <TabsTrigger value="userstories">
+                Stories ({userStoriesList.filter((s: any) => s.requirements?.some((r: any) => r.id === selectedRequirement?.id)).length})
               </TabsTrigger>
               <TabsTrigger value="history">
                 History
@@ -1341,6 +1357,56 @@ export default function Requirements() {
               )}
             </TabsContent>
 
+            {/* ── User Stories Tab ─────────────────────────────────── */}
+            <TabsContent value="userstories" className="mt-4">
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground mb-2">
+                  User stories that include this requirement. Click a story to link/unlink.
+                </p>
+                {userStoriesList.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground border border-dashed border-primary/20 rounded-lg">
+                    No user stories in this project yet.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {userStoriesList.map((story: any) => {
+                      const isLinked = story.requirements?.some((r: any) => r.id === selectedRequirement?.id);
+                      return (
+                        <div
+                          key={story.id}
+                          className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${isLinked ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/20' : 'border-muted hover:border-primary/40 hover:bg-muted/30'}`}
+                          onClick={() => {
+                            if (!selectedRequirement) return;
+                            if (isLinked) {
+                              unlinkUserStoryMut.mutate({ userStoryId: story.id, requirementId: selectedRequirement.id });
+                            } else {
+                              linkUserStoryMut.mutate({ userStoryId: story.id, requirementId: selectedRequirement.id, projectId: currentProjectId! });
+                            }
+                          }}
+                        >
+                          <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 mt-0.5 ${isLinked ? 'border-blue-500 bg-blue-500' : 'border-muted-foreground'}`}>
+                            {isLinked && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-xs font-bold text-primary">{story.storyId}</span>
+                              {story.scopeItemName && (
+                                <span className="text-xs text-muted-foreground">→ {story.scopeItemCode} {story.scopeItemName}</span>
+                              )}
+                            </div>
+                            <p className="text-sm font-medium text-foreground truncate">{story.title}</p>
+                            {story.status && (
+                              <span className="text-xs text-muted-foreground">{story.status}</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+
             <TabsContent value="history" className="mt-4">
               <div className="space-y-3">
                 <p className="text-sm text-muted-foreground mb-4">
@@ -1469,6 +1535,27 @@ export default function Requirements() {
                 onChange={(e) => setNewRequirement({ ...newRequirement, refSource: e.target.value })}
                 placeholder="Reference source URL or name"
               />
+            </div>
+
+            {/* Scope Item */}
+            <div className="space-y-2">
+              <Label>Scope Item</Label>
+              <Select
+                value={newRequirement.scopeItemId ? String(newRequirement.scopeItemId) : '__none__'}
+                onValueChange={(v) => setNewRequirement({ ...newRequirement, scopeItemId: v === '__none__' ? undefined : Number(v) })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Link to scope item..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">— None —</SelectItem>
+                  {scopeItemsList.map((si: any) => (
+                    <SelectItem key={si.id} value={String(si.id)}>
+                      {si.idCode} – {si.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
