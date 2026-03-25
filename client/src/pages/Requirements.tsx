@@ -25,6 +25,10 @@ import { EmptyState } from "@/components/EmptyState";
 export default function Requirements() {
   const { currentProjectId } = useProject();
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [ownerFilter, setOwnerFilter] = useState<string>('all');
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editData, setEditData] = useState<any>({});
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
@@ -400,13 +404,17 @@ export default function Requirements() {
     },
   });
 
-  const filteredRequirements = requirements?.filter(req =>
-    req.idCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    req.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    req.owner?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    req.taskGroup?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    req.issueGroup?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredRequirements = requirements?.filter(req => {
+    const matchesSearch =
+      req.idCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      req.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      req.owner?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || req.status === statusFilter;
+    const matchesType = typeFilter === 'all' || req.type === typeFilter;
+    const matchesCategory = categoryFilter === 'all' || req.category === categoryFilter;
+    const matchesOwner = ownerFilter === 'all' || String(req.ownerId) === ownerFilter;
+    return matchesSearch && matchesStatus && matchesType && matchesCategory && matchesOwner;
+  });
 
   const handleEdit = (req: any) => {
     setEditingId(req.id);
@@ -678,11 +686,11 @@ export default function Requirements() {
       </div>
       <Card className="border-emerald-100">
         <CardContent className="pt-6">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="relative flex-1">
+          <div className="flex items-center gap-3 mb-3 flex-wrap">
+            <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
               <Input
-                placeholder="Search by ID, description, owner, task group, or issue group..."
+                placeholder="Search by ID, description, owner..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10 border-primary/20 focus:border-primary"
@@ -692,6 +700,62 @@ export default function Requirements() {
               <Plus className="w-4 h-4 mr-2" />
               Create New
             </Button>
+          </div>
+          <div className="flex items-center gap-2 mb-4 flex-wrap">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[140px] h-8 text-xs">
+                <SelectValue placeholder="All Statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                {statusOptions?.filter((o: any) => o.value).map((o: any) => (
+                  <SelectItem key={o.id} value={o.value}>{o.value}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger className="w-[130px] h-8 text-xs">
+                <SelectValue placeholder="All Types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                {typeOptions?.filter((o: any) => o.value).map((o: any) => (
+                  <SelectItem key={o.id} value={o.value}>{o.value}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className="w-[140px] h-8 text-xs">
+                <SelectValue placeholder="All Categories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                {categoryOptions?.filter((o: any) => o.value).map((o: any) => (
+                  <SelectItem key={o.id} value={o.value}>{o.value}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={ownerFilter} onValueChange={setOwnerFilter}>
+              <SelectTrigger className="w-[150px] h-8 text-xs">
+                <SelectValue placeholder="All Owners" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Owners</SelectItem>
+                {stakeholders?.filter((s: any) => s.fullName).map((s: any) => (
+                  <SelectItem key={s.id} value={String(s.id)}>{s.fullName}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {(statusFilter !== 'all' || typeFilter !== 'all' || categoryFilter !== 'all' || ownerFilter !== 'all') && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 text-xs text-muted-foreground"
+                onClick={() => { setStatusFilter('all'); setTypeFilter('all'); setCategoryFilter('all'); setOwnerFilter('all'); }}
+              >
+                <X className="w-3 h-3 mr-1" /> Clear Filters
+              </Button>
+            )}
           </div>
 
           {/* Bulk Action Toolbar */}
@@ -1688,26 +1752,53 @@ export default function Requirements() {
               </Select>
             </div>
 
+            {/* Knowledge Base Link */}
+             <div className="space-y-2">
+               <div className="flex items-center justify-between">
+                 <Label>Knowledge Base Link</Label>
+                 <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs text-primary" onClick={() => { setQuickKbFor('create'); setQuickKbDialogOpen(true); }}>+ New KB Entry</Button>
+               </div>
+               <Select
+                 value={newRequirement.knowledgeBaseCode || '__none__'}
+                 onValueChange={(v) => setNewRequirement({ ...newRequirement, knowledgeBaseCode: v === '__none__' ? '' : v })}
+               >
+                 <SelectTrigger>
+                   <SelectValue placeholder="Select KB entry..." />
+                 </SelectTrigger>
+                 <SelectContent>
+                   <SelectItem value="__none__">— None —</SelectItem>
+                   {knowledgeBaseEntries?.map((kb: any) => (
+                     <SelectItem key={kb.id} value={kb.kbCode}>
+                       {kb.kbCode} – {kb.title}
+                     </SelectItem>
+                   ))}
+                 </SelectContent>
+               </Select>
+             </div>
+
             {/* Document Library Reference */}
-            <div className="space-y-2">
-              <Label>Linked Document</Label>
-              <Select
-                value={newRequirement.linkedDocumentId ? String(newRequirement.linkedDocumentId) : '__none__'}
-                onValueChange={(v) => setNewRequirement({ ...newRequirement, linkedDocumentId: v === '__none__' ? undefined : Number(v) })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select document from library..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">— None —</SelectItem>
-                  {allDocuments.map((doc: any) => (
-                    <SelectItem key={doc.id} value={String(doc.id)}>
-                      {doc.documentId} – {doc.originalName || doc.fileName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+             <div className="space-y-2">
+               <div className="flex items-center justify-between">
+                 <Label>Linked Document</Label>
+                 <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs text-primary" onClick={() => { setQuickDocFor('create'); setQuickDocDialogOpen(true); }}>+ New Document</Button>
+               </div>
+               <Select
+                 value={newRequirement.linkedDocumentId ? String(newRequirement.linkedDocumentId) : '__none__'}
+                 onValueChange={(v) => setNewRequirement({ ...newRequirement, linkedDocumentId: v === '__none__' ? undefined : Number(v) })}
+               >
+                 <SelectTrigger>
+                   <SelectValue placeholder="Select document from library..." />
+                 </SelectTrigger>
+                 <SelectContent>
+                   <SelectItem value="__none__">— None —</SelectItem>
+                   {allDocuments.map((doc: any) => (
+                     <SelectItem key={doc.id} value={String(doc.id)}>
+                       {doc.documentId} – {doc.originalName || doc.fileName}
+                     </SelectItem>
+                   ))}
+                 </SelectContent>
+               </Select>
+             </div>
 
             <div className="space-y-2">
               <Label>Status</Label>
@@ -2389,6 +2480,98 @@ export default function Requirements() {
             <Button variant="outline" onClick={() => setAddStakeholderDialogOpen(false)}>Cancel</Button>
             <Button onClick={handleCreateStakeholder} disabled={createStakeholderMutation.isPending} className="bg-primary hover:bg-primary/90">
               Add Stakeholder
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Quick-Create Document Mini-Dialog */}
+      <Dialog open={quickDocDialogOpen} onOpenChange={setQuickDocDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create New Document</DialogTitle>
+            <DialogDescription>Add a document link to the library. It will be automatically linked to this requirement.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Document Title <span className="text-destructive">*</span></Label>
+              <Input
+                value={quickDocForm.title}
+                onChange={(e) => setQuickDocForm({ ...quickDocForm, title: e.target.value })}
+                placeholder="e.g., Business Requirements Document"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Document URL / File Path <span className="text-destructive">*</span></Label>
+              <Input
+                value={quickDocForm.url}
+                onChange={(e) => setQuickDocForm({ ...quickDocForm, url: e.target.value })}
+                placeholder="https://... or /path/to/file"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Input
+                value={quickDocForm.description}
+                onChange={(e) => setQuickDocForm({ ...quickDocForm, description: e.target.value })}
+                placeholder="Optional description"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setQuickDocDialogOpen(false)}>Cancel</Button>
+            <Button
+              disabled={!quickDocForm.title || !quickDocForm.url || quickCreateDocMutation.isPending}
+              onClick={() => quickCreateDocMutation.mutate({
+                projectId: currentProjectId!,
+                fileName: quickDocForm.title,
+                originalName: quickDocForm.title,
+                fileUrl: quickDocForm.url,
+                description: quickDocForm.description || undefined,
+              })}
+            >
+              {quickCreateDocMutation.isPending ? 'Creating...' : 'Create & Link'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Quick-Create KB Entry Mini-Dialog */}
+      <Dialog open={quickKbDialogOpen} onOpenChange={setQuickKbDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create New KB Entry</DialogTitle>
+            <DialogDescription>Add a knowledge base entry. It will be automatically linked to this requirement.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Title <span className="text-destructive">*</span></Label>
+              <Input
+                value={quickKbForm.title}
+                onChange={(e) => setQuickKbForm({ ...quickKbForm, title: e.target.value })}
+                placeholder="e.g., Authentication Policy"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Input
+                value={quickKbForm.description}
+                onChange={(e) => setQuickKbForm({ ...quickKbForm, description: e.target.value })}
+                placeholder="Optional description"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setQuickKbDialogOpen(false)}>Cancel</Button>
+            <Button
+              disabled={!quickKbForm.title || quickCreateKbMutation.isPending}
+              onClick={() => quickCreateKbMutation.mutate({
+                projectId: currentProjectId!,
+                title: quickKbForm.title,
+                description: quickKbForm.description || undefined,
+              })}
+            >
+              {quickCreateKbMutation.isPending ? 'Creating...' : 'Create & Link'}
             </Button>
           </DialogFooter>
         </DialogContent>
