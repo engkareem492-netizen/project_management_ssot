@@ -27,6 +27,7 @@ export default function Issues() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editData, setEditData] = useState<any>({});
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
@@ -374,7 +375,8 @@ export default function Issues() {
       issue.owner?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "all" || issue.status === statusFilter;
     const matchesPriority = priorityFilter === "all" || issue.priority === priorityFilter;
-    return matchesSearch && matchesStatus && matchesPriority;
+    const matchesType = typeFilter === "all" || issue.type === typeFilter;
+    return matchesSearch && matchesStatus && matchesPriority && matchesType;
   });
 
   const getRequirementStatus = (requirementId: string | null) => {
@@ -713,18 +715,28 @@ export default function Issues() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Priorities</SelectItem>
-                <SelectItem value="Critical">Critical</SelectItem>
-                <SelectItem value="High">High</SelectItem>
-                <SelectItem value="Medium">Medium</SelectItem>
-                <SelectItem value="Low">Low</SelectItem>
+                {priorityOptions?.map((opt: any) => (
+                  <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
-            {(statusFilter !== "all" || priorityFilter !== "all") && (
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger className="w-36 h-9">
+                <SelectValue placeholder="Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                {issueTypeOptions?.map((opt: any) => (
+                  <SelectItem key={opt.id} value={opt.value}>{opt.label || opt.value}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {(statusFilter !== "all" || priorityFilter !== "all" || typeFilter !== "all") && (
               <Button
                 size="sm"
                 variant="ghost"
                 className="h-9 text-muted-foreground"
-                onClick={() => { setStatusFilter("all"); setPriorityFilter("all"); }}
+                onClick={() => { setStatusFilter("all"); setPriorityFilter("all"); setTypeFilter("all"); }}
               >
                 <X className="w-3.5 h-3.5 mr-1" />Clear
               </Button>
