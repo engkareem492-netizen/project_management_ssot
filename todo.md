@@ -788,3 +788,11 @@
 ## Bug Fix: Project Logo Upload Error (Mar 25, 2026)
 
 - [x] Fix logoUrl column type from TEXT (65 KB limit) to LONGTEXT to support base64 images up to 4 GB
+
+## Bug Fix: Document Edit & Delete (Mar 25, 2026)
+
+- [x] Add Edit button to document table row actions
+- [x] Add Edit dialog (pre-populated form) for updating document metadata
+- [x] Wire update mutation to the Edit dialog save action
+- [x] Add onError toast handler to delete mutation for user feedback
+- [x] Add confirmation dialog before deleting a document

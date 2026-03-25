@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useProject } from "@/contexts/ProjectContext";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -16,7 +16,7 @@ import { toast } from "sonner";
 import {
   Loader2, Plus, Trash2, FolderOpen, Search, FileText, File,
   FileImage, FileSpreadsheet, ExternalLink, Upload, Link2, Tag,
-  Settings2, Pencil, X, Check,
+  Settings2, Pencil, X, Check, AlertTriangle,
 } from "lucide-react";
 
 function getFileIcon(mimeType: string | null) {
@@ -55,6 +55,7 @@ const EMPTY_FORM = {
   uploadedBy: "", tags: "", categoryId: "",
 };
 
+// ─── Link Dialog ─────────────────────────────────────────────────────────────
 function LinkDialog({ open, onClose, docId, projectId }: { open: boolean; onClose: () => void; docId: number; projectId: number; }) {
   const utils = trpc.useUtils();
   const { data: allIssues = [] } = trpc.issues.list.useQuery({ projectId }, { enabled: open });
@@ -126,6 +127,7 @@ function LinkDialog({ open, onClose, docId, projectId }: { open: boolean; onClos
   );
 }
 
+// ─── Category Manager Dialog ──────────────────────────────────────────────────
 function CategoryManagerDialog({ open, onClose, projectId }: { open: boolean; onClose: () => void; projectId: number; }) {
   const utils = trpc.useUtils();
   const { data: categories = [], refetch } = trpc.documents.listCategories.useQuery({ projectId }, { enabled: open });
@@ -190,6 +192,7 @@ function CategoryManagerDialog({ open, onClose, projectId }: { open: boolean; on
   );
 }
 
+// ─── Issue/Req Selector (used in both Create and Edit dialogs) ────────────────
 function IssueReqSelector({ projectId, selectedIssueIds, selectedReqIds, onIssueChange, onReqChange }: {
   projectId: number; selectedIssueIds: number[]; selectedReqIds: number[];
   onIssueChange: (ids: number[]) => void; onReqChange: (ids: number[]) => void;
@@ -234,27 +237,204 @@ function IssueReqSelector({ projectId, selectedIssueIds, selectedReqIds, onIssue
   );
 }
 
+// ─── Edit Document Dialog ─────────────────────────────────────────────────────
+function EditDocumentDialog({ doc, categories, open, onClose, onSaved }: {
+  doc: any; categories: any[]; open: boolean; onClose: () => void; onSaved: () => void;
+}) {
+  const utils = trpc.useUtils();
+  const [form, setForm] = useState({ ...EMPTY_FORM });
+  const [editIssueIds, setEditIssueIds] = useState<number[]>([]);
+  const [editReqIds, setEditReqIds] = useState<number[]>([]);
+
+  const { data: linkedIssues = [], isLoading: loadingIssues } = trpc.documents.getIssueLinks.useQuery(
+    { documentId: doc?.id ?? 0 }, { enabled: open && !!doc }
+  );
+  const { data: linkedReqs = [], isLoading: loadingReqs } = trpc.documents.getRequirementLinks.useQuery(
+    { documentId: doc?.id ?? 0 }, { enabled: open && !!doc }
+  );
+
+  // Populate form when doc changes or dialog opens
+  useEffect(() => {
+    if (doc && open) {
+      setForm({
+        fileName: doc.fileName ?? "",
+        originalName: doc.originalName ?? "",
+        fileUrl: doc.fileUrl ?? "",
+        fileSize: doc.fileSize ? String(doc.fileSize) : "",
+        mimeType: doc.mimeType ?? "",
+        description: doc.description ?? "",
+        entityType: doc.entityType ?? "general",
+        entityId: doc.entityId ?? "",
+        uploadedBy: doc.uploadedBy ?? "",
+        tags: Array.isArray(doc.tags) ? doc.tags.join(", ") : "",
+        categoryId: doc.categoryId ? String(doc.categoryId) : "",
+      });
+    }
+  }, [doc, open]);
+
+  // Populate link selections once loaded
+  useEffect(() => {
+    if (!loadingIssues) setEditIssueIds((linkedIssues as any[]).map(i => i.id));
+  }, [loadingIssues, linkedIssues]);
+  useEffect(() => {
+    if (!loadingReqs) setEditReqIds((linkedReqs as any[]).map(r => r.id));
+  }, [loadingReqs, linkedReqs]);
+
+  const update = trpc.documents.update.useMutation({
+    onSuccess: () => { toast.success("Document updated"); onSaved(); onClose(); },
+    onError: (e) => toast.error("Failed to update: " + e.message),
+  });
+  const setIssueLinks = trpc.documents.setIssueLinks.useMutation();
+  const setReqLinks = trpc.documents.setRequirementLinks.useMutation();
+
+  const set = (field: string, value: string) => setForm(prev => ({ ...prev, [field]: value }));
+
+  const handleSave = async () => {
+    if (!form.originalName.trim()) return toast.error("File name is required");
+    if (!form.fileUrl.trim()) return toast.error("File URL is required");
+    // Update metadata
+    await update.mutateAsync({
+      id: doc.id,
+      description: form.description || undefined,
+      entityType: form.entityType || undefined,
+      entityId: form.entityId || undefined,
+      categoryId: form.categoryId ? parseInt(form.categoryId) : null,
+      tags: form.tags ? form.tags.split(",").map((t: string) => t.trim()).filter(Boolean) : [],
+    });
+    // Update links
+    await setIssueLinks.mutateAsync({ documentId: doc.id, issueIds: editIssueIds });
+    await setReqLinks.mutateAsync({ documentId: doc.id, requirementIds: editReqIds });
+    utils.documents.getIssueLinks.invalidate({ documentId: doc.id });
+    utils.documents.getRequirementLinks.invalidate({ documentId: doc.id });
+  };
+
+  const isPending = update.isPending || setIssueLinks.isPending || setReqLinks.isPending;
+
+  return (
+    <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2"><Pencil className="w-4 h-4" /> Edit Document</DialogTitle>
+          {doc && <p className="text-xs text-muted-foreground font-mono">{doc.documentId}</p>}
+        </DialogHeader>
+        <Tabs defaultValue="details">
+          <TabsList className="mb-4">
+            <TabsTrigger value="details">Details</TabsTrigger>
+            <TabsTrigger value="links">
+              Links{(editIssueIds.length + editReqIds.length) > 0 && (
+                <Badge variant="secondary" className="ml-1 text-xs">{editIssueIds.length + editReqIds.length}</Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="details" className="space-y-4">
+            <div><Label>File Name</Label><Input value={form.originalName} onChange={e => set("originalName", e.target.value)} /></div>
+            <div><Label>File URL</Label><Input value={form.fileUrl} onChange={e => set("fileUrl", e.target.value)} /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Category</Label>
+                <Select value={form.categoryId || "none"} onValueChange={v => set("categoryId", v === "none" ? "" : v)}>
+                  <SelectTrigger><SelectValue placeholder="Select category..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No category</SelectItem>
+                    {categories.map(cat => <SelectItem key={cat.id} value={String(cat.id)}>{cat.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div><Label>Uploaded By</Label><Input value={form.uploadedBy} onChange={e => set("uploadedBy", e.target.value)} placeholder="Name..." /></div>
+            </div>
+            <div><Label>Description</Label><Textarea rows={2} value={form.description} onChange={e => set("description", e.target.value)} /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>MIME Type</Label><Input value={form.mimeType} onChange={e => set("mimeType", e.target.value)} placeholder="application/pdf" /></div>
+              <div><Label>Tags (comma-separated)</Label><Input value={form.tags} onChange={e => set("tags", e.target.value)} placeholder="blueprint, approval, v2" /></div>
+            </div>
+          </TabsContent>
+          <TabsContent value="links">
+            {doc && (
+              <IssueReqSelector
+                projectId={doc.projectId}
+                selectedIssueIds={editIssueIds}
+                selectedReqIds={editReqIds}
+                onIssueChange={setEditIssueIds}
+                onReqChange={setEditReqIds}
+              />
+            )}
+          </TabsContent>
+        </Tabs>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={handleSave} disabled={isPending}>
+            {isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Save Changes
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Delete Confirmation Dialog ───────────────────────────────────────────────
+function DeleteConfirmDialog({ doc, open, onClose, onConfirm, isPending }: {
+  doc: any; open: boolean; onClose: () => void; onConfirm: () => void; isPending: boolean;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-destructive">
+            <AlertTriangle className="w-4 h-4" /> Delete Document
+          </DialogTitle>
+          <DialogDescription>
+            Are you sure you want to delete <strong>{doc?.originalName}</strong>? This action cannot be undone and will also remove all issue and requirement links.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button variant="destructive" onClick={onConfirm} disabled={isPending}>
+            {isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Delete
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 export default function DocumentLibrary() {
   const { currentProjectId } = useProject();
   const projectId = currentProjectId!;
   const enabled = !!currentProjectId;
   const { data: docs = [], isLoading, refetch } = trpc.documents.list.useQuery({ projectId }, { enabled });
   const { data: categories = [], refetch: refetchCats } = trpc.documents.listCategories.useQuery({ projectId }, { enabled });
+
   const create = trpc.documents.create.useMutation({
     onSuccess: () => { toast.success("Document registered"); refetch(); setOpen(false); resetForm(); },
-    onError: () => toast.error("Failed to register document"),
+    onError: (e) => toast.error("Failed to register document: " + e.message),
   });
-  const del = trpc.documents.delete.useMutation({ onSuccess: () => { toast.success("Deleted"); refetch(); } });
+  const del = trpc.documents.delete.useMutation({
+    onSuccess: () => { toast.success("Document deleted"); refetch(); setDeleteDoc(null); },
+    onError: (e) => toast.error("Failed to delete: " + e.message),
+  });
+
+  // Create dialog state
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<typeof EMPTY_FORM>({ ...EMPTY_FORM });
   const [formIssueIds, setFormIssueIds] = useState<number[]>([]);
   const [formReqIds, setFormReqIds] = useState<number[]>([]);
+
+  // Edit dialog state
+  const [editDoc, setEditDoc] = useState<any | null>(null);
+
+  // Delete dialog state
+  const [deleteDoc, setDeleteDoc] = useState<any | null>(null);
+
+  // Other UI state
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("all");
   const [linkDocId, setLinkDocId] = useState<number | null>(null);
   const [catManagerOpen, setCatManagerOpen] = useState(false);
+
   const set = (field: string, value: string) => setForm(prev => ({ ...prev, [field]: value }));
   const resetForm = () => { setForm({ ...EMPTY_FORM }); setFormIssueIds([]); setFormReqIds([]); };
+
   const filtered = useMemo(() => (docs as any[]).filter(doc => {
     const matchSearch = !search || doc.originalName.toLowerCase().includes(search.toLowerCase()) ||
       (doc.description ?? "").toLowerCase().includes(search.toLowerCase()) ||
@@ -262,7 +442,13 @@ export default function DocumentLibrary() {
     const matchCat = catFilter === "all" || (catFilter === "uncategorized" ? !doc.categoryId : String(doc.categoryId) === catFilter);
     return matchSearch && matchCat;
   }), [docs, search, catFilter]);
-  const catMap = useMemo(() => { const m: Record<number, any> = {}; (categories as any[]).forEach(c => { m[c.id] = c; }); return m; }, [categories]);
+
+  const catMap = useMemo(() => {
+    const m: Record<number, any> = {};
+    (categories as any[]).forEach(c => { m[c.id] = c; });
+    return m;
+  }, [categories]);
+
   const handleSave = () => {
     if (!form.fileUrl.trim()) return toast.error("File URL is required");
     if (!form.originalName.trim()) return toast.error("File name is required");
@@ -277,6 +463,7 @@ export default function DocumentLibrary() {
       issueIds: formIssueIds, requirementIds: formReqIds,
     });
   };
+
   return (
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
@@ -290,6 +477,7 @@ export default function DocumentLibrary() {
           <Button size="sm" onClick={() => setOpen(true)}><Plus className="w-4 h-4 mr-1" /> Register Document</Button>
         </div>
       </div>
+
       <div className="flex gap-3 flex-wrap">
         <div className="relative flex-1 min-w-48">
           <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-muted-foreground" />
@@ -304,6 +492,7 @@ export default function DocumentLibrary() {
           </SelectContent>
         </Select>
       </div>
+
       {isLoading ? (
         <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
       ) : filtered.length === 0 ? (
@@ -323,7 +512,7 @@ export default function DocumentLibrary() {
                 <TableHead className="w-32">Uploaded By</TableHead>
                 <TableHead className="w-20">Size</TableHead>
                 <TableHead className="w-24">Date</TableHead>
-                <TableHead className="w-24">Actions</TableHead>
+                <TableHead className="w-28">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -356,9 +545,10 @@ export default function DocumentLibrary() {
                     <TableCell className="text-xs text-muted-foreground">{new Date(doc.createdAt).toLocaleDateString()}</TableCell>
                     <TableCell>
                       <div className="flex gap-1">
+                        <Button variant="ghost" size="sm" title="Edit document" onClick={() => setEditDoc(doc)}><Pencil className="w-3 h-3" /></Button>
                         <Button variant="ghost" size="sm" title="Manage links" onClick={() => setLinkDocId(doc.id)}><Link2 className="w-3 h-3" /></Button>
-                        <Button variant="ghost" size="sm" asChild><a href={doc.fileUrl} target="_blank" rel="noopener noreferrer"><ExternalLink className="w-3 h-3" /></a></Button>
-                        <Button variant="ghost" size="sm" onClick={() => del.mutate({ id: doc.id })} className="text-red-500 hover:text-red-700"><Trash2 className="w-3 h-3" /></Button>
+                        <Button variant="ghost" size="sm" asChild title="Open file"><a href={doc.fileUrl} target="_blank" rel="noopener noreferrer"><ExternalLink className="w-3 h-3" /></a></Button>
+                        <Button variant="ghost" size="sm" title="Delete document" onClick={() => setDeleteDoc(doc)} className="text-red-500 hover:text-red-700"><Trash2 className="w-3 h-3" /></Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -368,6 +558,8 @@ export default function DocumentLibrary() {
           </Table>
         </Card>
       )}
+
+      {/* Register Document Dialog */}
       <Dialog open={open} onOpenChange={v => { if (!v) resetForm(); setOpen(v); }}>
         <DialogContent className="max-w-2xl">
           <DialogHeader><DialogTitle className="flex items-center gap-2"><Upload className="w-4 h-4" /> Register Document</DialogTitle></DialogHeader>
@@ -411,7 +603,31 @@ export default function DocumentLibrary() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Document Dialog */}
+      {editDoc && (
+        <EditDocumentDialog
+          doc={editDoc}
+          categories={categories as any[]}
+          open={!!editDoc}
+          onClose={() => setEditDoc(null)}
+          onSaved={() => { refetch(); }}
+        />
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmDialog
+        doc={deleteDoc}
+        open={!!deleteDoc}
+        onClose={() => setDeleteDoc(null)}
+        onConfirm={() => deleteDoc && del.mutate({ id: deleteDoc.id })}
+        isPending={del.isPending}
+      />
+
+      {/* Link Dialog */}
       {linkDocId !== null && <LinkDialog open={linkDocId !== null} onClose={() => setLinkDocId(null)} docId={linkDocId} projectId={projectId} />}
+
+      {/* Category Manager */}
       <CategoryManagerDialog open={catManagerOpen} onClose={() => { setCatManagerOpen(false); refetchCats(); }} projectId={projectId} />
     </div>
   );

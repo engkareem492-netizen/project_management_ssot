@@ -115,6 +115,12 @@ export const documentsRouter = router({
     .input(
       z.object({
         id: z.number(),
+        originalName: z.string().optional(),
+        fileName: z.string().optional(),
+        fileUrl: z.string().optional(),
+        uploadedBy: z.string().optional(),
+        mimeType: z.string().optional(),
+        fileSize: z.number().optional(),
         description: z.string().optional(),
         entityType: z.string().optional(),
         entityId: z.string().optional(),
