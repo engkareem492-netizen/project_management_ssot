@@ -26,6 +26,10 @@ import { CustomFieldsSection } from "@/components/CustomFieldsSection";
 export default function Requirements() {
   const { currentProjectId } = useProject();
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [ownerFilter, setOwnerFilter] = useState<string>('all');
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editData, setEditData] = useState<any>({});
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
@@ -94,14 +98,30 @@ export default function Requirements() {
     refSource: '',
     createdAt: new Date().toISOString().split('T')[0],
     knowledgeBaseCode: '',
+    scopeItemId: undefined as number | undefined,
+    linkedDocumentId: undefined as number | undefined,
   });
   const [viewMode, setViewMode] = useState<'compact' | 'full'>('full');
+  // Quick-create Document mini-dialog state
+  const [quickDocDialogOpen, setQuickDocDialogOpen] = useState(false);
+  const [quickDocFor, setQuickDocFor] = useState<'edit' | 'create'>('edit');
+  const [quickDocForm, setQuickDocForm] = useState({ title: '', url: '', description: '' });
+  // Quick-create KB mini-dialog state
+  const [quickKbDialogOpen, setQuickKbDialogOpen] = useState(false);
+  const [quickKbFor, setQuickKbFor] = useState<'edit' | 'create'>('edit');
+  const [quickKbForm, setQuickKbForm] = useState({ title: '', description: '' });
 
   const utils = trpc.useUtils();
   const { data: requirements, isLoading, refetch } = trpc.requirements.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
   const { data: stakeholders } = trpc.stakeholders.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
   const { data: tasks } = trpc.tasks.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
   const { data: issues } = trpc.issues.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
+  const { data: scopeItemsList = [] } = trpc.scopeItems.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
+  const { data: userStoriesList = [] } = trpc.userStories.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
+  const { data: testCasesList = [] } = trpc.testCases.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
+  const { data: changeRequestsList = [] } = trpc.changeRequests.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
+  const linkUserStoryMut = trpc.userStories.linkRequirement.useMutation({ onSuccess: () => utils.userStories.list.invalidate() });
+  const unlinkUserStoryMut = trpc.userStories.unlinkRequirement.useMutation({ onSuccess: () => utils.userStories.list.invalidate() });
   const { data: statusOptions } = trpc.dropdownOptions.status.getAll.useQuery();
   const { data: priorityOptions } = trpc.dropdownOptions.priority.getAll.useQuery();
   const { data: typeOptions } = trpc.dropdownOptions.type.getAll.useQuery();
@@ -162,6 +182,42 @@ export default function Requirements() {
     { projectId: currentProjectId || 0 },
     { enabled: !!currentProjectId && viewDialogOpen && isEditMode }
   );
+  const { data: allDocuments = [] } = trpc.documents.list.useQuery(
+    { projectId: currentProjectId || 0 },
+    { enabled: !!currentProjectId }
+  );
+
+  // Quick-create Document mutation
+  const quickCreateDocMutation = trpc.documents.create.useMutation({
+    onSuccess: (doc) => {
+      toast.success(`Document ${doc.documentId} created`);
+      utils.documents.list.invalidate();
+      if (quickDocFor === 'edit') {
+        setEditFormData((prev: any) => ({ ...prev, linkedDocumentId: doc.id }));
+      } else {
+        setNewRequirement((prev: any) => ({ ...prev, linkedDocumentId: doc.id }));
+      }
+      setQuickDocDialogOpen(false);
+      setQuickDocForm({ title: '', url: '', description: '' });
+    },
+    onError: (e) => toast.error(`Failed to create document: ${e.message}`),
+  });
+
+  // Quick-create KB mutation
+  const quickCreateKbMutation = trpc.knowledgeBase.create.useMutation({
+    onSuccess: (kb) => {
+      toast.success(`KB entry ${kb.kbCode} created`);
+      utils.knowledgeBase.list.invalidate();
+      if (quickKbFor === 'edit') {
+        setEditFormData((prev: any) => ({ ...prev, knowledgeBaseCode: kb.kbCode }));
+      } else {
+        setNewRequirement((prev: any) => ({ ...prev, knowledgeBaseCode: kb.kbCode }));
+      }
+      setQuickKbDialogOpen(false);
+      setQuickKbForm({ title: '', description: '' });
+    },
+    onError: (e) => toast.error(`Failed to create KB entry: ${e.message}`),
+  });
 
   const updateMutation = trpc.requirements.update.useMutation({
     onSuccess: (data) => {
@@ -349,13 +405,17 @@ export default function Requirements() {
     },
   });
 
-  const filteredRequirements = requirements?.filter(req =>
-    req.idCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    req.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    req.owner?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    req.taskGroup?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    req.issueGroup?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredRequirements = requirements?.filter(req => {
+    const matchesSearch =
+      req.idCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      req.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      req.owner?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || req.status === statusFilter;
+    const matchesType = typeFilter === 'all' || req.type === typeFilter;
+    const matchesCategory = categoryFilter === 'all' || req.category === categoryFilter;
+    const matchesOwner = ownerFilter === 'all' || String(req.ownerId) === ownerFilter;
+    return matchesSearch && matchesStatus && matchesType && matchesCategory && matchesOwner;
+  });
 
   const handleEdit = (req: any) => {
     setEditingId(req.id);
@@ -419,6 +479,7 @@ export default function Requirements() {
       description: req.description || '',
       lastUpdate: req.lastUpdate || '',
       knowledgeBaseCode: req.knowledgeBaseCode || '',
+      linkedDocumentId: req.linkedDocumentId ?? undefined,
     });
     setIsEditMode(false);
     setViewDialogOpen(true);
@@ -439,6 +500,7 @@ export default function Requirements() {
       description: req.description || '',
       lastUpdate: req.lastUpdate || '',
       knowledgeBaseCode: req.knowledgeBaseCode || '',
+      linkedDocumentId: req.linkedDocumentId ?? undefined,
     });
     setIsEditMode(true);
     setViewDialogOpen(true);
@@ -537,7 +599,14 @@ export default function Requirements() {
   const linkedIssues = issues?.filter(i => i.requirementId === selectedRequirement?.idCode) || [];
 
   // Status and Priority color helpers - Oracle theme colors
+  const isStatusComplete = (status: string | null | undefined) => {
+    if (!status) return false;
+    return statusOptions?.some((s: any) => (s.value || '').toLowerCase() === status.toLowerCase() && s.isComplete) ?? false;
+  };
+
   const getStatusColor = (status: string | null | undefined): "default" | "secondary" | "destructive" | "outline" => {
+    if (!status) return 'outline';
+    if (isStatusComplete(status)) return 'outline';
     switch (status?.toLowerCase()) {
       case 'open':
       case 'new':
@@ -545,10 +614,6 @@ export default function Requirements() {
       case 'in progress':
       case 'active':
         return 'secondary';
-      case 'closed':
-      case 'completed':
-      case 'done':
-        return 'outline';
       case 'blocked':
       case 'on hold':
         return 'destructive';
@@ -615,18 +680,18 @@ export default function Requirements() {
             <ImportExportToolbar
               module="requirements"
               projectId={currentProjectId}
-              onImportSuccess={() => {}}
+              onImportSuccess={() => utils.requirements.list.invalidate()}
             />
           )}
         </div>
       </div>
       <Card className="border-emerald-100">
         <CardContent className="pt-6">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="relative flex-1">
+          <div className="flex items-center gap-3 mb-3 flex-wrap">
+            <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
               <Input
-                placeholder="Search by ID, description, owner, task group, or issue group..."
+                placeholder="Search by ID, description, owner..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10 border-primary/20 focus:border-primary"
@@ -636,6 +701,62 @@ export default function Requirements() {
               <Plus className="w-4 h-4 mr-2" />
               Create New
             </Button>
+          </div>
+          <div className="flex items-center gap-2 mb-4 flex-wrap">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[140px] h-8 text-xs">
+                <SelectValue placeholder="All Statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                {statusOptions?.filter((o: any) => o.value).map((o: any) => (
+                  <SelectItem key={o.id} value={o.value}>{o.value}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger className="w-[130px] h-8 text-xs">
+                <SelectValue placeholder="All Types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                {typeOptions?.filter((o: any) => o.value).map((o: any) => (
+                  <SelectItem key={o.id} value={o.value}>{o.value}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className="w-[140px] h-8 text-xs">
+                <SelectValue placeholder="All Categories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                {categoryOptions?.filter((o: any) => o.value).map((o: any) => (
+                  <SelectItem key={o.id} value={o.value}>{o.value}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={ownerFilter} onValueChange={setOwnerFilter}>
+              <SelectTrigger className="w-[150px] h-8 text-xs">
+                <SelectValue placeholder="All Owners" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Owners</SelectItem>
+                {stakeholders?.filter((s: any) => s.fullName).map((s: any) => (
+                  <SelectItem key={s.id} value={String(s.id)}>{s.fullName}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {(statusFilter !== 'all' || typeFilter !== 'all' || categoryFilter !== 'all' || ownerFilter !== 'all') && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 text-xs text-muted-foreground"
+                onClick={() => { setStatusFilter('all'); setTypeFilter('all'); setCategoryFilter('all'); setOwnerFilter('all'); }}
+              >
+                <X className="w-3 h-3 mr-1" /> Clear Filters
+              </Button>
+            )}
           </div>
 
           {/* Bulk Action Toolbar */}
@@ -761,6 +882,22 @@ export default function Requirements() {
                               <span className="font-medium min-w-[120px]">Owner:</span>
                               <span>{req.owner || '-'}</span>
                             </div>
+                            {req.scopeItemId && (
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium min-w-[120px]">Scope Item:</span>
+                                <span className="text-primary font-mono text-xs">
+                                  {(() => { const si = scopeItemsList.find((s: any) => s.id === req.scopeItemId); return si ? `${si.idCode} – ${si.name}` : `#${req.scopeItemId}`; })()}
+                                </span>
+                              </div>
+                            )}
+                            {req.linkedDocumentId && (
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium min-w-[120px]">Linked Document:</span>
+                                <span className="text-primary font-mono text-xs">
+                                  {(() => { const doc = allDocuments.find((d: any) => d.id === req.linkedDocumentId); return doc ? `${doc.documentId} – ${doc.originalName || doc.fileName}` : `#${req.linkedDocumentId}`; })()}
+                                </span>
+                              </div>
+                            )}
                             <div className="flex items-center gap-2">
                               <span className="font-medium min-w-[120px]">Source Type:</span>
                               <span>{req.sourceType || '-'}</span>
@@ -901,13 +1038,22 @@ export default function Requirements() {
           </DialogHeader>
           
           <Tabs defaultValue="details" className="mt-4 flex-1 flex flex-col overflow-hidden">
-            <TabsList className="grid w-full grid-cols-4 flex-shrink-0">
+            <TabsList className="grid w-full grid-cols-7 flex-shrink-0">
               <TabsTrigger value="details">Details</TabsTrigger>
               <TabsTrigger value="tasks">
                 Tasks ({linkedTasks.length})
               </TabsTrigger>
               <TabsTrigger value="issues">
                 Issues ({linkedIssues.length})
+              </TabsTrigger>
+              <TabsTrigger value="userstories">
+                Stories ({userStoriesList.filter((s: any) => s.requirements?.some((r: any) => r.id === selectedRequirement?.id)).length})
+              </TabsTrigger>
+              <TabsTrigger value="tests">
+                Tests ({(testCasesList as any[]).filter((tc) => tc.requirementId === selectedRequirement?.idCode).length})
+              </TabsTrigger>
+              <TabsTrigger value="changes">
+                Changes ({(changeRequestsList as any[]).filter((cr) => cr.requirementId === selectedRequirement?.idCode).length})
               </TabsTrigger>
               <TabsTrigger value="history">
                 History
@@ -917,44 +1063,7 @@ export default function Requirements() {
             <TabsContent value="details" className="space-y-4 mt-4 flex-1 overflow-y-auto">
               {/* Main Details Grid */}
               <div className="grid grid-cols-3 gap-4">
-                {/* Task Group */}
-                <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
-                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Task Group</Label>
-                  {isEditMode ? (
-                    <div className="flex gap-2">
-                      <Select value={editFormData.taskGroup || ''} onValueChange={(v) => setEditFormData({...editFormData, taskGroup: v})}>
-                        <SelectTrigger className="h-8">
-                          <SelectValue placeholder="Select task group" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {taskGroups?.filter(g => g.name).map((g) => (
-                            <SelectItem key={g.id} value={g.name!}>{g.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  ) : (
-                    <p className="font-medium">{selectedRequirement?.taskGroup || '-'}</p>
-                  )}
-                </div>
-                {/* Issue Group */}
-                <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
-                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Issue Group</Label>
-                  {isEditMode ? (
-                    <Select value={editFormData.issueGroup || ''} onValueChange={(v) => setEditFormData({...editFormData, issueGroup: v})}>
-                      <SelectTrigger className="h-8">
-                        <SelectValue placeholder="Select issue group" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {issueGroups?.filter(g => g.name).map((g) => (
-                          <SelectItem key={g.id} value={g.name!}>{g.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <p className="font-medium">{selectedRequirement?.issueGroup || '-'}</p>
-                  )}
-                </div>
+
                 {/* Priority */}
                 <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">Priority</Label>
@@ -1065,7 +1174,12 @@ export default function Requirements() {
                 {/* Knowledge Base Code */}
                 {isEditMode && (
                   <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
-                    <Label className="text-xs text-muted-foreground uppercase tracking-wide">Knowledge Base Link</Label>
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs text-muted-foreground uppercase tracking-wide">Knowledge Base Link</Label>
+                      <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs text-primary" onClick={() => { setQuickKbFor('edit'); setQuickKbDialogOpen(true); }}>
+                        <Plus className="w-3 h-3 mr-1" /> New KB Entry
+                      </Button>
+                    </div>
                     <Select 
                       value={editFormData.knowledgeBaseCode || ''} 
                       onValueChange={(v) => setEditFormData({...editFormData, knowledgeBaseCode: v})}
@@ -1083,11 +1197,46 @@ export default function Requirements() {
                     </Select>
                   </div>
                 )}
-                {/* Status */}
+                {/* Linked Document */}
                 <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
-                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Status</Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs text-muted-foreground uppercase tracking-wide">Linked Document</Label>
+                    {isEditMode && (
+                      <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs text-primary" onClick={() => { setQuickDocFor('edit'); setQuickDocDialogOpen(true); }}>
+                        <Plus className="w-3 h-3 mr-1" /> New Document
+                      </Button>
+                    )}
+                  </div>
                   {isEditMode ? (
-                    <Select value={editFormData.status || ''} onValueChange={(v) => setEditFormData({...editFormData, status: v})}>
+                    <Select
+                      value={editFormData.linkedDocumentId ? String(editFormData.linkedDocumentId) : '__none__'}
+                      onValueChange={(v) => setEditFormData({ ...editFormData, linkedDocumentId: v === '__none__' ? undefined : Number(v) })}
+                    >
+                      <SelectTrigger className="h-8">
+                        <SelectValue placeholder="Select document" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">— None —</SelectItem>
+                        {allDocuments.map((doc: any) => (
+                          <SelectItem key={doc.id} value={String(doc.id)}>
+                            {doc.documentId} – {doc.originalName || doc.fileName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="font-medium text-sm">
+                      {selectedRequirement?.linkedDocumentId
+                        ? (() => { const doc = allDocuments.find((d: any) => d.id === selectedRequirement.linkedDocumentId); return doc ? `${doc.documentId} – ${doc.originalName || doc.fileName}` : `#${selectedRequirement.linkedDocumentId}`; })()
+                        : '—'}
+                    </p>
+                  )}
+                </div>
+                {/* Status */}
+                 <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">Status</Label>
+                   {isEditMode ? (
+                     <Select value={editFormData.status || ''} onValueChange={(v) => setEditFormData({...editFormData, status: v})}>
                       <SelectTrigger className="h-8">
                         <SelectValue placeholder="Select status" />
                       </SelectTrigger>
@@ -1348,6 +1497,120 @@ export default function Requirements() {
               )}
             </TabsContent>
 
+            {/* ── User Stories Tab ─────────────────────────────────── */}
+            <TabsContent value="userstories" className="mt-4">
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground mb-2">
+                  User stories that include this requirement. Click a story to link/unlink.
+                </p>
+                {userStoriesList.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground border border-dashed border-primary/20 rounded-lg">
+                    No user stories in this project yet.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {userStoriesList.map((story: any) => {
+                      const isLinked = story.requirements?.some((r: any) => r.id === selectedRequirement?.id);
+                      return (
+                        <div
+                          key={story.id}
+                          className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${isLinked ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/20' : 'border-muted hover:border-primary/40 hover:bg-muted/30'}`}
+                          onClick={() => {
+                            if (!selectedRequirement) return;
+                            if (isLinked) {
+                              unlinkUserStoryMut.mutate({ userStoryId: story.id, requirementId: selectedRequirement.id });
+                            } else {
+                              linkUserStoryMut.mutate({ userStoryId: story.id, requirementId: selectedRequirement.id, projectId: currentProjectId! });
+                            }
+                          }}
+                        >
+                          <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 mt-0.5 ${isLinked ? 'border-blue-500 bg-blue-500' : 'border-muted-foreground'}`}>
+                            {isLinked && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-xs font-bold text-primary">{story.storyId}</span>
+                              {story.scopeItemName && (
+                                <span className="text-xs text-muted-foreground">→ {story.scopeItemCode} {story.scopeItemName}</span>
+                              )}
+                            </div>
+                            <p className="text-sm font-medium text-foreground truncate">{story.title}</p>
+                            {story.status && (
+                              <span className="text-xs text-muted-foreground">{story.status}</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+
+            {/* ── Test Cases Tab ─────────────────────────────────────────── */}
+            <TabsContent value="tests" className="mt-4">
+              <div className="space-y-3">
+                {(() => {
+                  const linked = (testCasesList as any[]).filter(
+                    (tc) => tc.requirementId === selectedRequirement?.idCode
+                  );
+                  if (linked.length === 0) {
+                    return (
+                      <div className="text-center py-8 text-muted-foreground border border-dashed border-primary/20 rounded-lg">
+                        <p className="text-sm">No test cases linked to this requirement.</p>
+                        <p className="text-xs mt-1">Link test cases from the Test Cases page.</p>
+                      </div>
+                    );
+                  }
+                  return linked.map((tc: any) => (
+                    <div key={tc.id} className="flex items-center gap-3 p-3 border rounded-lg">
+                      <span className="font-mono text-xs font-bold text-primary w-20 flex-shrink-0">{tc.testId}</span>
+                      <span className="flex-1 text-sm truncate">{tc.title}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-semibold flex-shrink-0 ${
+                        tc.status === "Passed" ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300" :
+                        tc.status === "Failed" ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" :
+                        tc.status === "In Progress" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" :
+                        "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                      }`}>{tc.status ?? "Not Executed"}</span>
+                      {tc.tester && <span className="text-xs text-muted-foreground flex-shrink-0">{tc.tester}</span>}
+                    </div>
+                  ));
+                })()}
+              </div>
+            </TabsContent>
+
+            {/* ── Change Requests Tab ────────────────────────────────────── */}
+            <TabsContent value="changes" className="mt-4">
+              <div className="space-y-3">
+                {(() => {
+                  const linked = (changeRequestsList as any[]).filter(
+                    (cr) => cr.requirementId === selectedRequirement?.idCode
+                  );
+                  if (linked.length === 0) {
+                    return (
+                      <div className="text-center py-8 text-muted-foreground border border-dashed border-primary/20 rounded-lg">
+                        <p className="text-sm">No change requests linked to this requirement.</p>
+                        <p className="text-xs mt-1">Set the Requirement ID when creating a change request.</p>
+                      </div>
+                    );
+                  }
+                  return linked.map((cr: any) => (
+                    <div key={cr.id} className="flex items-center gap-3 p-3 border rounded-lg">
+                      <span className="font-mono text-xs font-bold text-primary w-24 flex-shrink-0">{cr.crId}</span>
+                      <span className="flex-1 text-sm truncate">{cr.title}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-semibold flex-shrink-0 ${
+                        cr.status === "Approved" || cr.status === "Implemented" ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300" :
+                        cr.status === "Rejected" || cr.status === "Closed" ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" :
+                        cr.status === "Under Review" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" :
+                        "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300"
+                      }`}>{cr.status ?? "Draft"}</span>
+                      {cr.requestedBy && <span className="text-xs text-muted-foreground flex-shrink-0">{cr.requestedBy}</span>}
+                    </div>
+                  ));
+                })()}
+              </div>
+            </TabsContent>
+
             <TabsContent value="history" className="mt-4">
               <div className="space-y-3">
                 <p className="text-sm text-muted-foreground mb-4">
@@ -1477,6 +1740,75 @@ export default function Requirements() {
                 placeholder="Reference source URL or name"
               />
             </div>
+
+            {/* Scope Item */}
+            <div className="space-y-2">
+              <Label>Scope Item</Label>
+              <Select
+                value={newRequirement.scopeItemId ? String(newRequirement.scopeItemId) : '__none__'}
+                onValueChange={(v) => setNewRequirement({ ...newRequirement, scopeItemId: v === '__none__' ? undefined : Number(v) })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Link to scope item..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">— None —</SelectItem>
+                  {scopeItemsList.map((si: any) => (
+                    <SelectItem key={si.id} value={String(si.id)}>
+                      {si.idCode} – {si.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Knowledge Base Link */}
+             <div className="space-y-2">
+               <div className="flex items-center justify-between">
+                 <Label>Knowledge Base Link</Label>
+                 <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs text-primary" onClick={() => { setQuickKbFor('create'); setQuickKbDialogOpen(true); }}>+ New KB Entry</Button>
+               </div>
+               <Select
+                 value={newRequirement.knowledgeBaseCode || '__none__'}
+                 onValueChange={(v) => setNewRequirement({ ...newRequirement, knowledgeBaseCode: v === '__none__' ? '' : v })}
+               >
+                 <SelectTrigger>
+                   <SelectValue placeholder="Select KB entry..." />
+                 </SelectTrigger>
+                 <SelectContent>
+                   <SelectItem value="__none__">— None —</SelectItem>
+                   {knowledgeBaseEntries?.map((kb: any) => (
+                     <SelectItem key={kb.id} value={kb.kbCode}>
+                       {kb.kbCode} – {kb.title}
+                     </SelectItem>
+                   ))}
+                 </SelectContent>
+               </Select>
+             </div>
+
+            {/* Document Library Reference */}
+             <div className="space-y-2">
+               <div className="flex items-center justify-between">
+                 <Label>Linked Document</Label>
+                 <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs text-primary" onClick={() => { setQuickDocFor('create'); setQuickDocDialogOpen(true); }}>+ New Document</Button>
+               </div>
+               <Select
+                 value={newRequirement.linkedDocumentId ? String(newRequirement.linkedDocumentId) : '__none__'}
+                 onValueChange={(v) => setNewRequirement({ ...newRequirement, linkedDocumentId: v === '__none__' ? undefined : Number(v) })}
+               >
+                 <SelectTrigger>
+                   <SelectValue placeholder="Select document from library..." />
+                 </SelectTrigger>
+                 <SelectContent>
+                   <SelectItem value="__none__">— None —</SelectItem>
+                   {allDocuments.map((doc: any) => (
+                     <SelectItem key={doc.id} value={String(doc.id)}>
+                       {doc.documentId} – {doc.originalName || doc.fileName}
+                     </SelectItem>
+                   ))}
+                 </SelectContent>
+               </Select>
+             </div>
 
             <div className="space-y-2">
               <Label>Status</Label>
@@ -2158,6 +2490,98 @@ export default function Requirements() {
             <Button variant="outline" onClick={() => setAddStakeholderDialogOpen(false)}>Cancel</Button>
             <Button onClick={handleCreateStakeholder} disabled={createStakeholderMutation.isPending} className="bg-primary hover:bg-primary/90">
               Add Stakeholder
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Quick-Create Document Mini-Dialog */}
+      <Dialog open={quickDocDialogOpen} onOpenChange={setQuickDocDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create New Document</DialogTitle>
+            <DialogDescription>Add a document link to the library. It will be automatically linked to this requirement.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Document Title <span className="text-destructive">*</span></Label>
+              <Input
+                value={quickDocForm.title}
+                onChange={(e) => setQuickDocForm({ ...quickDocForm, title: e.target.value })}
+                placeholder="e.g., Business Requirements Document"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Document URL / File Path <span className="text-destructive">*</span></Label>
+              <Input
+                value={quickDocForm.url}
+                onChange={(e) => setQuickDocForm({ ...quickDocForm, url: e.target.value })}
+                placeholder="https://... or /path/to/file"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Input
+                value={quickDocForm.description}
+                onChange={(e) => setQuickDocForm({ ...quickDocForm, description: e.target.value })}
+                placeholder="Optional description"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setQuickDocDialogOpen(false)}>Cancel</Button>
+            <Button
+              disabled={!quickDocForm.title || !quickDocForm.url || quickCreateDocMutation.isPending}
+              onClick={() => quickCreateDocMutation.mutate({
+                projectId: currentProjectId!,
+                fileName: quickDocForm.title,
+                originalName: quickDocForm.title,
+                fileUrl: quickDocForm.url,
+                description: quickDocForm.description || undefined,
+              })}
+            >
+              {quickCreateDocMutation.isPending ? 'Creating...' : 'Create & Link'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Quick-Create KB Entry Mini-Dialog */}
+      <Dialog open={quickKbDialogOpen} onOpenChange={setQuickKbDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create New KB Entry</DialogTitle>
+            <DialogDescription>Add a knowledge base entry. It will be automatically linked to this requirement.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Title <span className="text-destructive">*</span></Label>
+              <Input
+                value={quickKbForm.title}
+                onChange={(e) => setQuickKbForm({ ...quickKbForm, title: e.target.value })}
+                placeholder="e.g., Authentication Policy"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Input
+                value={quickKbForm.description}
+                onChange={(e) => setQuickKbForm({ ...quickKbForm, description: e.target.value })}
+                placeholder="Optional description"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setQuickKbDialogOpen(false)}>Cancel</Button>
+            <Button
+              disabled={!quickKbForm.title || quickCreateKbMutation.isPending}
+              onClick={() => quickCreateKbMutation.mutate({
+                projectId: currentProjectId!,
+                title: quickKbForm.title,
+                description: quickKbForm.description || undefined,
+              })}
+            >
+              {quickCreateKbMutation.isPending ? 'Creating...' : 'Create & Link'}
             </Button>
           </DialogFooter>
         </DialogContent>

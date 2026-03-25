@@ -131,9 +131,9 @@ function todayStr(): string {
   return new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" });
 }
 
-function statusColor(s: string): string {
+function statusColor(s: string, completeStatuses?: Set<string>): string {
   const l = s.toLowerCase();
-  if (l.includes("done") || l.includes("completed") || l.includes("closed") || l.includes("passed") || l.includes("approved")) return "badge-green";
+  if (completeStatuses ? completeStatuses.has(l) : (l.includes("done") || l.includes("completed") || l.includes("closed") || l.includes("passed") || l.includes("approved"))) return "badge-green";
   if (l.includes("progress") || l.includes("review")) return "badge-blue";
   if (l.includes("open") || l.includes("pending") || l.includes("submitted")) return "badge-amber";
   if (l.includes("overdue") || l.includes("failed") || l.includes("rejected") || l.includes("blocked")) return "badge-red";
@@ -145,6 +145,8 @@ export default function PeriodicReport() {
   const { currentProjectId } = useProject();
   const projectId = currentProjectId ?? 0;
   const reportRef = useRef<HTMLDivElement>(null);
+  const { data: allProjects } = trpc.projects.list.useQuery();
+  const currentProject = allProjects?.find(p => p.id === currentProjectId);
 
   // ── Period ────────────────────────────────────────────────────────────────
   const [periodType, setPeriodType] = useState<PeriodType>(() =>
@@ -455,9 +457,16 @@ tr:nth-child(even) td{background:#f9fafb}
         <div ref={reportRef} className="bg-white rounded-lg p-8 shadow-sm" style={{ fontFamily: "Arial, sans-serif", fontSize: "13px", color: "#1a1a1a" }}>
           {/* Report Header */}
           <div style={{ borderBottom: "3px solid #0f4c75", paddingBottom: "16px", marginBottom: "20px" }}>
-            <h1 style={{ color: "#0f4c75", fontSize: "22px", margin: "0 0 4px 0" }}>{reportTitle}</h1>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "8px" }}>
+              {(currentProject as any)?.logoUrl && (
+                <img src={(currentProject as any).logoUrl} alt="logo" style={{ height: "48px", width: "48px", objectFit: "contain" }} />
+              )}
+              <div>
+                <h1 style={{ color: "#0f4c75", fontSize: "22px", margin: "0 0 2px 0" }}>{reportTitle}</h1>
+                {currentProject?.name && <div style={{ fontSize: "13px", color: "#444", fontWeight: 600 }}>{currentProject.name}</div>}
+              </div>
+            </div>
             <div style={{ color: "#555", fontSize: "12px" }}>
-              <strong>Project:</strong> Project #{currentProjectId ?? "—"} &nbsp;|&nbsp;
               <strong>Version:</strong> {activeLabel} &nbsp;|&nbsp;
               <strong>Period:</strong> {formatDate(periodStart)} – {formatDate(periodEnd)} &nbsp;|&nbsp;
               <strong>Date:</strong> {todayStr()}

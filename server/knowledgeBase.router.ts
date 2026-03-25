@@ -43,6 +43,7 @@ export const knowledgeBaseRouter = router({
         title: z.string().min(1),
         description: z.string().optional(),
         attachmentUrl: z.string().optional(),
+        linkedDocumentId: z.number().optional().nullable(),
       })
     )
     .mutation(async ({ input }) => {
@@ -63,6 +64,7 @@ export const knowledgeBaseRouter = router({
         title: z.string().min(1).optional(),
         description: z.string().optional(),
         attachmentUrl: z.string().optional(),
+        linkedDocumentId: z.number().optional().nullable(),
       })
     )
     .mutation(async ({ input }) => {

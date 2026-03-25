@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DollarSign, Plus, Pencil, Trash2, Settings, Users, Loader2 } from "lucide-react";
+import { CURRENCIES } from "@/lib/currencies";
 import { toast } from "sonner";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
@@ -66,6 +67,7 @@ export default function Budget() {
     { enabled: !!currentProjectId }
   );
 
+<<<<<<< HEAD
   // Load project currencies to get the base currency
   const { data: projectCurrenciesList } = trpc.currencies.list.useQuery(
     { projectId: currentProjectId! },
@@ -78,12 +80,30 @@ export default function Budget() {
   }, [projectCurrenciesList]);
 
   // Local state (would be replaced by trpc mutations when endpoints exist)
+=======
+  const { data: budgetData } = trpc.budget.getSummary.useQuery(
+    { projectId: currentProjectId! },
+    { enabled: !!currentProjectId }
+  );
+
+  const upsertBudgetMutation = trpc.budget.upsertBudget.useMutation();
+
+>>>>>>> github/MANUS
   const [summary, setSummary] = useState<BudgetSummary>({ totalBudget: 0, currency: "USD" });
   const [entries, setEntries] = useState<BudgetEntry[]>([]);
   const [showBudgetDialog, setShowBudgetDialog] = useState(false);
   const [showEntryDialog, setShowEntryDialog] = useState(false);
   const [editingEntry, setEditingEntry] = useState<BudgetEntry | null>(null);
   const [budgetForm, setBudgetForm] = useState({ totalBudget: 0, currency: "USD" });
+
+  // Sync summary from server when data loads
+  useEffect(() => {
+    if (budgetData?.budget) {
+      const b = budgetData.budget as any;
+      setSummary({ totalBudget: parseFloat(b.totalBudget ?? "0") || 0, currency: b.currency ?? "USD" });
+      setBudgetForm({ totalBudget: parseFloat(b.totalBudget ?? "0") || 0, currency: b.currency ?? "USD" });
+    }
+  }, [budgetData?.budget]);
   const [entryForm, setEntryForm] = useState<BudgetEntry>(emptyEntry());
 
   // Sync base currency into summary/form when it loads
@@ -147,6 +167,13 @@ export default function Budget() {
 
   function saveBudget() {
     setSummary({ totalBudget: budgetForm.totalBudget, currency: budgetForm.currency });
+    if (currentProjectId) {
+      upsertBudgetMutation.mutate({
+        projectId: currentProjectId,
+        totalBudget: String(budgetForm.totalBudget),
+        currency: budgetForm.currency,
+      });
+    }
     toast.success("Budget updated");
     setShowBudgetDialog(false);
   }
@@ -363,11 +390,16 @@ export default function Budget() {
               <Select value={budgetForm.currency} onValueChange={(v) => setBudgetForm((prev) => ({ ...prev, currency: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
+<<<<<<< HEAD
                   {(projectCurrenciesList && projectCurrenciesList.length > 0
                     ? projectCurrenciesList.map((c) => c.currencyCode)
                     : ["USD", "EUR", "GBP", "CAD", "AUD", "JPY", "CHF"]
                   ).map((c) => (
                     <SelectItem key={c} value={c}>{c}</SelectItem>
+=======
+                  {CURRENCIES.map(({ code, label }) => (
+                    <SelectItem key={code} value={code}>{label}</SelectItem>
+>>>>>>> github/MANUS
                   ))}
                 </SelectContent>
               </Select>

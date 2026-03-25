@@ -66,6 +66,66 @@ export const taskDependenciesRouter = router({
       return { success: true };
     }),
 
+  update: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      dependencyType: z.enum(["Finish-to-Start", "Start-to-Start", "Finish-to-Finish", "Start-to-Finish"]).optional(),
+      lagDays: z.number().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const updateData: any = {};
+      if (input.dependencyType !== undefined) updateData.dependencyType = input.dependencyType;
+      if (input.lagDays !== undefined) updateData.lagDays = input.lagDays;
+      await db.update(taskDependencies).set(updateData).where(eq(taskDependencies.id, input.id));
+      return { success: true };
+    }),
+
+  // Batch-create multiple dependencies at once (used when saving task with linked predecessors/successors)
+  batchCreate: protectedProcedure
+    .input(z.object({
+      projectId: z.number(),
+      dependencies: z.array(z.object({
+        predecessorTaskId: z.string().min(1),
+        successorTaskId: z.string().min(1),
+        dependencyType: z.enum(["Finish-to-Start", "Start-to-Start", "Finish-to-Finish", "Start-to-Finish"]).optional(),
+        lagDays: z.number().optional(),
+      })),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      let created = 0;
+      const errors: string[] = [];
+      for (const dep of input.dependencies) {
+        if (dep.predecessorTaskId === dep.successorTaskId) {
+          errors.push(`Skipped self-dependency: ${dep.predecessorTaskId}`);
+          continue;
+        }
+        const existing = await db.select().from(taskDependencies).where(
+          and(
+            eq(taskDependencies.projectId, input.projectId),
+            eq(taskDependencies.predecessorTaskId, dep.predecessorTaskId),
+            eq(taskDependencies.successorTaskId, dep.successorTaskId),
+          )
+        );
+        if (existing.length > 0) {
+          errors.push(`Duplicate dependency ${dep.predecessorTaskId} → ${dep.successorTaskId} skipped`);
+          continue;
+        }
+        await db.insert(taskDependencies).values({
+          projectId: input.projectId,
+          predecessorTaskId: dep.predecessorTaskId,
+          successorTaskId: dep.successorTaskId,
+          dependencyType: dep.dependencyType ?? "Finish-to-Start",
+          lagDays: dep.lagDays ?? 0,
+        });
+        created++;
+      }
+      return { created, errors };
+    }),
+
   // Get all tasks with their dependencies for Gantt chart rendering
   ganttData: protectedProcedure
     .input(z.object({ projectId: z.number() }))

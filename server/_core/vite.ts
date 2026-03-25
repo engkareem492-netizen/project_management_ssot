@@ -7,9 +7,13 @@ import { createServer as createViteServer } from "vite";
 import viteConfig from "../../vite.config";
 
 export async function setupVite(app: Express, server: Server) {
+  // Set hmr.clientPort to 1 (always-closed port) so the browser's WebSocket
+  // connection attempt fails silently. This prevents the "failed to connect to
+  // websocket" console error when the app is served behind a reverse proxy.
+  // The app works fully without HMR; only hot-reload is disabled.
   const serverOptions = {
     middlewareMode: true,
-    hmr: { server },
+    hmr: { server, clientPort: 1 },
     allowedHosts: true as const,
   };
 

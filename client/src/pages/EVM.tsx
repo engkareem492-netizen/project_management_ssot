@@ -224,7 +224,11 @@ export default function EVMDashboard() {
   function openEditSnapshot(s: typeof snapshots[0]) {
     setSForm({
       periodLabel: s.periodLabel,
+<<<<<<< HEAD
       periodDate: s.periodDate instanceof Date ? s.periodDate.toISOString().split('T')[0] : (s.periodDate ?? ""),
+=======
+      periodDate: s.periodDate ?? "",
+>>>>>>> github/MANUS
       pv: s.pv?.toString() ?? "0",
       ev: s.ev?.toString() ?? "0",
       ac: s.ac?.toString() ?? "0",
@@ -572,7 +576,11 @@ export default function EVMDashboard() {
                       return (
                         <TableRow key={s.id}>
                           <TableCell className="font-medium text-sm">{s.periodLabel}</TableCell>
+<<<<<<< HEAD
                           <TableCell className="text-sm text-muted-foreground">{s.periodDate instanceof Date ? s.periodDate.toLocaleDateString() : (s.periodDate ?? '—')}</TableCell>
+=======
+                          <TableCell className="text-sm text-muted-foreground">{s.periodDate}</TableCell>
+>>>>>>> github/MANUS
                           <TableCell className="text-right text-xs text-blue-500">{fmtCurrency(sPv, symbol)}</TableCell>
                           <TableCell className="text-right text-xs text-emerald-500">{fmtCurrency(sEv, symbol)}</TableCell>
                           <TableCell className="text-right text-xs text-orange-500">{fmtCurrency(sAc, symbol)}</TableCell>

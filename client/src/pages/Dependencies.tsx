@@ -3,6 +3,7 @@ import { trpc } from "@/lib/trpc";
 import { useProject } from "@/contexts/ProjectContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { StakeholderSelect } from "@/components/StakeholderSelect";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -14,6 +15,7 @@ import { toast } from "sonner";
 import { ImportExportToolbar } from "@/components/ImportExportToolbar";
 import { formatDate } from "@/lib/dateUtils";
 import { EmptyState } from "@/components/EmptyState";
+import { RegistrySelect } from "@/components/RegistrySelect";
 
 export default function Dependencies() {
   const { currentProjectId } = useProject();
@@ -28,6 +30,7 @@ export default function Dependencies() {
   });
 
   const { data: dependencies, isLoading, refetch } = trpc.dependencies.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
+  const { data: stakeholders = [] } = trpc.stakeholders.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
 
   const createMutation = trpc.dependencies.create.useMutation({
     onSuccess: () => {
@@ -111,7 +114,7 @@ export default function Dependencies() {
             <ImportExportToolbar
               module="dependencies"
               projectId={currentProjectId}
-              onImportSuccess={() => {}}
+              onImportSuccess={() => refetch()}
             />
           )}
         </div>
@@ -209,21 +212,27 @@ export default function Dependencies() {
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="responsible" className="text-right">Responsible</Label>
-              <Input
-                id="responsible"
-                value={newDependency.responsible}
-                onChange={(e) => setNewDependency({ ...newDependency, responsible: e.target.value })}
-                className="col-span-3"
-              />
+              <div className="col-span-3">
+                <StakeholderSelect
+                  stakeholders={stakeholders as any[]}
+                  value={newDependency.responsible}
+                  onValueChange={(v) => setNewDependency({ ...newDependency, responsible: v })}
+                  projectId={currentProjectId ?? undefined}
+                />
+              </div>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="currentStatus" className="text-right">Current Status</Label>
-              <Input
-                id="currentStatus"
-                value={newDependency.currentStatus}
-                onChange={(e) => setNewDependency({ ...newDependency, currentStatus: e.target.value })}
-                className="col-span-3"
-              />
+              <Label className="text-right">Current Status</Label>
+              <div className="col-span-3">
+                <RegistrySelect
+                  projectId={currentProjectId!}
+                  domain="dependencies"
+                  fieldKey="status"
+                  value={newDependency.currentStatus}
+                  onValueChange={(v) => setNewDependency({ ...newDependency, currentStatus: v })}
+                  placeholder="Select status"
+                />
+              </div>
             </div>
           </div>
           <div className="flex justify-end gap-2">

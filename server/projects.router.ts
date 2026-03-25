@@ -227,6 +227,26 @@ export const projectsRouter = router({
       return data;
     }),
 
+  update: protectedProcedure
+    .input(z.object({
+      projectId: z.number(),
+      name: z.string().optional(),
+      description: z.string().optional().nullable(),
+      programName: z.string().optional().nullable(),
+      portfolioName: z.string().optional().nullable(),
+      programId: z.number().optional().nullable(),
+      portfolioId: z.number().optional().nullable(),
+      logoUrl: z.string().optional().nullable(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      if (!ctx.user) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'You must be logged in' });
+      }
+      const { projectId, ...data } = input;
+      await db.updateProject(projectId, data);
+      return { success: true };
+    }),
+
   importData: protectedProcedure
     .input(z.object({
       targetProjectId: z.number(),

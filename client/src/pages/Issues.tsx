@@ -26,6 +26,10 @@ import { CustomFieldsSection } from "@/components/CustomFieldsSection";
 export default function Issues() {
   const { currentProjectId } = useProject();
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [priorityFilter, setPriorityFilter] = useState<string>("all");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [classFilter, setClassFilter] = useState<string>("all");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editData, setEditData] = useState<any>({});
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
@@ -58,6 +62,7 @@ export default function Issues() {
     knowledgeBaseCode: '',
     taskId: '',
     resolutionDate: '',
+    scopeItemId: undefined as number | undefined,
   });
   const [addStakeholderDialogOpen, setAddStakeholderDialogOpen] = useState(false);
   const [newStakeholder, setNewStakeholder] = useState({ fullName: '', position: '', role: '' });
@@ -130,9 +135,12 @@ export default function Issues() {
     openDate: new Date().toISOString().split('T')[0],
     knowledgeBaseCode: '',
     resolutionDate: '',
+    scopeItemId: undefined as number | undefined,
+    linkedDocumentId: undefined as number | undefined,
   });  const { data: issues, isLoading, refetch } = trpc.issues.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
   const { data: stakeholders } = trpc.stakeholders.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
   const { data: requirements } = trpc.requirements.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
+  const { data: scopeItemsList = [] } = trpc.scopeItems.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
   const { data: deliverables } = trpc.deliverables.list.useQuery(
     { projectId: currentProjectId || 0 },
     { enabled: !!currentProjectId }
@@ -164,6 +172,10 @@ export default function Issues() {
     { enabled: !!currentProjectId }
   );
   const { data: knowledgeBaseEntries } = trpc.knowledgeBase.list.useQuery(
+    { projectId: currentProjectId || 0 },
+    { enabled: !!currentProjectId }
+  );
+  const { data: allDocuments = [] } = trpc.documents.list.useQuery(
     { projectId: currentProjectId || 0 },
     { enabled: !!currentProjectId }
   );
@@ -363,11 +375,17 @@ export default function Issues() {
     },
   });
 
-  const filteredIssues = issues?.filter(issue =>
-    issue.issueId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    issue.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    issue.owner?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredIssues = issues?.filter(issue => {
+    const matchesSearch =
+      issue.issueId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      issue.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      issue.owner?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === "all" || issue.status === statusFilter;
+    const matchesPriority = priorityFilter === "all" || issue.priority === priorityFilter;
+    const matchesType = typeFilter === "all" || issue.type === typeFilter;
+    const matchesClass = classFilter === "all" || issue.class === classFilter;
+    return matchesSearch && matchesStatus && matchesPriority && matchesType && matchesClass;
+  });
 
   const getRequirementStatus = (requirementId: string | null) => {
     if (!requirementId || !requirements) return null;
@@ -426,7 +444,7 @@ export default function Issues() {
     const issueData: any = {
       ...newIssue,
       owner: ownerName,
-      ownerId: newIssue.owner ? parseInt(newIssue.owner) : undefined,
+      ownerId: newIssue.owner ? (isNaN(parseInt(newIssue.owner)) ? undefined : parseInt(newIssue.owner)) : undefined,
       projectId: currentProjectId!,
       requirementId: (linkRequirement && newIssue.requirementId && newIssue.requirementId !== "none") ? newIssue.requirementId : undefined,
       deliverableId: newIssue.deliverableId ? parseInt(newIssue.deliverableId) : undefined,
@@ -473,6 +491,8 @@ export default function Issues() {
       knowledgeBaseCode: issue.knowledgeBaseCode || '',
       taskId: issue.taskId || '',
       resolutionDate: issue.resolutionDate || '',
+      scopeItemId: issue.scopeItemId ?? undefined,
+      linkedDocumentId: issue.linkedDocumentId ?? undefined,
     });
     setViewDialogOpen(true);
   };
@@ -480,7 +500,8 @@ export default function Issues() {
   const handleEditDetails = (issue: any) => {
     setSelectedIssue(issue);
     setIsEditMode(true);
-    setEditFormData({
+    setEditFormData({ scopeItemId: issue.scopeItemId ?? undefined,
+      linkedDocumentId: issue.linkedDocumentId ?? undefined,
       issueGroup: issue.issueGroup || '',
       description: issue.description || '',
       source: issue.source || '',
@@ -518,9 +539,14 @@ export default function Issues() {
     });
   };
 
+  const isStatusComplete = (status: string | null | undefined) => {
+    if (!status) return false;
+    return statusOptions?.some((s: any) => (s.value || '').toLowerCase() === status.toLowerCase() && s.isComplete) ?? false;
+  };
+
   const getStatusColor = (status: string | null | undefined) => {
     if (!status) return "secondary";
-    if (status === "Closed" || status === "Resolved") return "default";
+    if (isStatusComplete(status)) return "default";
     if (status === "In Progress") return "outline";
     if (status === "Open") return "destructive";
     return "secondary";
@@ -663,15 +689,15 @@ export default function Issues() {
             <ImportExportToolbar
               module="issues"
               projectId={currentProjectId}
-              onImportSuccess={() => {}}
+              onImportSuccess={() => utils.issues.list.invalidate()}
             />
           )}
         </div>
       </div>
       <Card className="border-red-100">
         <CardContent>
-          <div className="flex items-center gap-4 mb-4">
-            <div className="relative flex-1">
+          <div className="flex items-center gap-2 mb-4 flex-wrap">
+            <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
               <Input
                 placeholder="Search by Issue ID, description, or owner..."
@@ -680,6 +706,60 @@ export default function Issues() {
                 className="pl-10"
               />
             </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+               <SelectTrigger className="w-36 h-9">
+                 <SelectValue placeholder="Status" />
+               </SelectTrigger>
+               <SelectContent>
+                 <SelectItem value="all">All Statuses</SelectItem>
+                 {statusOptions?.filter((opt: any) => opt.value).map((opt: any) => (
+                   <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
+                 ))}
+               </SelectContent>
+             </Select>
+            <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+              <SelectTrigger className="w-36 h-9">
+                <SelectValue placeholder="Priority" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Priorities</SelectItem>
+                {priorityOptions?.map((opt: any) => (
+                  <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger className="w-36 h-9">
+                <SelectValue placeholder="Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                {issueTypeOptions?.map((opt: any) => (
+                  <SelectItem key={opt.id} value={opt.value}>{opt.label || opt.value}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={classFilter} onValueChange={setClassFilter}>
+               <SelectTrigger className="w-36 h-9">
+                 <SelectValue placeholder="Class" />
+               </SelectTrigger>
+               <SelectContent>
+                 <SelectItem value="all">All Classes</SelectItem>
+                 {classOptions?.filter((c: any) => c.value).map((c: any) => (
+                   <SelectItem key={c.id} value={c.value}>{c.value}</SelectItem>
+                 ))}
+               </SelectContent>
+             </Select>
+            {(statusFilter !== "all" || priorityFilter !== "all" || typeFilter !== "all" || classFilter !== "all") && (
+               <Button
+                 size="sm"
+                 variant="ghost"
+                 className="h-9 text-muted-foreground"
+                 onClick={() => { setStatusFilter("all"); setPriorityFilter("all"); setTypeFilter("all"); setClassFilter("all"); }}
+               >
+                 <X className="w-3.5 h-3.5 mr-1" />Clear
+               </Button>
+             )}
             <Button onClick={() => setCreateDialogOpen(true)}>
               <Plus className="w-4 h-4 mr-2" />
               Create New
@@ -905,7 +985,7 @@ export default function Issues() {
                               {issue.resolutionDate && (
                                 <div className="flex items-center gap-2">
                                   <span className="font-medium min-w-[100px] text-amber-700">Resolve By:</span>
-                                  <span className={`text-sm font-medium ${new Date(issue.resolutionDate) < new Date() && issue.status?.toLowerCase() !== 'closed' ? 'text-red-600' : 'text-amber-700'}`}>
+                                  <span className={`text-sm font-medium ${new Date(issue.resolutionDate) < new Date() && !isStatusComplete(issue.status) ? 'text-red-600' : 'text-amber-700'}`}>
                                     {formatDate(issue.resolutionDate)}
                                   </span>
                                 </div>
@@ -1052,6 +1132,46 @@ export default function Issues() {
                     </Button>
                   </div>
                 </div>
+                {/* Scope Item */}
+                 <div className="space-y-2">
+                   <Label>Scope Item</Label>
+                   <Select
+                     value={newIssue.scopeItemId ? String(newIssue.scopeItemId) : '__none__'}
+                     onValueChange={(v) => setNewIssue({ ...newIssue, scopeItemId: v === '__none__' ? undefined : Number(v) })}
+                   >
+                     <SelectTrigger>
+                       <SelectValue placeholder="Select scope item..." />
+                     </SelectTrigger>
+                     <SelectContent>
+                       <SelectItem value="__none__">— None —</SelectItem>
+                       {scopeItemsList.map((si) => (
+                         <SelectItem key={si.id} value={String(si.id)}>
+                           {si.idCode} – {si.name}
+                         </SelectItem>
+                       ))}
+                     </SelectContent>
+                   </Select>
+                 </div>
+                 {/* Document Library Reference */}
+                 <div className="space-y-2">
+                   <Label>Linked Document</Label>
+                   <Select
+                     value={newIssue.linkedDocumentId ? String(newIssue.linkedDocumentId) : '__none__'}
+                     onValueChange={(v) => setNewIssue({ ...newIssue, linkedDocumentId: v === '__none__' ? undefined : Number(v) })}
+                   >
+                     <SelectTrigger>
+                       <SelectValue placeholder="Select document from library..." />
+                     </SelectTrigger>
+                     <SelectContent>
+                       <SelectItem value="__none__">— None —</SelectItem>
+                       {allDocuments.map((doc: any) => (
+                         <SelectItem key={doc.id} value={String(doc.id)}>
+                           {doc.documentId} – {doc.originalName || doc.fileName}
+                         </SelectItem>
+                       ))}
+                     </SelectContent>
+                   </Select>
+                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="description">Description *</Label>
                   <Input
@@ -1407,6 +1527,61 @@ export default function Issues() {
                   </Select>
                 ) : (
                   <p className="font-medium">{selectedIssue?.issueGroup || '-'}</p>
+                )}
+              </div>
+              <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Scope Item</Label>
+                {isEditMode ? (
+                  <Select
+                    value={editFormData.scopeItemId ? String(editFormData.scopeItemId) : '__none__'}
+                    onValueChange={(v) => setEditFormData({ ...editFormData, scopeItemId: v === '__none__' ? undefined : Number(v) })}
+                  >
+                    <SelectTrigger className="h-8">
+                      <SelectValue placeholder="Select scope item" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">— None —</SelectItem>
+                      {scopeItemsList.map((si) => (
+                        <SelectItem key={si.id} value={String(si.id)}>
+                          {si.idCode} – {si.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="font-medium text-sm">
+                    {selectedIssue?.scopeItemId
+                      ? (() => { const si = scopeItemsList.find((s) => s.id === selectedIssue.scopeItemId); return si ? `${si.idCode} – ${si.name}` : `#${selectedIssue.scopeItemId}`; })()
+                      : '—'}
+                  </p>
+                )}
+              </div>
+              {/* Linked Document */}
+              <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Linked Document</Label>
+                {isEditMode ? (
+                  <Select
+                    value={editFormData.linkedDocumentId ? String(editFormData.linkedDocumentId) : '__none__'}
+                    onValueChange={(v) => setEditFormData({ ...editFormData, linkedDocumentId: v === '__none__' ? undefined : Number(v) })}
+                  >
+                    <SelectTrigger className="h-8">
+                      <SelectValue placeholder="Select document" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">— None —</SelectItem>
+                      {allDocuments.map((doc: any) => (
+                        <SelectItem key={doc.id} value={String(doc.id)}>
+                          {doc.documentId} – {doc.originalName || doc.fileName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="font-medium text-sm">
+                    {selectedIssue?.linkedDocumentId
+                      ? (() => { const doc = allDocuments.find((d: any) => d.id === selectedIssue.linkedDocumentId); return doc ? `${doc.documentId} – ${doc.originalName || doc.fileName}` : `#${selectedIssue.linkedDocumentId}`; })()
+                      : '—'}
+                  </p>
                 )}
               </div>
               <div className="space-y-1 p-3 bg-muted/50 rounded-lg">

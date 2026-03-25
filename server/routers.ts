@@ -5,8 +5,8 @@ import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import * as db from "./db";
 import { getDb } from "./db";
-import { tasks } from "../drizzle/schema";
-import { eq, and } from "drizzle-orm";
+import { tasks, issues, requirements, taskGroups, issueGroups } from "../drizzle/schema";
+import { eq, and, sql } from "drizzle-orm";
 import * as XLSX from "xlsx";
 import { TRPCError } from "@trpc/server";
 import { projectsRouter } from "./projects.router";
@@ -30,28 +30,49 @@ import { notificationsRouter } from "./routers/notifications.router";
 import { budgetRouter } from "./routers/budget.router";
 import { resourcesRouter } from "./routers/resources.router";
 import { charterRouter } from "./routers/charter.router";
-import { pmPlanRouter } from "./routers/pmPlan.router";
-import { wbsRouter } from "./routers/wbs.router";
-import { eefRouter } from "./routers/eef.router";
-import { currenciesRouter } from "./routers/currencies.router";
 import { milestonesRouter } from "./routers/milestones.router";
 import { testRunsRouter } from "./routers/testRuns.router";
 import { actionItemsRouter } from "./routers/actionItems.router";
 import { lessonsLearnedRouter } from "./routers/lessonsLearned.router";
 import { documentsRouter } from "./routers/documents.router";
-import { customFieldsRouter } from "./routers/customFields";
-import { evmRouter } from "./routers/evm.router";
-import { featuresRouter } from "./routers/features.router";
-import { userStoriesRouter } from "./routers/userStories.router";
-import { testPlansRouter } from "./routers/testPlans.router";
-import { defectsRouter } from "./routers/defects.router";
-import { cfdRouter } from "./routers/cfd.router";
-import { phasesRouter } from "./routers/phases.router";
-import { reqTraceabilityRouter } from "./routers/reqTraceability.router";
-import { businessCaseRouter } from "./routers/businessCase.router";
+import { sprintsRouter } from "./routers/sprints.router";
+import { timeLogsRouter } from "./routers/timeLogs.router";
+import { commentsRouter } from "./routers/comments.router";
+import { goalsRouter } from "./routers/goals.router";
+import { ticketTypesRouter } from "./routers/ticketTypes.router";
+import { ticketsRouter } from "./routers/tickets.router";
+import { slaPolicyRouter } from "./routers/slaPolicy.router";
+import { projectTemplatesRouter } from "./routers/projectTemplates.router";
+import { reportBuilderRouter } from "./routers/reportBuilder.router";
+import { capacityPlanningRouter } from "./routers/capacityPlanning.router";
+import { budgetVarianceRouter } from "./routers/budgetVariance.router";
+import { stakeholderPortalRouter } from "./routers/stakeholderPortal.router";
 import { engagementRouter } from "./routers/engagement.router";
 import { teamCharterRouter } from "./routers/teamCharter.router";
-import { closingReportRouter } from "./routers/closingReport.router";
+import { communicationPlanRouter } from "./routers/communicationPlan.router";
+import { commPlanOptionsRouter } from "./routers/commPlanOptions.router";
+import { rbsResourceTypesRouter } from "./routers/rbsResourceTypes.router";
+import { teamSkillsRouter } from "./routers/teamSkills.router";
+import { rbsNodesRouter } from "./routers/rbsNodes.router";
+import { projectWorkWeekRouter } from "./routers/projectWorkWeek.router";
+import { eefRouter } from "./routers/eef.router";
+import { llDropdownRouter } from "./routers/llDropdown.router";
+import { externalPartiesRouter } from "./routers/externalParties.router";
+import { wbsNodesRouter } from "./routers/wbsNodes.router";
+import { commRaciMatrixRouter } from "./routers/commRaciMatrix.router";
+import { communicationLogRouter } from "./routers/communicationLog.router";
+import { dropdownRegistryRouter } from "./routers/dropdownRegistry.router";
+import { wbsResourceAssignmentsRouter } from "./routers/wbsResourceAssignments.router";
+import { userStoriesRouter } from "./routers/userStories.router";
+import { evmRouter } from "./routers/evm.router";
+import { cfdRouter } from "./routers/cfd.router";
+import { featuresRouter } from "./routers/features.router";
+import { testPlansRouter } from "./routers/testPlans.router";
+import { defectsRouter } from "./routers/defects.router";
+import { pmPlanRouter } from "./routers/pmPlan.router";
+import { currenciesRouter } from "./routers/currencies.router";
+import { portfoliosRouter } from "./routers/portfolios.router";
+import { programsRouter } from "./routers/programs.router";
 
 export const appRouter = router({
   system: systemRouter,
@@ -76,28 +97,49 @@ export const appRouter = router({
   budget: budgetRouter,
   resources: resourcesRouter,
   charter: charterRouter,
-  pmPlan: pmPlanRouter,
-  wbs: wbsRouter,
-  eef: eefRouter,
-  currencies: currenciesRouter,
   milestones: milestonesRouter,
   testRuns: testRunsRouter,
   actionItems: actionItemsRouter,
   lessonsLearned: lessonsLearnedRouter,
   documents: documentsRouter,
-  customFields: customFieldsRouter,
-  evm: evmRouter,
-  features: featuresRouter,
+  sprints: sprintsRouter,
+  timeLogs: timeLogsRouter,
+  comments: commentsRouter,
+  goals: goalsRouter,
+  ticketTypes: ticketTypesRouter,
+  tickets: ticketsRouter,
+  slaPolicy: slaPolicyRouter,
+  projectTemplates: projectTemplatesRouter,
+  reportBuilder: reportBuilderRouter,
+  capacityPlanning: capacityPlanningRouter,
+  budgetVariance: budgetVarianceRouter,
+  stakeholderPortal: stakeholderPortalRouter,
+  engagement: engagementRouter,
+  teamCharter: teamCharterRouter,
+  communicationPlan: communicationPlanRouter,
+  commPlanOptions: commPlanOptionsRouter,
+  rbsResourceTypes: rbsResourceTypesRouter,
+  teamSkills: teamSkillsRouter,
+  rbsNodes: rbsNodesRouter,
+  projectWorkWeek: projectWorkWeekRouter,
+  eef: eefRouter,
+  llDropdown: llDropdownRouter,
+  externalParties: externalPartiesRouter,
+  wbsNodes: wbsNodesRouter,
+  commRaciMatrix: commRaciMatrixRouter,
+  communicationLog: communicationLogRouter,
+  dropdownRegistry: dropdownRegistryRouter,
+  wbsResourceAssignments: wbsResourceAssignmentsRouter,
   userStories: userStoriesRouter,
+  evm: evmRouter,
+  cfd: cfdRouter,
+  features: featuresRouter,
   testPlans: testPlansRouter,
   defects: defectsRouter,
-  cfd: cfdRouter,
-  phases: phasesRouter,
-  reqTraceability: reqTraceabilityRouter,
-  businessCase: businessCaseRouter,
-  teamCharter: teamCharterRouter,
-  closingReport: closingReportRouter,
-  engagement: engagementRouter,
+  pmPlan: pmPlanRouter,
+  currencies: currenciesRouter,
+  portfolios: portfoliosRouter,
+  programs: programsRouter,
   scopeItems: router({
     list: protectedProcedure
       .input(z.object({ projectId: z.number() }))
@@ -505,6 +547,7 @@ export const appRouter = router({
         lastUpdate: z.string().optional(),
         updateDate: z.string().optional(),
         scopeItemId: z.number().optional().nullable(),
+        linkedDocumentId: z.number().optional().nullable(),
       }))
       .mutation(async ({ input }) => {
         try {
@@ -605,6 +648,7 @@ export const appRouter = router({
           owner: z.string().optional(),
           description: z.string().optional(),
           scopeItemId: z.number().optional().nullable(),
+          linkedDocumentId: z.number().optional().nullable(),
         }),
       }))
       .mutation(async ({ input, ctx }) => {
@@ -734,13 +778,12 @@ export const appRouter = router({
         recurringInterval: z.number().optional(),
         recurringEndDate: z.string().optional(),
         manHours: z.number().optional(),
-        isActionItem: z.boolean().optional(),
-        actionSourceType: z.string().optional(),
-        actionSourceId: z.string().optional(),
-        actionNotes: z.string().optional(),
-        startDate: z.string().optional(),
-        phaseId: z.string().optional(),
-        milestoneId: z.number().optional(),
+        subject: z.string().optional(),
+        subjectId: z.number().optional(),
+        taskCategory: z.enum(['task', 'communication', 'development']).optional(),
+        devPlanId: z.number().nullable().optional(),
+        devTaskSwotId: z.number().nullable().optional(),
+        devTaskSkillId: z.number().nullable().optional(),
       }))
       .mutation(async ({ input }) => {
         try {
@@ -752,10 +795,19 @@ export const appRouter = router({
               cleanedInput[key] = value;
             }
           });
-          
-          // Generate auto ID for task
-          const taskId = await db.getNextId('task', 'T', input.projectId);
-          await db.createTask({ ...cleanedInput, taskId, projectId: input.projectId });
+
+          // Choose prefix: COMM for communication, DEV for development, T for regular
+          const isCommTask = input.taskCategory === 'communication';
+          const isDevTask = input.taskCategory === 'development';
+          const taskId = isCommTask
+            ? await db.getNextId('commTask', 'COMM', input.projectId)
+            : isDevTask
+            ? await db.getNextId('devTask', 'DEV', input.projectId)
+            : await db.getNextId('task', 'T', input.projectId);
+          // Strip fields that are not columns in the tasks table
+          // Note: issueId IS a valid column and must NOT be stripped
+          const { taskCategory: _cat, subjectId: _sid, ...dbInsertPayload } = cleanedInput;
+          await db.createTask({ ...dbInsertPayload, taskId, projectId: input.projectId });
           
           return { success: true, taskId };
         } catch (error: any) {
@@ -813,13 +865,12 @@ export const appRouter = router({
           informedId: z.number().nullable().optional(),
           ownerId: z.number().nullable().optional(),
           manHours: z.union([z.number(), z.string()]).nullable().optional(),
-          isActionItem: z.boolean().optional(),
-          actionSourceType: z.string().optional(),
-          actionSourceId: z.string().optional(),
-          actionNotes: z.string().optional(),
-          startDate: z.string().nullable().optional(),
-          phaseId: z.string().nullable().optional(),
-          milestoneId: z.number().nullable().optional(),
+          subject: z.string().nullable().optional(),
+          subjectId: z.number().nullable().optional(),
+          taskCategory: z.enum(['task', 'communication', 'development']).optional(),
+          devPlanId: z.number().nullable().optional(),
+          devTaskSwotId: z.number().nullable().optional(),
+          devTaskSkillId: z.number().nullable().optional(),
         }),
       }))
       .mutation(async ({ input, ctx }) => {
@@ -851,21 +902,6 @@ export const appRouter = router({
         }
 
         await db.updateTask(input.id, input.data as any);
-
-        // Save status update text to dedicated status-updates table
-        if (input.data.currentStatus && input.data.currentStatus !== current.currentStatus) {
-          const projectId = current.projectId;
-          if (projectId) {
-            await db.createTaskStatusUpdate({
-              projectId,
-              taskId: input.taskId,
-              taskDbId: input.id,
-              updateText: input.data.currentStatus,
-              updatedBy: ctx.user.id,
-              updatedByName: ctx.user.name ?? ctx.user.email ?? 'Unknown',
-            });
-          }
-        }
 
         if (Object.keys(changedFields).length > 0) {
           await db.createActionLog({
@@ -997,14 +1033,8 @@ export const appRouter = router({
       .query(async ({ input }) => {
         return await db.getBadgeCounts(input.projectId);
       }),
-
-    // Status Updates — chronological log of "New Update" text entries (separate from audit log)
-    getStatusUpdates: protectedProcedure
-      .input(z.object({ taskId: z.string() }))
-      .query(async ({ input }) => {
-        return await db.getTaskStatusUpdates(input.taskId);
-      }),
   }),
+
   // Issues
   issues: router({
     list: protectedProcedure
@@ -1044,6 +1074,9 @@ export const appRouter = router({
         lastUpdate: z.string().optional(),
         updateDate: z.string().optional(),
         resolutionDate: z.string().optional(),
+        requiredResolutionDate: z.string().optional(),
+        scopeItemId: z.number().optional().nullable(),
+        linkedDocumentId: z.number().optional().nullable(),
       }))
       .mutation(async ({ input }) => {
         try {
@@ -1098,6 +1131,7 @@ export const appRouter = router({
           lastUpdate: z.string().optional(),
           updateDate: z.string().optional(),
           resolutionDate: z.string().optional(),
+          requiredResolutionDate: z.string().optional(),
           description: z.string().optional(),
           owner: z.string().optional(),
           ownerId: z.number().optional(),
@@ -1112,6 +1146,8 @@ export const appRouter = router({
           deliverableId: z.number().optional(),
           taskId: z.string().optional(),
           knowledgeBaseCode: z.string().optional(),
+          scopeItemId: z.number().optional().nullable(),
+          linkedDocumentId: z.number().optional().nullable(),
         }),
       }))
       .mutation(async ({ input, ctx }) => {
@@ -1121,7 +1157,7 @@ export const appRouter = router({
         }
 
         const changedFields: Record<string, { oldValue: any; newValue: any }> = {};
-        const trackFields = ['status', 'priority', 'deliverables1', 'd1Status', 'deliverables2', 'd2Status', 'lastUpdate', 'updateDate', 'resolutionDate', 'description', 'owner', 'openDate'];
+        const trackFields = ['status', 'priority', 'deliverables1', 'd1Status', 'deliverables2', 'd2Status', 'lastUpdate', 'updateDate', 'resolutionDate', 'requiredResolutionDate', 'description', 'owner', 'openDate'];
         
         for (const field of trackFields) {
           if (input.data[field as keyof typeof input.data] !== undefined && 
@@ -1406,17 +1442,18 @@ export const appRouter = router({
         job: z.string().optional(),
         phone: z.string().optional(),
         department: z.string().optional(),
-        remark: z.string().optional(),
-        classification: z.enum(["team_member", "external", "stakeholder"]).optional(),
+        classification: z.enum(["TeamMember", "External", "Stakeholder"]).optional(),
         isInternalTeam: z.boolean().optional(),
         isPooledResource: z.boolean().optional(),
-        stakeholderManagerId: z.number().optional(),
-        workingSchedule: z.string().optional(),
+        workingHoursPerDay: z.string().optional(),
+        workingDaysPerWeek: z.number().optional(),
+        stakeholderManagerId: z.number().nullable().optional(),
+        externalPartyId: z.number().nullable().optional(),
         powerLevel: z.number().min(1).max(5).optional(),
         interestLevel: z.number().min(1).max(5).optional(),
-        currentEngagementStatus: z.string().optional(),
-        desiredEngagementStatus: z.string().optional(),
         engagementStrategy: z.string().optional(),
+        currentEngagementStatus: z.enum(["Unaware", "Resistant", "Neutral", "Supportive", "Leading"]).nullable().optional(),
+        desiredEngagementStatus: z.enum(["Unaware", "Resistant", "Neutral", "Supportive", "Leading"]).nullable().optional(),
         communicationFrequency: z.string().optional(),
         communicationChannel: z.string().optional(),
         communicationMessage: z.string().optional(),
@@ -1437,8 +1474,17 @@ export const appRouter = router({
           ...input,
           communicationResponsible: commResponsibleName,
         });
-        // Auto-create recurring task if frequency + responsible are set (deduplication: one task per stakeholder)
-        if (input.communicationFrequency && input.communicationFrequency !== 'None' && input.communicationResponsibleId) {
+        // Auto-create recurring task only when ALL three conditions are met:
+        // 1. frequency is set and is not "As needed" / "Ad hoc" / "None"
+        // 2. a communication channel (via) is specified
+        // 3. a responsible person is assigned
+        const _skipFreqs = ['None', 'As needed', 'Ad hoc'];
+        if (
+          input.communicationFrequency &&
+          !_skipFreqs.includes(input.communicationFrequency) &&
+          input.communicationChannel && input.communicationChannel.trim() &&
+          input.communicationResponsibleId
+        ) {
           const freqMap: Record<string, 'daily' | 'weekly' | 'monthly'> = {
             Daily: 'daily', Weekly: 'weekly', 'Bi-weekly': 'weekly',
             Monthly: 'monthly', Quarterly: 'monthly',
@@ -1446,27 +1492,28 @@ export const appRouter = router({
           const intervalMap: Record<string, number> = {
             Daily: 1, Weekly: 1, 'Bi-weekly': 2, Monthly: 1, Quarterly: 3,
           };
-          const recurringType = freqMap[input.communicationFrequency] ?? 'weekly';
+          const recurringType = freqMap[input.communicationFrequency];
           const recurringInterval = intervalMap[input.communicationFrequency] ?? 1;
-          const newStakeholderId = (result as any).id ?? (result as any).insertId;
-          // Check if a communication task already exists for this stakeholder
-          const dbConn = await getDb();
-          const existingCommTask = dbConn ? await dbConn.select().from(tasks)
-            .where(and(eq(tasks.projectId, input.projectId), eq(tasks.communicationStakeholderId, newStakeholderId)))
-            .limit(1) : [];
-          if (existingCommTask.length === 0) {
-            const taskId = await db.getNextId('task', 'T', input.projectId);
-            await db.createTask({
-              projectId: input.projectId,
-              taskId,
-              description: `Communicate with ${input.fullName} (${input.communicationFrequency} via ${input.communicationChannel ?? 'TBD'})`,
-              responsibleId: input.communicationResponsibleId,
-              responsible: commResponsibleName ?? undefined,
-              recurringType,
-              recurringInterval,
-              status: 'Open',
-              communicationStakeholderId: newStakeholderId,
-            } as any);
+          if (recurringType) {
+            const newStakeholderId = (result as any).id ?? (result as any).insertId;
+            const dbConn = await getDb();
+            const existingCommTask = dbConn ? await dbConn.select().from(tasks)
+              .where(and(eq(tasks.projectId, input.projectId), eq(tasks.communicationStakeholderId, newStakeholderId)))
+              .limit(1) : [];
+            if (existingCommTask.length === 0) {
+              const taskId = await db.getNextId('commTask', 'COMM', input.projectId);
+              await db.createTask({
+                projectId: input.projectId,
+                taskId,
+                description: `Communicate with ${input.fullName} (${input.communicationFrequency} via ${input.communicationChannel})`,
+                responsibleId: input.communicationResponsibleId,
+                responsible: commResponsibleName ?? undefined,
+                recurringType,
+                recurringInterval,
+                status: 'Open',
+                communicationStakeholderId: newStakeholderId,
+              } as any);
+            }
           }
         }
         return result;
@@ -1482,22 +1529,24 @@ export const appRouter = router({
           job: z.string().optional(),
           phone: z.string().optional(),
           department: z.string().optional(),
-          remark: z.string().optional(),
-          classification: z.enum(["team_member", "external", "stakeholder"]).optional(),
+          classification: z.enum(["TeamMember", "External", "Stakeholder"]).optional(),
           isInternalTeam: z.boolean().optional(),
           isPooledResource: z.boolean().optional(),
+          workingHoursPerDay: z.string().optional(),
+          workingDaysPerWeek: z.number().optional(),
           stakeholderManagerId: z.number().nullable().optional(),
-          workingSchedule: z.string().optional(),
+          externalPartyId: z.number().nullable().optional(),
           powerLevel: z.number().min(1).max(5).optional(),
           interestLevel: z.number().min(1).max(5).optional(),
-          currentEngagementStatus: z.string().optional(),
-          desiredEngagementStatus: z.string().optional(),
-          engagementStrategy: z.string().nullable().optional(),
+          positionedOnMap: z.boolean().optional(),
+          engagementStrategy: z.string().optional(),
+          currentEngagementStatus: z.enum(["Unaware", "Resistant", "Neutral", "Supportive", "Leading"]).nullable().optional(),
+          desiredEngagementStatus: z.enum(["Unaware", "Resistant", "Neutral", "Supportive", "Leading"]).nullable().optional(),
           communicationFrequency: z.string().optional(),
           communicationChannel: z.string().optional(),
           communicationMessage: z.string().optional(),
           communicationResponsible: z.string().optional(),
-          communicationResponsibleId: z.number().optional(),
+          communicationResponsibleId: z.number().nullable().optional(),
           notes: z.string().optional(),
           costPerHour: z.string().optional().nullable(),
           costPerDay: z.string().optional().nullable(),
@@ -1506,52 +1555,68 @@ export const appRouter = router({
       .mutation(async ({ input, ctx }) => {
         // Resolve communicationResponsibleId to name
         let updateData: any = { ...input.data };
+        // Auto-mark as positioned when power or interest is explicitly set
+        if (input.data.powerLevel !== undefined || input.data.interestLevel !== undefined) {
+          updateData.positionedOnMap = true;
+        }
         if (input.data.communicationResponsibleId) {
           const resp = await db.getStakeholderById(input.data.communicationResponsibleId);
           if (resp) updateData.communicationResponsible = resp.fullName ?? updateData.communicationResponsible;
         }
         const result = await db.updateStakeholder(input.id, updateData);
-        // Upsert recurring communication task (deduplication: one task per stakeholder)
+        // Sync recurring communication task based on updated frequency
+        // "As needed" and "Ad hoc" must never generate tasks — delete any existing one
         const freq = input.data.communicationFrequency;
-        const respId = input.data.communicationResponsibleId;
-        if (freq && freq !== 'None' && respId) {
-          const stakeholder = await db.getStakeholderById(input.id);
-          const freqMap: Record<string, 'daily' | 'weekly' | 'monthly'> = {
-            Daily: 'daily', Weekly: 'weekly', 'Bi-weekly': 'weekly',
-            Monthly: 'monthly', Quarterly: 'monthly',
-          };
-          const intervalMap: Record<string, number> = {
-            Daily: 1, Weekly: 1, 'Bi-weekly': 2, Monthly: 1, Quarterly: 3,
-          };
-          const recurringType = freqMap[freq] ?? 'weekly';
-          const recurringInterval = intervalMap[freq] ?? 1;
-          const newDesc = `Communicate with ${stakeholder?.fullName ?? 'Stakeholder'} (${freq} via ${input.data.communicationChannel ?? stakeholder?.communicationChannel ?? 'TBD'})`;
+        const skipFreqs = ['None', 'As needed', 'Ad hoc'];
+        if (freq) {
           const dbConn = await getDb();
+          const stakeholder = await db.getStakeholderById(input.id);
           const existingCommTask = dbConn ? await dbConn.select().from(tasks)
             .where(and(eq(tasks.projectId, stakeholder?.projectId ?? 1), eq(tasks.communicationStakeholderId, input.id)))
             .limit(1) : [];
-          if (existingCommTask.length > 0) {
-            // Update existing communication task instead of creating a duplicate
-            await dbConn!.update(tasks).set({
-              description: newDesc,
-              responsibleId: respId,
-              responsible: updateData.communicationResponsible ?? undefined,
-              recurringType,
-              recurringInterval,
-            }).where(eq(tasks.id, existingCommTask[0].id));
+          if (skipFreqs.includes(freq)) {
+            // Delete linked task if frequency is now "As needed" / "Ad hoc" / "None"
+            if (existingCommTask.length > 0 && dbConn) {
+              await dbConn.delete(tasks).where(eq(tasks.id, existingCommTask[0].id));
+            }
           } else {
-            const taskId = await db.getNextId('task', 'T', stakeholder?.projectId ?? 1);
-            await db.createTask({
-              projectId: stakeholder?.projectId ?? 1,
-              taskId,
-              description: newDesc,
-              responsibleId: respId,
-              responsible: updateData.communicationResponsible ?? undefined,
-              recurringType,
-              recurringInterval,
-              status: 'Open',
-              communicationStakeholderId: input.id,
-            } as any);
+            const respId = input.data.communicationResponsibleId;
+            const freqMap: Record<string, 'daily' | 'weekly' | 'monthly'> = {
+              Daily: 'daily', Weekly: 'weekly', 'Bi-weekly': 'weekly',
+              Monthly: 'monthly', Quarterly: 'monthly',
+            };
+            const intervalMap: Record<string, number> = {
+              Daily: 1, Weekly: 1, 'Bi-weekly': 2, Monthly: 1, Quarterly: 3,
+            };
+            const recurringType = freqMap[freq];
+            const effectiveChannel = input.data.communicationChannel?.trim() || stakeholder?.communicationChannel?.trim();
+            // Require all three: valid recurring type, responsible, AND a communication channel
+            if (recurringType && respId && effectiveChannel) {
+              const recurringInterval = intervalMap[freq] ?? 1;
+              const newDesc = `Communicate with ${stakeholder?.fullName ?? 'Stakeholder'} (${freq} via ${effectiveChannel})`;
+              if (existingCommTask.length > 0 && dbConn) {
+                await dbConn.update(tasks).set({
+                  description: newDesc,
+                  responsibleId: respId,
+                  responsible: updateData.communicationResponsible ?? undefined,
+                  recurringType,
+                  recurringInterval,
+                }).where(eq(tasks.id, existingCommTask[0].id));
+              } else {
+                const taskId = await db.getNextId('commTask', 'COMM', stakeholder?.projectId ?? 1);
+                await db.createTask({
+                  projectId: stakeholder?.projectId ?? 1,
+                  taskId,
+                  description: newDesc,
+                  responsibleId: respId,
+                  responsible: updateData.communicationResponsible ?? undefined,
+                  recurringType,
+                  recurringInterval,
+                  status: 'Open',
+                  communicationStakeholderId: input.id,
+                } as any);
+              }
+            }
           }
         }
         return result;
@@ -2158,7 +2223,7 @@ export const appRouter = router({
           value: z.string(),
         }))
         .mutation(async ({ input }) => {
-          return await db.updatePriorityOption(input.id, { label: input.value, value: input.value });
+          return await db.updatePriorityOption(input.id, { label: input.value });
         }),
       delete: protectedProcedure
         .input(z.object({ id: z.number() }))
@@ -2190,7 +2255,7 @@ export const appRouter = router({
           value: z.string(),
         }))
         .mutation(async ({ input }) => {
-          return await db.updateTypeOption(input.id, { label: input.value, value: input.value });
+          return await db.updateTypeOption(input.id, { label: input.value });
         }),
       delete: protectedProcedure
         .input(z.object({ id: z.number() }))
@@ -2222,7 +2287,7 @@ export const appRouter = router({
           value: z.string(),
         }))
         .mutation(async ({ input }) => {
-          return await db.updateCategoryOption(input.id, { label: input.value, value: input.value });
+          return await db.updateCategoryOption(input.id, { label: input.value });
         }),
       delete: protectedProcedure
         .input(z.object({ id: z.number() }))
@@ -2237,6 +2302,21 @@ export const appRouter = router({
         .input(z.object({ projectId: z.number() }))
         .query(async ({ input }) => {
           return await db.getAllTaskGroups(input.projectId);
+        }),
+      getUsageCounts: publicProcedure
+        .input(z.object({ projectId: z.number() }))
+        .query(async ({ input }) => {
+          const dbConn = await getDb();
+          if (!dbConn) return [];
+          const groups = await dbConn.select().from(taskGroups).where(eq(taskGroups.projectId, input.projectId));
+          const counts = await Promise.all(groups.map(async (g) => {
+            const [taskCount] = await dbConn.select({ count: sql<number>`COUNT(*)` }).from(tasks)
+              .where(and(eq(tasks.projectId, input.projectId), eq(tasks.taskGroup, g.name)));
+            const [reqCount] = await dbConn.select({ count: sql<number>`COUNT(*)` }).from(requirements)
+              .where(and(eq(requirements.projectId, input.projectId), eq(requirements.taskGroup, g.name)));
+            return { id: g.id, name: g.name, taskCount: Number(taskCount?.count ?? 0), requirementCount: Number(reqCount?.count ?? 0) };
+          }));
+          return counts;
         }),
       create: protectedProcedure
         .input(z.object({
@@ -2271,6 +2351,21 @@ export const appRouter = router({
         .input(z.object({ projectId: z.number() }))
         .query(async ({ input }) => {
           return await db.getAllIssueGroups(input.projectId);
+        }),
+      getUsageCounts: publicProcedure
+        .input(z.object({ projectId: z.number() }))
+        .query(async ({ input }) => {
+          const dbConn = await getDb();
+          if (!dbConn) return [];
+          const groups = await dbConn.select().from(issueGroups).where(eq(issueGroups.projectId, input.projectId));
+          const counts = await Promise.all(groups.map(async (g) => {
+            const [issueCount] = await dbConn.select({ count: sql<number>`COUNT(*)` }).from(issues)
+              .where(and(eq(issues.projectId, input.projectId), eq(issues.issueGroup, g.name)));
+            const [reqCount] = await dbConn.select({ count: sql<number>`COUNT(*)` }).from(requirements)
+              .where(and(eq(requirements.projectId, input.projectId), eq(requirements.issueGroup, g.name)));
+            return { id: g.id, name: g.name, issueCount: Number(issueCount?.count ?? 0), requirementCount: Number(reqCount?.count ?? 0) };
+          }));
+          return counts;
         }),
       create: protectedProcedure
         .input(z.object({

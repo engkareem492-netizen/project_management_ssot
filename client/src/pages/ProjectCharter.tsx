@@ -10,10 +10,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
+<<<<<<< HEAD
 import {
   Loader2, Save, FileText, Target, CheckCircle2, AlertTriangle, Users,
   Briefcase, Shield, TrendingUp, Plus, Trash2
 } from "lucide-react";
+=======
+import { Loader2, Save, FileText, Target, CheckCircle2, AlertTriangle, Users } from "lucide-react";
+import { CURRENCIES } from "@/lib/currencies";
+import { RegistrySelect } from "@/components/RegistrySelect";
+>>>>>>> github/MANUS
 
 const RAG_COLORS: Record<string, string> = {
   Green: "bg-green-100 text-green-800 border-green-300",
@@ -226,9 +232,9 @@ export default function ProjectCharter() {
           {editing ? (
             <div className="flex gap-2">
               <Select value={form.currency || "USD"} onValueChange={v => set("currency", v)}>
-                <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {["USD", "EUR", "GBP", "AED", "SAR", "INR"].map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  {CURRENCIES.map(({ code, label }) => <SelectItem key={code} value={code}>{label}</SelectItem>)}
                 </SelectContent>
               </Select>
               <Input type="number" placeholder="Total budget" value={form.budget} onChange={e => set("budget", e.target.value)} />
@@ -292,6 +298,7 @@ export default function ProjectCharter() {
           <TabsTrigger value="phase-notes">Phase & Notes</TabsTrigger>
         </TabsList>
 
+<<<<<<< HEAD
         {/* ── Scope & Objectives ── */}
         <TabsContent value="scope" className="space-y-4 mt-4">
           {[
@@ -347,6 +354,38 @@ export default function ProjectCharter() {
                     ? <Badge variant="secondary" className="text-sm">{(charter as any).businessCaseCause}</Badge>
                     : <span className="text-sm text-muted-foreground italic">Not defined yet.</span>}
                 </div>
+=======
+      {/* Phase */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Current Phase & Notes</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {editing ? (
+            <>
+              <div>
+                <Label>Current Phase</Label>
+                <RegistrySelect
+                  projectId={projectId}
+                  domain="scope_items"
+                  fieldKey="phase"
+                  value={form.phase || ""}
+                  onValueChange={v => set("phase", v)}
+                  allowNone
+                  noneLabel="— None —"
+                  placeholder="Select phase"
+                />
+              </div>
+              <div>
+                <Label>Notes</Label>
+                <Textarea rows={3} value={form.notes ?? ""} onChange={e => set("notes", e.target.value)} />
+              </div>
+            </>
+          ) : (
+            <div className="space-y-2">
+              {(charter as any)?.phase && (
+                <div><Badge variant="outline">{(charter as any).phase}</Badge></div>
+>>>>>>> github/MANUS
               )}
             </CardContent>
           </Card>

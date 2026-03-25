@@ -46,6 +46,7 @@ export const lessonsLearnedRouter = router({
       dateRecorded: z.string().optional(),
       status: z.enum(["Draft", "Reviewed", "Approved", "Archived"]).optional(),
       tags: z.array(z.string()).optional(),
+      linkedDocumentId: z.number().optional().nullable(),
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
@@ -81,6 +82,7 @@ export const lessonsLearnedRouter = router({
       dateRecorded: z.string().optional().nullable(),
       status: z.enum(["Draft", "Reviewed", "Approved", "Archived"]).optional(),
       tags: z.array(z.string()).optional(),
+      linkedDocumentId: z.number().optional().nullable(),
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();

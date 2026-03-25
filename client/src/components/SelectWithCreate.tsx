@@ -107,7 +107,7 @@ export function SelectWithCreate({ type, value, onValueChange, placeholder, cate
       utils.stakeholders.list.invalidate();
       setNewStakeholder({ fullName: '', position: '', role: '' });
       setCreateDialogOpen(false);
-      if (data?.id) onValueChange(data.id.toString());
+      if (data?.fullName) onValueChange(data.fullName);
       toast.success("Stakeholder added successfully");
     },
     onError: (error: any) => {

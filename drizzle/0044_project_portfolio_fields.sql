@@ -1,0 +1,3 @@
+ALTER TABLE `projects` ADD COLUMN `programName` varchar(200);
+ALTER TABLE `projects` ADD COLUMN `portfolioName` varchar(200);
+ALTER TABLE `projects` ADD COLUMN `logoUrl` text;

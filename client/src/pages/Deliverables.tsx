@@ -285,7 +285,7 @@ export default function Deliverables() {
             <ImportExportToolbar
               module="deliverables"
               projectId={currentProjectId}
-              onImportSuccess={() => {}}
+              onImportSuccess={() => utils.deliverables.list.invalidate()}
             />
           )}
         </div>

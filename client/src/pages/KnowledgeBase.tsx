@@ -27,6 +27,7 @@ export default function KnowledgeBase() {
   const [typeId, setTypeId] = useState<string>("");
   const [componentId, setComponentId] = useState<string>("");
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+  const [linkedDocumentId, setLinkedDocumentId] = useState<string>("");
 
   // Configuration states
   const [newTypeName, setNewTypeName] = useState("");
@@ -37,6 +38,11 @@ export default function KnowledgeBase() {
   const utils = trpc.useUtils();
 
   // Queries
+  const { data: allDocuments = [] } = trpc.documents.list.useQuery(
+    { projectId: currentProjectId! },
+    { enabled: !!currentProjectId }
+  );
+
   const { data: entries = [], isLoading } = trpc.knowledgeBase.list.useQuery(
     { projectId: currentProjectId! },
     { enabled: !!currentProjectId }
@@ -138,6 +144,7 @@ export default function KnowledgeBase() {
     setTypeId("");
     setComponentId("");
     setAttachmentFile(null);
+    setLinkedDocumentId("");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -184,8 +191,8 @@ export default function KnowledgeBase() {
       typeId: typeId ? parseInt(typeId) : undefined,
       componentId: componentId ? parseInt(componentId) : undefined,
       attachmentUrl: attachmentUrl || undefined,
+      linkedDocumentId: linkedDocumentId ? parseInt(linkedDocumentId) : null,
     };
-
     if (editingEntry) {
       updateMutation.mutate({ ...data, id: editingEntry.id });
     } else {
@@ -199,6 +206,7 @@ export default function KnowledgeBase() {
     setDescription(entry.description || "");
     setTypeId(entry.typeId?.toString() || "");
     setComponentId(entry.componentId?.toString() || "");
+    setLinkedDocumentId(entry.linkedDocumentId?.toString() || "");
     setCreateDialogOpen(true);
   };
 
@@ -521,6 +529,22 @@ export default function KnowledgeBase() {
                 </div>
 
                 <div className="space-y-2">
+                  <Label htmlFor="linkedDocument">Link to Document</Label>
+                  <Select value={linkedDocumentId} onValueChange={setLinkedDocumentId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a registered document (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No linked document</SelectItem>
+                      {allDocuments.map((doc) => (
+                        <SelectItem key={doc.id} value={doc.id.toString()}>
+                          {doc.documentId} — {doc.originalName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="attachment">Attachment</Label>
                   <Input
                     id="attachment"
@@ -571,7 +595,7 @@ export default function KnowledgeBase() {
             <ImportExportToolbar
               module="knowledgeBase"
               projectId={currentProjectId}
-              onImportSuccess={() => {}}
+              onImportSuccess={() => utils.knowledgeBase.list.invalidate()}
             />
           )}
         </div>

@@ -234,15 +234,23 @@ export default function GanttChart() {
   const allTasks = useMemo(() => {
     const ganttTasks = ganttData?.tasks ?? [];
     const fullMap = new Map(fullTasks.map((t: any) => [t.taskId, t]));
-    return ganttTasks.map((gt) => {
-      const full = fullMap.get(gt.taskId) as any;
-      return {
-        ...gt,
-        parentTaskId: full?.parentTaskId ?? null,
-        responsible: full?.responsible ?? gt.responsible ?? null,
-        priority: full?.priority ?? null,
-      };
-    });
+    return ganttTasks
+      .filter((gt) => {
+        // Exclude COMM tasks (communication plan tasks)
+        if ((gt.taskId ?? "").startsWith("COMM-")) return false;
+        // Exclude DEV tasks (stakeholder development plan tasks)
+        if ((gt.taskId ?? "").startsWith("DEV-")) return false;
+        return true;
+      })
+      .map((gt) => {
+        const full = fullMap.get(gt.taskId) as any;
+        return {
+          ...gt,
+          parentTaskId: full?.parentTaskId ?? null,
+          responsible: full?.responsible ?? gt.responsible ?? null,
+          priority: full?.priority ?? null,
+        };
+      });
   }, [ganttData, fullTasks]);
 
   // Build WBS map
@@ -286,6 +294,35 @@ export default function GanttChart() {
     const totalDays = Math.max(30, daysBetween(minDate, maxDate));
     const todayOffset = Math.max(0, Math.min(totalDays, daysBetween(minDate, today)));
 
+    // Inject milestone rows from the milestones table
+    const milestoneRows = (projectMilestones as any[]).map((m: any) => {
+      const dueDate = m.dueDate ? (m.dueDate instanceof Date ? m.dueDate : new Date(m.dueDate)) : null;
+      const startOffset = dueDate ? Math.max(0, daysBetween(minDate, dueDate)) : 0;
+      return {
+        id: `ms-${m.id}`,
+        taskId: m.milestoneId,
+        description: `◆ ${m.title}`,
+        status: m.status,
+        priority: null,
+        responsible: m.owner ?? null,
+        assignDate: dueDate ? dueDate.toISOString().slice(0, 10) : null,
+        dueDate: dueDate ? dueDate.toISOString().slice(0, 10) : null,
+        startParsed: dueDate,
+        endParsed: dueDate,
+        wbs: "",
+        parentTaskId: null,
+        duration: 0,
+        isMilestone: true,
+        isParent: false,
+        isCritical: false,
+        barStart: startOffset,
+        barDuration: 0,
+        depth: 0,
+        _isMilestoneRow: true,
+        ragStatus: m.ragStatus,
+      };
+    });
+
     const rows = sorted.map((t) => {
       const start = t.startParsed ?? t.endParsed ?? today;
       const end = t.endParsed ?? t.startParsed ?? today;
@@ -322,8 +359,11 @@ export default function GanttChart() {
       };
     });
 
-    return { rows, minDate, maxDate, totalDays, todayOffset };
-  }, [allTasks, wbsMap, successorSet]);
+    // Merge milestone rows at the top (before task rows)
+    const allRows = [...milestoneRows, ...rows];
+
+    return { rows: allRows, minDate, maxDate, totalDays, todayOffset };
+  }, [allTasks, wbsMap, successorSet, projectMilestones]);
 
   // Generate timeline headers based on zoom
   const timelineHeaders = useMemo(() => {

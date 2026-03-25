@@ -9,8 +9,9 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { useState } from "react";
-import { Settings as SettingsIcon, Save, Plus, Edit, Trash2, Hash, AlertCircle, Sun, Moon, Monitor, Lock, Unlock, KeyRound, ShieldOff, ShieldCheck, AlertTriangle, Copy, CheckSquare, Square } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Settings as SettingsIcon, Save, Plus, Edit, Trash2, Hash, AlertCircle, Sun, Moon, Monitor, Lock, Unlock, KeyRound, ShieldOff, ShieldCheck, AlertTriangle, Copy, CheckSquare, Square, Pencil, DollarSign } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -18,6 +19,7 @@ import { useProject } from "@/contexts/ProjectContext";
 import { ThemeSelector } from "@/components/ThemeSelector";
 import CollaborationTab from "@/components/CollaborationTab";
 import { useLocation } from "wouter";
+import { CURRENCIES } from "@/lib/currencies";
 
 interface IdConfigEdit {
   prefix: string;
@@ -79,6 +81,207 @@ const COPYABLE_ENTITIES = [
   { key: "issueGroups", label: "Issue Groups" },
 ];
 
+const DOMAIN_FIELD_KEYS: Record<string, string[]> = {
+  tasks: ["status", "priority", "type"],
+  issues: ["status", "priority", "type"],
+  risks: ["status", "probability", "impact", "category", "response_strategy"],
+  requirements: ["status", "priority", "type"],
+  deliverables: ["status", "type"],
+  change_requests: ["status", "impact", "type"],
+  milestones: ["status"],
+  budget: ["category"],
+  stakeholders: ["engagement_status", "communication_frequency", "communication_channel"],
+  test_cases: ["status", "priority"],
+  assumptions: ["status", "impact"],
+  scope_items: ["phase", "process_area", "category", "status", "priority"],
+  wbs: ["status"],
+  meetings: ["status", "decision_status"],
+  dependencies: ["status"],
+};
+
+const DOMAIN_LABELS: Record<string, string> = {
+  tasks: "Tasks",
+  issues: "Issues",
+  risks: "Risks",
+  requirements: "Requirements",
+  deliverables: "Deliverables",
+  change_requests: "Change Requests",
+  milestones: "Milestones",
+  budget: "Budget",
+  stakeholders: "Stakeholders",
+  test_cases: "Test Cases",
+  assumptions: "Assumptions",
+  scope_items: "Scope Items",
+  wbs: "WBS",
+  meetings: "Meetings",
+  dependencies: "Dependencies",
+};
+
+function DropdownOptionsTab({ projectId }: { projectId: number }) {
+  const [selectedDomain, setSelectedDomain] = useState("tasks");
+  const [selectedFieldKey, setSelectedFieldKey] = useState("status");
+  const [newValue, setNewValue] = useState("");
+  const [newColor, setNewColor] = useState("#6b7280");
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editValue, setEditValue] = useState("");
+  const [editColor, setEditColor] = useState("");
+  const utils = trpc.useUtils();
+
+  const fieldKeys = DOMAIN_FIELD_KEYS[selectedDomain] ?? [];
+
+  useEffect(() => {
+    setSelectedFieldKey(fieldKeys[0] ?? "status");
+  }, [selectedDomain]);
+
+  const { data: options = [], isLoading } = trpc.dropdownRegistry.list.useQuery(
+    { projectId, domain: selectedDomain, fieldKey: selectedFieldKey },
+    { enabled: !!projectId && !!selectedDomain && !!selectedFieldKey }
+  );
+
+  const addMutation = trpc.dropdownRegistry.add.useMutation({
+    onSuccess: () => {
+      utils.dropdownRegistry.list.invalidate();
+      setNewValue("");
+    },
+  });
+
+  const updateMutation = trpc.dropdownRegistry.update.useMutation({
+    onSuccess: () => {
+      utils.dropdownRegistry.list.invalidate();
+      setEditingId(null);
+    },
+  });
+
+  const deleteMutation = trpc.dropdownRegistry.delete.useMutation({
+    onSuccess: () => utils.dropdownRegistry.list.invalidate(),
+  });
+
+  return (
+    <div className="flex gap-6 h-full min-h-[500px]">
+      {/* Domain selector */}
+      <div className="w-48 shrink-0">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Domains</p>
+        <div className="flex flex-col gap-1">
+          {Object.entries(DOMAIN_LABELS).map(([domain, label]) => (
+            <button
+              key={domain}
+              onClick={() => setSelectedDomain(domain)}
+              className={`text-left px-3 py-2 rounded-md text-sm transition-colors ${selectedDomain === domain ? "bg-primary text-primary-foreground font-medium" : "hover:bg-accent text-foreground"}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Options editor */}
+      <div className="flex-1">
+        {/* Field key tabs */}
+        <div className="flex gap-1 mb-4 border-b pb-2">
+          {fieldKeys.map((fk) => (
+            <button
+              key={fk}
+              onClick={() => setSelectedFieldKey(fk)}
+              className={`px-3 py-1.5 rounded-t text-sm capitalize transition-colors ${selectedFieldKey === fk ? "bg-accent font-medium" : "hover:bg-accent/50 text-muted-foreground"}`}
+            >
+              {fk.replace(/_/g, " ")}
+            </button>
+          ))}
+        </div>
+
+        {/* Options list */}
+        <div className="space-y-2 mb-4">
+          {isLoading ? (
+            <p className="text-sm text-muted-foreground">Loading...</p>
+          ) : options.length === 0 ? (
+            <p className="text-sm text-muted-foreground italic">No options yet. Add one below.</p>
+          ) : (
+            options.map((opt) => (
+              <div key={opt.id} className="flex items-center gap-3 p-2 border rounded-md hover:bg-accent/30">
+                {editingId === opt.id ? (
+                  <>
+                    <input
+                      type="color"
+                      value={editColor}
+                      onChange={(e) => setEditColor(e.target.value)}
+                      className="h-6 w-8 rounded cursor-pointer border"
+                    />
+                    <input
+                      value={editValue}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      className="flex-1 text-sm border rounded px-2 py-1"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") updateMutation.mutate({ id: opt.id, value: editValue, color: editColor });
+                        if (e.key === "Escape") setEditingId(null);
+                      }}
+                      autoFocus
+                    />
+                    <button onClick={() => updateMutation.mutate({ id: opt.id, value: editValue, color: editColor })} className="text-xs px-2 py-1 bg-primary text-primary-foreground rounded">Save</button>
+                    <button onClick={() => setEditingId(null)} className="text-xs px-2 py-1 border rounded">Cancel</button>
+                  </>
+                ) : (
+                  <>
+                    <div
+                      className="h-4 w-4 rounded-full shrink-0 border"
+                      style={{ backgroundColor: opt.color ?? "#6b7280" }}
+                    />
+                    <span className="flex-1 text-sm">{opt.value}</span>
+                    {opt.isDefault && <span className="text-[10px] text-muted-foreground border rounded px-1">default</span>}
+                    <button
+                      onClick={() => { setEditingId(opt.id); setEditValue(opt.value); setEditColor(opt.color ?? "#6b7280"); }}
+                      className="text-muted-foreground hover:text-foreground p-1 rounded"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={() => deleteMutation.mutate({ id: opt.id })}
+                      className="text-muted-foreground hover:text-destructive p-1 rounded"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Add new option */}
+        <div className="flex items-center gap-2 p-2 border rounded-md border-dashed">
+          <input
+            type="color"
+            value={newColor}
+            onChange={(e) => setNewColor(e.target.value)}
+            className="h-7 w-10 rounded cursor-pointer border"
+          />
+          <input
+            value={newValue}
+            onChange={(e) => setNewValue(e.target.value)}
+            placeholder="New option value..."
+            className="flex-1 text-sm border rounded px-2 py-1.5"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && newValue.trim()) {
+                addMutation.mutate({ projectId, domain: selectedDomain, fieldKey: selectedFieldKey, value: newValue.trim(), color: newColor });
+              }
+            }}
+          />
+          <button
+            onClick={() => {
+              if (newValue.trim()) {
+                addMutation.mutate({ projectId, domain: selectedDomain, fieldKey: selectedFieldKey, value: newValue.trim(), color: newColor });
+              }
+            }}
+            disabled={!newValue.trim() || addMutation.isPending}
+            className="px-3 py-1.5 bg-primary text-primary-foreground rounded text-sm disabled:opacity-50"
+          >
+            + Add
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Settings() {
   const { currentProjectId, setCurrentProjectId } = useProject();
   const { user } = useAuth();
@@ -92,7 +295,12 @@ export default function Settings() {
 
   // Delete project state
   const [showDeleteProject, setShowDeleteProject] = useState(false);
+<<<<<<< HEAD
   const [deleteStep, setDeleteStep] = useState<1 | 2>(1);
+=======
+  const [deleteConfirmCode, setDeleteConfirmCode] = useState("");
+  const [deleteCaptchaCode, setDeleteCaptchaCode] = useState("");
+>>>>>>> github/MANUS
 
   // Copy from project state
   const [showCopyDialog, setShowCopyDialog] = useState(false);
@@ -104,6 +312,16 @@ export default function Settings() {
     taskGroups: true, issueGroups: true,
   });
   const [copyLoading, setCopyLoading] = useState(false);
+
+  // Work-week calendar configuration
+  const [wwSaved, setWwSaved] = useState(false);
+  const [wwForm, setWwForm] = useState(() => {
+    try {
+      const saved = localStorage.getItem(`workWeek_${currentProjectId}`);
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return { workDays: [0, 1, 2, 3, 4], workStartHour: 8, workEndHour: 17, endOfWeekDay: 4 };
+  });
 
   const projectQuery = trpc.projects.list.useQuery();
   const currentProject = projectQuery.data?.find(p => p.id === currentProjectId);
@@ -132,6 +350,44 @@ export default function Settings() {
       navigate("/");
     },
     onError: (err) => toast.error(`Failed to delete: ${err.message}`),
+  });
+
+  // Project currency
+  const { data: budgetSummary, refetch: refetchBudget } = trpc.budget.getSummary.useQuery(
+    { projectId: currentProjectId! },
+    { enabled: !!currentProjectId }
+  );
+  const [projectCurrency, setProjectCurrency] = useState("USD");
+  useEffect(() => {
+    if (budgetSummary?.budget?.currency) {
+      setProjectCurrency(budgetSummary.budget.currency);
+    }
+  }, [budgetSummary?.budget?.currency]);
+  const upsertBudgetMutation = trpc.budget.upsertBudget.useMutation({
+    onSuccess: () => {
+      toast.success("Project currency updated");
+      refetchBudget();
+    },
+    onError: (err) => toast.error(`Failed to update currency: ${err.message}`),
+  });
+
+  // Program / Portfolio / Logo
+  const [programName, setProgramName] = useState("");
+  const [portfolioName, setPortfolioName] = useState("");
+  const [logoUrl, setLogoUrl] = useState("");
+  useEffect(() => {
+    if (currentProject) {
+      setProgramName((currentProject as any).programName ?? "");
+      setPortfolioName((currentProject as any).portfolioName ?? "");
+      setLogoUrl((currentProject as any).logoUrl ?? "");
+    }
+  }, [currentProject?.id]);
+  const updateProjectMutation = trpc.projects.update.useMutation({
+    onSuccess: () => {
+      toast.success("Project settings updated");
+      projectQuery.refetch();
+    },
+    onError: (err) => toast.error(`Failed to update: ${err.message}`),
   });
 
   const exportDataMutation = trpc.projects.exportData.useMutation();
@@ -216,7 +472,15 @@ export default function Settings() {
     { projectId: currentProjectId || 0 },
     { enabled: !!currentProjectId }
   );
+  const { data: taskGroupUsageCounts } = trpc.dropdownOptions.taskGroups.getUsageCounts.useQuery(
+    { projectId: currentProjectId || 0 },
+    { enabled: !!currentProjectId }
+  );
   const { data: issueGroupsData, refetch: refetchIssueGroups } = trpc.dropdownOptions.issueGroups.getAll.useQuery(
+    { projectId: currentProjectId || 0 },
+    { enabled: !!currentProjectId }
+  );
+  const { data: issueGroupUsageCounts } = trpc.dropdownOptions.issueGroups.getUsageCounts.useQuery(
     { projectId: currentProjectId || 0 },
     { enabled: !!currentProjectId }
   );
@@ -972,484 +1236,12 @@ export default function Settings() {
         </TabsContent>
 
         {/* Dropdown Options Tab */}
-        <TabsContent value="dropdown-options" className="space-y-4">
-          <Tabs value={optionsTab} onValueChange={setOptionsTab} className="space-y-4">
-            <TabsList>
-              <TabsTrigger value="status">Status</TabsTrigger>
-              <TabsTrigger value="priority">Priority</TabsTrigger>
-              <TabsTrigger value="type">Type</TabsTrigger>
-              <TabsTrigger value="category">Category</TabsTrigger>
-              <TabsTrigger value="issueTypes">Issue Types</TabsTrigger>
-              <TabsTrigger value="deliverableTypes">Deliverable Types</TabsTrigger>
-              <TabsTrigger value="kbTypes">KB Types</TabsTrigger>
-              <TabsTrigger value="kbComponents">KB Components</TabsTrigger>
-              <TabsTrigger value="riskTypes">Risk Types</TabsTrigger>
-              <TabsTrigger value="riskStatus">Risk Status</TabsTrigger>
-              <TabsTrigger value="responseStrategy">Response Strategy</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="status">
-              <Card>
-                <CardHeader>
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <CardTitle>Status Options</CardTitle>
-                      <CardDescription>Manage status values for requirements, tasks, and issues</CardDescription>
-                    </div>
-                    <Button onClick={openCreateDialog}>
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add New
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {renderOptionsTable(statusOptions, "status")}
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="priority">
-              <Card>
-                <CardHeader>
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <CardTitle>Priority Options</CardTitle>
-                      <CardDescription>Manage priority levels for requirements and tasks</CardDescription>
-                    </div>
-                    <Button onClick={openCreateDialog}>
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add New
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {renderOptionsTable(priorityOptions, "priority")}
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="type">
-              <Card>
-                <CardHeader>
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <CardTitle>Type Options</CardTitle>
-                      <CardDescription>Manage type classifications for requirements</CardDescription>
-                    </div>
-                    <Button onClick={openCreateDialog}>
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add New
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {renderOptionsTable(typeOptions, "type")}
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="category">
-              <Card>
-                <CardHeader>
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <CardTitle>Category Options</CardTitle>
-                      <CardDescription>Manage category classifications for requirements</CardDescription>
-                    </div>
-                    <Button onClick={openCreateDialog}>
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add New
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {renderOptionsTable(categoryOptions, "category")}
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="issueTypes">
-              <Card>
-                <CardHeader>
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <CardTitle>Issue Types</CardTitle>
-                      <CardDescription>Manage issue type options (Bug, Feature, Enhancement, etc.)</CardDescription>
-                    </div>
-                    <Button onClick={() => toast.info("Issue Types management coming soon")}>
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add New
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Label</TableHead>
-                        <TableHead>Value</TableHead>
-                        <TableHead>Default</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {issueTypesData && issueTypesData.length > 0 ? (
-                        issueTypesData.map((item) => (
-                          <TableRow key={item.id}>
-                            <TableCell>{item.label}</TableCell>
-                            <TableCell className="font-mono text-sm">{item.value}</TableCell>
-                            <TableCell>{item.isDefault ? <Badge>Default</Badge> : "-"}</TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                <Button variant="ghost" size="sm" onClick={() => toast.info("Edit coming soon")}>
-                                  <Edit className="w-4 h-4" />
-                                </Button>
-                                <Button variant="ghost" size="sm" onClick={() => toast.info("Delete coming soon")}>
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={4} className="text-center text-muted-foreground">
-                            No issue types found. Add your first one!
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="deliverableTypes">
-              <Card>
-                <CardHeader>
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <CardTitle>Deliverable Types</CardTitle>
-                      <CardDescription>Manage deliverable type classifications</CardDescription>
-                    </div>
-                    <Button onClick={() => toast.info("Deliverable Types management coming soon")}>
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add New
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Label</TableHead>
-                        <TableHead>Value</TableHead>
-                        <TableHead>Default</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {deliverableTypesData && deliverableTypesData.length > 0 ? (
-                        deliverableTypesData.map((item) => (
-                          <TableRow key={item.id}>
-                            <TableCell>{item.label}</TableCell>
-                            <TableCell className="font-mono text-sm">{item.value}</TableCell>
-                            <TableCell>{item.isDefault ? <Badge>Default</Badge> : "-"}</TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                <Button variant="ghost" size="sm" onClick={() => toast.info("Edit coming soon")}>
-                                  <Edit className="w-4 h-4" />
-                                </Button>
-                                <Button variant="ghost" size="sm" onClick={() => toast.info("Delete coming soon")}>
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={4} className="text-center text-muted-foreground">
-                            No deliverable types found. Add your first one!
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="kbTypes">
-              <Card>
-                <CardHeader>
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <CardTitle>Knowledge Base Types</CardTitle>
-                      <CardDescription>Manage KB types with hierarchical dependencies</CardDescription>
-                    </div>
-                    <Button onClick={() => toast.info("KB Types management coming soon")}>
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add New
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Parent Type</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {kbTypesData && kbTypesData.length > 0 ? (
-                        kbTypesData.map((item) => (
-                          <TableRow key={item.id}>
-                            <TableCell>{item.name}</TableCell>
-                            <TableCell className="text-muted-foreground">
-                              {item.parentTypeId ? kbTypesData.find(t => t.id === item.parentTypeId)?.name || "-" : "-"}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                <Button variant="ghost" size="sm" onClick={() => toast.info("Edit coming soon")}>
-                                  <Edit className="w-4 h-4" />
-                                </Button>
-                                <Button variant="ghost" size="sm" onClick={() => toast.info("Delete coming soon")}>
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={3} className="text-center text-muted-foreground">
-                            No KB types found. Add your first one!
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="kbComponents">
-              <Card>
-                <CardHeader>
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <CardTitle>Knowledge Base Components</CardTitle>
-                      <CardDescription>Manage KB component classifications</CardDescription>
-                    </div>
-                    <Button onClick={() => toast.info("KB Components management coming soon")}>
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add New
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {kbComponentsData && kbComponentsData.length > 0 ? (
-                        kbComponentsData.map((item) => (
-                          <TableRow key={item.id}>
-                            <TableCell>{item.name}</TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                <Button variant="ghost" size="sm" onClick={() => toast.info("Edit coming soon")}>
-                                  <Edit className="w-4 h-4" />
-                                </Button>
-                                <Button variant="ghost" size="sm" onClick={() => toast.info("Delete coming soon")}>
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={2} className="text-center text-muted-foreground">
-                            No KB components found. Add your first one!
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="riskTypes">
-              <Card>
-                <CardHeader>
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <CardTitle>Risk Types</CardTitle>
-                      <CardDescription>Manage risk type classifications (Technical, Financial, Operational, etc.)</CardDescription>
-                    </div>
-                    <Button onClick={openCreateDialog}>
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add New
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Default</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {riskTypesData && riskTypesData.length > 0 ? (
-                        riskTypesData.map((item) => (
-                          <TableRow key={item.id}>
-                            <TableCell className="font-medium">{item.name}</TableCell>
-                            <TableCell>{item.isDefault ? <Badge>Default</Badge> : "-"}</TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                <Button variant="ghost" size="sm" onClick={() => openEditDialog({ ...item, value: item.name })}>
-                                  <Edit className="w-4 h-4" />
-                                </Button>
-                                <Button variant="ghost" size="sm" onClick={() => openDeleteDialog({ ...item, value: item.name })}>
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={3} className="text-center text-muted-foreground">
-                            No risk types found. Add your first one!
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="riskStatus">
-              <Card>
-                <CardHeader>
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <CardTitle>Risk Status</CardTitle>
-                      <CardDescription>Manage risk status options (Open, Mitigated, Closed, etc.)</CardDescription>
-                    </div>
-                    <Button onClick={openCreateDialog}>
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add New
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Default</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {riskStatusData && riskStatusData.length > 0 ? (
-                        riskStatusData.map((item) => (
-                          <TableRow key={item.id}>
-                            <TableCell className="font-medium">{item.name}</TableCell>
-                            <TableCell>{item.isDefault ? <Badge>Default</Badge> : "-"}</TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                <Button variant="ghost" size="sm" onClick={() => openEditDialog({ ...item, value: item.name })}>
-                                  <Edit className="w-4 h-4" />
-                                </Button>
-                                <Button variant="ghost" size="sm" onClick={() => openDeleteDialog({ ...item, value: item.name })}>
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={3} className="text-center text-muted-foreground">
-                            No risk statuses found. Add your first one!
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="responseStrategy">
-              <Card>
-                <CardHeader>
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <CardTitle>Response Strategy</CardTitle>
-                      <CardDescription>Manage risk response strategies (Avoid, Mitigate, Transfer, Accept, etc.)</CardDescription>
-                    </div>
-                    <Button onClick={openCreateDialog}>
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add New
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Default</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {responseStrategyData && responseStrategyData.length > 0 ? (
-                        responseStrategyData.map((item) => (
-                          <TableRow key={item.id}>
-                            <TableCell className="font-medium">{item.name}</TableCell>
-                            <TableCell>{item.isDefault ? <Badge>Default</Badge> : "-"}</TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                <Button variant="ghost" size="sm" onClick={() => openEditDialog({ ...item, value: item.name })}>
-                                  <Edit className="w-4 h-4" />
-                                </Button>
-                                <Button variant="ghost" size="sm" onClick={() => openDeleteDialog({ ...item, value: item.name })}>
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={3} className="text-center text-muted-foreground">
-                            No response strategies found. Add your first one!
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
+        <TabsContent value="dropdown-options" className="mt-0">
+          <div className="p-6">
+            <h3 className="text-lg font-semibold mb-1">Dropdown Options</h3>
+            <p className="text-sm text-muted-foreground mb-4">Customize all dropdown options across the system for this project.</p>
+            <DropdownOptionsTab projectId={currentProjectId!} />
+          </div>
         </TabsContent>
 
         {/* Groups Tab */}
@@ -1485,15 +1277,33 @@ export default function Settings() {
                       <TableHead>ID</TableHead>
                       <TableHead>Name</TableHead>
                       <TableHead>Description</TableHead>
+                      <TableHead>Tasks</TableHead>
+                      <TableHead>Requirements</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {taskGroupsData?.map((group) => (
+                    {taskGroupsData?.map((group) => {
+                      const usage = taskGroupUsageCounts?.find((u) => u.id === group.id);
+                      return (
                       <TableRow key={group.id}>
                         <TableCell className="font-mono text-sm">{group.idCode}</TableCell>
                         <TableCell className="font-medium">{group.name}</TableCell>
                         <TableCell className="text-muted-foreground">{group.description || "-"}</TableCell>
+                        <TableCell>
+                          {usage ? (
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${usage.taskCount > 0 ? 'bg-blue-100 text-blue-700' : 'bg-muted text-muted-foreground'}`}>
+                              {usage.taskCount}
+                            </span>
+                          ) : <span className="text-muted-foreground">—</span>}
+                        </TableCell>
+                        <TableCell>
+                          {usage ? (
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${usage.requirementCount > 0 ? 'bg-purple-100 text-purple-700' : 'bg-muted text-muted-foreground'}`}>
+                              {usage.requirementCount}
+                            </span>
+                          ) : <span className="text-muted-foreground">—</span>}
+                        </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-2">
                             <Button
@@ -1522,7 +1332,8 @@ export default function Settings() {
                           </div>
                         </TableCell>
                       </TableRow>
-                    ))}
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
@@ -1547,15 +1358,33 @@ export default function Settings() {
                       <TableHead>ID</TableHead>
                       <TableHead>Name</TableHead>
                       <TableHead>Description</TableHead>
+                      <TableHead>Issues</TableHead>
+                      <TableHead>Requirements</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {issueGroupsData?.map((group) => (
+                    {issueGroupsData?.map((group) => {
+                      const usage = issueGroupUsageCounts?.find((u) => u.id === group.id);
+                      return (
                       <TableRow key={group.id}>
                         <TableCell className="font-mono text-sm">{group.idCode}</TableCell>
                         <TableCell className="font-medium">{group.name}</TableCell>
                         <TableCell className="text-muted-foreground">{group.description || "-"}</TableCell>
+                        <TableCell>
+                          {usage ? (
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${usage.issueCount > 0 ? 'bg-orange-100 text-orange-700' : 'bg-muted text-muted-foreground'}`}>
+                              {usage.issueCount}
+                            </span>
+                          ) : <span className="text-muted-foreground">—</span>}
+                        </TableCell>
+                        <TableCell>
+                          {usage ? (
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${usage.requirementCount > 0 ? 'bg-purple-100 text-purple-700' : 'bg-muted text-muted-foreground'}`}>
+                              {usage.requirementCount}
+                            </span>
+                          ) : <span className="text-muted-foreground">—</span>}
+                        </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-2">
                             <Button
@@ -1584,7 +1413,8 @@ export default function Settings() {
                           </div>
                         </TableCell>
                       </TableRow>
-                    ))}
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
@@ -1621,6 +1451,158 @@ export default function Settings() {
 
         {/* Project Tab */}
         <TabsContent value="project" className="space-y-6">
+
+          {/* Project Currency */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <DollarSign className="w-5 h-5 text-primary" />
+                Project Currency
+              </CardTitle>
+              <CardDescription>
+                Set the main currency used across all financial objects in this project (Budget, Resources, costs, etc.).
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-4">
+                <div className="flex-1 max-w-xs">
+                  <Label className="text-sm mb-1.5 block">Currency</Label>
+                  <Select
+                    value={projectCurrency}
+                    onValueChange={setProjectCurrency}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CURRENCIES.map(({ code, label }) => (
+                        <SelectItem key={code} value={code}>{label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="pt-6">
+                  <Button
+                    onClick={() => {
+                      if (!currentProjectId) return;
+                      upsertBudgetMutation.mutate({
+                        projectId: currentProjectId,
+                        totalBudget: budgetSummary?.budget?.totalBudget ?? "0",
+                        currency: projectCurrency,
+                        notes: budgetSummary?.budget?.notes ?? undefined,
+                      });
+                    }}
+                    disabled={upsertBudgetMutation.isPending}
+                  >
+                    <Save className="w-4 h-4 mr-2" />
+                    Save Currency
+                  </Button>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                This currency is used in the Budget page, resource cost rates, and all financial reporting across the project.
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Project Logo */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Sun className="w-5 h-5 text-primary" />
+                Project Logo
+              </CardTitle>
+              <CardDescription>
+                Upload a logo for this project. It will appear in the sidebar header and periodic reports.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-4">
+                {logoUrl && (
+                  <img src={logoUrl} alt="Project logo" className="w-16 h-16 object-contain rounded border" />
+                )}
+                <div className="space-y-2 flex-1">
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      if (file.size > 2 * 1024 * 1024) {
+                        toast.error("Image must be under 2 MB");
+                        return;
+                      }
+                      const reader = new FileReader();
+                      reader.onload = (ev) => {
+                        const result = ev.target?.result as string;
+                        setLogoUrl(result);
+                      };
+                      reader.readAsDataURL(file);
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground">PNG, JPG, SVG — max 2 MB</p>
+                </div>
+              </div>
+              <div className="mt-4 flex gap-2">
+                <Button
+                  onClick={() => {
+                    if (!currentProjectId) return;
+                    updateProjectMutation.mutate({ projectId: currentProjectId, logoUrl: logoUrl || null });
+                  }}
+                  disabled={updateProjectMutation.isPending}
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  Save Logo
+                </Button>
+                {logoUrl && (
+                  <Button variant="outline" onClick={() => {
+                    setLogoUrl("");
+                    if (currentProjectId) updateProjectMutation.mutate({ projectId: currentProjectId, logoUrl: null });
+                  }}>
+                    Remove Logo
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Program / Portfolio */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Hash className="w-5 h-5 text-primary" />
+                Program &amp; Portfolio
+              </CardTitle>
+              <CardDescription>
+                Assign this project to a Program or Portfolio for higher-level grouping and resource pooling.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label>Program Name</Label>
+                  <Input value={programName} onChange={e => setProgramName(e.target.value)} placeholder="e.g. Digital Transformation Program" />
+                </div>
+                <div className="space-y-1">
+                  <Label>Portfolio Name</Label>
+                  <Input value={portfolioName} onChange={e => setPortfolioName(e.target.value)} placeholder="e.g. IT Portfolio 2026" />
+                </div>
+              </div>
+              <div className="mt-4">
+                <Button
+                  onClick={() => {
+                    if (!currentProjectId) return;
+                    updateProjectMutation.mutate({ projectId: currentProjectId, programName: programName || null, portfolioName: portfolioName || null });
+                  }}
+                  disabled={updateProjectMutation.isPending}
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  Save Program &amp; Portfolio
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -1777,7 +1759,11 @@ export default function Settings() {
                   </div>
                   <Button
                     variant="destructive"
+<<<<<<< HEAD
                     onClick={() => { setDeleteStep(1); setShowDeleteProject(true); }}
+=======
+                    onClick={() => { setDeleteConfirmCode(""); setDeleteCaptchaCode(String(Math.floor(100000 + Math.random() * 900000))); setShowDeleteProject(true); }}
+>>>>>>> github/MANUS
                   >
                     <Trash2 className="w-4 h-4 mr-2" />
                     Delete Project
@@ -1787,8 +1773,8 @@ export default function Settings() {
             </Card>
           )}
         </TabsContent>
-      </Tabs>
 
+<<<<<<< HEAD
       {/* ── Delete Project Dialog — Two-Step (single dialog, step controlled internally) ── */}
       <AlertDialog
         open={showDeleteProject}
@@ -1839,6 +1825,168 @@ export default function Settings() {
               </AlertDialogFooter>
             </>
           )}
+=======
+        {/* Work Calendar Configuration Tab */}
+        <TabsContent value="calendar-config" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                Work Week Calendar Configuration
+              </CardTitle>
+              <CardDescription>
+                Define the project's working days, hours, and end-of-week day. These settings affect default due dates for recurring tasks (weekly tasks default to end-of-week day, monthly tasks default to end-of-month).
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Working Days */}
+              <div className="space-y-3">
+                <Label className="text-sm font-semibold">Working Days</Label>
+                <div className="flex flex-wrap gap-2">
+                  {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((day, idx) => {
+                    const isSelected = wwForm.workDays.includes(idx);
+                    return (
+                      <button
+                        key={day}
+                        onClick={() => setWwForm((p: any) => ({
+                          ...p,
+                          workDays: isSelected
+                            ? p.workDays.filter((d: number) => d !== idx)
+                            : [...p.workDays, idx].sort()
+                        }))}
+                        className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                          isSelected
+                            ? 'bg-primary text-primary-foreground border-primary'
+                            : 'bg-white text-gray-600 border-gray-200 hover:border-primary/50'
+                        }`}
+                      >
+                        {day}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-muted-foreground">Currently selected: {wwForm.workDays.map((d: number) => ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d]).join(', ')}</p>
+              </div>
+
+              {/* End of Week Day */}
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold">End of Work Week</Label>
+                <p className="text-xs text-muted-foreground mb-2">Weekly recurring tasks will default their due date to this day.</p>
+                <div className="flex flex-wrap gap-2">
+                  {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((day, idx) => (
+                    <button
+                      key={day}
+                      onClick={() => setWwForm((p: any) => ({ ...p, endOfWeekDay: idx }))}
+                      className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                        wwForm.endOfWeekDay === idx
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-white text-gray-600 border-gray-200 hover:border-primary/50'
+                      }`}
+                    >
+                      {day}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">Current end-of-week: <strong>{['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][wwForm.endOfWeekDay]}</strong></p>
+              </div>
+
+              {/* Work Hours */}
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold">Work Hours</Label>
+                <div className="flex items-center gap-4">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Start Hour</Label>
+                    <Input
+                      type="number" min={0} max={23}
+                      value={wwForm.workStartHour}
+                      onChange={(e: any) => setWwForm((p: any) => ({ ...p, workStartHour: parseInt(e.target.value) || 8 }))}
+                      className="w-24"
+                    />
+                  </div>
+                  <span className="text-muted-foreground mt-5">to</span>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">End Hour</Label>
+                    <Input
+                      type="number" min={0} max={23}
+                      value={wwForm.workEndHour}
+                      onChange={(e: any) => setWwForm((p: any) => ({ ...p, workEndHour: parseInt(e.target.value) || 17 }))}
+                      className="w-24"
+                    />
+                  </div>
+                  <div className="mt-5 text-sm text-muted-foreground">
+                    = {wwForm.workEndHour - wwForm.workStartHour} working hours/day
+                  </div>
+                </div>
+              </div>
+
+              {/* Summary */}
+              <div className="bg-muted/40 rounded-lg p-4 border space-y-1">
+                <p className="text-sm font-medium">Summary</p>
+                <p className="text-xs text-muted-foreground">Work days: {wwForm.workDays.map((d: number) => ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d]).join(', ')}</p>
+                <p className="text-xs text-muted-foreground">Hours: {wwForm.workStartHour}:00 – {wwForm.workEndHour}:00 ({wwForm.workEndHour - wwForm.workStartHour}h/day)</p>
+                <p className="text-xs text-muted-foreground">End of week: <strong>{['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][wwForm.endOfWeekDay]}</strong></p>
+                <p className="text-xs text-muted-foreground">Weekly capacity: {wwForm.workDays.length * (wwForm.workEndHour - wwForm.workStartHour)} hours/week</p>
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => {
+                    if (currentProjectId) {
+                      localStorage.setItem(`workWeek_${currentProjectId}`, JSON.stringify(wwForm));
+                      setWwSaved(true);
+                      toast.success('Work calendar configuration saved');
+                      setTimeout(() => setWwSaved(false), 3000);
+                    }
+                  }}
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  {wwSaved ? 'Saved!' : 'Save Configuration'}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setWwForm({ workDays: [0,1,2,3,4], workStartHour: 8, workEndHour: 17, endOfWeekDay: 4 })}
+                >
+                  Reset to Default (Sun–Thu)
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+      </Tabs>
+      {/* ── Delete Project Dialog ── */}
+      <AlertDialog open={showDeleteProject} onOpenChange={setShowDeleteProject}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertTriangle className="w-5 h-5" /> Delete Project
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete &ldquo;{currentProject?.name}&rdquo; and all its data (tasks, requirements, issues, risks, etc.). This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2 px-1 pb-2">
+            <Label className="text-sm">Enter this code to confirm deletion:</Label>
+            <div className="flex items-center justify-center bg-muted rounded-md py-3">
+              <span className="text-2xl font-mono font-bold tracking-widest text-red-600 select-none">{deleteCaptchaCode}</span>
+            </div>
+            <Input
+              value={deleteConfirmCode}
+              onChange={(e) => setDeleteConfirmCode(e.target.value)}
+              placeholder="Enter the 6-digit code"
+              maxLength={6}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleteConfirmCode("")}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700 text-white"
+              disabled={deleteConfirmCode !== deleteCaptchaCode || deleteProjectMutation.isPending}
+              onClick={() => currentProjectId && deleteProjectMutation.mutate({ projectId: currentProjectId })}
+            >
+              {deleteProjectMutation.isPending ? "Deleting…" : "Delete Permanently"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+>>>>>>> github/MANUS
         </AlertDialogContent>
       </AlertDialog>
 

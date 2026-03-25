@@ -4,8 +4,8 @@ import { getDb } from "../db";
 import { tasks, taskStatusHistory } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 
-// ── Helper: compute task status counts from live tasks ────────────────────────
-async function computeLiveSnapshot(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, projectId: number) {
+async function computeLiveSnapshot(db: Awaited<ReturnType<typeof getDb>>, projectId: number) {
+  if (!db) return { open: 0, inProgress: 0, blocked: 0, done: 0 };
   const allTasks = await db.select().from(tasks).where(eq(tasks.projectId, projectId));
   let open = 0, inProgress = 0, blocked = 0, done = 0;
   for (const t of allTasks) {
@@ -19,51 +19,28 @@ async function computeLiveSnapshot(db: NonNullable<Awaited<ReturnType<typeof get
 }
 
 export const cfdRouter = router({
-  // ── Get CFD data: historical snapshots + today's live count ───────────────
   getData: protectedProcedure
-    .input(z.object({
-      projectId: z.number(),
-      days: z.number().optional().default(30),
-    }))
+    .input(z.object({ projectId: z.number(), days: z.number().optional().default(30) }))
     .query(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new Error("DB not available");
-
       const snapshots = await db.select().from(taskStatusHistory)
         .where(eq(taskStatusHistory.projectId, input.projectId))
         .orderBy(taskStatusHistory.snapshotDate);
-
       const live = await computeLiveSnapshot(db, input.projectId);
       const today = new Date().toISOString().split("T")[0];
-
-      // Build series: combine stored + live (deduplicate today)
-      // snapshotDate is a Date object from Drizzle date column; convert to string for comparison
-      const series: { date: string; open: number; inProgress: number; blocked: number; done: number; total: number }[] = [];
-      for (const s of snapshots) {
-        const dateStr = s.snapshotDate instanceof Date
-          ? s.snapshotDate.toISOString().split("T")[0]
-          : String(s.snapshotDate);
-        if (dateStr === today) continue; // will be replaced by live
-        series.push({
-          date: dateStr,
+      const series = snapshots
+        .filter(s => s.snapshotDate !== today)
+        .map(s => ({
+          date: s.snapshotDate,
           open: s.statusOpen,
           inProgress: s.statusInProgress,
           blocked: s.statusBlocked,
           done: s.statusDone,
           total: s.statusOpen + s.statusInProgress + s.statusBlocked + s.statusDone,
-        });
-      }
-
+        }));
       const liveTotal = live.open + live.inProgress + live.blocked + live.done;
-      series.push({
-        date: today,
-        open: live.open,
-        inProgress: live.inProgress,
-        blocked: live.blocked,
-        done: live.done,
-        total: liveTotal,
-      });
-
+      series.push({ date: today, open: live.open, inProgress: live.inProgress, blocked: live.blocked, done: live.done, total: liveTotal });
       const percentSeries = series.map(s => {
         const total = s.total || 1;
         return {
@@ -79,66 +56,33 @@ export const cfdRouter = router({
           rawTotal: s.total,
         };
       });
-
-      return {
-        series: percentSeries,
-        latestCounts: live,
-        snapshotCount: snapshots.length,
-      };
+      return { series: percentSeries, latestCounts: live, snapshotCount: snapshots.length };
     }),
 
-  // ── Save a manual snapshot (or auto-snapshot today) ───────────────────────
   saveSnapshot: protectedProcedure
-    .input(z.object({
-      projectId: z.number(),
-      snapshotDate: z.string().optional(),
-    }))
+    .input(z.object({ projectId: z.number(), snapshotDate: z.string().optional() }))
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new Error("DB not available");
       const live = await computeLiveSnapshot(db, input.projectId);
       const snapshotDate = input.snapshotDate ?? new Date().toISOString().split("T")[0];
-
       const existing = await db.select().from(taskStatusHistory)
-        .where(and(
-          eq(taskStatusHistory.projectId, input.projectId),
-          // Use SQL cast to compare string with date column
-          eq(taskStatusHistory.snapshotDate, snapshotDate as any)
-        ));
-
+        .where(and(eq(taskStatusHistory.projectId, input.projectId), eq(taskStatusHistory.snapshotDate, snapshotDate)));
       if (existing.length > 0) {
-        return db.update(taskStatusHistory)
-          .set({
-            statusOpen: live.open,
-            statusInProgress: live.inProgress,
-            statusBlocked: live.blocked,
-            statusDone: live.done,
-          })
-          .where(eq(taskStatusHistory.id, existing[0].id));
+        return db.update(taskStatusHistory).set({ statusOpen: live.open, statusInProgress: live.inProgress, statusBlocked: live.blocked, statusDone: live.done }).where(eq(taskStatusHistory.id, existing[0].id));
       } else {
-        return db.insert(taskStatusHistory).values({
-          projectId: input.projectId,
-          snapshotDate: snapshotDate as any,
-          statusOpen: live.open,
-          statusInProgress: live.inProgress,
-          statusBlocked: live.blocked,
-          statusDone: live.done,
-        });
+        return db.insert(taskStatusHistory).values({ projectId: input.projectId, snapshotDate, statusOpen: live.open, statusInProgress: live.inProgress, statusBlocked: live.blocked, statusDone: live.done });
       }
     }),
 
-  // ── List all snapshots ────────────────────────────────────────────────────
   listSnapshots: protectedProcedure
     .input(z.object({ projectId: z.number() }))
     .query(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new Error("DB not available");
-      return db.select().from(taskStatusHistory)
-        .where(eq(taskStatusHistory.projectId, input.projectId))
-        .orderBy(desc(taskStatusHistory.snapshotDate));
+      return db.select().from(taskStatusHistory).where(eq(taskStatusHistory.projectId, input.projectId)).orderBy(desc(taskStatusHistory.snapshotDate));
     }),
 
-  // ── Delete a snapshot ─────────────────────────────────────────────────────
   deleteSnapshot: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {

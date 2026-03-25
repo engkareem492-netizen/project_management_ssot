@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import React, { useMemo, useState } from "react";
+=======
+import { useMemo, useState } from "react";
+>>>>>>> github/MANUS
 import { trpc } from "@/lib/trpc";
 import { useProject } from "@/contexts/ProjectContext";
 import { Card } from "@/components/ui/card";
@@ -8,17 +12,82 @@ import { useLocation } from "wouter";
 import {
   Loader2, AlertTriangle, CheckCircle2, Clock, FileText, BarChart2,
   Activity, Flag, DollarSign, TrendingUp, TrendingDown, Minus,
+<<<<<<< HEAD
   ShieldAlert, Target, Users, Package, CheckSquare, Link2,
   FileCheck, Zap, ChevronRight, AlertCircle, Calendar,
+=======
+  ShieldAlert, Target, LayoutGrid,
+>>>>>>> github/MANUS
 } from "lucide-react";
+import { WidgetGrid, type Widget } from "@/components/widgets/WidgetGrid";
+import { KpiWidget } from "@/components/widgets/KpiWidget";
+import { BarChartWidget } from "@/components/widgets/BarChartWidget";
+import { StatusRingWidget } from "@/components/widgets/StatusRingWidget";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
+<<<<<<< HEAD
   PieChart, Pie, Cell, Legend, RadarChart, PolarGrid,
   PolarAngleAxis, Radar, AreaChart, Area,
+=======
+  PieChart, Pie, Cell, Legend, LineChart, Line, AreaChart, Area,
+>>>>>>> github/MANUS
 } from "recharts";
 
 /* ─── Color tokens ─────────────────────────────────────────────────────── */
 const PIE_COLORS = ["#3b82f6", "#22c55e", "#f59e0b", "#ef4444", "#a855f7", "#64748b", "#06b6d4"];
+
+function CumulativeFlowChart({ projectId }: { projectId: number }) {
+  const { data: cfdData, isLoading: cfdLoading } = trpc.cfd.getData.useQuery({ projectId }, { enabled: projectId > 0 });
+  const saveMut = trpc.cfd.saveSnapshot.useMutation();
+  const utils = trpc.useUtils();
+  const series = cfdData?.series ?? [];
+  const hasData = series.length > 0;
+  function fmtDate(d: string) {
+    const dt = new Date(d);
+    return dt.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  }
+  return (
+    <Card className="p-6">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-base font-semibold flex items-center gap-2"><Activity className="w-4 h-4 text-muted-foreground" /> Cumulative Flow of Tasks</h3>
+        <button onClick={() => { saveMut.mutate({ projectId }); setTimeout(() => utils.cfd.getData.invalidate({ projectId }), 500); }} className="text-xs text-muted-foreground hover:text-foreground border rounded px-2 py-1 transition-colors">Save Snapshot</button>
+      </div>
+      {cfdLoading ? (
+        <div className="flex items-center justify-center h-64"><Loader2 className="w-5 h-5 animate-spin" /></div>
+      ) : !hasData ? (
+        <div className="flex flex-col items-center justify-center h-64 text-muted-foreground gap-3">
+          <Activity className="w-10 h-10 opacity-30" />
+          <p className="text-sm">No task history yet. Click <strong>Save Snapshot</strong> to record today's counts.</p>
+        </div>
+      ) : (
+        <ResponsiveContainer width="100%" height={300}>
+          <AreaChart data={series} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+            <defs>
+              <linearGradient id="cfdDone" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#22c55e" stopOpacity={0.85} /><stop offset="95%" stopColor="#22c55e" stopOpacity={0.6} /></linearGradient>
+              <linearGradient id="cfdBlocked" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#ef4444" stopOpacity={0.85} /><stop offset="95%" stopColor="#ef4444" stopOpacity={0.6} /></linearGradient>
+              <linearGradient id="cfdInProgress" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#3b82f6" stopOpacity={0.85} /><stop offset="95%" stopColor="#3b82f6" stopOpacity={0.6} /></linearGradient>
+              <linearGradient id="cfdOpen" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#94a3b8" stopOpacity={0.5} /><stop offset="95%" stopColor="#94a3b8" stopOpacity={0.2} /></linearGradient>
+            </defs>
+            <XAxis dataKey="date" tickFormatter={fmtDate} tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+            <YAxis tickFormatter={(v) => `${v}%`} domain={[0, 100]} tick={{ fontSize: 10 }} />
+            <Tooltip formatter={(value: any, name: string, props: any) => { const raw = props.payload; const keyMap: Record<string, string> = { done: "rawDone", blocked: "rawBlocked", inProgress: "rawInProgress", open: "rawOpen" }; const rawKey = keyMap[name]; const rawVal = rawKey ? raw[rawKey] : undefined; return [`${value}%${rawVal !== undefined ? ` (${rawVal} tasks)` : ""}`, name === "inProgress" ? "In Progress" : name.charAt(0).toUpperCase() + name.slice(1)]; }} labelFormatter={fmtDate} />
+            <Legend iconType="circle" iconSize={8} formatter={(v) => v === "inProgress" ? "In Progress" : v.charAt(0).toUpperCase() + v.slice(1)} />
+            <Area type="monotone" dataKey="done" stackId="1" stroke="#22c55e" fill="url(#cfdDone)" strokeWidth={1.5} />
+            <Area type="monotone" dataKey="blocked" stackId="1" stroke="#ef4444" fill="url(#cfdBlocked)" strokeWidth={1.5} />
+            <Area type="monotone" dataKey="inProgress" stackId="1" stroke="#3b82f6" fill="url(#cfdInProgress)" strokeWidth={1.5} />
+            <Area type="monotone" dataKey="open" stackId="1" stroke="#94a3b8" fill="url(#cfdOpen)" strokeWidth={1.5} />
+          </AreaChart>
+        </ResponsiveContainer>
+      )}
+      {hasData && (
+        <div className="flex gap-4 mt-3 justify-end text-xs text-muted-foreground">
+          <span>Total tasks today: <strong className="text-foreground">{cfdData?.latestCounts ? Object.values(cfdData.latestCounts).reduce((a, b) => a + b, 0) : 0}</strong></span>
+          <span>Snapshots: <strong className="text-foreground">{cfdData?.snapshotCount ?? 0}</strong></span>
+        </div>
+      )}
+    </Card>
+  );
+}
 
 const RAG_DOT: Record<string, string> = {
   Green: "bg-green-500", Amber: "bg-yellow-500", Red: "bg-red-500",
@@ -344,24 +413,50 @@ export default function Dashboard() {
   const { data: actionLogs = [], isLoading: logsLoading } = trpc.actionLogs.list.useQuery(undefined, { enabled });
   const { data: deliverables = [] } = trpc.deliverables.list.useQuery({ projectId }, { enabled });
   const { data: budgetSummary } = trpc.budget.getSummary.useQuery({ projectId }, { enabled });
+<<<<<<< HEAD
   const { data: stakeholders = [] } = trpc.stakeholders.list.useQuery({ projectId }, { enabled });
   const { data: assumptions = [] } = trpc.assumptions.list.useQuery({ projectId }, { enabled });
   const { data: dependencies = [] } = trpc.dependencies.list.useQuery({ projectId }, { enabled });
   const { data: riskStatuses = [] } = trpc.risks.status.list.useQuery({ projectId }, { enabled });
+=======
+  const { data: actionItems = [] } = trpc.actionItems.list.useQuery({ projectId }, { enabled });
+  const { data: statusOptions = [] } = trpc.dropdownOptions.status.getAll.useQuery(undefined, { enabled });
+
+  // Helper: check if a status value is marked as "complete" in statusOptions DB
+  const isStatusComplete = useMemo(() => {
+    const completeSet = new Set(
+      (statusOptions as any[]).filter((s: any) => s.isComplete).map((s: any) => (s.value || '').toLowerCase())
+    );
+    return (status: string | null | undefined) => !!status && completeSet.has(status.toLowerCase());
+  }, [statusOptions]);
+>>>>>>> github/MANUS
 
   const today = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
   const nextWeek = useMemo(() => { const d = new Date(today); d.setDate(d.getDate() + 7); return d; }, [today]);
 
+<<<<<<< HEAD
   /* KPIs */
   const kpis = useMemo(() => {
     const closedStatusIds = new Set(riskStatuses.filter((s: any) => /closed|mitigated|resolved/i.test(s.name)).map((s: any) => s.id));
     const openIssues = issues.filter((i: any) => i.status !== "Closed" && i.status !== "Resolved").length;
     const overdueTasks = tasks.filter((t: any) => {
+=======
+  // Exclude communication tasks (COMM- prefix or communicationStakeholderId set) from project status KPIs
+  const regularTasks = useMemo(() =>
+    (tasks as any[]).filter((t: any) =>
+      !t.communicationStakeholderId && !(t.taskId || "").startsWith("COMM-")
+    ), [tasks]);
+
+  const kpis = useMemo(() => {
+    const openIssues = issues.filter((i: any) => !isStatusComplete(i.status)).length;
+    const overdueTasks = regularTasks.filter((t: any) => {
+>>>>>>> github/MANUS
       if (!t.dueDate) return false;
       const due = new Date(t.dueDate); due.setHours(0, 0, 0, 0);
-      return due < today && t.status !== "Done" && t.status !== "Completed" && t.status !== "Closed";
+      return due < today && !isStatusComplete(t.status);
     }).length;
     const pendingCRs = changeRequests.filter((c: any) => c.status === "Submitted" || c.status === "Under Review").length;
+<<<<<<< HEAD
     const activeRisks = risks.filter((r: any) => !closedStatusIds.has(r.riskStatusId)).length;
     const passedTests = testCases.filter((t: any) => t.status === "Passed").length;
     const testPassRate = testCases.length > 0 ? Math.round((passedTests / testCases.length) * 100) : 0;
@@ -372,11 +467,25 @@ export default function Dashboard() {
     const actionItemTasks = tasks.filter((t: any) => t.isActionItem && t.status !== "Done" && t.status !== "Completed").length;
     return { openIssues, overdueTasks, pendingCRs, activeRisks, testPassRate, taskCompletion, openAssumptions, blockedDeps, actionItemTasks, closedStatusIds };
   }, [issues, tasks, changeRequests, risks, testCases, assumptions, dependencies, riskStatuses, today]);
+=======
+    const activeRisks = risks.filter((r: any) => !isStatusComplete(r.status)).length;
+    const passedTests = testCases.filter((t: any) => t.status === "Passed").length;
+    const testPassRate = testCases.length > 0 ? Math.round((passedTests / testCases.length) * 100) : 0;
+    const doneTasks = regularTasks.filter((t: any) => isStatusComplete(t.status)).length;
+    const taskCompletion = regularTasks.length > 0 ? Math.round((doneTasks / regularTasks.length) * 100) : 0;
+    const openActionItems = actionItems.filter((a: any) => !isStatusComplete(a.status)).length;
+    return { openIssues, overdueTasks, pendingCRs, activeRisks, testPassRate, taskCompletion, openActionItems };
+  }, [issues, regularTasks, changeRequests, risks, testCases, actionItems, today, isStatusComplete]);
+>>>>>>> github/MANUS
 
   /* Health score */
   const healthScore = useMemo(() => {
     let score = 100;
+<<<<<<< HEAD
     const criticalRisks = risks.filter((r: any) => r.impact >= 4 && !kpis.closedStatusIds.has(r.riskStatusId)).length;
+=======
+    const criticalRisks = risks.filter((r: any) => r.impact >= 4 && !isStatusComplete(r.status)).length;
+>>>>>>> github/MANUS
     score -= criticalRisks * 10;
     score -= Math.min(kpis.overdueTasks * 5, 30);
     const crPendingRate = changeRequests.length > 0 ? kpis.pendingCRs / changeRequests.length : 0;
@@ -384,7 +493,7 @@ export default function Dashboard() {
     if (milestones.some((m: any) => m.ragStatus === "Red")) score -= 10;
     if (kpis.blockedDeps > 0) score -= Math.min(kpis.blockedDeps * 5, 15);
     return Math.max(0, score);
-  }, [risks, kpis, changeRequests, milestones]);
+  }, [risks, kpis, changeRequests, milestones, isStatusComplete]);
 
   /* Tasks by status donut */
   const tasksByStatus = useMemo(() => {
@@ -393,12 +502,16 @@ export default function Dashboard() {
     return Object.entries(map).map(([name, value]) => ({ name, value }));
   }, [tasks]);
 
+<<<<<<< HEAD
   /* Tasks by person bar */
+=======
+  // Tasks by person excludes communication tasks
+>>>>>>> github/MANUS
   const tasksByPerson = useMemo(() => {
     const map: Record<string, number> = {};
-    tasks.forEach((t: any) => { const p = t.responsible || "Unassigned"; map[p] = (map[p] || 0) + 1; });
+    regularTasks.forEach((t: any) => { const p = t.responsible || "Unassigned"; map[p] = (map[p] || 0) + 1; });
     return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([name, count]) => ({ name, count }));
-  }, [tasks]);
+  }, [regularTasks]);
 
   /* Radar chart: project dimensions */
   const radarData = useMemo(() => {
@@ -424,6 +537,7 @@ export default function Dashboard() {
       const d = new Date(ds); d.setHours(0, 0, 0, 0);
       return d >= today && d <= nextWeek;
     };
+<<<<<<< HEAD
     return {
       tasks: tasks.filter((t: any) => isThisWeek(t.dueDate)).length,
       milestones: milestones.filter((m: any) => isThisWeek(m.dueDate) && m.status !== "Achieved").length,
@@ -431,6 +545,14 @@ export default function Dashboard() {
       issues: issues.filter((i: any) => isThisWeek(i.updateDate)).length,
     };
   }, [tasks, milestones, deliverables, issues, today, nextWeek]);
+=======
+    const tasksDue = regularTasks.filter((t: any) => isThisWeek(t.dueDate)).length;
+    const issuesDue = issues.filter((i: any) => isThisWeek(i.updateDate)).length;
+    const deliverablesDue = deliverables.filter((d: any) => isThisWeek(d.dueDate)).length;
+    const milestonesDue = milestones.filter((m: any) => isThisWeek(m.dueDate) && m.status !== "Achieved").length;
+    return { tasksDue, issuesDue, deliverablesDue, milestonesDue, total: tasksDue + issuesDue + deliverablesDue + milestonesDue };
+  }, [tasks, issues, deliverables, milestones, today, nextWeek]);
+>>>>>>> github/MANUS
 
   /* Budget */
   const budgetUtil = useMemo(() => {
@@ -439,7 +561,7 @@ export default function Dashboard() {
     const spent = parseFloat((budgetSummary as any).totalActual ?? "0");
     const committed = parseFloat((budgetSummary as any).totalCommitted ?? "0") + spent;
     const pct = total > 0 ? Math.round((committed / total) * 100) : 0;
-    return { total, spent, committed, pct, currency: (budgetSummary as any).currency ?? "USD" };
+    return { total, spent, committed, pct, currency: (budgetSummary as any).budget?.currency ?? "USD" };
   }, [budgetSummary]);
 
   /* Milestone summary */
@@ -466,6 +588,48 @@ export default function Dashboard() {
   const recentLogs = useMemo(() => [...actionLogs].slice(0, 10), [actionLogs]);
 
   const isLoading = reqLoading || issuesLoading || tasksLoading || crLoading || risksLoading || testLoading;
+
+  const WIDGET_STORAGE_KEY = "dashboard-widgets";
+  const DEFAULT_WIDGETS: Widget[] = [
+    { id: "task-completion", type: "kpi", title: "Task Completion", size: "sm" },
+    { id: "open-issues", type: "kpi", title: "Open Issues", size: "sm" },
+    { id: "active-risks", type: "kpi", title: "Active Risks", size: "sm" },
+    { id: "test-pass-rate", type: "kpi", title: "Test Pass Rate", size: "sm" },
+    { id: "tasks-by-person", type: "bar", title: "Tasks by Responsible", size: "md" },
+    { id: "task-done-ring", type: "ring", title: "Tasks Done", size: "sm" },
+  ];
+  const [widgets, setWidgets] = useState<Widget[]>(() => {
+    try {
+      const saved = localStorage.getItem(WIDGET_STORAGE_KEY);
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return DEFAULT_WIDGETS;
+  });
+  const [widgetEditMode, setWidgetEditMode] = useState(false);
+
+  function saveWidgets(next: Widget[]) {
+    setWidgets(next);
+    localStorage.setItem(WIDGET_STORAGE_KEY, JSON.stringify(next));
+  }
+
+  function renderWidget(widget: Widget) {
+    switch (widget.id) {
+      case "task-completion":
+        return <KpiWidget label="Task Completion" value={`${kpis.taskCompletion}%`} subtitle="of all tasks done" color={kpis.taskCompletion >= 75 ? "text-green-600" : "text-yellow-600"} />;
+      case "open-issues":
+        return <KpiWidget label="Open Issues" value={`${kpis.openIssues}/${issues.length}`} subtitle="not closed" color={kpis.openIssues > 5 ? "text-red-600" : "text-foreground"} />;
+      case "active-risks":
+        return <KpiWidget label="Active Risks" value={kpis.activeRisks} subtitle="not mitigated" color={kpis.activeRisks > 5 ? "text-red-600" : "text-foreground"} />;
+      case "test-pass-rate":
+        return <KpiWidget label="Test Pass Rate" value={`${kpis.testPassRate}%`} subtitle={`${testCases.filter((t: any) => t.status === "Passed").length}/${testCases.length} passed`} color={kpis.testPassRate >= 80 ? "text-green-600" : "text-yellow-600"} />;
+      case "tasks-by-person":
+        return <BarChartWidget data={tasksByPerson.map((d: any) => ({ name: d.name, value: d.count }))} />;
+      case "task-done-ring":
+        return <StatusRingWidget label="Tasks Done" value={regularTasks.filter((t: any) => isStatusComplete(t.status)).length} max={regularTasks.length} color="#22c55e" />;
+      default:
+        return <div className="text-sm text-muted-foreground p-4">Unknown widget</div>;
+    }
+  }
 
   if (!currentProjectId) {
     return (
@@ -555,10 +719,18 @@ export default function Dashboard() {
               <div className="absolute inset-0 flex items-center justify-center">
                 <span className="text-xl font-bold" style={{ color: healthColor }}>{healthScore}</span>
               </div>
+<<<<<<< HEAD
             </div>
             <div className="flex-1 space-y-1.5">
               <div className="text-sm font-semibold">
                 {healthScore >= 80 ? "On Track" : healthScore >= 60 ? "Needs Attention" : "Action Required"}
+=======
+              <div className="mt-2 space-y-0.5 text-xs text-muted-foreground">
+                {risks.filter((r: any) => r.impact >= 4 && !isStatusComplete(r.status)).length > 0 && (
+                  <div>⚠ Critical risks: -{Math.min(risks.filter((r: any) => r.impact >= 4 && !isStatusComplete(r.status)).length * 10, 100)} pts</div>
+                )}
+                {kpis.overdueTasks > 0 && <div>⚠ Overdue tasks: -{Math.min(kpis.overdueTasks * 5, 30)} pts</div>}
+>>>>>>> github/MANUS
               </div>
               {risks.filter((r: any) => r.impact >= 4 && !kpis.closedStatusIds.has(r.riskStatusId)).length > 0 && (
                 <div className="text-xs text-red-600">⚠ {risks.filter((r: any) => r.impact >= 4 && !kpis.closedStatusIds.has(r.riskStatusId)).length} critical risk(s)</div>
@@ -822,6 +994,7 @@ export default function Dashboard() {
             <div className="text-sm text-muted-foreground text-center py-4">No deliverables defined.</div>
           ) : (
             <div className="space-y-2">
+<<<<<<< HEAD
               <div className="grid grid-cols-3 gap-2 text-center mb-3">
                 {[
                   { label: "Total", value: deliverables.length },
@@ -897,15 +1070,55 @@ export default function Dashboard() {
               })}
               {kpis.actionItemTasks > 5 && (
                 <div className="text-xs text-muted-foreground text-center pt-1">+{kpis.actionItemTasks - 5} more</div>
+=======
+              {actionItems
+                .filter((a: any) => !isStatusComplete(a.status))
+                .slice(0, 5)
+                .map((item: any) => {
+                  const isOverdue = item.dueDate && new Date(item.dueDate) < today;
+                  return (
+                    <div key={item.id} className="flex items-start gap-2 py-1 border-b last:border-0 text-sm">
+                      <Badge className={item.status === "In Progress" ? "bg-purple-100 text-purple-700 border-0 shrink-0" : "bg-blue-100 text-blue-700 border-0 shrink-0"}>{item.status}</Badge>
+                      <span className="flex-1 truncate">{item.description}</span>
+                      {isOverdue && <span className="text-xs text-red-500 shrink-0">Overdue</span>}
+                    </div>
+                  );
+                })}
+              {kpis.openActionItems > 5 && (
+                <div className="text-xs text-muted-foreground text-center pt-1">+{kpis.openActionItems - 5} more</div>
+>>>>>>> github/MANUS
               )}
             </div>
           )}
         </Card>
       </div>
 
+<<<<<<< HEAD
       {/* ── Charts Row ──────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Tasks by Status donut */}
+=======
+      {/* RAID Summary */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[
+          { label: "High Risks", value: risks.filter((r: any) => r.score >= 9 && !isStatusComplete(r.status)).length, icon: ShieldAlert, color: "text-red-600", href: "/risk-register" },
+          { label: "Open Issues", value: kpis.openIssues, icon: AlertTriangle, color: "text-orange-600", href: "/issues" },
+          { label: "Active Assumptions", value: 0, icon: FileText, color: "text-blue-600", href: "/assumptions" },
+          { label: "Open Actions", value: kpis.openActionItems, icon: CheckCircle2, color: "text-purple-600", href: "/action-items" },
+        ].map(({ label, value, icon: Icon, color, href }) => (
+          <Card key={label} className="p-4 cursor-pointer hover:bg-muted/30" onClick={() => navigate(href)}>
+            <div className="flex items-center gap-2 mb-1">
+              <Icon className={`w-4 h-4 ${color}`} />
+              <span className="text-xs text-muted-foreground uppercase tracking-wide">{label}</span>
+            </div>
+            <div className={`text-2xl font-bold ${color}`}>{value}</div>
+          </Card>
+        ))}
+      </div>
+
+      {/* Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+>>>>>>> github/MANUS
         <Card className="p-6">
           <SectionTitle icon={CheckSquare} title="Tasks by Status" />
           {tasksByStatus.length === 0 ? (
@@ -955,10 +1168,53 @@ export default function Dashboard() {
         </Card>
       </div>
 
+<<<<<<< HEAD
       {/* ── Cumulative Flow Diagram ──────────────────────────────────── */}
       <CumulativeFlowChart projectId={projectId} />
 
       {/* ── Recent Activity ─────────────────────────────────────────────── */}
+=======
+      {/* Customizable Widget Panel */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-base font-semibold flex items-center gap-2">
+            <LayoutGrid className="w-4 h-4 text-muted-foreground" /> Quick Widgets
+          </h3>
+          <div className="flex items-center gap-2">
+            {widgetEditMode && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-xs text-muted-foreground"
+                onClick={() => saveWidgets(DEFAULT_WIDGETS)}
+              >
+                Reset
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant={widgetEditMode ? "default" : "outline"}
+              onClick={() => setWidgetEditMode((v) => !v)}
+            >
+              {widgetEditMode ? "Done" : "Customize"}
+            </Button>
+          </div>
+        </div>
+        <WidgetGrid
+          widgets={widgets}
+          editMode={widgetEditMode}
+          onReorder={saveWidgets}
+          onRemove={(id) => saveWidgets(widgets.filter((w) => w.id !== id))}
+          onConfigure={() => {}}
+          renderWidget={renderWidget}
+        />
+      </div>
+
+      {/* Cumulative Flow Diagram */}
+      <CumulativeFlowChart projectId={projectId} />
+
+      {/* Recent Activity */}
+>>>>>>> github/MANUS
       <Card className="p-6">
         <SectionTitle icon={Activity} title="Recent Activity" />
         {logsLoading ? (

@@ -32,6 +32,8 @@ import CalendarPage from "./pages/Calendar";
 import Budget from "./pages/Budget";
 import Resources from "./pages/Resources";
 import ScopeItems from "./pages/ScopeItems";
+import UserStories from "./pages/UserStories";
+import ScopeCoverage from "./pages/ScopeCoverage";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -48,7 +50,26 @@ import RaidLog from "./pages/RaidLog";
 // ActionItems merged into Tasks - redirects to /tasks
 import LessonsLearned from "./pages/LessonsLearned";
 import DocumentLibrary from "./pages/DocumentLibrary";
+<<<<<<< HEAD
 import EVMDashboard from "./pages/EVM";
+=======
+import EEF from "./pages/EEF";
+import Portfolio from "./pages/Portfolio";
+import Sprints from "./pages/Sprints";
+import Goals from "./pages/Goals";
+import TimeTracking from "./pages/TimeTracking";
+import SlaTickets from "./pages/SlaTickets";
+import EngagementPlan from "./pages/EngagementPlan";
+import CommunicationPlan from "./pages/CommunicationPlan";
+import TeamCharter from "./pages/TeamCharter";
+import WBS from "./pages/WBS";
+import StakeholderManagement from "./pages/StakeholderManagement";
+import EVM from "./pages/EVM";
+import PMPlan from "./pages/PMPlan";
+import Features from "./pages/Features";
+import TestPlans from "./pages/TestPlans";
+import Defects from "./pages/Defects";
+>>>>>>> github/MANUS
 import CustomFields from "./pages/CustomFields";
 import FeaturesPage from "./pages/Features";
 import UserStoriesPage from "./pages/UserStories";
@@ -202,6 +223,16 @@ function Router() {
           <ScopeItems />
         </DashboardLayout>
       </Route>
+      <Route path={"/user-stories"}>
+        <DashboardLayout>
+          <UserStories />
+        </DashboardLayout>
+      </Route>
+      <Route path={"/scope-coverage"}>
+        <DashboardLayout>
+          <ScopeCoverage />
+        </DashboardLayout>
+      </Route>
       <Route path={"/charter"}>
         <DashboardLayout>
           <ProjectCharter />
@@ -290,6 +321,7 @@ function Router() {
           <DocumentLibrary />
         </DashboardLayout>
       </Route>
+<<<<<<< HEAD
       <Route path="/business-case">
         <DashboardLayout>
           <BusinessCase />
@@ -306,15 +338,83 @@ function Router() {
         </DashboardLayout>
       </Route>
       <Route path="/engagement-plan">
+=======
+      <Route path={"/eef"}>
+        <DashboardLayout>
+          <EEF />
+        </DashboardLayout>
+      </Route>
+      <Route path={"/portfolio"}>
+        <DashboardLayout>
+          <Portfolio />
+        </DashboardLayout>
+      </Route>
+      <Route path={"/sprints"}>
+        <DashboardLayout>
+          <Sprints />
+        </DashboardLayout>
+      </Route>
+      <Route path={"/goals"}>
+        <DashboardLayout>
+          <Goals />
+        </DashboardLayout>
+      </Route>
+      <Route path={"/time-tracking"}>
+        <DashboardLayout>
+          <TimeTracking />
+        </DashboardLayout>
+      </Route>
+      <Route path={"/sla-tickets"}>
+        <DashboardLayout>
+          <SlaTickets />
+        </DashboardLayout>
+      </Route>
+      <Route path={"/engagement-plan"}>
+>>>>>>> github/MANUS
         <DashboardLayout>
           <EngagementPlan />
         </DashboardLayout>
       </Route>
+<<<<<<< HEAD
       <Route path="/communication-plan">
+=======
+      <Route path={"/communication-plan"}>
+>>>>>>> github/MANUS
         <DashboardLayout>
           <CommunicationPlan />
         </DashboardLayout>
       </Route>
+<<<<<<< HEAD
+=======
+      <Route path={"/team-charter"}>
+        <DashboardLayout>
+          <TeamCharter />
+        </DashboardLayout>
+      </Route>
+      <Route path={"/wbs"}>
+        <WBS />
+      </Route>
+      <Route path={"/evm"}>
+        <DashboardLayout><EVM /></DashboardLayout>
+      </Route>
+      <Route path={"/pm-plan"}>
+        <DashboardLayout><PMPlan /></DashboardLayout>
+      </Route>
+      <Route path={"/features"}>
+        <DashboardLayout><Features /></DashboardLayout>
+      </Route>
+      <Route path={"/test-plans"}>
+        <DashboardLayout><TestPlans /></DashboardLayout>
+      </Route>
+      <Route path={"/defects"}>
+        <DashboardLayout><Defects /></DashboardLayout>
+      </Route>
+      <Route path={"/stakeholder-management"}>
+        <DashboardLayout>
+          <StakeholderManagement />
+        </DashboardLayout>
+      </Route>
+>>>>>>> github/MANUS
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>

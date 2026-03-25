@@ -7,10 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { RegistrySelect } from "@/components/RegistrySelect";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Label } from "@/components/ui/label";
 import { Plus, Eye, Pencil, Trash2, FlaskConical, CheckCircle, XCircle, AlertCircle, Clock, PlayCircle } from "lucide-react";
 import { toast } from "sonner";
+import { StakeholderSelect } from "@/components/StakeholderSelect";
 import { formatDate as _formatDate } from "@/lib/dateUtils";
 
 type TestStatus = "Not Executed" | "In Progress" | "Passed" | "Failed" | "Blocked" | "Skipped";
@@ -85,6 +87,7 @@ export default function TestCases() {
   const utils = trpc.useUtils();
   const { data: testCases = [], isLoading } = trpc.testCases.list.useQuery({ projectId }, { enabled: !!projectId });
   const { data: requirements = [] } = trpc.requirements.list.useQuery({ projectId }, { enabled: !!projectId });
+  const { data: stakeholders = [] } = trpc.stakeholders.list.useQuery({ projectId }, { enabled: !!projectId });
   const { data: testRuns = [], refetch: refetchRuns } = trpc.testRuns.listByTestCase.useQuery(
     { projectId, testCaseId: selectedId ?? 0 },
     { enabled: !!projectId && !!selectedId && showView }
@@ -172,24 +175,16 @@ export default function TestCases() {
         </Select>
       </div>
       <div className="space-y-1"><Label>Test Type</Label>
-        <Select value={form.testType} onValueChange={(v) => setForm({ ...form, testType: v })}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {["Functional", "Integration", "Regression", "UAT", "Performance", "Security", "Smoke"].map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <RegistrySelect projectId={projectId} domain="test_cases" fieldKey="type"
+          value={form.testType} onValueChange={(v) => setForm({ ...form, testType: v })} placeholder="Select type" />
       </div>
       <div className="space-y-1"><Label>Priority</Label>
-        <Select value={form.priority} onValueChange={(v) => setForm({ ...form, priority: v })}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>{["Critical", "High", "Medium", "Low"].map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
-        </Select>
+        <RegistrySelect projectId={projectId} domain="test_cases" fieldKey="priority"
+          value={form.priority} onValueChange={(v) => setForm({ ...form, priority: v })} placeholder="Select priority" />
       </div>
       <div className="space-y-1"><Label>Status</Label>
-        <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v as TestStatus })}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>{(["Not Executed", "In Progress", "Passed", "Failed", "Blocked", "Skipped"] as TestStatus[]).map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
-        </Select>
+        <RegistrySelect projectId={projectId} domain="test_cases" fieldKey="status"
+          value={form.status} onValueChange={(v) => setForm({ ...form, status: v as TestStatus })} placeholder="Select status" />
       </div>
       <div className="col-span-2 space-y-1"><Label>Description</Label><Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} /></div>
       <div className="col-span-2 space-y-1"><Label>Preconditions</Label><Textarea value={form.preconditions} onChange={(e) => setForm({ ...form, preconditions: e.target.value })} rows={2} /></div>
@@ -204,7 +199,7 @@ export default function TestCases() {
         ))}
       </div>
       <div className="col-span-2 space-y-1"><Label>Overall Expected Result</Label><Textarea value={form.expectedResult} onChange={(e) => setForm({ ...form, expectedResult: e.target.value })} rows={2} /></div>
-      <div className="space-y-1"><Label>Tester</Label><Input value={form.tester} onChange={(e) => setForm({ ...form, tester: e.target.value })} /></div>
+      <div className="space-y-1"><Label>Tester</Label><StakeholderSelect stakeholders={stakeholders as any[]} value={form.tester} onValueChange={(v) => setForm({ ...form, tester: v })} projectId={projectId} /></div>
       <div className="space-y-1"><Label>Execution Date</Label><Input type="date" value={form.executionDate} onChange={(e) => setForm({ ...form, executionDate: e.target.value })} /></div>
       <div className="space-y-1"><Label>Defect / Issue ID</Label><Input value={form.defectId} onChange={(e) => setForm({ ...form, defectId: e.target.value })} placeholder="e.g. ISS-0001" /></div>
       <div className="col-span-2 space-y-1"><Label>Notes</Label><Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} /></div>
@@ -420,7 +415,7 @@ export default function TestCases() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Executed By</Label>
-                <Input value={runForm.executedBy} onChange={e => setRunForm(p => ({ ...p, executedBy: e.target.value }))} />
+                <StakeholderSelect stakeholders={stakeholders as any[]} value={runForm.executedBy} onValueChange={(v) => setRunForm(p => ({ ...p, executedBy: v }))} projectId={projectId} />
               </div>
               <div>
                 <Label>Execution Date</Label>

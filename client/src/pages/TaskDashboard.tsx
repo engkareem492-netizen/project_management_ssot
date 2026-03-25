@@ -6,7 +6,13 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 
 export function TaskDashboard() {
   const { currentProjectId } = useProject();
-  const { data: tasks = [] } = trpc.tasks.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
+  const { data: allTasks = [] } = trpc.tasks.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
+
+  // Exclude communication tasks from the dashboard charts
+  const tasks = useMemo(() =>
+    (allTasks as any[]).filter((t: any) =>
+      !t.communicationStakeholderId && !(t.taskId || "").startsWith("COMM-")
+    ), [allTasks]);
 
   // Group tasks by Responsible
   const tasksByResponsible = useMemo(() => {

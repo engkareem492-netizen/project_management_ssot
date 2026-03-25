@@ -1,8 +1,9 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
+import { getDb } from "../db";
 import { eefFactors } from "../../drizzle/schema";
 import { eq, and, asc } from "drizzle-orm";
-import { getDb } from "../db";
+import { TRPCError } from "@trpc/server";
 
 export const eefRouter = router({
   // List all EEF factors for a project
@@ -10,12 +11,12 @@ export const eefRouter = router({
     .input(z.object({ projectId: z.number() }))
     .query(async ({ input }) => {
       const db = await getDb();
-      if (!db) return [];
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       return db
         .select()
         .from(eefFactors)
         .where(eq(eefFactors.projectId, input.projectId))
-        .orderBy(asc(eefFactors.type), asc(eefFactors.category), asc(eefFactors.name));
+        .orderBy(asc(eefFactors.category), asc(eefFactors.id));
     }),
 
   // Create a new EEF factor
@@ -23,31 +24,47 @@ export const eefRouter = router({
     .input(
       z.object({
         projectId: z.number(),
-        type: z.enum(["Internal", "External"]),
-        category: z.string().min(1).max(100),
-        name: z.string().min(1).max(255),
+        category: z.enum(["Internal", "External"]),
+        type: z.string().min(1).max(200),
         description: z.string().optional(),
-        impact: z.enum(["High", "Medium", "Low"]).default("Medium"),
-        influence: z.enum(["Positive", "Negative", "Neutral"]).default("Neutral"),
-        source: z.string().optional(),
+        impact: z.enum(["Positive", "Negative", "Neutral"]).optional(),
+        impactLevel: z.enum(["High", "Medium", "Low"]).optional(),
+        owner: z.string().optional(),
         notes: z.string().optional(),
+        linkedDocumentId: z.number().optional().nullable(),
       })
     )
     .mutation(async ({ input }) => {
       const db = await getDb();
-      if (!db) throw new Error("Database not available");
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      // Generate EEF ID
+      const existing = await db
+        .select({ id: eefFactors.id })
+        .from(eefFactors)
+        .where(eq(eefFactors.projectId, input.projectId));
+
+      const nextNum = existing.length + 1;
+      const eefId = `EEF-${String(nextNum).padStart(4, "0")}`;
+
       const result = await db.insert(eefFactors).values({
         projectId: input.projectId,
-        type: input.type,
+        eefId,
         category: input.category,
-        name: input.name,
+        type: input.type,
         description: input.description ?? null,
-        impact: input.impact,
-        influence: input.influence,
-        source: input.source ?? null,
+        impact: input.impact ?? null,
+        impactLevel: input.impactLevel ?? null,
+        owner: input.owner ?? null,
         notes: input.notes ?? null,
-      }).$returningId();
-      return { id: result[0].id };
+      });
+
+      const insertId = (result as any)[0]?.insertId ?? (result as any).insertId;
+      const [created] = await db
+        .select()
+        .from(eefFactors)
+        .where(eq(eefFactors.id, insertId));
+      return created;
     }),
 
   // Update an EEF factor
@@ -56,25 +73,29 @@ export const eefRouter = router({
       z.object({
         id: z.number(),
         projectId: z.number(),
-        type: z.enum(["Internal", "External"]).optional(),
-        category: z.string().min(1).max(100).optional(),
-        name: z.string().min(1).max(255).optional(),
-        description: z.string().nullable().optional(),
-        impact: z.enum(["High", "Medium", "Low"]).optional(),
-        influence: z.enum(["Positive", "Negative", "Neutral"]).optional(),
-        source: z.string().nullable().optional(),
-        notes: z.string().nullable().optional(),
+        category: z.enum(["Internal", "External"]).optional(),
+        type: z.string().min(1).max(200).optional(),
+        description: z.string().optional().nullable(),
+        impact: z.enum(["Positive", "Negative", "Neutral"]).optional().nullable(),
+        impactLevel: z.enum(["High", "Medium", "Low"]).optional().nullable(),
+        owner: z.string().optional().nullable(),
+        notes: z.string().optional().nullable(),
+        linkedDocumentId: z.number().optional().nullable(),
       })
     )
     .mutation(async ({ input }) => {
       const db = await getDb();
-      if (!db) throw new Error("Database not available");
-      const { id, projectId, ...updates } = input;
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { id, projectId, ...fields } = input;
       await db
         .update(eefFactors)
-        .set(updates)
+        .set(fields as any)
         .where(and(eq(eefFactors.id, id), eq(eefFactors.projectId, projectId)));
-      return { success: true };
+      const [updated] = await db
+        .select()
+        .from(eefFactors)
+        .where(eq(eefFactors.id, id));
+      return updated;
     }),
 
   // Delete an EEF factor
@@ -82,7 +103,7 @@ export const eefRouter = router({
     .input(z.object({ id: z.number(), projectId: z.number() }))
     .mutation(async ({ input }) => {
       const db = await getDb();
-      if (!db) throw new Error("Database not available");
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await db
         .delete(eefFactors)
         .where(and(eq(eefFactors.id, input.id), eq(eefFactors.projectId, input.projectId)));
