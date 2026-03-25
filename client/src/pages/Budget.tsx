@@ -67,20 +67,6 @@ export default function Budget() {
     { enabled: !!currentProjectId }
   );
 
-<<<<<<< HEAD
-  // Load project currencies to get the base currency
-  const { data: projectCurrenciesList } = trpc.currencies.list.useQuery(
-    { projectId: currentProjectId! },
-    { enabled: !!currentProjectId }
-  );
-  const baseCurrencyCode = useMemo(() => {
-    if (!projectCurrenciesList || projectCurrenciesList.length === 0) return "USD";
-    const base = projectCurrenciesList.find((c) => c.isBase);
-    return (base ?? projectCurrenciesList[0]).currencyCode;
-  }, [projectCurrenciesList]);
-
-  // Local state (would be replaced by trpc mutations when endpoints exist)
-=======
   const { data: budgetData } = trpc.budget.getSummary.useQuery(
     { projectId: currentProjectId! },
     { enabled: !!currentProjectId }
@@ -88,7 +74,6 @@ export default function Budget() {
 
   const upsertBudgetMutation = trpc.budget.upsertBudget.useMutation();
 
->>>>>>> github/MANUS
   const [summary, setSummary] = useState<BudgetSummary>({ totalBudget: 0, currency: "USD" });
   const [entries, setEntries] = useState<BudgetEntry[]>([]);
   const [showBudgetDialog, setShowBudgetDialog] = useState(false);
@@ -105,12 +90,7 @@ export default function Budget() {
     }
   }, [budgetData?.budget]);
   const [entryForm, setEntryForm] = useState<BudgetEntry>(emptyEntry());
-
-  // Sync base currency into summary/form when it loads
-  useEffect(() => {
-    setSummary((prev) => ({ ...prev, currency: baseCurrencyCode }));
-    setBudgetForm((prev) => ({ ...prev, currency: baseCurrencyCode }));
-  }, [baseCurrencyCode]);
+  const baseCurrencyCode = (budgetData?.budget as any)?.currency ?? "USD";
 
   // Totals
   const totals = useMemo(() => {
@@ -390,16 +370,8 @@ export default function Budget() {
               <Select value={budgetForm.currency} onValueChange={(v) => setBudgetForm((prev) => ({ ...prev, currency: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-<<<<<<< HEAD
-                  {(projectCurrenciesList && projectCurrenciesList.length > 0
-                    ? projectCurrenciesList.map((c) => c.currencyCode)
-                    : ["USD", "EUR", "GBP", "CAD", "AUD", "JPY", "CHF"]
-                  ).map((c) => (
-                    <SelectItem key={c} value={c}>{c}</SelectItem>
-=======
                   {CURRENCIES.map(({ code, label }) => (
                     <SelectItem key={code} value={code}>{label}</SelectItem>
->>>>>>> github/MANUS
                   ))}
                 </SelectContent>
               </Select>

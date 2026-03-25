@@ -76,8 +76,8 @@ async function upsertCalendarForStakeholder(
   stakeholderId: number,
   projectId: number,
   date: string,
-  type: "Working" | "Leave" | "Holiday" | "Training" | "PartTime",
-  availableHours: string | undefined,
+  type: "Working" | "Leave" | "Holiday" | "Training" | "Partial",
+  availableHours: number | undefined,
   notes: string | undefined,
 ) {
   const existing = await db.select().from(resourceCalendar).where(
@@ -89,12 +89,12 @@ async function upsertCalendarForStakeholder(
 
   if (existing.length > 0) {
     await db.update(resourceCalendar)
-      .set({ type, availableHours: availableHours ?? null, notes: notes ?? null })
+      .set({ type, availableHours: availableHours != null ? Number(availableHours) : null, notes: notes ?? null })
       .where(eq(resourceCalendar.id, existing[0].id));
   } else {
     await db.insert(resourceCalendar).values({
       stakeholderId, projectId, date, type,
-      availableHours: availableHours ?? null,
+      availableHours: availableHours != null ? Number(availableHours) : null,
       notes: notes ?? null,
     });
   }
@@ -231,7 +231,7 @@ export const teamSkillsRouter = router({
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new Error("DB unavailable");
-      const result = await db.insert(developmentPlans).values(input);
+      const result = await db.insert(developmentPlans).values(input as any);
       const rows = await db
         .select()
         .from(developmentPlans)
@@ -344,7 +344,7 @@ export const teamSkillsRouter = router({
       stakeholderId: z.number(),
       projectId: z.number(),
       date: z.string(),
-      type: z.enum(["Working", "Leave", "Holiday", "Training", "PartTime"]),
+      type: z.enum(["Working", "Leave", "Holiday", "Training", "Partial"]),
       availableHours: z.string().optional(),
       notes: z.string().optional(),
     }))
@@ -355,7 +355,7 @@ export const teamSkillsRouter = router({
       // Upsert for the primary stakeholder/project
       await upsertCalendarForStakeholder(
         db, input.stakeholderId, input.projectId,
-        input.date, input.type, input.availableHours, input.notes,
+        input.date, input.type, input.availableHours != null ? Number(input.availableHours) : undefined, input.notes,
       );
       const rows = await db.select().from(resourceCalendar).where(
         and(
@@ -370,7 +370,7 @@ export const teamSkillsRouter = router({
       for (const sib of siblings) {
         await upsertCalendarForStakeholder(
           db, sib.stakeholderId, sib.projectId,
-          input.date, input.type, input.availableHours,
+          input.date, input.type, input.availableHours != null ? Number(input.availableHours) : undefined,
           input.notes ? `[Propagated] ${input.notes}` : "[Propagated from sibling project]",
         );
       }
@@ -385,7 +385,7 @@ export const teamSkillsRouter = router({
       projectId: z.number(),
       startDate: z.string(),
       endDate: z.string(),
-      type: z.enum(["Working", "Leave", "Holiday", "Training", "PartTime"]),
+      type: z.enum(["Working", "Leave", "Holiday", "Training", "Partial"]),
       availableHours: z.string().optional(),
       notes: z.string().optional(),
       skipWeekends: z.boolean().optional().default(true),
@@ -420,7 +420,7 @@ export const teamSkillsRouter = router({
       for (const date of dates) {
         await upsertCalendarForStakeholder(
           db, input.stakeholderId, input.projectId,
-          date, input.type, input.availableHours, input.notes,
+          date, input.type, input.availableHours != null ? Number(input.availableHours) : undefined, input.notes,
         );
         const rows = await db.select().from(resourceCalendar).where(
           and(
@@ -434,7 +434,7 @@ export const teamSkillsRouter = router({
         for (const sib of siblings) {
           await upsertCalendarForStakeholder(
             db, sib.stakeholderId, sib.projectId,
-            date, input.type, input.availableHours,
+            date, input.type, input.availableHours != null ? Number(input.availableHours) : undefined,
             input.notes ? `[Propagated] ${input.notes}` : "[Propagated from sibling project]",
           );
         }
@@ -540,13 +540,13 @@ export const teamSkillsRouter = router({
                 projectId: input.projectId,
                 date,
                 type: "Holiday",
-                availableHours: "0",
+                availableHours: 0,
                 notes: "Weekend",
               });
               filledHoliday++;
               // Propagate to siblings
               for (const sib of siblings) {
-                await upsertCalendarForStakeholder(db, sib.stakeholderId, sib.projectId, date, "Holiday", "0", "Weekend [Propagated]");
+                await upsertCalendarForStakeholder(db, sib.stakeholderId, sib.projectId, date, "Holiday", 0, "Weekend [Propagated]");
                 propagatedCount++;
               }
             }
@@ -556,13 +556,13 @@ export const teamSkillsRouter = router({
               projectId: input.projectId,
               date,
               type: "Working",
-              availableHours: input.fullTimeHours,
+              availableHours: Number(input.fullTimeHours),
               notes: "",
             });
             filledWorking++;
             // Propagate to siblings
             for (const sib of siblings) {
-              await upsertCalendarForStakeholder(db, sib.stakeholderId, sib.projectId, date, "Working", input.fullTimeHours, "[Propagated]");
+              await upsertCalendarForStakeholder(db, sib.stakeholderId, sib.projectId, date, "Working", Number(input.fullTimeHours), "[Propagated]");
               propagatedCount++;
             }
           }

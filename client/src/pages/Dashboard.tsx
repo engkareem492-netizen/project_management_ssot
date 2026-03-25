@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 import React, { useMemo, useState } from "react";
-=======
-import { useMemo, useState } from "react";
->>>>>>> github/MANUS
 import { trpc } from "@/lib/trpc";
 import { useProject } from "@/contexts/ProjectContext";
 import { Card } from "@/components/ui/card";
@@ -12,12 +8,8 @@ import { useLocation } from "wouter";
 import {
   Loader2, AlertTriangle, CheckCircle2, Clock, FileText, BarChart2,
   Activity, Flag, DollarSign, TrendingUp, TrendingDown, Minus,
-<<<<<<< HEAD
-  ShieldAlert, Target, Users, Package, CheckSquare, Link2,
-  FileCheck, Zap, ChevronRight, AlertCircle, Calendar,
-=======
-  ShieldAlert, Target, LayoutGrid,
->>>>>>> github/MANUS
+  ShieldAlert, Target, LayoutGrid, ChevronRight, CheckSquare, AlertCircle,
+  Package, Users, Link2, FileCheck, Calendar,
 } from "lucide-react";
 import { WidgetGrid, type Widget } from "@/components/widgets/WidgetGrid";
 import { KpiWidget } from "@/components/widgets/KpiWidget";
@@ -25,69 +17,13 @@ import { BarChartWidget } from "@/components/widgets/BarChartWidget";
 import { StatusRingWidget } from "@/components/widgets/StatusRingWidget";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-<<<<<<< HEAD
-  PieChart, Pie, Cell, Legend, RadarChart, PolarGrid,
-  PolarAngleAxis, Radar, AreaChart, Area,
-=======
   PieChart, Pie, Cell, Legend, LineChart, Line, AreaChart, Area,
->>>>>>> github/MANUS
+  RadarChart, PolarGrid, PolarAngleAxis, Radar,
 } from "recharts";
 
 /* ─── Color tokens ─────────────────────────────────────────────────────── */
 const PIE_COLORS = ["#3b82f6", "#22c55e", "#f59e0b", "#ef4444", "#a855f7", "#64748b", "#06b6d4"];
 
-function CumulativeFlowChart({ projectId }: { projectId: number }) {
-  const { data: cfdData, isLoading: cfdLoading } = trpc.cfd.getData.useQuery({ projectId }, { enabled: projectId > 0 });
-  const saveMut = trpc.cfd.saveSnapshot.useMutation();
-  const utils = trpc.useUtils();
-  const series = cfdData?.series ?? [];
-  const hasData = series.length > 0;
-  function fmtDate(d: string) {
-    const dt = new Date(d);
-    return dt.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  }
-  return (
-    <Card className="p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-base font-semibold flex items-center gap-2"><Activity className="w-4 h-4 text-muted-foreground" /> Cumulative Flow of Tasks</h3>
-        <button onClick={() => { saveMut.mutate({ projectId }); setTimeout(() => utils.cfd.getData.invalidate({ projectId }), 500); }} className="text-xs text-muted-foreground hover:text-foreground border rounded px-2 py-1 transition-colors">Save Snapshot</button>
-      </div>
-      {cfdLoading ? (
-        <div className="flex items-center justify-center h-64"><Loader2 className="w-5 h-5 animate-spin" /></div>
-      ) : !hasData ? (
-        <div className="flex flex-col items-center justify-center h-64 text-muted-foreground gap-3">
-          <Activity className="w-10 h-10 opacity-30" />
-          <p className="text-sm">No task history yet. Click <strong>Save Snapshot</strong> to record today's counts.</p>
-        </div>
-      ) : (
-        <ResponsiveContainer width="100%" height={300}>
-          <AreaChart data={series} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-            <defs>
-              <linearGradient id="cfdDone" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#22c55e" stopOpacity={0.85} /><stop offset="95%" stopColor="#22c55e" stopOpacity={0.6} /></linearGradient>
-              <linearGradient id="cfdBlocked" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#ef4444" stopOpacity={0.85} /><stop offset="95%" stopColor="#ef4444" stopOpacity={0.6} /></linearGradient>
-              <linearGradient id="cfdInProgress" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#3b82f6" stopOpacity={0.85} /><stop offset="95%" stopColor="#3b82f6" stopOpacity={0.6} /></linearGradient>
-              <linearGradient id="cfdOpen" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#94a3b8" stopOpacity={0.5} /><stop offset="95%" stopColor="#94a3b8" stopOpacity={0.2} /></linearGradient>
-            </defs>
-            <XAxis dataKey="date" tickFormatter={fmtDate} tick={{ fontSize: 10 }} interval="preserveStartEnd" />
-            <YAxis tickFormatter={(v) => `${v}%`} domain={[0, 100]} tick={{ fontSize: 10 }} />
-            <Tooltip formatter={(value: any, name: string, props: any) => { const raw = props.payload; const keyMap: Record<string, string> = { done: "rawDone", blocked: "rawBlocked", inProgress: "rawInProgress", open: "rawOpen" }; const rawKey = keyMap[name]; const rawVal = rawKey ? raw[rawKey] : undefined; return [`${value}%${rawVal !== undefined ? ` (${rawVal} tasks)` : ""}`, name === "inProgress" ? "In Progress" : name.charAt(0).toUpperCase() + name.slice(1)]; }} labelFormatter={fmtDate} />
-            <Legend iconType="circle" iconSize={8} formatter={(v) => v === "inProgress" ? "In Progress" : v.charAt(0).toUpperCase() + v.slice(1)} />
-            <Area type="monotone" dataKey="done" stackId="1" stroke="#22c55e" fill="url(#cfdDone)" strokeWidth={1.5} />
-            <Area type="monotone" dataKey="blocked" stackId="1" stroke="#ef4444" fill="url(#cfdBlocked)" strokeWidth={1.5} />
-            <Area type="monotone" dataKey="inProgress" stackId="1" stroke="#3b82f6" fill="url(#cfdInProgress)" strokeWidth={1.5} />
-            <Area type="monotone" dataKey="open" stackId="1" stroke="#94a3b8" fill="url(#cfdOpen)" strokeWidth={1.5} />
-          </AreaChart>
-        </ResponsiveContainer>
-      )}
-      {hasData && (
-        <div className="flex gap-4 mt-3 justify-end text-xs text-muted-foreground">
-          <span>Total tasks today: <strong className="text-foreground">{cfdData?.latestCounts ? Object.values(cfdData.latestCounts).reduce((a, b) => a + b, 0) : 0}</strong></span>
-          <span>Snapshots: <strong className="text-foreground">{cfdData?.snapshotCount ?? 0}</strong></span>
-        </div>
-      )}
-    </Card>
-  );
-}
 
 const RAG_DOT: Record<string, string> = {
   Green: "bg-green-500", Amber: "bg-yellow-500", Red: "bg-red-500",
@@ -413,14 +349,10 @@ export default function Dashboard() {
   const { data: actionLogs = [], isLoading: logsLoading } = trpc.actionLogs.list.useQuery(undefined, { enabled });
   const { data: deliverables = [] } = trpc.deliverables.list.useQuery({ projectId }, { enabled });
   const { data: budgetSummary } = trpc.budget.getSummary.useQuery({ projectId }, { enabled });
-<<<<<<< HEAD
-  const { data: stakeholders = [] } = trpc.stakeholders.list.useQuery({ projectId }, { enabled });
-  const { data: assumptions = [] } = trpc.assumptions.list.useQuery({ projectId }, { enabled });
-  const { data: dependencies = [] } = trpc.dependencies.list.useQuery({ projectId }, { enabled });
-  const { data: riskStatuses = [] } = trpc.risks.status.list.useQuery({ projectId }, { enabled });
-=======
   const { data: actionItems = [] } = trpc.actionItems.list.useQuery({ projectId }, { enabled });
   const { data: statusOptions = [] } = trpc.dropdownOptions.status.getAll.useQuery(undefined, { enabled });
+  const { data: assumptions = [] } = trpc.assumptions.list.useQuery({ projectId }, { enabled });
+  const { data: dependencies = [] } = trpc.dependencies.list.useQuery({ projectId }, { enabled });
 
   // Helper: check if a status value is marked as "complete" in statusOptions DB
   const isStatusComplete = useMemo(() => {
@@ -429,18 +361,10 @@ export default function Dashboard() {
     );
     return (status: string | null | undefined) => !!status && completeSet.has(status.toLowerCase());
   }, [statusOptions]);
->>>>>>> github/MANUS
 
   const today = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
   const nextWeek = useMemo(() => { const d = new Date(today); d.setDate(d.getDate() + 7); return d; }, [today]);
 
-<<<<<<< HEAD
-  /* KPIs */
-  const kpis = useMemo(() => {
-    const closedStatusIds = new Set(riskStatuses.filter((s: any) => /closed|mitigated|resolved/i.test(s.name)).map((s: any) => s.id));
-    const openIssues = issues.filter((i: any) => i.status !== "Closed" && i.status !== "Resolved").length;
-    const overdueTasks = tasks.filter((t: any) => {
-=======
   // Exclude communication tasks (COMM- prefix or communicationStakeholderId set) from project status KPIs
   const regularTasks = useMemo(() =>
     (tasks as any[]).filter((t: any) =>
@@ -450,42 +374,29 @@ export default function Dashboard() {
   const kpis = useMemo(() => {
     const openIssues = issues.filter((i: any) => !isStatusComplete(i.status)).length;
     const overdueTasks = regularTasks.filter((t: any) => {
->>>>>>> github/MANUS
       if (!t.dueDate) return false;
       const due = new Date(t.dueDate); due.setHours(0, 0, 0, 0);
       return due < today && !isStatusComplete(t.status);
     }).length;
     const pendingCRs = changeRequests.filter((c: any) => c.status === "Submitted" || c.status === "Under Review").length;
-<<<<<<< HEAD
-    const activeRisks = risks.filter((r: any) => !closedStatusIds.has(r.riskStatusId)).length;
-    const passedTests = testCases.filter((t: any) => t.status === "Passed").length;
-    const testPassRate = testCases.length > 0 ? Math.round((passedTests / testCases.length) * 100) : 0;
-    const doneTasks = tasks.filter((t: any) => t.status === "Done" || t.status === "Completed" || t.status === "Closed").length;
-    const taskCompletion = tasks.length > 0 ? Math.round((doneTasks / tasks.length) * 100) : 0;
-    const openAssumptions = assumptions.filter((a: any) => a.status !== "Closed" && a.status !== "Rejected").length;
-    const blockedDeps = dependencies.filter((d: any) => /blocked|at risk/i.test(d.currentStatus ?? "")).length;
-    const actionItemTasks = tasks.filter((t: any) => t.isActionItem && t.status !== "Done" && t.status !== "Completed").length;
-    return { openIssues, overdueTasks, pendingCRs, activeRisks, testPassRate, taskCompletion, openAssumptions, blockedDeps, actionItemTasks, closedStatusIds };
-  }, [issues, tasks, changeRequests, risks, testCases, assumptions, dependencies, riskStatuses, today]);
-=======
     const activeRisks = risks.filter((r: any) => !isStatusComplete(r.status)).length;
     const passedTests = testCases.filter((t: any) => t.status === "Passed").length;
     const testPassRate = testCases.length > 0 ? Math.round((passedTests / testCases.length) * 100) : 0;
     const doneTasks = regularTasks.filter((t: any) => isStatusComplete(t.status)).length;
     const taskCompletion = regularTasks.length > 0 ? Math.round((doneTasks / regularTasks.length) * 100) : 0;
     const openActionItems = actionItems.filter((a: any) => !isStatusComplete(a.status)).length;
-    return { openIssues, overdueTasks, pendingCRs, activeRisks, testPassRate, taskCompletion, openActionItems };
-  }, [issues, regularTasks, changeRequests, risks, testCases, actionItems, today, isStatusComplete]);
->>>>>>> github/MANUS
+    const openAssumptions = (assumptions as any[]).filter((a: any) => a.status !== "Closed" && a.status !== "Rejected").length;
+    const blockedDeps = (dependencies as any[]).filter((d: any) => /blocked|at risk|pending/i.test(d.currentStatus ?? "")).length;
+    const closedStatusIds = new Set(
+      (statusOptions as any[]).filter((s: any) => s.isComplete).map((s: any) => s.id)
+    );
+    return { openIssues, overdueTasks, pendingCRs, activeRisks, testPassRate, taskCompletion, openActionItems, openAssumptions, blockedDeps, closedStatusIds };
+  }, [issues, regularTasks, changeRequests, risks, testCases, actionItems, today, isStatusComplete, assumptions, dependencies, statusOptions]);
 
   /* Health score */
   const healthScore = useMemo(() => {
     let score = 100;
-<<<<<<< HEAD
-    const criticalRisks = risks.filter((r: any) => r.impact >= 4 && !kpis.closedStatusIds.has(r.riskStatusId)).length;
-=======
     const criticalRisks = risks.filter((r: any) => r.impact >= 4 && !isStatusComplete(r.status)).length;
->>>>>>> github/MANUS
     score -= criticalRisks * 10;
     score -= Math.min(kpis.overdueTasks * 5, 30);
     const crPendingRate = changeRequests.length > 0 ? kpis.pendingCRs / changeRequests.length : 0;
@@ -502,11 +413,7 @@ export default function Dashboard() {
     return Object.entries(map).map(([name, value]) => ({ name, value }));
   }, [tasks]);
 
-<<<<<<< HEAD
-  /* Tasks by person bar */
-=======
   // Tasks by person excludes communication tasks
->>>>>>> github/MANUS
   const tasksByPerson = useMemo(() => {
     const map: Record<string, number> = {};
     regularTasks.forEach((t: any) => { const p = t.responsible || "Unassigned"; map[p] = (map[p] || 0) + 1; });
@@ -537,22 +444,12 @@ export default function Dashboard() {
       const d = new Date(ds); d.setHours(0, 0, 0, 0);
       return d >= today && d <= nextWeek;
     };
-<<<<<<< HEAD
-    return {
-      tasks: tasks.filter((t: any) => isThisWeek(t.dueDate)).length,
-      milestones: milestones.filter((m: any) => isThisWeek(m.dueDate) && m.status !== "Achieved").length,
-      deliverables: deliverables.filter((d: any) => isThisWeek(d.dueDate)).length,
-      issues: issues.filter((i: any) => isThisWeek(i.updateDate)).length,
-    };
-  }, [tasks, milestones, deliverables, issues, today, nextWeek]);
-=======
     const tasksDue = regularTasks.filter((t: any) => isThisWeek(t.dueDate)).length;
     const issuesDue = issues.filter((i: any) => isThisWeek(i.updateDate)).length;
     const deliverablesDue = deliverables.filter((d: any) => isThisWeek(d.dueDate)).length;
     const milestonesDue = milestones.filter((m: any) => isThisWeek(m.dueDate) && m.status !== "Achieved").length;
     return { tasksDue, issuesDue, deliverablesDue, milestonesDue, total: tasksDue + issuesDue + deliverablesDue + milestonesDue };
   }, [tasks, issues, deliverables, milestones, today, nextWeek]);
->>>>>>> github/MANUS
 
   /* Budget */
   const budgetUtil = useMemo(() => {
@@ -719,18 +616,11 @@ export default function Dashboard() {
               <div className="absolute inset-0 flex items-center justify-center">
                 <span className="text-xl font-bold" style={{ color: healthColor }}>{healthScore}</span>
               </div>
-<<<<<<< HEAD
-            </div>
-            <div className="flex-1 space-y-1.5">
-              <div className="text-sm font-semibold">
-                {healthScore >= 80 ? "On Track" : healthScore >= 60 ? "Needs Attention" : "Action Required"}
-=======
               <div className="mt-2 space-y-0.5 text-xs text-muted-foreground">
                 {risks.filter((r: any) => r.impact >= 4 && !isStatusComplete(r.status)).length > 0 && (
                   <div>⚠ Critical risks: -{Math.min(risks.filter((r: any) => r.impact >= 4 && !isStatusComplete(r.status)).length * 10, 100)} pts</div>
                 )}
                 {kpis.overdueTasks > 0 && <div>⚠ Overdue tasks: -{Math.min(kpis.overdueTasks * 5, 30)} pts</div>}
->>>>>>> github/MANUS
               </div>
               {risks.filter((r: any) => r.impact >= 4 && !kpis.closedStatusIds.has(r.riskStatusId)).length > 0 && (
                 <div className="text-xs text-red-600">⚠ {risks.filter((r: any) => r.impact >= 4 && !kpis.closedStatusIds.has(r.riskStatusId)).length} critical risk(s)</div>
@@ -782,10 +672,10 @@ export default function Dashboard() {
           <SectionTitle icon={Calendar} title="Due This Week" />
           <div className="space-y-2.5">
             {[
-              { label: "Tasks", value: dueThisWeek.tasks, color: "bg-blue-100 text-blue-700", href: "/tasks" },
-              { label: "Milestones", value: dueThisWeek.milestones, color: "bg-purple-100 text-purple-700", href: "/milestones" },
-              { label: "Deliverables", value: dueThisWeek.deliverables, color: "bg-green-100 text-green-700", href: "/deliverables" },
-              { label: "Issues", value: dueThisWeek.issues, color: "bg-red-100 text-red-700", href: "/issues" },
+              { label: "Tasks", value: dueThisWeek.tasksDue, color: "bg-blue-100 text-blue-700", href: "/tasks" },
+              { label: "Milestones", value: dueThisWeek.milestonesDue, color: "bg-purple-100 text-purple-700", href: "/milestones" },
+              { label: "Deliverables", value: dueThisWeek.deliverablesDue, color: "bg-green-100 text-green-700", href: "/deliverables" },
+              { label: "Issues", value: dueThisWeek.issuesDue, color: "bg-red-100 text-red-700", href: "/issues" },
             ].map(({ label, value, color, href }) => (
               <div key={label} className="flex items-center justify-between cursor-pointer hover:opacity-80" onClick={() => navigate(href)}>
                 <span className="text-sm text-muted-foreground">{label}</span>
@@ -795,7 +685,7 @@ export default function Dashboard() {
             <div className="flex items-center justify-between border-t pt-2 mt-2">
               <span className="text-sm font-semibold">Total</span>
               <Badge variant="outline" className="font-semibold">
-                {dueThisWeek.tasks + dueThisWeek.milestones + dueThisWeek.deliverables + dueThisWeek.issues}
+                {dueThisWeek.tasksDue + dueThisWeek.milestonesDue + dueThisWeek.deliverablesDue + dueThisWeek.issuesDue}
               </Badge>
             </div>
           </div>
@@ -994,83 +884,6 @@ export default function Dashboard() {
             <div className="text-sm text-muted-foreground text-center py-4">No deliverables defined.</div>
           ) : (
             <div className="space-y-2">
-<<<<<<< HEAD
-              <div className="grid grid-cols-3 gap-2 text-center mb-3">
-                {[
-                  { label: "Total", value: deliverables.length },
-                  { label: "Completed", value: deliverables.filter((d: any) => d.status === "Completed" || d.status === "Accepted").length, color: "text-green-600" },
-                  { label: "Overdue", value: deliverables.filter((d: any) => d.dueDate && new Date(d.dueDate) < today && d.status !== "Completed" && d.status !== "Accepted").length, color: "text-red-600" },
-                ].map(({ label, value, color }) => (
-                  <div key={label} className="bg-muted/30 rounded-lg p-2">
-                    <div className={`text-xl font-bold ${color ?? ""}`}>{value}</div>
-                    <div className="text-xs text-muted-foreground">{label}</div>
-                  </div>
-                ))}
-              </div>
-              {deliverables.slice(0, 4).map((d: any) => (
-                <div key={d.id} className="flex items-center gap-2 text-sm py-1.5 border-b last:border-0">
-                  <span className={`w-2 h-2 rounded-full shrink-0 ${d.status === "Completed" || d.status === "Accepted" ? "bg-green-500" : d.status === "In Progress" ? "bg-blue-500" : "bg-gray-300"}`} />
-                  <span className="flex-1 truncate text-xs">{d.title}</span>
-                  <span className="text-xs text-muted-foreground">{d.dueDate ? new Date(d.dueDate).toLocaleDateString() : "—"}</span>
-                  <Badge variant="outline" className="text-[10px]">{d.status ?? "—"}</Badge>
-                </div>
-              ))}
-            </div>
-          )}
-        </Card>
-      </div>
-
-      {/* ── Team + Action Items ─────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card className="p-6">
-          <SectionTitle icon={Users} title="Team Overview" action="View" onAction={() => navigate("/stakeholders")} />
-          <div className="grid grid-cols-3 gap-2 text-center mb-4">
-            {[
-              { label: "Total", value: stakeholders.length },
-              { label: "Manage Closely", value: stakeholders.filter((s: any) => s.engagementStrategy === "Manage Closely").length, color: "text-red-600" },
-              { label: "Unassigned", value: stakeholders.filter((s: any) => !s.engagementStrategy).length, color: "text-muted-foreground" },
-            ].map(({ label, value, color }) => (
-              <div key={label} className="bg-muted/30 rounded-lg p-2">
-                <div className={`text-xl font-bold ${color ?? ""}`}>{value}</div>
-                <div className="text-xs text-muted-foreground">{label}</div>
-              </div>
-            ))}
-          </div>
-          <div className="space-y-1.5">
-            {stakeholders.slice(0, 4).map((s: any) => (
-              <div key={s.id} className="flex items-center gap-2 py-1 border-b last:border-0">
-                <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
-                  {s.fullName?.charAt(0).toUpperCase()}
-                </div>
-                <span className="flex-1 truncate text-xs">{s.fullName}</span>
-                <span className="text-[10px] text-muted-foreground truncate max-w-[80px]">{s.position ?? ""}</span>
-                {s.engagementStrategy && (
-                  <Badge className="text-[9px] border-0 bg-muted text-muted-foreground">{s.engagementStrategy}</Badge>
-                )}
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        <Card className="p-6">
-          <SectionTitle icon={Zap} title="Open Action Items" action="View All" onAction={() => navigate("/tasks?filter=action-items")} />
-          {kpis.actionItemTasks === 0 ? (
-            <div className="text-sm text-muted-foreground text-center py-4">No open action items.</div>
-          ) : (
-            <div className="space-y-1.5">
-              {tasks.filter((t: any) => t.isActionItem && t.status !== "Done" && t.status !== "Completed").slice(0, 5).map((t: any) => {
-                const isOverdue = t.dueDate && new Date(t.dueDate) < today;
-                return (
-                  <div key={t.id} className="flex items-start gap-2 py-1.5 border-b last:border-0 text-sm">
-                    <Badge className={`${t.status === "In Progress" ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"} border-0 shrink-0 text-[10px]`}>{t.status}</Badge>
-                    <span className="flex-1 truncate text-xs">{t.title}</span>
-                    {isOverdue && <span className="text-[10px] text-red-500 shrink-0 font-medium">Overdue</span>}
-                  </div>
-                );
-              })}
-              {kpis.actionItemTasks > 5 && (
-                <div className="text-xs text-muted-foreground text-center pt-1">+{kpis.actionItemTasks - 5} more</div>
-=======
               {actionItems
                 .filter((a: any) => !isStatusComplete(a.status))
                 .slice(0, 5)
@@ -1086,18 +899,12 @@ export default function Dashboard() {
                 })}
               {kpis.openActionItems > 5 && (
                 <div className="text-xs text-muted-foreground text-center pt-1">+{kpis.openActionItems - 5} more</div>
->>>>>>> github/MANUS
               )}
             </div>
           )}
         </Card>
       </div>
 
-<<<<<<< HEAD
-      {/* ── Charts Row ──────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Tasks by Status donut */}
-=======
       {/* RAID Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
@@ -1118,7 +925,6 @@ export default function Dashboard() {
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
->>>>>>> github/MANUS
         <Card className="p-6">
           <SectionTitle icon={CheckSquare} title="Tasks by Status" />
           {tasksByStatus.length === 0 ? (
@@ -1168,12 +974,6 @@ export default function Dashboard() {
         </Card>
       </div>
 
-<<<<<<< HEAD
-      {/* ── Cumulative Flow Diagram ──────────────────────────────────── */}
-      <CumulativeFlowChart projectId={projectId} />
-
-      {/* ── Recent Activity ─────────────────────────────────────────────── */}
-=======
       {/* Customizable Widget Panel */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
@@ -1214,7 +1014,6 @@ export default function Dashboard() {
       <CumulativeFlowChart projectId={projectId} />
 
       {/* Recent Activity */}
->>>>>>> github/MANUS
       <Card className="p-6">
         <SectionTitle icon={Activity} title="Recent Activity" />
         {logsLoading ? (

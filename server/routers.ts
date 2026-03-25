@@ -73,6 +73,11 @@ import { pmPlanRouter } from "./routers/pmPlan.router";
 import { currenciesRouter } from "./routers/currencies.router";
 import { portfoliosRouter } from "./routers/portfolios.router";
 import { programsRouter } from "./routers/programs.router";
+import { businessCaseRouter } from "./routers/businessCase.router";
+import { closingReportRouter } from "./routers/closingReport.router";
+import { customFieldsRouter } from "./routers/customFields";
+import { phasesRouter } from "./routers/phases.router";
+import { wbsRouter } from "./routers/wbs.router";
 
 export const appRouter = router({
   system: systemRouter,
@@ -140,6 +145,11 @@ export const appRouter = router({
   currencies: currenciesRouter,
   portfolios: portfoliosRouter,
   programs: programsRouter,
+  businessCase: businessCaseRouter,
+  closingReport: closingReportRouter,
+  customFields: customFieldsRouter,
+  phases: phasesRouter,
+  wbs: wbsRouter,
   scopeItems: router({
     list: protectedProcedure
       .input(z.object({ projectId: z.number() }))
@@ -1033,9 +1043,13 @@ export const appRouter = router({
       .query(async ({ input }) => {
         return await db.getBadgeCounts(input.projectId);
       }),
+    getStatusUpdates: protectedProcedure
+      .input(z.object({ taskId: z.string() }))
+      .query(async ({ input }) => {
+        return await db.getTaskStatusUpdates(input.taskId);
+      }),
   }),
-
-  // Issues
+  // Issuess
   issues: router({
     list: protectedProcedure
       .input(z.object({ projectId: z.number() }))

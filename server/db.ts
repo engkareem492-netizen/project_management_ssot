@@ -2801,3 +2801,36 @@ export async function getTaskStatusUpdates(taskId: string): Promise<TaskStatusUp
     .where(eq(taskStatusUpdates.taskId, taskId))
     .orderBy(desc(taskStatusUpdates.createdAt));
 }
+
+// ─── Milestones helper ────────────────────────────────────────────────────────
+export async function getMilestones(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const { milestones } = await import("../drizzle/schema");
+  return db.select().from(milestones).where(eq(milestones.projectId, projectId));
+}
+
+// ─── Tickets helpers ──────────────────────────────────────────────────────────
+export async function getTicketTypes(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const { tickets } = await import("../drizzle/schema");
+  const allTickets = await db.select().from(tickets).where(eq(tickets.projectId, projectId));
+  const types = Array.from(new Set(allTickets.map((t: any) => t.type).filter(Boolean)));
+  return types.map((type) => ({ type }));
+}
+
+export async function getTicketsByProject(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const { tickets } = await import("../drizzle/schema");
+  return db.select().from(tickets).where(eq(tickets.projectId, projectId));
+}
+
+// ─── Action items helper ──────────────────────────────────────────────────────
+export async function getActionItemsByProject(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const { actionItems } = await import("../drizzle/schema");
+  return db.select().from(actionItems).where(eq(actionItems.projectId, projectId));
+}

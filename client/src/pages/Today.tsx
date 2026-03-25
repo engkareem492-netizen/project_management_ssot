@@ -312,7 +312,7 @@ export default function Today() {
     relatedRequirements.forEach((req) => {
       nodes.push({
         id: `requirement-${req.id}`,
-        type: isUserStory(req) ? 'userStory' : 'requirement',
+        type: (isUserStory(req) ? 'userStory' : 'requirement') as any,
         title: req.idCode || `Req ${req.id}`,
         description: req.description || undefined,
         status: req.status || undefined,
@@ -324,7 +324,7 @@ export default function Today() {
     relatedTestCases.forEach((tc) => {
       nodes.push({
         id: `testCase-${tc.id}`,
-        type: 'testCase',
+        type: 'testCase' as any,
         title: tc.testId || `TC ${tc.id}`,
         description: tc.title || tc.description || undefined,
         status: tc.status || undefined,

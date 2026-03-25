@@ -561,7 +561,7 @@ export const engagementRouter = router({
                 and(
                   eq(tasks.projectId, group.projectId),
                   eq(tasks.communicationStakeholderId, item.id),
-                  eq(tasks.responsibleId, responsibleId)
+                  eq(tasks.responsibleId, Number(responsibleId))
                 )
               )
               .limit(1);

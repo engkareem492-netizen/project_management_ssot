@@ -167,7 +167,7 @@ export default function TimeTracking() {
                     </div>
                     <div className="space-y-1.5">
                       {dayLogs.map((log: any) => (
-                        <TimeLogRow key={log.id} log={log} onEdit={openEdit} onDelete={(id) => deleteMut.mutate({ id })} />
+                        <TimeLogRow key={log.id} log={log} onEdit={openEdit} onDelete={(id: number) => deleteMut.mutate({ id })} />
                       ))}
                     </div>
                   </div>

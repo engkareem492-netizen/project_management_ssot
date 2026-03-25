@@ -50,9 +50,6 @@ import RaidLog from "./pages/RaidLog";
 // ActionItems merged into Tasks - redirects to /tasks
 import LessonsLearned from "./pages/LessonsLearned";
 import DocumentLibrary from "./pages/DocumentLibrary";
-<<<<<<< HEAD
-import EVMDashboard from "./pages/EVM";
-=======
 import EEF from "./pages/EEF";
 import Portfolio from "./pages/Portfolio";
 import Sprints from "./pages/Sprints";
@@ -65,23 +62,18 @@ import TeamCharter from "./pages/TeamCharter";
 import WBS from "./pages/WBS";
 import StakeholderManagement from "./pages/StakeholderManagement";
 import EVM from "./pages/EVM";
-import PMPlan from "./pages/PMPlan";
 import Features from "./pages/Features";
 import TestPlans from "./pages/TestPlans";
 import Defects from "./pages/Defects";
->>>>>>> github/MANUS
 import CustomFields from "./pages/CustomFields";
-import FeaturesPage from "./pages/Features";
-import UserStoriesPage from "./pages/UserStories";
-import TestPlansPage from "./pages/TestPlans";
-import DefectsPage from "./pages/Defects";
 import ConceptGuidePage from "./pages/ConceptGuide";
 import ReqTraceability from "./pages/ReqTraceability";
 import BusinessCase from "./pages/BusinessCase";
 import ClosingReport from "./pages/ClosingReport";
-import TeamCharter from "./pages/TeamCharter";
-import EngagementPlan from "./pages/EngagementPlan";
-import CommunicationPlan from "./pages/CommunicationPlan";
+const FeaturesPage = Features;
+const UserStoriesPage = UserStories;
+const TestPlansPage = TestPlans;
+const DefectsPage = Defects;
 
 function Router() {
   return (
@@ -283,7 +275,7 @@ function Router() {
       </Route>
       <Route path="/evm">
         <DashboardLayout>
-          <EVMDashboard />
+          <EVM />
         </DashboardLayout>
       </Route>
       <Route path="/features">
@@ -321,24 +313,6 @@ function Router() {
           <DocumentLibrary />
         </DashboardLayout>
       </Route>
-<<<<<<< HEAD
-      <Route path="/business-case">
-        <DashboardLayout>
-          <BusinessCase />
-        </DashboardLayout>
-      </Route>
-      <Route path="/closing-report">
-        <DashboardLayout>
-          <ClosingReport />
-        </DashboardLayout>
-      </Route>
-      <Route path="/team-charter">
-        <DashboardLayout>
-          <TeamCharter />
-        </DashboardLayout>
-      </Route>
-      <Route path="/engagement-plan">
-=======
       <Route path={"/eef"}>
         <DashboardLayout>
           <EEF />
@@ -370,22 +344,15 @@ function Router() {
         </DashboardLayout>
       </Route>
       <Route path={"/engagement-plan"}>
->>>>>>> github/MANUS
         <DashboardLayout>
           <EngagementPlan />
         </DashboardLayout>
       </Route>
-<<<<<<< HEAD
-      <Route path="/communication-plan">
-=======
       <Route path={"/communication-plan"}>
->>>>>>> github/MANUS
         <DashboardLayout>
           <CommunicationPlan />
         </DashboardLayout>
       </Route>
-<<<<<<< HEAD
-=======
       <Route path={"/team-charter"}>
         <DashboardLayout>
           <TeamCharter />
@@ -414,7 +381,6 @@ function Router() {
           <StakeholderManagement />
         </DashboardLayout>
       </Route>
->>>>>>> github/MANUS
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>

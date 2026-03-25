@@ -218,6 +218,15 @@ const SEED_DEFAULTS: Record<string, Record<string, Array<{ value: string; color?
       { value: "Medium", color: "#f59e0b", sortOrder: 2 },
       { value: "Low", color: "#10b981", sortOrder: 3 },
     ],
+    type: [
+      { value: "Functional", color: "#3b82f6", sortOrder: 0 },
+      { value: "Integration", color: "#8b5cf6", sortOrder: 1 },
+      { value: "Regression", color: "#f59e0b", sortOrder: 2 },
+      { value: "UAT", color: "#10b981", sortOrder: 3 },
+      { value: "Performance", color: "#f97316", sortOrder: 4 },
+      { value: "Security", color: "#ef4444", sortOrder: 5 },
+      { value: "Smoke", color: "#06b6d4", sortOrder: 6 },
+    ],
   },
   assumptions: {
     status: [
@@ -283,17 +292,6 @@ const SEED_DEFAULTS: Record<string, Record<string, Array<{ value: string; color?
       { value: "In Progress", color: "#3b82f6", sortOrder: 1 },
       { value: "Complete", color: "#10b981", sortOrder: 2 },
       { value: "On Hold", color: "#f59e0b", sortOrder: 3 },
-    ],
-  },
-  test_cases: {
-    type: [
-      { value: "Functional", color: "#3b82f6", sortOrder: 0 },
-      { value: "Integration", color: "#8b5cf6", sortOrder: 1 },
-      { value: "Regression", color: "#f59e0b", sortOrder: 2 },
-      { value: "UAT", color: "#10b981", sortOrder: 3 },
-      { value: "Performance", color: "#f97316", sortOrder: 4 },
-      { value: "Security", color: "#ef4444", sortOrder: 5 },
-      { value: "Smoke", color: "#06b6d4", sortOrder: 6 },
     ],
   },
   dependencies: {

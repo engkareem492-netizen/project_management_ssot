@@ -30,9 +30,9 @@ export const cfdRouter = router({
       const live = await computeLiveSnapshot(db, input.projectId);
       const today = new Date().toISOString().split("T")[0];
       const series = snapshots
-        .filter(s => s.snapshotDate !== today)
+        .filter(s => (s.snapshotDate instanceof Date ? s.snapshotDate.toISOString().split("T")[0] : String(s.snapshotDate)) !== today)
         .map(s => ({
-          date: s.snapshotDate,
+          date: s.snapshotDate instanceof Date ? s.snapshotDate.toISOString().split("T")[0] : String(s.snapshotDate),
           open: s.statusOpen,
           inProgress: s.statusInProgress,
           blocked: s.statusBlocked,
@@ -67,11 +67,11 @@ export const cfdRouter = router({
       const live = await computeLiveSnapshot(db, input.projectId);
       const snapshotDate = input.snapshotDate ?? new Date().toISOString().split("T")[0];
       const existing = await db.select().from(taskStatusHistory)
-        .where(and(eq(taskStatusHistory.projectId, input.projectId), eq(taskStatusHistory.snapshotDate, snapshotDate)));
+        .where(and(eq(taskStatusHistory.projectId, input.projectId), eq(taskStatusHistory.snapshotDate, new Date(snapshotDate) as any)));
       if (existing.length > 0) {
         return db.update(taskStatusHistory).set({ statusOpen: live.open, statusInProgress: live.inProgress, statusBlocked: live.blocked, statusDone: live.done }).where(eq(taskStatusHistory.id, existing[0].id));
       } else {
-        return db.insert(taskStatusHistory).values({ projectId: input.projectId, snapshotDate, statusOpen: live.open, statusInProgress: live.inProgress, statusBlocked: live.blocked, statusDone: live.done });
+        return db.insert(taskStatusHistory).values({ projectId: input.projectId, snapshotDate: new Date(snapshotDate) as any, statusOpen: live.open, statusInProgress: live.inProgress, statusBlocked: live.blocked, statusDone: live.done });
       }
     }),
 

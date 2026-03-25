@@ -10,6 +10,12 @@ function toNum(val: string | number | null | undefined): number {
   return isNaN(n) ? 0 : n;
 }
 
+function toDate(val: string | null | undefined): Date | null {
+  if (!val) return null;
+  const d = new Date(val);
+  return isNaN(d.getTime()) ? null : d;
+}
+
 function calcEvm(pv: number, ev: number, ac: number, bac: number) {
   const sv = ev - pv;
   const cv = ev - ac;
@@ -30,6 +36,7 @@ export const evmRouter = router({
     .input(z.object({ projectId: z.number() }))
     .query(async ({ input }) => {
       const db = await getDb();
+      if (!db) return null;
       const rows = await db.select().from(evmBaseline).where(eq(evmBaseline.projectId, input.projectId)).limit(1);
       return rows[0] ?? null;
     }),
@@ -44,31 +51,35 @@ export const evmRouter = router({
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
+      if (!db) return null;
+      const startDate = toDate(input.startDate);
+      const endDate = toDate(input.endDate);
       const existing = await db.select().from(evmBaseline).where(eq(evmBaseline.projectId, input.projectId)).limit(1);
       if (existing.length > 0) {
         await db.update(evmBaseline).set({
           bac: input.bac.toString(),
-          startDate: input.startDate ?? undefined,
-          endDate: input.endDate ?? undefined,
+          startDate: startDate ?? undefined,
+          endDate: endDate ?? undefined,
           notes: input.notes ?? undefined,
         }).where(eq(evmBaseline.projectId, input.projectId));
       } else {
         await db.insert(evmBaseline).values({
           projectId: input.projectId,
           bac: input.bac.toString(),
-          startDate: input.startDate ?? undefined,
-          endDate: input.endDate ?? undefined,
+          startDate: startDate ?? undefined,
+          endDate: endDate ?? undefined,
           notes: input.notes ?? undefined,
         });
       }
       const rows = await db.select().from(evmBaseline).where(eq(evmBaseline.projectId, input.projectId)).limit(1);
-      return rows[0];
+      return rows[0] ?? null;
     }),
 
   listSnapshots: protectedProcedure
     .input(z.object({ projectId: z.number() }))
     .query(async ({ input }) => {
       const db = await getDb();
+      if (!db) return [];
       return db.select().from(evmSnapshots).where(eq(evmSnapshots.projectId, input.projectId)).orderBy(asc(evmSnapshots.periodDate));
     }),
 
@@ -85,10 +96,12 @@ export const evmRouter = router({
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
+      if (!db) return null;
+      const periodDate = toDate(input.periodDate)!;
       const payload = {
         projectId: input.projectId,
         periodLabel: input.periodLabel,
-        periodDate: input.periodDate,
+        periodDate,
         pv: input.pv.toString(),
         ev: input.ev.toString(),
         ac: input.ac.toString(),
@@ -97,11 +110,11 @@ export const evmRouter = router({
       if (input.id) {
         await db.update(evmSnapshots).set(payload).where(eq(evmSnapshots.id, input.id));
         const rows = await db.select().from(evmSnapshots).where(eq(evmSnapshots.id, input.id)).limit(1);
-        return rows[0];
+        return rows[0] ?? null;
       } else {
         const [result] = await db.insert(evmSnapshots).values(payload);
         const rows = await db.select().from(evmSnapshots).where(eq(evmSnapshots.id, (result as { insertId: number }).insertId)).limit(1);
-        return rows[0];
+        return rows[0] ?? null;
       }
     }),
 
@@ -109,6 +122,7 @@ export const evmRouter = router({
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
       const db = await getDb();
+      if (!db) return { success: false };
       await db.delete(evmSnapshots).where(eq(evmSnapshots.id, input.id));
       return { success: true };
     }),
@@ -117,6 +131,7 @@ export const evmRouter = router({
     .input(z.object({ projectId: z.number() }))
     .query(async ({ input }) => {
       const db = await getDb();
+      if (!db) return [];
       return db.select().from(evmWbsEntries).where(eq(evmWbsEntries.projectId, input.projectId));
     }),
 
@@ -134,6 +149,7 @@ export const evmRouter = router({
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
+      if (!db) return null;
       const payload = {
         projectId: input.projectId,
         wbsCode: input.wbsCode,
@@ -150,11 +166,11 @@ export const evmRouter = router({
       if (existing.length > 0) {
         await db.update(evmWbsEntries).set(payload).where(eq(evmWbsEntries.id, existing[0].id));
         const rows = await db.select().from(evmWbsEntries).where(eq(evmWbsEntries.id, existing[0].id)).limit(1);
-        return rows[0];
+        return rows[0] ?? null;
       } else {
         const [result] = await db.insert(evmWbsEntries).values(payload);
         const rows = await db.select().from(evmWbsEntries).where(eq(evmWbsEntries.id, (result as { insertId: number }).insertId)).limit(1);
-        return rows[0];
+        return rows[0] ?? null;
       }
     }),
 
@@ -162,6 +178,7 @@ export const evmRouter = router({
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
       const db = await getDb();
+      if (!db) return { success: false };
       await db.delete(evmWbsEntries).where(eq(evmWbsEntries.id, input.id));
       return { success: true };
     }),
@@ -178,10 +195,12 @@ export const evmRouter = router({
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
-      const payload = { projectId: input.projectId, periodLabel: input.periodLabel, periodDate: input.periodDate, pv: input.pv.toString(), ev: input.ev.toString(), ac: input.ac.toString(), notes: input.notes ?? undefined };
+      if (!db) return null;
+      const periodDate = toDate(input.periodDate)!;
+      const payload = { projectId: input.projectId, periodLabel: input.periodLabel, periodDate, pv: input.pv.toString(), ev: input.ev.toString(), ac: input.ac.toString(), notes: input.notes ?? undefined };
       const [result] = await db.insert(evmSnapshots).values(payload);
       const rows = await db.select().from(evmSnapshots).where(eq(evmSnapshots.id, (result as { insertId: number }).insertId)).limit(1);
-      return rows[0];
+      return rows[0] ?? null;
     }),
 
   updateSnapshot: protectedProcedure
@@ -196,20 +215,23 @@ export const evmRouter = router({
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
-      const { id, pv, ev, ac, ...rest } = input;
+      if (!db) return null;
+      const { id, pv, ev, ac, periodDate: periodDateStr, ...rest } = input;
       const payload: Record<string, unknown> = { ...rest };
+      if (periodDateStr !== undefined) payload.periodDate = toDate(periodDateStr);
       if (pv !== undefined) payload.pv = pv.toString();
       if (ev !== undefined) payload.ev = ev.toString();
       if (ac !== undefined) payload.ac = ac.toString();
       await db.update(evmSnapshots).set(payload).where(eq(evmSnapshots.id, id));
       const rows = await db.select().from(evmSnapshots).where(eq(evmSnapshots.id, id)).limit(1);
-      return rows[0];
+      return rows[0] ?? null;
     }),
 
   syncFromWbs: protectedProcedure
     .input(z.object({ projectId: z.number() }))
     .mutation(async ({ input }) => {
       const db = await getDb();
+      if (!db) return { synced: 0 };
       const { wbsElements } = await import("../../drizzle/schema");
       const elements = await db.select().from(wbsElements).where(eq(wbsElements.projectId, input.projectId));
       let synced = 0;
@@ -236,6 +258,7 @@ export const evmRouter = router({
     .input(z.object({ projectId: z.number() }))
     .query(async ({ input }) => {
       const db = await getDb();
+      if (!db) return null;
       const baselineRows = await db.select().from(evmBaseline).where(eq(evmBaseline.projectId, input.projectId)).limit(1);
       const baseline = baselineRows[0] ?? null;
       const bac = toNum(baseline?.bac);
@@ -258,7 +281,7 @@ export const evmRouter = router({
         const eEv = toNum(e.ev);
         const eAc = toNum(e.ac);
         const eBac = toNum(e.bac);
-        return { id: e.id, wbsCode: e.wbsCode, wbsTitle: e.wbsTitle, bac: eBac, pv: ePv, ev: eEv, ac: eAc, percentComplete: toNum(e.percentComplete), ...calcEvm(ePv, eEv, eAc, eBac) };
+        return { id: e.id, wbsCode: e.wbsCode, wbsTitle: e.wbsTitle, bac: eBac, pv: ePv, ev: eEv, ac: eAc, ...calcEvm(ePv, eEv, eAc, eBac), percentComplete: toNum(e.percentComplete) };
       });
       return { baseline, bac, latestSnapshot: latest, pv: latestPv, ev: latestEv, ac: latestAc, ...kpis, trendSeries, wbsBreakdown, snapshotCount: snapshots.length };
     }),

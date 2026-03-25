@@ -192,20 +192,20 @@ export default function Sprints() {
                 <div>
                   <h3 className="text-sm font-semibold text-green-700 mb-3 flex items-center gap-2"><Play className="w-4 h-4" />Active Sprints</h3>
                   <div className="space-y-4">
-                    {activeSprints.map((sprint: any) => <SprintCard key={sprint.id} sprint={sprint} tasks={tasks} onEdit={openEdit} onDelete={(id) => deleteMutation.mutate({ id })} onViewBoard={() => setActiveSprint(sprint === activeSprint ? null : sprint)} isExpanded={activeSprint?.id === sprint.id} />)}
+                    {activeSprints.map((sprint: any) => <SprintCard key={sprint.id} sprint={sprint} tasks={tasks} onEdit={openEdit} onDelete={(id: number) => deleteMutation.mutate({ id })} onViewBoard={() => setActiveSprint(sprint === activeSprint ? null : sprint)} isExpanded={activeSprint?.id === sprint.id} />)}
                   </div>
                 </div>
               )}
               {/* Sprint Board for selected sprint */}
               {activeSprint && (
-                <SprintBoard sprint={activeSprint} tasks={sprintTasks} allTasks={tasks} onMoveTask={(taskId, status) => updateTaskMutation.mutate({ id: taskId, status })} onRemoveFromSprint={(taskId) => assignTaskMutation.mutate({ taskId, sprintId: null })} />
+                <SprintBoard sprint={activeSprint} tasks={sprintTasks} allTasks={tasks} onMoveTask={(taskId: number, status: string) => updateTaskMutation.mutate({ id: taskId, taskId: String(taskId), data: { currentStatus: status } } as any)} onRemoveFromSprint={(taskId: number) => assignTaskMutation.mutate({ taskId, sprintId: null })} />
               )}
               {/* Planning Sprints */}
               {planningSprints.length > 0 && (
                 <div>
                   <h3 className="text-sm font-semibold text-blue-700 mb-3 flex items-center gap-2"><Clock className="w-4 h-4" />Planning</h3>
                   <div className="space-y-3">
-                    {planningSprints.map((sprint: any) => <SprintCard key={sprint.id} sprint={sprint} tasks={tasks} onEdit={openEdit} onDelete={(id) => deleteMutation.mutate({ id })} onViewBoard={() => {}} isExpanded={false} />)}
+                    {planningSprints.map((sprint: any) => <SprintCard key={sprint.id} sprint={sprint} tasks={tasks} onEdit={openEdit} onDelete={(id: number) => deleteMutation.mutate({ id })} onViewBoard={() => {}} isExpanded={false} />)}
                   </div>
                 </div>
               )}
@@ -214,7 +214,7 @@ export default function Sprints() {
                 <div>
                   <h3 className="text-sm font-semibold text-gray-500 mb-3 flex items-center gap-2"><CheckCircle2 className="w-4 h-4" />Completed</h3>
                   <div className="space-y-3">
-                    {completedSprints.map((sprint: any) => <SprintCard key={sprint.id} sprint={sprint} tasks={tasks} onEdit={openEdit} onDelete={(id) => deleteMutation.mutate({ id })} onViewBoard={() => {}} isExpanded={false} />)}
+                    {completedSprints.map((sprint: any) => <SprintCard key={sprint.id} sprint={sprint} tasks={tasks} onEdit={openEdit} onDelete={(id: number) => deleteMutation.mutate({ id })} onViewBoard={() => {}} isExpanded={false} />)}
                   </div>
                 </div>
               )}
@@ -241,7 +241,7 @@ export default function Sprints() {
                       key={task.id}
                       task={task}
                       sprints={planningSprints.concat(activeSprints)}
-                      onAssign={(sprintId) => assignTaskMutation.mutate({ taskId: task.id, sprintId })}
+                      onAssign={(sprintId: number | null) => assignTaskMutation.mutate({ taskId: task.id, sprintId })}
                     />
                   ))}
                 </div>

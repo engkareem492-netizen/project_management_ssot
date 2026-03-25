@@ -411,7 +411,7 @@ export default function SlaTickets() {
               onDelete={() => setDeleteTicketId(t.id)}
               onRespond={() => respondMut.mutate({ id: t.id })}
               onResolve={() => resolveMut.mutate({ id: t.id })}
-              onStatusChange={(status) => updateTicket.mutate({ id: t.id, data: { status } })}
+              onStatusChange={(status) => updateTicket.mutate({ id: t.id, data: { status: status as any } })}
             />
           ))}
         </TabsContent>
@@ -434,7 +434,7 @@ export default function SlaTickets() {
               onDelete={() => setDeleteTicketId(t.id)}
               onRespond={() => respondMut.mutate({ id: t.id })}
               onResolve={() => resolveMut.mutate({ id: t.id })}
-              onStatusChange={(status) => updateTicket.mutate({ id: t.id, data: { status } })}
+              onStatusChange={(status) => updateTicket.mutate({ id: t.id, data: { status: status as any } })}
             />
           ))}
         </TabsContent>

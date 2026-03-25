@@ -125,7 +125,7 @@ export const resourcesRouter = router({
       const dbc = await getDb();
       if (!dbc) return;
       await dbc.update(stakeholderSuccession)
-        .set({ requiresSuccessionPlan: input.needsSuccessionPlan, requiresDelegation: input.hasDelegation })
+        .set({ requiresSuccessionPlan: input.needsSuccessionPlan, requiresDelegation: input.hasDelegation } as any)
         .where(eq(stakeholderSuccession.stakeholderId, input.id));
     }),
 

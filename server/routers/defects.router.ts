@@ -127,7 +127,7 @@ export const defectsRouter = router({
         const entry = densityMap.get(link.testCaseId);
         if (entry) {
           const defect = projectDefects.find(d => d.id === link.defectId);
-          if (defect) { entry.count++; entry.defects.push({ id: defect.id, defectCode: defect.defectCode, title: defect.title, severity: defect.severity, status: defect.status }); }
+          if (defect) { entry.count++; entry.defects.push({ id: defect.id, defectCode: defect.defectCode ?? "", title: defect.title, severity: defect.severity, status: defect.status }); }
         }
       }
       const rows = allTCs.map(tc => ({ testCaseId: tc.id, testId: tc.testId, title: tc.title, status: tc.status, defectCount: densityMap.get(tc.id)?.count ?? 0, linkedDefects: densityMap.get(tc.id)?.defects ?? [] })).sort((a, b) => b.defectCount - a.defectCount);

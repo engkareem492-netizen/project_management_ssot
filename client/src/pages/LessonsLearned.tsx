@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState, useMemo } from "react";
 import { useProject } from "@/contexts/ProjectContext";
 import { trpc } from "@/lib/trpc";

@@ -15,7 +15,7 @@ const DEFAULT_SLA: Record<string, { responseTimeHours: number; resolutionTimeHou
 
 async function getSlaForPriority(db: any, projectId: number, priority: string) {
   const [policy] = await db.select().from(slaPolicies)
-    .where(and(eq(slaPolicies.projectId, projectId), eq(slaPolicies.priority, priority)));
+    .where(and(eq(slaPolicies.projectId, projectId), eq(slaPolicies.priority, priority as any)));
   return policy ?? DEFAULT_SLA[priority] ?? { responseTimeHours: 8, resolutionTimeHours: 48 };
 }
 

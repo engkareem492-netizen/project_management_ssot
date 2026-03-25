@@ -62,22 +62,6 @@ import {
   BookMarked,
   FolderOpen,
   Scroll,
-<<<<<<< HEAD
-  Sliders,
-  Layers2,
-  ClipboardList,
-  RefreshCw,
-  Bug,
-  HelpCircle,
-  Briefcase,
-  FolderCheck,
-  Shield,
-  TrendingUp,
-  CalendarDays,
-  Network,
-  Radio,
-  UserCog,
-=======
   LayoutGrid,
   Zap,
   Target,
@@ -103,7 +87,7 @@ import {
   Bug,
   ClipboardList,
   Puzzle,
->>>>>>> github/MANUS
+  ListChecks,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -140,25 +124,7 @@ import { CSS } from "@dnd-kit/utilities";
 type SidebarItem = { icon: React.ElementType; label: string; path: string };
 type SidebarSection = { label: string; color?: string; items: SidebarItem[] };
 
-<<<<<<< HEAD
-const menuItems: MenuItem[] = [
-  { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
-  {
-    icon: Scroll,
-    label: "Planning",
-    path: "__planning__",
-    children: [
-      { icon: Scroll, label: "Project Charter", path: "/charter" },
-      { icon: Briefcase, label: "Business Case", path: "/business-case" },
-      { icon: ClipboardList, label: "PM Plan", path: "/pm-plan" },
-      { icon: Layers2, label: "WBS Builder", path: "/wbs" },
-      { icon: Crosshair, label: "Scope Items", path: "/scope" },
-    ],
-  },
-  { icon: Flag, label: "Milestones", path: "/milestones" },
-=======
 const SIDEBAR_SECTIONS: SidebarSection[] = [
->>>>>>> github/MANUS
   {
     label: "OVERVIEW",
     items: [
@@ -194,77 +160,6 @@ const SIDEBAR_SECTIONS: SidebarSection[] = [
       { icon: Users, label: "Stakeholder Management", path: "/stakeholder-management" },
     ],
   },
-<<<<<<< HEAD
-  {
-    icon: ShieldAlert,
-    label: "RAID",
-    path: "__raid__",
-    children: [
-      { icon: FileText, label: "Requirements", path: "/requirements" },
-      { icon: AlertCircle, label: "Issues", path: "/issues" },
-      { icon: FileCheck, label: "Assumptions", path: "/assumptions" },
-      { icon: Link2, label: "Dependencies", path: "/dependencies" },
-      { icon: ShieldAlert, label: "RAID Log", path: "/raid-log" },
-    ],
-  },
-  {
-    icon: Users,
-    label: "Team",
-    path: "__team__",
-    children: [
-      { icon: Users, label: "Stakeholders", path: "/stakeholders" },
-      { icon: Map, label: "Engagement Map", path: "/relationships" },
-      { icon: BarChart2, label: "Workload & Resources", path: "/resources" },
-      { icon: Shield, label: "Team Charter", path: "/team-charter" },
-      { icon: UserCog, label: "Engagement Plan", path: "/engagement-plan" },
-      { icon: Radio, label: "Communication Plan", path: "/communication-plan" },
-    ],
-  },
-  { icon: Package, label: "Deliverables", path: "/deliverables" },
-  { icon: AlertTriangle, label: "Risk Register", path: "/risk-register" },
-  { icon: GitPullRequest, label: "Change Requests", path: "/change-requests" },
-  { icon: MessageSquare, label: "Meetings & Decisions", path: "/meetings" },
-  { icon: CalendarRange, label: "Calendar", path: "/calendar" },
-  {
-    icon: DollarSign,
-    label: "Budget",
-    path: "__budget__",
-    children: [
-      { icon: DollarSign, label: "Budget Overview", path: "/budget" },
-      { icon: BarChart2, label: "EVM Dashboard", path: "/evm" },
-      { icon: RefreshCw, label: "Currency Settings", path: "/currency-settings" },
-    ],
-  },
-  { icon: FlaskConical, label: "Test Cases", path: "/test-cases" },
-  {
-    icon: BookOpen,
-    label: "Requirements Mgmt",
-    path: "__reqmgmt__",
-    children: [
-      { icon: Layers, label: "Features", path: "/features" },
-      { icon: BookOpen, label: "User Stories", path: "/user-stories" },
-      { icon: ClipboardList, label: "Test Plans", path: "/test-plans" },
-      { icon: Bug, label: "Defects", path: "/defects" },
-      { icon: Layers, label: "Req Traceability", path: "/req-traceability" },
-      { icon: HelpCircle, label: "Concept Guide", path: "/concept-guide" },
-    ],
-  },
-  { icon: Layers, label: "Traceability Matrix", path: "/traceability" },
-  {
-    icon: FolderOpen,
-    label: "OPA",
-    path: "__opa__",
-    children: [
-      { icon: FolderOpen, label: "Document Library", path: "/documents" },
-      { icon: BookOpen, label: "Knowledge Base", path: "/knowledge-base" },
-      { icon: BookMarked, label: "Lessons Learned", path: "/lessons-learned" },
-      { icon: Sliders, label: "EEF", path: "/eef" },
-    ],
-  },
-  { icon: FileBarChart, label: "Periodic Report", path: "/periodic-report" },
-  { icon: FolderCheck, label: "Closing Report", path: "/closing-report" },
-  { icon: SettingsIcon, label: "Settings", path: "/settings" },
-=======
   {
     label: "EXECUTION",
     items: [
@@ -311,7 +206,6 @@ const SIDEBAR_SECTIONS: SidebarSection[] = [
       { icon: SettingsIcon, label: "Settings", path: "/settings" },
     ],
   },
->>>>>>> github/MANUS
 ];
 
 const SIDEBAR_WIDTH_KEY      = "sidebar-width";
@@ -436,7 +330,7 @@ function SortableSection({
   };
   return (
     <div ref={setNodeRef} style={style}>
-      {children({ attributes: attributes as Record<string, unknown>, listeners: listeners as Record<string, unknown> | undefined })}
+      {children({ attributes: attributes as unknown as Record<string, unknown>, listeners: listeners as unknown as Record<string, unknown> | undefined })}
     </div>
   );
 }

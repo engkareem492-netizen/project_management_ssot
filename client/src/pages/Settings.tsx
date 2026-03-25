@@ -295,12 +295,8 @@ export default function Settings() {
 
   // Delete project state
   const [showDeleteProject, setShowDeleteProject] = useState(false);
-<<<<<<< HEAD
-  const [deleteStep, setDeleteStep] = useState<1 | 2>(1);
-=======
   const [deleteConfirmCode, setDeleteConfirmCode] = useState("");
   const [deleteCaptchaCode, setDeleteCaptchaCode] = useState("");
->>>>>>> github/MANUS
 
   // Copy from project state
   const [showCopyDialog, setShowCopyDialog] = useState(false);
@@ -1759,11 +1755,7 @@ export default function Settings() {
                   </div>
                   <Button
                     variant="destructive"
-<<<<<<< HEAD
-                    onClick={() => { setDeleteStep(1); setShowDeleteProject(true); }}
-=======
                     onClick={() => { setDeleteConfirmCode(""); setDeleteCaptchaCode(String(Math.floor(100000 + Math.random() * 900000))); setShowDeleteProject(true); }}
->>>>>>> github/MANUS
                   >
                     <Trash2 className="w-4 h-4 mr-2" />
                     Delete Project
@@ -1774,58 +1766,6 @@ export default function Settings() {
           )}
         </TabsContent>
 
-<<<<<<< HEAD
-      {/* ── Delete Project Dialog — Two-Step (single dialog, step controlled internally) ── */}
-      <AlertDialog
-        open={showDeleteProject}
-        onOpenChange={(open) => { if (!open) { setShowDeleteProject(false); setDeleteStep(1); } }}
-      >
-        <AlertDialogContent>
-          {deleteStep === 1 ? (
-            <>
-              <AlertDialogHeader>
-                <AlertDialogTitle className="flex items-center gap-2 text-red-600">
-                  <AlertTriangle className="w-5 h-5" /> Delete Project
-                </AlertDialogTitle>
-                <AlertDialogDescription className="text-sm leading-relaxed">
-                  You are about to permanently delete <strong className="text-foreground">&ldquo;{currentProject?.name}&rdquo;</strong> and all its associated data — tasks, requirements, issues, risks, stakeholders, and more.
-                  <br /><br />
-                  This action <strong className="text-red-500">cannot be undone</strong>.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <Button
-                  variant="destructive"
-                  onClick={(e) => { e.preventDefault(); setDeleteStep(2); }}
-                >
-                  Delete
-                </Button>
-              </AlertDialogFooter>
-            </>
-          ) : (
-            <>
-              <AlertDialogHeader>
-                <AlertDialogTitle className="flex items-center gap-2 text-red-600">
-                  <AlertTriangle className="w-5 h-5" /> Are you sure?
-                </AlertDialogTitle>
-                <AlertDialogDescription className="text-sm leading-relaxed">
-                  This is your <strong className="text-foreground">final confirmation</strong>. Deleting <strong className="text-foreground">&ldquo;{currentProject?.name}&rdquo;</strong> will erase all project data permanently and cannot be reversed.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <Button variant="outline" onClick={() => { setShowDeleteProject(false); setDeleteStep(1); }}>Cancel</Button>
-                <Button
-                  variant="destructive"
-                  disabled={deleteProjectMutation.isPending}
-                  onClick={() => currentProjectId && deleteProjectMutation.mutate({ projectId: currentProjectId })}
-                >
-                  {deleteProjectMutation.isPending ? "Deleting…" : "Yes, Delete Permanently"}
-                </Button>
-              </AlertDialogFooter>
-            </>
-          )}
-=======
         {/* Work Calendar Configuration Tab */}
         <TabsContent value="calendar-config" className="space-y-6">
           <Card>
@@ -1986,7 +1926,6 @@ export default function Settings() {
               {deleteProjectMutation.isPending ? "Deleting…" : "Delete Permanently"}
             </AlertDialogAction>
           </AlertDialogFooter>
->>>>>>> github/MANUS
         </AlertDialogContent>
       </AlertDialog>
 

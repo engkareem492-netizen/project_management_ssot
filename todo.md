@@ -735,3 +735,27 @@
 - [ ] Show progress timeline/history for each OKR (check-in feed)
 - [ ] Show progress bar and trend indicator on each OKR card
 - [ ] Add cycle selector (Monthly/Quarterly/Annual) to check-in form
+
+## Bug Fixes (Mar 25, 2026 - MANUS Branch Merge)
+
+- [x] Fetch latest MANUS branch (confirmed main is ahead of MANUS branch - all MANUS commits already merged)
+- [x] Fix 346 TypeScript errors from MANUS branch merge conflicts
+- [x] Add missing schema tables: phases, taskStatusUpdates, businessCase, projectOKRs, closingReport, commPlanInputItems, requirementUserStories, userStoryTestCases, requirementTestCases, defectTestCases
+- [x] Add missing DB columns: requirements.linkedDocumentId, issues.requiredResolutionDate/scopeItemId/linkedDocumentId, stakeholders.linkedDocumentId/requiresSuccessionPlan, userStories.storyId/featureId/storyCode, stakeholderSkills.projectId, testPlans.planCode
+- [x] Fix duplicate exports in Dashboard.tsx (CumulativeFlowChart)
+- [x] Fix duplicate imports in App.tsx (FeaturesPage, UserStoriesPage, TestPlansPage, DefectsPage)
+- [x] Fix missing router registrations (businessCase, closingReport, customFields, wbs, engagement, evm, teamSkills, etc.)
+- [x] Fix ProjectCharter.tsx - restore missing scope and business-case TabsContent sections
+- [x] Fix RelationshipMap.tsx - restore truncated component
+- [x] Fix UserStories.tsx - replace currentProject with currentProjectId
+- [x] Fix ScopeCoverage.tsx - replace currentProject with currentProjectId
+- [x] Fix evm.router.ts - null db checks and date type conversions
+- [x] Fix capacityPlanning.router.ts - Date weekStart to string conversion
+- [x] Fix cfd.router.ts - snapshotDate Date type handling
+- [x] Fix teamSkills.router.ts - calType enum (PartTime -> Partial)
+- [x] Fix stakeholderPortal.router.ts - remove conditional function checks
+- [x] Fix dropdownRegistry.router.ts - merge duplicate test_cases block
+- [x] Fix resourceCalendar schema to match actual DB structure
+- [x] Fix db.ts Set iteration (Array.from)
+- [x] Fix all remaining TS2339/TS2304/TS2345 errors across frontend pages
+- [x] Confirmed 0 TypeScript errors after full fresh tsc --noEmit run

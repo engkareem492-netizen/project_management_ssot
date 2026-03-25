@@ -36,7 +36,7 @@ export const pmPlanRouter = router({
     .input(z.object({
       projectId: z.number(),
       sectionKey: z.string(),
-      content: z.record(z.string()),
+      content: z.record(z.string(), z.any()),
       updatedBy: z.string().optional(),
     }))
     .mutation(async ({ input, ctx }) => {

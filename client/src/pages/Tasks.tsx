@@ -211,14 +211,11 @@ export default function Tasks() {
     { enabled: viewDialogOpen && !!selectedTask?.taskId }
   );
   const { data: allDecisions } = trpc.meetings.listDecisions.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
-<<<<<<< HEAD
   const { data: allMeetings } = trpc.meetings.listMeetings.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
-=======
   const { data: allUserStories = [] } = trpc.userStories.list.useQuery(
     { projectId: currentProjectId! },
     { enabled: !!currentProjectId }
   );
->>>>>>> github/MANUS
   const { data: actionLogs } = trpc.actionLogs.getByEntity.useQuery(
     { entityType: "task", entityId: selectedEntityId },
     { enabled: historyDialogOpen && !!selectedEntityId }
@@ -1488,7 +1485,7 @@ export default function Tasks() {
                       <div className="absolute -left-[14px] top-1.5 w-3 h-3 rounded-full bg-primary border-2 border-background" />
                       <div className="bg-muted/50 rounded-lg p-3">
                         <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-xs font-semibold text-primary">{upd.updatedByName || 'Unknown'}</span>
+                          <span className="text-xs font-semibold text-primary">{(upd as any).updatedByName || upd.author || 'Unknown'}</span>
                           <span className="text-xs text-muted-foreground">{new Date(upd.createdAt).toLocaleString()}</span>
                         </div>
                         <p className="text-sm whitespace-pre-wrap">{upd.updateText}</p>

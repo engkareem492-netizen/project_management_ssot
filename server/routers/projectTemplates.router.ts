@@ -124,8 +124,8 @@ export const projectTemplatesRouter = router({
 
       // ticket types
       for (const tt of (snapshot.ticketTypes ?? [])) {
-        if (db.createTicketType) {
-          await db.createTicketType({ ...tt, projectId: input.projectId });
+        if (db.createTaskType) {
+          await db.createTaskType({ ...tt, projectId: input.projectId });
           counts.ticketTypes++;
         }
       }

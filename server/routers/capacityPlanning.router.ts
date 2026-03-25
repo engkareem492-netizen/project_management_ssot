@@ -36,7 +36,8 @@ export const capacityPlanningRouter = router({
       const capMap: Record<number, Record<string, number>> = {};
       for (const c of capacities) {
         capMap[c.stakeholderId] ??= {};
-        capMap[c.stakeholderId][c.weekStart] = parseFloat(c.availableHours ?? "40");
+        const wk = c.weekStart instanceof Date ? c.weekStart.toISOString().split("T")[0] : String(c.weekStart);
+        capMap[c.stakeholderId][wk] = parseFloat(c.availableHours ?? "40");
       }
 
       // Allocate man-hours from tasks to assignees per week (by dueDate week)
@@ -46,7 +47,7 @@ export const capacityPlanningRouter = router({
         if (!assigneeId || !task.dueDate) continue;
         const dueWeek = getWeekStart(new Date(task.dueDate));
         allocMap[assigneeId] ??= {};
-        allocMap[assigneeId][dueWeek] = (allocMap[assigneeId][dueWeek] ?? 0) + (task.manHours ?? 0);
+        allocMap[assigneeId][dueWeek] = (allocMap[assigneeId][dueWeek] ?? 0) + Number(task.manHours ?? 0);
       }
 
       return stakeholders.map(s => {
@@ -86,10 +87,10 @@ export const capacityPlanningRouter = router({
       const sprintTasks = await dbc.select().from(tasksTable)
         .where(and(eq(tasksTable.projectId, projectId), eq(tasksTable.sprintId, sprintId)));
 
-      const totalManHours = sprintTasks.reduce((s, t) => s + (t.manHours ?? 0), 0);
+      const totalManHours = sprintTasks.reduce((s, t) => s + Number(t.manHours ?? 0), 0);
       const completedHours = sprintTasks
         .filter(t => t.status === "Done" || t.currentStatus === "Completed")
-        .reduce((s, t) => s + (t.manHours ?? 0), 0);
+        .reduce((s, t) => s + Number(t.manHours ?? 0), 0);
 
       const stakeholders = await db.getAllStakeholders(projectId);
       const capacities = await db.getResourceCapacities(projectId);
@@ -99,7 +100,8 @@ export const capacityPlanningRouter = router({
       if (sprint.startDate && sprint.endDate) {
         const sprintWeeks = getWeeksBetween(new Date(sprint.startDate), new Date(sprint.endDate));
         for (const cap of capacities) {
-          if (sprintWeeks.includes(cap.weekStart)) {
+          const capWk = cap.weekStart instanceof Date ? cap.weekStart.toISOString().split("T")[0] : String(cap.weekStart);
+          if (sprintWeeks.includes(capWk)) {
             totalCapacity += parseFloat(cap.availableHours ?? "40");
           }
         }

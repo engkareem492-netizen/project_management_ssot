@@ -187,7 +187,7 @@ export const userStoriesRouter = router({
 
       const storyId = await getNextId("User Story", "US", input.projectId);
       const { ...data } = input;
-      await db.insert(userStories).values({ ...data, storyId });
+      await db.insert(userStories).values({ ...data, storyId } as any);
 
       // Return newly created story
       const [created] = await db
@@ -373,7 +373,7 @@ export const userStoriesRouter = router({
             SUM(CASE WHEN status NOT IN ('Closed','Resolved','Done','Completed','Cancelled') THEN 1 ELSE 0 END) as openCount
             FROM issues WHERE projectId = ${projectId} AND scopeItemId IS NOT NULL GROUP BY scopeItemId`
       );
-      const issueRows = (issueRaw as any[]) as { scopeItemId: number; total: number; openCount: number }[];
+      const issueRows = (issueRaw as unknown as any[]) as { scopeItemId: number; total: number; openCount: number }[];
 
       // Task completion per scope item (via user stories → userStoryTasks → tasks)
       const [taskRaw] = await db.execute(
@@ -387,7 +387,7 @@ export const userStoriesRouter = router({
             WHERE si.projectId = ${projectId}
             GROUP BY si.id`
       );
-      const taskRows = (taskRaw as any[]) as { scopeItemId: number; taskTotal: number; taskDone: number }[];
+      const taskRows = (taskRaw as unknown as any[]) as { scopeItemId: number; taskTotal: number; taskDone: number }[];
 
       const reqMap = new Map<number, number>();
       for (const r of reqCounts) if (r.scopeItemId != null) reqMap.set(r.scopeItemId, Number(r.total));

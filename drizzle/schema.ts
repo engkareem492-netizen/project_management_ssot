@@ -263,8 +263,6 @@ export const tasks = mysqlTable("tasks", {
   recurringType: mysqlEnum("recurringType", ["none", "daily", "weekly", "monthly", "custom"]).default("none"),
   recurringInterval: int("recurringInterval").default(1),
   recurringEndDate: varchar("recurringEndDate", { length: 50 }),
-  // Communication task link
-  communicationStakeholderId: int("communicationStakeholderId"),
   // Subject (stakeholder name for COMM tasks)
   subject: varchar("subject", { length: 200 }),
   // Development task links (DEV- tasks tied to a Dev Plan)
@@ -1475,6 +1473,7 @@ export type InsertEngagementTaskSubject = typeof engagementTaskSubjects.$inferIn
 // ─── Stakeholder Skills ────────────────────────────────────────────────────────
 export const stakeholderSkills = mysqlTable("stakeholderSkills", {
   id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId"),
   stakeholderId: int("stakeholderId").notNull(),
   name: varchar("name", { length: 200 }).notNull(),
   level: mysqlEnum("skillLevel", ["Beginner", "Intermediate", "Advanced", "Expert"]).default("Intermediate").notNull(),
@@ -1559,12 +1558,12 @@ export type InsertCommunicationPlanEntry = typeof communicationPlanEntries.$infe
 // ─── Resource Calendar ────────────────────────────────────────────────────────
 export const resourceCalendar = mysqlTable("resourceCalendar", {
   id: int("id").autoincrement().primaryKey(),
-  stakeholderId: int("stakeholderId").notNull(),
   projectId: int("projectId").notNull(),
-  date: date("date").notNull(),
-  type: mysqlEnum("calType", ["Working", "Leave", "Holiday", "Training", "PartTime"]).default("Working").notNull(),
-  availableHours: decimal("availableHours", { precision: 4, scale: 1 }).default("8.0"),
-  notes: text("notes"),
+  stakeholderId: int("stakeholderId").notNull(),
+  date: varchar("entryDate", { length: 10 }).notNull(),
+  type: mysqlEnum("type", ["Working", "Leave", "Holiday", "Training", "Partial"]).default("Working"),
+  availableHours: int("availabilityPct").default(100),
+  notes: varchar("notes", { length: 300 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type ResourceCalendar = typeof resourceCalendar.$inferSelect;
@@ -1863,7 +1862,9 @@ export type InsertCommunicationLog = typeof communicationLog.$inferInsert;
 export const userStories = mysqlTable("userStories", {
   id: int("id").autoincrement().primaryKey(),
   projectId: int("projectId").notNull(),
-  storyId: varchar("storyId", { length: 50 }).notNull(),           // US-0001
+  storyId: varchar("storyId", { length: 50 }),                      // US-0001
+  storyCode: varchar("storyCode", { length: 50 }),                  // display code
+  featureId: int("featureId"),                                      // FK to features
   title: varchar("title", { length: 500 }).notNull(),
   description: text("description"),                                 // "As a [role], I want..."
   acceptanceCriteria: text("acceptanceCriteria"),
@@ -2091,6 +2092,7 @@ export type InsertFeature = typeof features.$inferInsert;
 export const testPlans = mysqlTable("testPlans", {
   id: int("id").autoincrement().primaryKey(),
   projectId: int("projectId").notNull(),
+  planCode: varchar("planCode", { length: 30 }),
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
   status: varchar("status", { length: 50 }).default("Draft"),
@@ -2162,3 +2164,215 @@ export const taskStatusHistory = mysqlTable("taskStatusHistory", {
 });
 export type TaskStatusHistory = typeof taskStatusHistory.$inferSelect;
 export type InsertTaskStatusHistory = typeof taskStatusHistory.$inferInsert;
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PHASES
+// ═══════════════════════════════════════════════════════════════════════════════
+export const phases = mysqlTable("phases", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  phaseCode: varchar("phaseCode", { length: 30 }),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  status: varchar("status", { length: 50 }).default("Not Started"),
+  startDate: timestamp("startDate"),
+  endDate: timestamp("endDate"),
+  order: int("order").default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type Phase = typeof phases.$inferSelect;
+export type InsertPhase = typeof phases.$inferInsert;
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TASK STATUS UPDATES (timeline feed)
+// ═══════════════════════════════════════════════════════════════════════════════
+export const taskStatusUpdates = mysqlTable("taskStatusUpdates", {
+  id: int("id").autoincrement().primaryKey(),
+  taskId: varchar("taskId", { length: 50 }).notNull(),
+  projectId: int("projectId").notNull(),
+  updateText: text("updateText").notNull(),
+  author: varchar("author", { length: 255 }),
+  authorId: int("authorId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type TaskStatusUpdate = typeof taskStatusUpdates.$inferSelect;
+export type InsertTaskStatusUpdate = typeof taskStatusUpdates.$inferInsert;
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// BUSINESS CASE
+// ═══════════════════════════════════════════════════════════════════════════════
+export const businessCase = mysqlTable("businessCase", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull().unique(),
+  problemStatement: text("problemStatement"),
+  proposedSolution: text("proposedSolution"),
+  strategicAlignment: text("strategicAlignment"),
+  costBenefitAnalysis: text("costBenefitAnalysis"),
+  estimatedCost: varchar("estimatedCost", { length: 50 }),
+  estimatedBenefit: varchar("estimatedBenefit", { length: 50 }),
+  roi: varchar("roi", { length: 50 }),
+  paybackPeriod: varchar("paybackPeriod", { length: 100 }),
+  riskSummary: text("riskSummary"),
+  assumptions: text("assumptions"),
+  alternatives: text("alternatives"),
+  recommendation: text("recommendation"),
+  approvalStatus: varchar("approvalStatus", { length: 50 }).default("Draft"),
+  approvedBy: varchar("approvedBy", { length: 255 }),
+  approvedDate: timestamp("approvedDate"),
+  currency: varchar("currency", { length: 10 }).default("USD"),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type BusinessCase = typeof businessCase.$inferSelect;
+export type InsertBusinessCase = typeof businessCase.$inferInsert;
+
+export const projectOKRs = mysqlTable("projectOKRs", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  okrCode: varchar("okrCode", { length: 30 }),
+  objective: text("objective").notNull(),
+  keyResults: json("keyResults"),
+  linkedReportSection: varchar("linkedReportSection", { length: 100 }),
+  owner: varchar("owner", { length: 255 }),
+  ownerId: int("ownerId"),
+  dueDate: timestamp("dueDate"),
+  status: varchar("status", { length: 50 }).default("On Track"),
+  progressPct: int("progressPct").default(0),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ProjectOKR = typeof projectOKRs.$inferSelect;
+export type InsertProjectOKR = typeof projectOKRs.$inferInsert;
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CLOSING REPORT
+// ═══════════════════════════════════════════════════════════════════════════════
+export const closingReport = mysqlTable("closingReport", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull().unique(),
+  objectivesStatus: json("objectivesStatus"),
+  initialBudget: varchar("initialBudget", { length: 50 }),
+  finalCost: varchar("finalCost", { length: 50 }),
+  budgetVariance: varchar("budgetVariance", { length: 50 }),
+  fundingNotes: text("fundingNotes"),
+  closureCriteria: json("closureCriteria"),
+  closureJustification: text("closureJustification"),
+  lessonsLearnedSummary: text("lessonsLearnedSummary"),
+  handoverNotes: text("handoverNotes"),
+  closedDate: timestamp("closedDate"),
+  closedById: int("closedById"),
+  closedBy: varchar("closedBy", { length: 255 }),
+  status: varchar("status", { length: 50 }).default("Draft"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ClosingReport = typeof closingReport.$inferSelect;
+export type InsertClosingReport = typeof closingReport.$inferInsert;
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// RESOURCE MANAGEMENT
+// ═══════════════════════════════════════════════════════════════════════════════
+export const resourceBreakdownStructure = mysqlTable("resourceBreakdownStructure", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  parentId: int("parentId"),
+  name: varchar("name", { length: 255 }).notNull(),
+  type: varchar("type", { length: 50 }).default("Category"),
+  description: text("description"),
+  sortOrder: int("sortOrder").default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ResourceBreakdownStructure = typeof resourceBreakdownStructure.$inferSelect;
+export type InsertResourceBreakdownStructure = typeof resourceBreakdownStructure.$inferInsert;
+
+export const resourceManagementPlan = mysqlTable("resourceManagementPlan", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull().unique(),
+  rolesResponsibilities: text("rolesResponsibilities"),
+  projectOrgChart: text("projectOrgChart"),
+  staffingManagement: text("staffingManagement"),
+  trainingNeeds: text("trainingNeeds"),
+  teamDevelopment: text("teamDevelopment"),
+  recognitionRewards: text("recognitionRewards"),
+  complianceRegulations: text("complianceRegulations"),
+  safetyPolicy: text("safetyPolicy"),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ResourceManagementPlan = typeof resourceManagementPlan.$inferSelect;
+export type InsertResourceManagementPlan = typeof resourceManagementPlan.$inferInsert;
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// STAKEHOLDER SUCCESSIONN
+// ═══════════════════════════════════════════════════════════════════════════════
+export const stakeholderSuccession = mysqlTable("stakeholderSuccession", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  stakeholderId: int("stakeholderId").notNull().unique(),
+  successorId: int("successorId"),
+  successorName: varchar("successorName", { length: 255 }),
+  delegationScope: text("delegationScope"),
+  effectiveDate: varchar("effectiveDate", { length: 20 }),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type StakeholderSuccession = typeof stakeholderSuccession.$inferSelect;
+export type InsertStakeholderSuccession = typeof stakeholderSuccession.$inferInsert;
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// WBS ELEMENTS (alias for WBS management page)
+// ═══════════════════════════════════════════════════════════════════════════════
+export const wbsElements = mysqlTable("wbsElements", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  parentId: int("parentId"),
+  code: varchar("code", { length: 50 }).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  responsible: varchar("responsible", { length: 255 }),
+  estimatedCost: varchar("estimatedCost", { length: 50 }),
+  actualCost: varchar("actualCost", { length: 50 }),
+  status: mysqlEnum("status", ["Not Started", "In Progress", "Complete", "On Hold"]).default("Not Started"),
+  level: int("level").default(1).notNull(),
+  sortOrder: int("sortOrder").default(0),
+  deliverableId: int("deliverableId"),
+  milestoneId: int("milestoneId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type WbsElement = typeof wbsElements.$inferSelect;
+export type InsertWbsElement = typeof wbsElements.$inferInsert;
+
+// ─── Requirement Traceability Junction Tables ─────────────────────────────────
+export const requirementUserStories = mysqlTable("requirementUserStories", {
+  id: int("id").autoincrement().primaryKey(),
+  requirementId: int("requirementId").notNull(),
+  userStoryId: int("userStoryId").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type RequirementUserStory = typeof requirementUserStories.$inferSelect;
+export type InsertRequirementUserStory = typeof requirementUserStories.$inferInsert;
+
+export const userStoryTestCases = mysqlTable("userStoryTestCases", {
+  id: int("id").autoincrement().primaryKey(),
+  userStoryId: int("userStoryId").notNull(),
+  testCaseId: int("testCaseId").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type UserStoryTestCase = typeof userStoryTestCases.$inferSelect;
+export type InsertUserStoryTestCase = typeof userStoryTestCases.$inferInsert;
+
+export const requirementTestCases = mysqlTable("requirementTestCases", {
+  id: int("id").autoincrement().primaryKey(),
+  requirementId: int("requirementId").notNull(),
+  testCaseId: int("testCaseId").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type RequirementTestCase = typeof requirementTestCases.$inferSelect;
+export type InsertRequirementTestCase = typeof requirementTestCases.$inferInsert;

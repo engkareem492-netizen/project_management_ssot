@@ -86,19 +86,19 @@ export const stakeholderPortalRouter = router({
         db.getStakeholderById(stakeholderId),
         db.getAllTasksSorted(projectId),
         db.getAllIssuesSorted(projectId),
-        db.getTicketsByProject ? db.getTicketsByProject(projectId) : [],
-        db.getMilestones ? db.getMilestones(projectId) : [],
-        db.getDecisions ? db.getDecisions(projectId) : [],
-        db.getActionItemsByProject ? db.getActionItemsByProject(projectId) : [],
+        db.getTicketsByProject(projectId),
+        db.getMilestones(projectId),
+        db.getAllDecisions(projectId),
+        db.getActionItemsByProject(projectId),
       ]);
 
       // Filter to items assigned/relevant to this stakeholder
-      const myTasks = tasks.filter(t =>
+      const myTasks = tasks.filter((t: any) =>
         (t as any).responsibleId === stakeholderId ||
         (t as any).accountableId === stakeholderId
       );
 
-      const myTickets = (tickets as any[]).filter(t => t.assigneeId === stakeholderId);
+      const myTickets = (tickets as any[]).filter((t: any) => t.assigneeId === stakeholderId);
       const myActionItems = (actionItems as any[]).filter(a => a.assigneeId === stakeholderId || a.ownerId === stakeholderId);
 
       return {

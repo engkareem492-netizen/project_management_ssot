@@ -771,20 +771,20 @@ export default function Relationships() {
     // Optimistic update — reflect strategy AND scores immediately in the cache
     utils.stakeholders.list.setData(
       { projectId: currentProjectId! },
-      (old) => old?.map((s) => {
+      ((old: any) => old?.map((s: any) => {
         if (s.id !== id) return s;
         return {
           ...s,
-          engagementStrategy: strategy || null,
+          engagementStrategy: strategy || undefined,
           ...(scores ? { powerLevel: scores.powerLevel, interestLevel: scores.interestLevel } : {}),
         };
-      })
+      })) as any
     );
     updateMutation.mutate(
       {
         id,
         data: {
-          engagementStrategy: strategy || null,
+          engagementStrategy: strategy || undefined,
           ...(scores ? { powerLevel: scores.powerLevel, interestLevel: scores.interestLevel } : {}),
         },
       },

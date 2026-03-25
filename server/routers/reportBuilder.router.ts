@@ -63,7 +63,7 @@ export const reportBuilderRouter = router({
         let items: any[] = [];
         if (entity === "tasks") {
           const all = await db.getAllTasksSorted(projectId);
-          items = all.filter(t => inRange(t.dueDate ?? t.createdAt));
+          items = all.filter(t => inRange(t.dueDate ?? (t as any).importedAt));
         } else if (entity === "requirements") {
           const all = await db.getAllRequirementsSorted(projectId);
           items = all.filter(r => inRange(r.updateDate ?? (r as any).createdAt));

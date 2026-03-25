@@ -139,8 +139,8 @@ function OrphanedItems({
 // ─── Main component ──────────────────────────────────────────────────────────
 
 export default function ScopeCoverage() {
-  const { currentProject } = useProject();
-  const projectId = currentProject?.id;
+  const { currentProjectId } = useProject();
+  const projectId = currentProjectId;
   const [, navigate] = useLocation();
 
   const [search, setSearch] = useState("");
