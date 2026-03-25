@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, json, boolean, date, decimal } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, longtext, timestamp, varchar, json, boolean, date, decimal } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -46,7 +46,7 @@ export const projects = mysqlTable("projects", {
   portfolioName: varchar("portfolioName", { length: 200 }),
   programId: int("programId"),    // FK to programs.id (object link)
   portfolioId: int("portfolioId"), // FK to portfolios.id (object link)
-  logoUrl: text("logoUrl"),
+  logoUrl: longtext("logoUrl"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

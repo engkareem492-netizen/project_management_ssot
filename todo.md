@@ -784,3 +784,7 @@
 - [x] Add router procedures: CRUD for document categories, link/unlink issues, link/unlink requirements
 - [x] Update Documents page: replace hardcoded categories with editable project-scoped list
 - [x] Update Documents page: add "Linked Issues" and "Linked Requirements" sections in document detail/edit dialog
+
+## Bug Fix: Project Logo Upload Error (Mar 25, 2026)
+
+- [x] Fix logoUrl column type from TEXT (65 KB limit) to LONGTEXT to support base64 images up to 4 GB
