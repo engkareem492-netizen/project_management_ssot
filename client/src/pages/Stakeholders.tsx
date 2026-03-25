@@ -31,12 +31,12 @@ import {
   Plus, Trash2, Pencil, Search, Users, Mail, Phone,
   Target, Award, Activity, UserCheck, Briefcase,
   MoveRight, Download,
-  Brain, Star, Lightbulb, Shield, BookOpen, TrendingUp, Zap,
+  Brain, Star, Lightbulb, Shield, BookOpen, TrendingUp, TrendingDown, Zap, CheckSquare,
 } from "lucide-react";
 import { ImportExportToolbar } from "@/components/ImportExportToolbar";
 import { StakeholderSelect } from "@/components/StakeholderSelect";
 import { EmptyState } from "@/components/EmptyState";
-import { formatDate } from "@/lib/dateUtils";
+import { formatDate, formatDateTime } from "@/lib/dateUtils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Classification = "TeamMember" | "External" | "Stakeholder";
@@ -157,6 +157,27 @@ function getScoreColor(score: number) {
   return "text-red-600";
 }
 
+function SparkLine({ data }: { data: number[] }) {
+  if (data.length < 2) return null;
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const range = max - min || 1;
+  const w = 80, h = 28;
+  const pts = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * w;
+    const y = h - ((v - min) / range) * (h - 4) - 2;
+    return `${x},${y}`;
+  }).join(" ");
+  const lastColor = data[data.length - 1] >= data[0] ? "#22c55e" : "#ef4444";
+  const lastPt = pts.split(" ").pop()!.split(",");
+  return (
+    <svg width={w} height={h} className="inline-block">
+      <polyline points={pts} fill="none" stroke={lastColor} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
+      <circle cx={parseFloat(lastPt[0])} cy={parseFloat(lastPt[1])} r="2.5" fill={lastColor} />
+    </svg>
+  );
+}
+
 // ─── KPI Management Dialog ────────────────────────────────────────────────────
 function KpiManagementDialog({
   stakeholder,
@@ -169,11 +190,13 @@ function KpiManagementDialog({
 }) {
   const { currentProjectId } = useProject();
   const utils = trpc.useUtils();
-  const [kpiForm, setKpiForm] = useState({ name: "", description: "", target: "", unit: "", weight: 1 });
+  const [kpiForm, setKpiForm] = useState<{ name: string; description: string; target: string; unit: string; weight: number; linkedSkillId: number | null }>(
+    { name: "", description: "", target: "", unit: "", weight: 1, linkedSkillId: null }
+  );
   const [editingKpi, setEditingKpi] = useState<any>(null);
   const [assessmentOpen, setAssessmentOpen] = useState(false);
   const [assessmentForm, setAssessmentForm] = useState({
-    assessmentDate: new Date().toISOString().split("T")[0],
+    assessmentDate: new Date().toISOString().slice(0, 16),
     assessorName: "",
     notes: "",
     scores: {} as Record<number, { score: number; notes: string }>,
@@ -187,11 +210,15 @@ function KpiManagementDialog({
     { stakeholderId: stakeholder?.id },
     { enabled: !!stakeholder?.id && open }
   );
+  const { data: skills = [] } = trpc.stakeholderEnhancements.listSkills.useQuery(
+    { stakeholderId: stakeholder?.id },
+    { enabled: !!stakeholder?.id && open }
+  );
 
   const createKpi = trpc.stakeholderEnhancements.createKpi.useMutation({
     onSuccess: () => {
       utils.stakeholderEnhancements.listKpis.invalidate({ stakeholderId: stakeholder.id });
-      setKpiForm({ name: "", description: "", target: "", unit: "", weight: 1 });
+      setKpiForm({ name: "", description: "", target: "", unit: "", weight: 1, linkedSkillId: null });
       toast.success("KPI added");
     },
   });
@@ -211,6 +238,7 @@ function KpiManagementDialog({
   const createAssessment = trpc.stakeholderEnhancements.createAssessment.useMutation({
     onSuccess: (data) => {
       utils.stakeholderEnhancements.listAssessments.invalidate({ stakeholderId: stakeholder.id });
+      utils.stakeholderEnhancements.listProjectKpiSummary.invalidate();
       setAssessmentOpen(false);
       toast.success(`Assessment saved — Overall Score: ${data.overallScore}/100`);
     },
@@ -218,6 +246,7 @@ function KpiManagementDialog({
   const deleteAssessment = trpc.stakeholderEnhancements.deleteAssessment.useMutation({
     onSuccess: () => {
       utils.stakeholderEnhancements.listAssessments.invalidate({ stakeholderId: stakeholder.id });
+      utils.stakeholderEnhancements.listProjectKpiSummary.invalidate();
       toast.success("Assessment deleted");
     },
   });
@@ -239,7 +268,42 @@ function KpiManagementDialog({
     });
   };
 
-  const latestScore = assessments[0]?.overallScore;
+  // Sort newest-first: by assessmentDate desc, then id desc
+  const sortedAssessments = [...assessments].sort((a: any, b: any) => {
+    const dateDiff = new Date(b.assessmentDate).getTime() - new Date(a.assessmentDate).getTime();
+    return dateDiff !== 0 ? dateDiff : b.id - a.id;
+  });
+
+  const latestScore = sortedAssessments[0]?.overallScore;
+  const previousScore = sortedAssessments[1]?.overallScore;
+  const scoreDelta = latestScore != null && previousScore != null ? latestScore - previousScore : null;
+
+  // Build trend array from assessments (chronological, up to 8 data points)
+  const trendScores = [...sortedAssessments]
+    .reverse()
+    .slice(-8)
+    .map((a: any) => a.overallScore)
+    .filter((s: any): s is number => s != null);
+
+  function SparkLine({ data }: { data: number[] }) {
+    if (data.length < 2) return null;
+    const min = Math.min(...data);
+    const max = Math.max(...data);
+    const range = max - min || 1;
+    const w = 80, h = 28;
+    const pts = data.map((v, i) => {
+      const x = (i / (data.length - 1)) * w;
+      const y = h - ((v - min) / range) * (h - 4) - 2;
+      return `${x},${y}`;
+    }).join(" ");
+    const lastColor = data[data.length - 1] >= data[0] ? "#22c55e" : "#ef4444";
+    return (
+      <svg width={w} height={h} className="inline-block">
+        <polyline points={pts} fill="none" stroke={lastColor} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
+        <circle cx={parseFloat(pts.split(" ").pop()!.split(",")[0])} cy={parseFloat(pts.split(" ").pop()!.split(",")[1])} r="2.5" fill={lastColor} />
+      </svg>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -270,6 +334,7 @@ function KpiManagementDialog({
                     <TableHead>Target</TableHead>
                     <TableHead>Unit</TableHead>
                     <TableHead>Weight</TableHead>
+                    <TableHead>Linked Skill</TableHead>
                     <TableHead className="w-20">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -316,6 +381,22 @@ function KpiManagementDialog({
                             />
                           </TableCell>
                           <TableCell>
+                            <Select
+                              value={editingKpi.linkedSkillId?.toString() ?? "none"}
+                              onValueChange={(v) => setEditingKpi({ ...editingKpi, linkedSkillId: v === "none" ? null : parseInt(v) })}
+                            >
+                              <SelectTrigger className="h-8 w-36 text-xs">
+                                <SelectValue placeholder="No skill" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">— None —</SelectItem>
+                                {skills.map((s) => (
+                                  <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell>
                             <div className="flex gap-1">
                               <Button size="sm" className="h-7 px-2" onClick={() => updateKpi.mutate({ id: kpi.id, data: editingKpi })}>
                                 Save
@@ -333,6 +414,16 @@ function KpiManagementDialog({
                           <TableCell>{kpi.unit || "—"}</TableCell>
                           <TableCell>
                             <Badge variant="outline">{kpi.weight}x</Badge>
+                          </TableCell>
+                          <TableCell>
+                            {kpi.linkedSkillId ? (
+                              <Badge variant="secondary" className="text-xs gap-1">
+                                <Zap className="h-2.5 w-2.5" />
+                                {skills.find((s) => s.id === kpi.linkedSkillId)?.name ?? `Skill #${kpi.linkedSkillId}`}
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground/40 text-xs">—</span>
+                            )}
                           </TableCell>
                           <TableCell>
                             <div className="flex gap-1">
@@ -391,13 +482,32 @@ function KpiManagementDialog({
                     className="w-20"
                   />
                 </div>
+                <div className="col-span-2 space-y-1">
+                  <Label className="text-sm">Link to Skill (optional)</Label>
+                  <Select
+                    value={kpiForm.linkedSkillId?.toString() ?? "none"}
+                    onValueChange={(v) => setKpiForm({ ...kpiForm, linkedSkillId: v === "none" ? null : parseInt(v) })}
+                  >
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue placeholder="Select a skill..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">— No skill link —</SelectItem>
+                      {skills.map((s) => (
+                        <SelectItem key={s.id} value={s.id.toString()}>
+                          {s.name} <span className="text-muted-foreground text-xs ml-1">({s.level})</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <Button
                 size="sm"
                 disabled={!kpiForm.name.trim() || createKpi.isPending}
                 onClick={() => {
                   if (!currentProjectId) return;
-                  createKpi.mutate({ ...kpiForm, stakeholderId: stakeholder.id, projectId: currentProjectId });
+                  createKpi.mutate({ ...kpiForm, linkedSkillId: kpiForm.linkedSkillId, stakeholderId: stakeholder.id, projectId: currentProjectId });
                 }}
               >
                 <Plus className="h-3.5 w-3.5 mr-1" />
@@ -410,16 +520,30 @@ function KpiManagementDialog({
           <TabsContent value="assessments" className="space-y-4 mt-4">
             <div className="flex items-center justify-between">
               {latestScore != null && (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Latest Score:</span>
-                  <span className={`text-2xl font-bold ${getScoreColor(latestScore)}`}>{latestScore}/100</span>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Latest Score:</span>
+                    <span className={`text-2xl font-bold ${getScoreColor(latestScore)}`}>{latestScore}/100</span>
+                  </div>
+                  {scoreDelta !== null && (
+                    <div className={`flex items-center gap-1 text-sm font-medium ${scoreDelta >= 0 ? "text-green-600" : "text-red-500"}`}>
+                      {scoreDelta >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+                      <span>{scoreDelta >= 0 ? "+" : ""}{scoreDelta} vs prev</span>
+                    </div>
+                  )}
+                  {trendScores.length >= 2 && (
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-muted-foreground">Trend:</span>
+                      <SparkLine data={trendScores} />
+                    </div>
+                  )}
                 </div>
               )}
               <Button
                 size="sm"
                 onClick={() => {
                   setAssessmentForm({
-                    assessmentDate: new Date().toISOString().split("T")[0],
+                    assessmentDate: new Date().toISOString().slice(0, 16),
                     assessorName: "",
                     notes: "",
                     scores: {},
@@ -439,15 +563,15 @@ function KpiManagementDialog({
             )}
 
             <div className="space-y-3">
-              {assessments.length === 0 ? (
+              {sortedAssessments.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">No assessments yet.</p>
               ) : (
-                assessments.map((a: any) => (
+                sortedAssessments.map((a: any) => (
                   <div key={a.id} className="border rounded-lg p-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <Award className="h-4 w-4 text-primary" />
-                        <span className="font-medium">{formatDate(a.assessmentDate)}</span>
+                        <span className="font-medium">{formatDateTime(a.assessmentDate)}</span>
                         {a.assessorName && <span className="text-sm text-muted-foreground">by {a.assessorName}</span>}
                       </div>
                       <div className="flex items-center gap-2">
@@ -489,9 +613,9 @@ function KpiManagementDialog({
             <div className="space-y-4 py-2">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label>Assessment Date</Label>
+                  <Label>Assessment Date & Time</Label>
                   <Input
-                    type="date"
+                    type="datetime-local"
                     value={assessmentForm.assessmentDate}
                     onChange={(e) => setAssessmentForm({ ...assessmentForm, assessmentDate: e.target.value })}
                   />
@@ -636,6 +760,24 @@ function StakeholderFormDialog({
     onError: (e: any) => toast.error(`Failed: ${e.message}`),
   });
 
+  // Merge position options with unique positions from existing stakeholders (e.g. imported via CSV)
+  const allPositionOptions = useMemo(() => {
+    const knownLabels = new Set(positionOptions.map((o: any) => o.label));
+    const derived = [...new Set(
+      stakeholders.map((s: any) => s.position).filter((p: any) => p && !knownLabels.has(p))
+    )];
+    return [...positionOptions, ...derived.map((label: string) => ({ id: `derived-${label}`, label }))];
+  }, [positionOptions, stakeholders]);
+
+  // Merge role options with unique roles from existing stakeholders (e.g. imported via CSV)
+  const allRoleOptions = useMemo(() => {
+    const knownLabels = new Set(roleOptions.map((o: any) => o.label));
+    const derived = [...new Set(
+      stakeholders.map((s: any) => s.role).filter((r: any) => r && !knownLabels.has(r))
+    )];
+    return [...roleOptions, ...derived.map((label: string) => ({ id: `derived-${label}`, label }))];
+  }, [roleOptions, stakeholders]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
@@ -699,10 +841,10 @@ function StakeholderFormDialog({
                       <SelectValue placeholder="Select position..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {positionOptions.map((o: any) => (
+                      {allPositionOptions.map((o: any) => (
                         <SelectItem key={o.id} value={o.label}>{o.label}</SelectItem>
                       ))}
-                      {formData.position && !positionOptions.some((o: any) => o.label === formData.position) && (
+                      {formData.position && !allPositionOptions.some((o: any) => o.label === formData.position) && (
                         <SelectItem value={formData.position}>{formData.position}</SelectItem>
                       )}
                     </SelectContent>
@@ -739,10 +881,10 @@ function StakeholderFormDialog({
                       <SelectValue placeholder="Select role..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {roleOptions.map((o: any) => (
+                      {allRoleOptions.map((o: any) => (
                         <SelectItem key={o.id} value={o.label}>{o.label}</SelectItem>
                       ))}
-                      {formData.role && !roleOptions.some((o: any) => o.label === formData.role) && (
+                      {formData.role && !allRoleOptions.some((o: any) => o.label === formData.role) && (
                         <SelectItem value={formData.role}>{formData.role}</SelectItem>
                       )}
                     </SelectContent>
@@ -1132,11 +1274,12 @@ function DetailPanel({
   const [devPlanForm, setDevPlanForm] = useState({
     title: "", description: "", goals: "", startDate: "", endDate: "",
     status: "Not Started" as string,
+    linkedSkillId: "", linkedSwotId: "",
   });
 
   // ── Skill state ──
   const [showSkillForm, setShowSkillForm] = useState(false);
-  const [skillForm, setSkillForm] = useState({ name: "", level: "Beginner" as string, linkedKpiId: "", linkedSwotId: "" });
+  const [skillForm, setSkillForm] = useState({ name: "", level: "Beginner" as "Beginner" | "Intermediate" | "Advanced" | "Expert", linkedKpiId: "", linkedSwotId: "" });
 
   // ── tRPC queries ──
   const { data: swotItems = [], refetch: refetchSwot } = trpc.stakeholderEnhancements.listSwot.useQuery(
@@ -1175,7 +1318,7 @@ function DetailPanel({
     onSuccess: () => {
       refetchDevPlans();
       setShowDevPlanForm(false);
-      setDevPlanForm({ title: "", description: "", goals: "", startDate: "", endDate: "", status: "Not Started" });
+      setDevPlanForm({ title: "", description: "", goals: "", startDate: "", endDate: "", status: "Not Started", linkedSkillId: "", linkedSwotId: "" });
       toast.success("Development plan added");
     },
     onError: (e) => toast.error(`Failed: ${e.message}`),
@@ -1190,7 +1333,7 @@ function DetailPanel({
     onSuccess: () => {
       refetchSkills();
       setShowSkillForm(false);
-      setSkillForm({ name: "", level: "Beginner", linkedKpiId: "", linkedSwotId: "" });
+      setSkillForm({ name: "", level: "Beginner" as "Beginner" | "Intermediate" | "Advanced" | "Expert", linkedKpiId: "", linkedSwotId: "" });
       toast.success("Skill added");
     },
     onError: (e) => toast.error(`Failed: ${e.message}`),
@@ -1467,7 +1610,7 @@ function DetailPanel({
               <div className="rounded-lg border p-4 bg-muted/20 flex items-center justify-between">
                 <div>
                   <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">Latest Assessment</p>
-                  <p className="text-sm font-medium">{formatDate(latestAssessment.assessmentDate)}</p>
+                  <p className="text-sm font-medium">{formatDateTime(latestAssessment.assessmentDate)}</p>
                   {latestAssessment.assessorName && (
                     <p className="text-xs text-muted-foreground">by {latestAssessment.assessorName}</p>
                   )}
@@ -1518,7 +1661,7 @@ function DetailPanel({
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <Award className="h-4 w-4 text-primary" />
-                          <span className="font-medium text-sm">{formatDate(a.assessmentDate)}</span>
+                          <span className="font-medium text-sm">{formatDateTime(a.assessmentDate)}</span>
                           {a.assessorName && <span className="text-xs text-muted-foreground">by {a.assessorName}</span>}
                         </div>
                         {a.overallScore != null && (
@@ -1671,6 +1814,38 @@ function DetailPanel({
                     <SelectItem value="On Hold">On Hold</SelectItem>
                   </SelectContent>
                 </Select>
+                {skills.length > 0 && (
+                  <div className="space-y-1">
+                    <Label className="text-xs">Link to Skill (optional)</Label>
+                    <Select value={devPlanForm.linkedSkillId || "__none__"} onValueChange={(v) => setDevPlanForm((p) => ({ ...p, linkedSkillId: v === "__none__" ? "" : v }))}>
+                      <SelectTrigger className="h-8">
+                        <SelectValue placeholder="Select skill..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">— None —</SelectItem>
+                        {(skills as any[]).map((sk) => (
+                          <SelectItem key={sk.id} value={String(sk.id)}>{sk.name} ({sk.level})</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                {swotItems.length > 0 && (
+                  <div className="space-y-1">
+                    <Label className="text-xs">Link to SWOT Item (optional)</Label>
+                    <Select value={devPlanForm.linkedSwotId || "__none__"} onValueChange={(v) => setDevPlanForm((p) => ({ ...p, linkedSwotId: v === "__none__" ? "" : v }))}>
+                      <SelectTrigger className="h-8">
+                        <SelectValue placeholder="Select SWOT item..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">— None —</SelectItem>
+                        {(swotItems as any[]).map((sw) => (
+                          <SelectItem key={sw.id} value={String(sw.id)}>[{sw.quadrant}] {sw.description.length > 50 ? sw.description.slice(0, 50) + "…" : sw.description}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <div className="flex gap-2">
                   <Button
                     size="sm"
@@ -1685,7 +1860,9 @@ function DetailPanel({
                         goals: devPlanForm.goals,
                         startDate: devPlanForm.startDate || undefined,
                         endDate: devPlanForm.endDate || undefined,
-                        status: devPlanForm.status,
+                        status: devPlanForm.status as "Not Started" | "In Progress" | "Completed" | "On Hold",
+                        linkedSkillId: devPlanForm.linkedSkillId ? parseInt(devPlanForm.linkedSkillId) : null,
+                        linkedSwotId: devPlanForm.linkedSwotId ? parseInt(devPlanForm.linkedSwotId) : null,
                       });
                     }}
                   >
@@ -1732,17 +1909,37 @@ function DetailPanel({
                         {plan.endDate && formatDate(plan.endDate)}
                       </p>
                     )}
-                    {/* Linked KPIs (visual) */}
-                    {kpis.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        <span className="text-[10px] text-muted-foreground uppercase tracking-wide mr-1 self-center">Linked KPIs:</span>
-                        {(kpis as any[]).map((kpi) => (
-                          <span key={kpi.id} className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
-                            {kpi.name}
-                          </span>
-                        ))}
-                      </div>
-                    )}
+                    {/* Linked Skill */}
+                    {plan.linkedSkillId && (() => {
+                      const sk = (skills as any[]).find((s) => s.id === plan.linkedSkillId);
+                      return sk ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded-full">
+                          <Zap className="h-2.5 w-2.5" /> Skill: {sk.name} ({sk.level})
+                        </span>
+                      ) : null;
+                    })()}
+                    {/* Linked SWOT Item */}
+                    {plan.linkedSwotId && (() => {
+                      const sw = (swotItems as any[]).find((s) => s.id === plan.linkedSwotId);
+                      return sw ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded-full">
+                          <Brain className="h-2.5 w-2.5" /> {sw.quadrant}: {sw.description.length > 40 ? sw.description.slice(0, 40) + "…" : sw.description}
+                        </span>
+                      ) : null;
+                    })()}
+                    {/* DEV Tasks link */}
+                    <div className="pt-1 border-t border-dashed border-teal-200 mt-1">
+                      <button
+                        onClick={() => {
+                          sessionStorage.setItem('tasks_tab', 'development');
+                          window.location.href = '/tasks';
+                        }}
+                        className="inline-flex items-center gap-1 text-[10px] text-teal-600 hover:text-teal-700 hover:underline font-medium"
+                      >
+                        <CheckSquare className="h-2.5 w-2.5" />
+                        View / Create DEV Tasks →
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -1785,12 +1982,12 @@ function DetailPanel({
                 {kpis.length > 0 && (
                   <div className="space-y-1">
                     <Label className="text-xs">Link to KPI (optional)</Label>
-                    <Select value={skillForm.linkedKpiId} onValueChange={(v) => setSkillForm((p) => ({ ...p, linkedKpiId: v }))}>
+                    <Select value={skillForm.linkedKpiId || "__none__"} onValueChange={(v) => setSkillForm((p) => ({ ...p, linkedKpiId: v === "__none__" ? "" : v }))}>
                       <SelectTrigger className="h-8">
                         <SelectValue placeholder="Select KPI..." />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">— None —</SelectItem>
+                        <SelectItem value="__none__">— None —</SelectItem>
                         {(kpis as any[]).map((kpi) => (
                           <SelectItem key={kpi.id} value={String(kpi.id)}>{kpi.name}</SelectItem>
                         ))}
@@ -1801,12 +1998,12 @@ function DetailPanel({
                 {swotItems.length > 0 && (
                   <div className="space-y-1">
                     <Label className="text-xs">Link to SWOT item (optional)</Label>
-                    <Select value={skillForm.linkedSwotId} onValueChange={(v) => setSkillForm((p) => ({ ...p, linkedSwotId: v }))}>
+                    <Select value={skillForm.linkedSwotId || "__none__"} onValueChange={(v) => setSkillForm((p) => ({ ...p, linkedSwotId: v === "__none__" ? "" : v }))}>
                       <SelectTrigger className="h-8">
                         <SelectValue placeholder="Select SWOT item..." />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">— None —</SelectItem>
+                        <SelectItem value="__none__">— None —</SelectItem>
                         {(swotItems as any[]).map((s) => (
                           <SelectItem key={s.id} value={String(s.id)}>[{s.quadrant}] {s.description}</SelectItem>
                         ))}
@@ -1822,11 +2019,10 @@ function DetailPanel({
                       if (!currentProjectId) { toast.error("No project selected"); return; }
                       createSkill.mutate({
                         stakeholderId: stakeholder.id,
-                        projectId: currentProjectId,
                         name: skillForm.name,
                         level: skillForm.level,
-                        linkedKpiId: skillForm.linkedKpiId ? parseInt(skillForm.linkedKpiId) : undefined,
-                        linkedSwotId: skillForm.linkedSwotId ? parseInt(skillForm.linkedSwotId) : undefined,
+                        linkedKpiId: skillForm.linkedKpiId ? parseInt(skillForm.linkedKpiId) : null,
+                        linkedSwotId: skillForm.linkedSwotId ? parseInt(skillForm.linkedSwotId) : null,
                       });
                     }}
                   >
@@ -1869,7 +2065,7 @@ function DetailPanel({
                       <div className="flex items-center gap-1 shrink-0">
                         <Select
                           value={skill.level}
-                          onValueChange={(v) => updateSkill.mutate({ id: skill.id, data: { level: v } })}
+                          onValueChange={(v) => updateSkill.mutate({ id: skill.id, data: { level: v as "Beginner" | "Intermediate" | "Advanced" | "Expert" } })}
                         >
                           <SelectTrigger className="h-6 w-28 text-xs">
                             <SelectValue />
@@ -2254,6 +2450,16 @@ export default function Stakeholders() {
     { enabled: !!currentProjectId }
   );
 
+  const { data: kpiSummaries = [] } = trpc.stakeholderEnhancements.listProjectKpiSummary.useQuery(
+    { projectId: currentProjectId! },
+    { enabled: !!currentProjectId }
+  );
+  const kpiSummaryMap = useMemo(() => {
+    const map = new Map<number, { latestOverallScore: number | null; previousOverallScore: number | null; averageOverallScore: number | null; trend: number[] }>();
+    for (const s of kpiSummaries) map.set(s.stakeholderId, { latestOverallScore: s.latestOverallScore, previousOverallScore: s.previousOverallScore, averageOverallScore: s.averageOverallScore ?? null, trend: s.trend ?? [] });
+    return map;
+  }, [kpiSummaries]);
+
   const createMutation = trpc.stakeholders.create.useMutation({
     onSuccess: () => {
       utils.stakeholders.list.invalidate();
@@ -2478,7 +2684,15 @@ export default function Stakeholders() {
             <Plus className="h-4 w-4" /> Add Stakeholder
           </Button>
           {currentProjectId && (
-            <ImportExportToolbar module="stakeholders" projectId={currentProjectId} onImportSuccess={() => {}} />
+            <ImportExportToolbar
+              module="stakeholders"
+              projectId={currentProjectId}
+              onImportSuccess={() => {
+                utils.stakeholders.list.invalidate();
+                utils.commPlanOptions.positionOptions.list.invalidate();
+                utils.commPlanOptions.roleOptions.list.invalidate();
+              }}
+            />
           )}
         </div>
       </div>
@@ -2604,13 +2818,14 @@ export default function Stakeholders() {
               <TableHead>Email</TableHead>
               <TableHead>Phone</TableHead>
               <TableHead>Remark</TableHead>
+              <TableHead>Trend / KPI Score</TableHead>
               <TableHead className="w-28">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredStakeholders.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8}>
+                <TableCell colSpan={9}>
                   <EmptyState
                     icon={Users}
                     title={searchTerm ? "No stakeholders match your search" : "No stakeholders yet"}
@@ -2674,6 +2889,52 @@ export default function Stakeholders() {
                       ) : (
                         <span className="text-muted-foreground text-xs">—</span>
                       )}
+                    </TableCell>
+                    {/* Trend + KPI Score combined column */}
+                    <TableCell>
+                      {(() => {
+                        const kpi = kpiSummaryMap.get(s.id);
+                        if (!kpi || kpi.latestOverallScore === null) {
+                          return <span className="text-muted-foreground text-xs">—</span>;
+                        }
+                        const score = Number(kpi.latestOverallScore);
+                        const prev = kpi.previousOverallScore !== null && kpi.previousOverallScore !== undefined ? Number(kpi.previousOverallScore) : null;
+                        const rawDiff = prev !== null ? score - prev : null;
+                        const diff = rawDiff !== null && !isNaN(rawDiff) ? rawDiff : null;
+                        const scoreColor = score >= 75 ? "text-green-600" : score >= 50 ? "text-yellow-600" : "text-red-600";
+                        const avg = kpi.averageOverallScore !== null && kpi.averageOverallScore !== undefined ? Number(kpi.averageOverallScore) : null;
+                        const avgBg = avg === null ? "" : avg >= 75 ? "bg-green-50 text-green-700 border-green-300" : avg >= 50 ? "bg-yellow-50 text-yellow-700 border-yellow-300" : "bg-red-50 text-red-600 border-red-300";
+                        return (
+                          <div className="flex items-center gap-2 flex-nowrap">
+                            {/* Sparkline */}
+                            {kpi.trend.length >= 2 && (
+                              <SparkLine data={kpi.trend} />
+                            )}
+                            {/* Delta badge */}
+                            {diff !== null && (
+                              <span className={`inline-flex items-center gap-0.5 text-[11px] font-semibold px-1 py-0.5 rounded ${
+                                diff > 0 ? "bg-green-50 text-green-700" : diff < 0 ? "bg-red-50 text-red-600" : "bg-muted text-muted-foreground"
+                              }`}>
+                                {diff > 0 ? <TrendingUp className="w-3 h-3" /> : diff < 0 ? <TrendingDown className="w-3 h-3" /> : null}
+                                {diff > 0 ? `+${diff}` : diff === 0 ? "=" : diff}
+                              </span>
+                            )}
+                            {/* Divider */}
+                            <span className="text-border text-muted-foreground/30 select-none">|</span>
+                            {/* Latest score */}
+                            <span className={`font-bold text-sm tabular-nums ${scoreColor}`}>{score}</span>
+                            {/* Average circle */}
+                            {avg !== null && (
+                              <span
+                                title={`Avg of all assessments: ${avg}`}
+                                className={`inline-flex items-center justify-center w-6 h-6 rounded-full border text-[10px] font-bold shrink-0 ${avgBg}`}
+                              >
+                                {avg}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center gap-1">
