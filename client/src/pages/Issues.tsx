@@ -434,7 +434,7 @@ export default function Issues() {
     const issueData: any = {
       ...newIssue,
       owner: ownerName,
-      ownerId: newIssue.owner ? parseInt(newIssue.owner) : undefined,
+      ownerId: newIssue.owner ? (isNaN(parseInt(newIssue.owner)) ? undefined : parseInt(newIssue.owner)) : undefined,
       projectId: currentProjectId!,
       requirementId: (linkRequirement && newIssue.requirementId && newIssue.requirementId !== "none") ? newIssue.requirementId : undefined,
       deliverableId: newIssue.deliverableId ? parseInt(newIssue.deliverableId) : undefined,

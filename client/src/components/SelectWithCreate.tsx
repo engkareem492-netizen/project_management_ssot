@@ -206,7 +206,7 @@ export function SelectWithCreate({ type, value, onValueChange, placeholder, cate
         <SelectContent>
           {type === "stakeholder" ? (
             (options as any[])?.map((stakeholder: any) => (
-              <SelectItem key={stakeholder.id} value={stakeholder.fullName}>{stakeholder.fullName}</SelectItem>
+              <SelectItem key={stakeholder.id} value={stakeholder.id.toString()}>{stakeholder.fullName}</SelectItem>
             ))
           ) : type === "issueType" || type === "class" ? (
             (options as any[])?.map((opt: any) => (
