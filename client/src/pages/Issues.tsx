@@ -134,6 +134,7 @@ export default function Issues() {
     knowledgeBaseCode: '',
     resolutionDate: '',
     scopeItemId: undefined as number | undefined,
+    linkedDocumentId: undefined as number | undefined,
   });  const { data: issues, isLoading, refetch } = trpc.issues.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
   const { data: stakeholders } = trpc.stakeholders.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
   const { data: requirements } = trpc.requirements.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
@@ -169,6 +170,10 @@ export default function Issues() {
     { enabled: !!currentProjectId }
   );
   const { data: knowledgeBaseEntries } = trpc.knowledgeBase.list.useQuery(
+    { projectId: currentProjectId || 0 },
+    { enabled: !!currentProjectId }
+  );
+  const { data: allDocuments = [] } = trpc.documents.list.useQuery(
     { projectId: currentProjectId || 0 },
     { enabled: !!currentProjectId }
   );
@@ -484,6 +489,7 @@ export default function Issues() {
       taskId: issue.taskId || '',
       resolutionDate: issue.resolutionDate || '',
       scopeItemId: issue.scopeItemId ?? undefined,
+      linkedDocumentId: issue.linkedDocumentId ?? undefined,
     });
     setViewDialogOpen(true);
   };
@@ -492,6 +498,7 @@ export default function Issues() {
     setSelectedIssue(issue);
     setIsEditMode(true);
     setEditFormData({ scopeItemId: issue.scopeItemId ?? undefined,
+      linkedDocumentId: issue.linkedDocumentId ?? undefined,
       issueGroup: issue.issueGroup || '',
       description: issue.description || '',
       source: issue.source || '',
@@ -1114,25 +1121,45 @@ export default function Issues() {
                   </div>
                 </div>
                 {/* Scope Item */}
-                <div className="space-y-2">
-                  <Label>Scope Item</Label>
-                  <Select
-                    value={newIssue.scopeItemId ? String(newIssue.scopeItemId) : '__none__'}
-                    onValueChange={(v) => setNewIssue({ ...newIssue, scopeItemId: v === '__none__' ? undefined : Number(v) })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select scope item..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">— None —</SelectItem>
-                      {scopeItemsList.map((si) => (
-                        <SelectItem key={si.id} value={String(si.id)}>
-                          {si.idCode} – {si.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                 <div className="space-y-2">
+                   <Label>Scope Item</Label>
+                   <Select
+                     value={newIssue.scopeItemId ? String(newIssue.scopeItemId) : '__none__'}
+                     onValueChange={(v) => setNewIssue({ ...newIssue, scopeItemId: v === '__none__' ? undefined : Number(v) })}
+                   >
+                     <SelectTrigger>
+                       <SelectValue placeholder="Select scope item..." />
+                     </SelectTrigger>
+                     <SelectContent>
+                       <SelectItem value="__none__">— None —</SelectItem>
+                       {scopeItemsList.map((si) => (
+                         <SelectItem key={si.id} value={String(si.id)}>
+                           {si.idCode} – {si.name}
+                         </SelectItem>
+                       ))}
+                     </SelectContent>
+                   </Select>
+                 </div>
+                 {/* Document Library Reference */}
+                 <div className="space-y-2">
+                   <Label>Linked Document</Label>
+                   <Select
+                     value={newIssue.linkedDocumentId ? String(newIssue.linkedDocumentId) : '__none__'}
+                     onValueChange={(v) => setNewIssue({ ...newIssue, linkedDocumentId: v === '__none__' ? undefined : Number(v) })}
+                   >
+                     <SelectTrigger>
+                       <SelectValue placeholder="Select document from library..." />
+                     </SelectTrigger>
+                     <SelectContent>
+                       <SelectItem value="__none__">— None —</SelectItem>
+                       {allDocuments.map((doc: any) => (
+                         <SelectItem key={doc.id} value={String(doc.id)}>
+                           {doc.documentId} – {doc.originalName || doc.fileName}
+                         </SelectItem>
+                       ))}
+                     </SelectContent>
+                   </Select>
+                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="description">Description *</Label>
                   <Input
@@ -1513,6 +1540,34 @@ export default function Issues() {
                   <p className="font-medium text-sm">
                     {selectedIssue?.scopeItemId
                       ? (() => { const si = scopeItemsList.find((s) => s.id === selectedIssue.scopeItemId); return si ? `${si.idCode} – ${si.name}` : `#${selectedIssue.scopeItemId}`; })()
+                      : '—'}
+                  </p>
+                )}
+              </div>
+              {/* Linked Document */}
+              <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Linked Document</Label>
+                {isEditMode ? (
+                  <Select
+                    value={editFormData.linkedDocumentId ? String(editFormData.linkedDocumentId) : '__none__'}
+                    onValueChange={(v) => setEditFormData({ ...editFormData, linkedDocumentId: v === '__none__' ? undefined : Number(v) })}
+                  >
+                    <SelectTrigger className="h-8">
+                      <SelectValue placeholder="Select document" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">— None —</SelectItem>
+                      {allDocuments.map((doc: any) => (
+                        <SelectItem key={doc.id} value={String(doc.id)}>
+                          {doc.documentId} – {doc.originalName || doc.fileName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="font-medium text-sm">
+                    {selectedIssue?.linkedDocumentId
+                      ? (() => { const doc = allDocuments.find((d: any) => d.id === selectedIssue.linkedDocumentId); return doc ? `${doc.documentId} – ${doc.originalName || doc.fileName}` : `#${selectedIssue.linkedDocumentId}`; })()
                       : '—'}
                   </p>
                 )}

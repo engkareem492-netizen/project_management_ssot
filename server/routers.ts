@@ -547,6 +547,7 @@ export const appRouter = router({
         lastUpdate: z.string().optional(),
         updateDate: z.string().optional(),
         scopeItemId: z.number().optional().nullable(),
+        linkedDocumentId: z.number().optional().nullable(),
       }))
       .mutation(async ({ input }) => {
         try {
@@ -647,6 +648,7 @@ export const appRouter = router({
           owner: z.string().optional(),
           description: z.string().optional(),
           scopeItemId: z.number().optional().nullable(),
+          linkedDocumentId: z.number().optional().nullable(),
         }),
       }))
       .mutation(async ({ input, ctx }) => {
@@ -1074,6 +1076,7 @@ export const appRouter = router({
         resolutionDate: z.string().optional(),
         requiredResolutionDate: z.string().optional(),
         scopeItemId: z.number().optional().nullable(),
+        linkedDocumentId: z.number().optional().nullable(),
       }))
       .mutation(async ({ input }) => {
         try {
@@ -1144,6 +1147,7 @@ export const appRouter = router({
           taskId: z.string().optional(),
           knowledgeBaseCode: z.string().optional(),
           scopeItemId: z.number().optional().nullable(),
+          linkedDocumentId: z.number().optional().nullable(),
         }),
       }))
       .mutation(async ({ input, ctx }) => {

@@ -94,6 +94,7 @@ export default function Requirements() {
     createdAt: new Date().toISOString().split('T')[0],
     knowledgeBaseCode: '',
     scopeItemId: undefined as number | undefined,
+    linkedDocumentId: undefined as number | undefined,
   });
   const [viewMode, setViewMode] = useState<'compact' | 'full'>('full');
 
@@ -167,6 +168,10 @@ export default function Requirements() {
   const { data: knowledgeBaseEntries } = trpc.knowledgeBase.list.useQuery(
     { projectId: currentProjectId || 0 },
     { enabled: !!currentProjectId && viewDialogOpen && isEditMode }
+  );
+  const { data: allDocuments = [] } = trpc.documents.list.useQuery(
+    { projectId: currentProjectId || 0 },
+    { enabled: !!currentProjectId }
   );
 
   const updateMutation = trpc.requirements.update.useMutation({
@@ -425,6 +430,7 @@ export default function Requirements() {
       description: req.description || '',
       lastUpdate: req.lastUpdate || '',
       knowledgeBaseCode: req.knowledgeBaseCode || '',
+      linkedDocumentId: req.linkedDocumentId ?? undefined,
     });
     setIsEditMode(false);
     setViewDialogOpen(true);
@@ -445,6 +451,7 @@ export default function Requirements() {
       description: req.description || '',
       lastUpdate: req.lastUpdate || '',
       knowledgeBaseCode: req.knowledgeBaseCode || '',
+      linkedDocumentId: req.linkedDocumentId ?? undefined,
     });
     setIsEditMode(true);
     setViewDialogOpen(true);
@@ -775,6 +782,14 @@ export default function Requirements() {
                                 <span className="font-medium min-w-[120px]">Scope Item:</span>
                                 <span className="text-primary font-mono text-xs">
                                   {(() => { const si = scopeItemsList.find((s: any) => s.id === req.scopeItemId); return si ? `${si.idCode} – ${si.name}` : `#${req.scopeItemId}`; })()}
+                                </span>
+                              </div>
+                            )}
+                            {req.linkedDocumentId && (
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium min-w-[120px]">Linked Document:</span>
+                                <span className="text-primary font-mono text-xs">
+                                  {(() => { const doc = allDocuments.find((d: any) => d.id === req.linkedDocumentId); return doc ? `${doc.documentId} – ${doc.originalName || doc.fileName}` : `#${req.linkedDocumentId}`; })()}
                                 </span>
                               </div>
                             )}
@@ -1109,11 +1124,39 @@ export default function Requirements() {
                     </Select>
                   </div>
                 )}
-                {/* Status */}
+                {/* Linked Document */}
                 <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
-                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Status</Label>
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Linked Document</Label>
                   {isEditMode ? (
-                    <Select value={editFormData.status || ''} onValueChange={(v) => setEditFormData({...editFormData, status: v})}>
+                    <Select
+                      value={editFormData.linkedDocumentId ? String(editFormData.linkedDocumentId) : '__none__'}
+                      onValueChange={(v) => setEditFormData({ ...editFormData, linkedDocumentId: v === '__none__' ? undefined : Number(v) })}
+                    >
+                      <SelectTrigger className="h-8">
+                        <SelectValue placeholder="Select document" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">— None —</SelectItem>
+                        {allDocuments.map((doc: any) => (
+                          <SelectItem key={doc.id} value={String(doc.id)}>
+                            {doc.documentId} – {doc.originalName || doc.fileName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="font-medium text-sm">
+                      {selectedRequirement?.linkedDocumentId
+                        ? (() => { const doc = allDocuments.find((d: any) => d.id === selectedRequirement.linkedDocumentId); return doc ? `${doc.documentId} – ${doc.originalName || doc.fileName}` : `#${selectedRequirement.linkedDocumentId}`; })()
+                        : '—'}
+                    </p>
+                  )}
+                </div>
+                {/* Status */}
+                 <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">Status</Label>
+                   {isEditMode ? (
+                     <Select value={editFormData.status || ''} onValueChange={(v) => setEditFormData({...editFormData, status: v})}>
                       <SelectTrigger className="h-8">
                         <SelectValue placeholder="Select status" />
                       </SelectTrigger>
@@ -1624,6 +1667,27 @@ export default function Requirements() {
                   {scopeItemsList.map((si: any) => (
                     <SelectItem key={si.id} value={String(si.id)}>
                       {si.idCode} – {si.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Document Library Reference */}
+            <div className="space-y-2">
+              <Label>Linked Document</Label>
+              <Select
+                value={newRequirement.linkedDocumentId ? String(newRequirement.linkedDocumentId) : '__none__'}
+                onValueChange={(v) => setNewRequirement({ ...newRequirement, linkedDocumentId: v === '__none__' ? undefined : Number(v) })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select document from library..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">— None —</SelectItem>
+                  {allDocuments.map((doc: any) => (
+                    <SelectItem key={doc.id} value={String(doc.id)}>
+                      {doc.documentId} – {doc.originalName || doc.fileName}
                     </SelectItem>
                   ))}
                 </SelectContent>

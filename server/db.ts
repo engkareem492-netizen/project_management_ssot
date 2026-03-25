@@ -196,6 +196,10 @@ export async function createRequirement(data: InsertRequirement) {
   
   // Populate owner name from ownerId
   const enrichedData: any = { ...data };
+
+  // Default createdAt to today if not provided
+  const today = new Date().toISOString().split('T')[0];
+  if (!enrichedData.createdAt) enrichedData.createdAt = today;
   if (data.ownerId) {
     const stakeholder = await getStakeholderById(data.ownerId);
     if (stakeholder) enrichedData.owner = stakeholder.fullName;
@@ -395,6 +399,12 @@ export async function createIssue(data: InsertIssue) {
   
   // Populate owner name from ownerId
   const enrichedData: any = { ...data };
+
+  // Default openDate and createdAt to today if not provided
+  const today = new Date().toISOString().split('T')[0];
+  if (!enrichedData.openDate) enrichedData.openDate = today;
+  if (!enrichedData.createdAt) enrichedData.createdAt = today;
+
   if (data.ownerId) {
     const stakeholder = await getStakeholderById(data.ownerId);
     if (stakeholder) enrichedData.owner = stakeholder.fullName;

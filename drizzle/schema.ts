@@ -215,6 +215,7 @@ export const requirements = mysqlTable("requirements", {
   source: varchar("source", { length: 20 }),
   knowledgeBaseCode: varchar("knowledgeBaseCode", { length: 50 }),
   scopeItemId: int("scopeItemId"),
+  linkedDocumentId: int("linkedDocumentId"),
 });
 
 export type Requirement = typeof requirements.$inferSelect;
@@ -315,6 +316,7 @@ export const issues = mysqlTable("issues", {
   requiredResolutionDate: varchar("requiredResolutionDate", { length: 50 }),
   knowledgeBaseCode: varchar("knowledgeBaseCode", { length: 50 }),
   scopeItemId: int("scopeItemId"),
+  linkedDocumentId: int("linkedDocumentId"),
   importedAt: timestamp("importedAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
