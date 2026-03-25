@@ -763,3 +763,7 @@
 ## Bug Fixes (Mar 25, 2026 - Project Creation)
 
 - [x] Fix project creation error - projects table missing columns: programName, portfolioName, programId, portfolioId, logoUrl
+
+## Bug Fixes (Mar 25, 2026 - Missing Tables)
+
+- [x] Create missing DB tables: commPlanRoleOptions, stakeholderPositionOptions, externalParties, communication_log, commPlanMethodOptions, commPlanJobOptions, commPlanItems, communicationPlanEntries
