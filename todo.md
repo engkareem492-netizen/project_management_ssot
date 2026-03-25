@@ -759,3 +759,7 @@
 - [x] Fix db.ts Set iteration (Array.from)
 - [x] Fix all remaining TS2339/TS2304/TS2345 errors across frontend pages
 - [x] Confirmed 0 TypeScript errors after full fresh tsc --noEmit run
+
+## Bug Fixes (Mar 25, 2026 - Project Creation)
+
+- [x] Fix project creation error - projects table missing columns: programName, portfolioName, programId, portfolioId, logoUrl
