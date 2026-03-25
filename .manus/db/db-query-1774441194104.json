@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `dropdown_registry` (\n  `id` INT AUTO_INCREMENT PRIMARY KEY,\n  `project_id` INT NOT NULL,\n  `domain` VARCHAR(100) NOT NULL,\n  `field_key` VARCHAR(100) NOT NULL,\n  `value` VARCHAR(255) NOT NULL,\n  `color` VARCHAR(50),\n  `icon` VARCHAR(50),\n  `sort_order` INT NOT NULL DEFAULT 0,\n  `is_default` BOOLEAN NOT NULL DEFAULT FALSE,\n  `is_active` BOOLEAN NOT NULL DEFAULT TRUE,\n  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n  INDEX `idx_dropdown_project` (`project_id`),\n  INDEX `idx_dropdown_domain_field` (`project_id`, `domain`, `field_key`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 34DzJoQKEqyc4cp.root --database MtjPfUT7z9e3zhUb3tuetB --execute CREATE TABLE IF NOT EXISTS `dropdown_registry` (\n  `id` INT AUTO_INCREMENT PRIMARY KEY,\n  `project_id` INT NOT NULL,\n  `domain` VARCHAR(100) NOT NULL,\n  `field_key` VARCHAR(100) NOT NULL,\n  `value` VARCHAR(255) NOT NULL,\n  `color` VARCHAR(50),\n  `icon` VARCHAR(50),\n  `sort_order` INT NOT NULL DEFAULT 0,\n  `is_default` BOOLEAN NOT NULL DEFAULT FALSE,\n  `is_active` BOOLEAN NOT NULL DEFAULT TRUE,\n  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n  INDEX `idx_dropdown_project` (`project_id`),\n  INDEX `idx_dropdown_domain_field` (`project_id`, `domain`, `field_key`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1625
+}

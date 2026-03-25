@@ -767,3 +767,10 @@
 ## Bug Fixes (Mar 25, 2026 - Missing Tables)
 
 - [x] Create missing DB tables: commPlanRoleOptions, stakeholderPositionOptions, externalParties, communication_log, commPlanMethodOptions, commPlanJobOptions, commPlanItems, communicationPlanEntries
+
+## Feature: Dropdown Isolation by Project (Mar 25, 2026)
+
+- [ ] Audit dropdown_registry table and router for project isolation
+- [ ] Ensure all dropdown queries filter by projectId
+- [ ] Ensure dropdown create/update/delete operations are scoped to projectId
+- [ ] Verify no cross-project dropdown leakage in the UI
