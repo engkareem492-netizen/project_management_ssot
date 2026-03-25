@@ -1252,6 +1252,7 @@ export const documents = mysqlTable("documents", {
   entityId: varchar("entityId", { length: 50 }),
   uploadedBy: varchar("uploadedBy", { length: 255 }),
   uploadedById: int("uploadedById"),
+  categoryId: int("categoryId"),
   tags: json("tags").$type<string[]>(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -2376,3 +2377,35 @@ export const requirementTestCases = mysqlTable("requirementTestCases", {
 });
 export type RequirementTestCase = typeof requirementTestCases.$inferSelect;
 export type InsertRequirementTestCase = typeof requirementTestCases.$inferInsert;
+
+// ─── Document Categories (project-scoped, editable) ──────────────────────────
+export const documentCategories = mysqlTable("documentCategories", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  name: varchar("name", { length: 100 }).notNull(),
+  color: varchar("color", { length: 30 }).default("gray"),
+  sortOrder: int("sortOrder").default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type DocumentCategory = typeof documentCategories.$inferSelect;
+export type InsertDocumentCategory = typeof documentCategories.$inferInsert;
+
+// ─── Document ↔ Issue (many-to-many) ─────────────────────────────────────────
+export const documentIssueLinks = mysqlTable("documentIssueLinks", {
+  id: int("id").autoincrement().primaryKey(),
+  documentId: int("documentId").notNull(),
+  issueId: int("issueId").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type DocumentIssueLink = typeof documentIssueLinks.$inferSelect;
+export type InsertDocumentIssueLink = typeof documentIssueLinks.$inferInsert;
+
+// ─── Document ↔ Requirement (many-to-many) ───────────────────────────────────
+export const documentRequirementLinks = mysqlTable("documentRequirementLinks", {
+  id: int("id").autoincrement().primaryKey(),
+  documentId: int("documentId").notNull(),
+  requirementId: int("requirementId").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type DocumentRequirementLink = typeof documentRequirementLinks.$inferSelect;
+export type InsertDocumentRequirementLink = typeof documentRequirementLinks.$inferInsert;

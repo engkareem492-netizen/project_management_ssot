@@ -774,3 +774,13 @@
 - [ ] Ensure all dropdown queries filter by projectId
 - [ ] Ensure dropdown create/update/delete operations are scoped to projectId
 - [ ] Verify no cross-project dropdown leakage in the UI
+
+## Feature: Document Linking & Categories (Mar 25, 2026)
+
+- [x] Add documentCategories table (project-isolated, editable)
+- [x] Add documentIssueLinks junction table (document ↔ issues many-to-many)
+- [x] Add documentRequirementLinks junction table (document ↔ requirements many-to-many)
+- [x] Create DB tables for all three new tables
+- [x] Add router procedures: CRUD for document categories, link/unlink issues, link/unlink requirements
+- [x] Update Documents page: replace hardcoded categories with editable project-scoped list
+- [x] Update Documents page: add "Linked Issues" and "Linked Requirements" sections in document detail/edit dialog
