@@ -97,6 +97,14 @@ export default function Requirements() {
     linkedDocumentId: undefined as number | undefined,
   });
   const [viewMode, setViewMode] = useState<'compact' | 'full'>('full');
+  // Quick-create Document mini-dialog state
+  const [quickDocDialogOpen, setQuickDocDialogOpen] = useState(false);
+  const [quickDocFor, setQuickDocFor] = useState<'edit' | 'create'>('edit');
+  const [quickDocForm, setQuickDocForm] = useState({ title: '', url: '', description: '' });
+  // Quick-create KB mini-dialog state
+  const [quickKbDialogOpen, setQuickKbDialogOpen] = useState(false);
+  const [quickKbFor, setQuickKbFor] = useState<'edit' | 'create'>('edit');
+  const [quickKbForm, setQuickKbForm] = useState({ title: '', description: '' });
 
   const utils = trpc.useUtils();
   const { data: requirements, isLoading, refetch } = trpc.requirements.list.useQuery({ projectId: currentProjectId! }, { enabled: !!currentProjectId });
@@ -173,6 +181,38 @@ export default function Requirements() {
     { projectId: currentProjectId || 0 },
     { enabled: !!currentProjectId }
   );
+
+  // Quick-create Document mutation
+  const quickCreateDocMutation = trpc.documents.create.useMutation({
+    onSuccess: (doc) => {
+      toast.success(`Document ${doc.documentId} created`);
+      utils.documents.list.invalidate();
+      if (quickDocFor === 'edit') {
+        setEditFormData((prev: any) => ({ ...prev, linkedDocumentId: doc.id }));
+      } else {
+        setNewRequirement((prev: any) => ({ ...prev, linkedDocumentId: doc.id }));
+      }
+      setQuickDocDialogOpen(false);
+      setQuickDocForm({ title: '', url: '', description: '' });
+    },
+    onError: (e) => toast.error(`Failed to create document: ${e.message}`),
+  });
+
+  // Quick-create KB mutation
+  const quickCreateKbMutation = trpc.knowledgeBase.create.useMutation({
+    onSuccess: (kb) => {
+      toast.success(`KB entry ${kb.kbCode} created`);
+      utils.knowledgeBase.list.invalidate();
+      if (quickKbFor === 'edit') {
+        setEditFormData((prev: any) => ({ ...prev, knowledgeBaseCode: kb.kbCode }));
+      } else {
+        setNewRequirement((prev: any) => ({ ...prev, knowledgeBaseCode: kb.kbCode }));
+      }
+      setQuickKbDialogOpen(false);
+      setQuickKbForm({ title: '', description: '' });
+    },
+    onError: (e) => toast.error(`Failed to create KB entry: ${e.message}`),
+  });
 
   const updateMutation = trpc.requirements.update.useMutation({
     onSuccess: (data) => {
@@ -958,44 +998,7 @@ export default function Requirements() {
             <TabsContent value="details" className="space-y-4 mt-4 flex-1 overflow-y-auto">
               {/* Main Details Grid */}
               <div className="grid grid-cols-3 gap-4">
-                {/* Task Group */}
-                <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
-                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Task Group</Label>
-                  {isEditMode ? (
-                    <div className="flex gap-2">
-                      <Select value={editFormData.taskGroup || ''} onValueChange={(v) => setEditFormData({...editFormData, taskGroup: v})}>
-                        <SelectTrigger className="h-8">
-                          <SelectValue placeholder="Select task group" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {taskGroups?.filter(g => g.name).map((g) => (
-                            <SelectItem key={g.id} value={g.name!}>{g.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  ) : (
-                    <p className="font-medium">{selectedRequirement?.taskGroup || '-'}</p>
-                  )}
-                </div>
-                {/* Issue Group */}
-                <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
-                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Issue Group</Label>
-                  {isEditMode ? (
-                    <Select value={editFormData.issueGroup || ''} onValueChange={(v) => setEditFormData({...editFormData, issueGroup: v})}>
-                      <SelectTrigger className="h-8">
-                        <SelectValue placeholder="Select issue group" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {issueGroups?.filter(g => g.name).map((g) => (
-                          <SelectItem key={g.id} value={g.name!}>{g.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <p className="font-medium">{selectedRequirement?.issueGroup || '-'}</p>
-                  )}
-                </div>
+
                 {/* Priority */}
                 <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">Priority</Label>
@@ -1106,7 +1109,12 @@ export default function Requirements() {
                 {/* Knowledge Base Code */}
                 {isEditMode && (
                   <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
-                    <Label className="text-xs text-muted-foreground uppercase tracking-wide">Knowledge Base Link</Label>
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs text-muted-foreground uppercase tracking-wide">Knowledge Base Link</Label>
+                      <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs text-primary" onClick={() => { setQuickKbFor('edit'); setQuickKbDialogOpen(true); }}>
+                        <Plus className="w-3 h-3 mr-1" /> New KB Entry
+                      </Button>
+                    </div>
                     <Select 
                       value={editFormData.knowledgeBaseCode || ''} 
                       onValueChange={(v) => setEditFormData({...editFormData, knowledgeBaseCode: v})}
@@ -1126,7 +1134,14 @@ export default function Requirements() {
                 )}
                 {/* Linked Document */}
                 <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
-                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Linked Document</Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs text-muted-foreground uppercase tracking-wide">Linked Document</Label>
+                    {isEditMode && (
+                      <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs text-primary" onClick={() => { setQuickDocFor('edit'); setQuickDocDialogOpen(true); }}>
+                        <Plus className="w-3 h-3 mr-1" /> New Document
+                      </Button>
+                    )}
+                  </div>
                   {isEditMode ? (
                     <Select
                       value={editFormData.linkedDocumentId ? String(editFormData.linkedDocumentId) : '__none__'}

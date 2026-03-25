@@ -28,6 +28,7 @@ export default function Issues() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [classFilter, setClassFilter] = useState<string>("all");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editData, setEditData] = useState<any>({});
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
@@ -381,7 +382,8 @@ export default function Issues() {
     const matchesStatus = statusFilter === "all" || issue.status === statusFilter;
     const matchesPriority = priorityFilter === "all" || issue.priority === priorityFilter;
     const matchesType = typeFilter === "all" || issue.type === typeFilter;
-    return matchesSearch && matchesStatus && matchesPriority && matchesType;
+    const matchesClass = classFilter === "all" || issue.class === classFilter;
+    return matchesSearch && matchesStatus && matchesPriority && matchesType && matchesClass;
   });
 
   const getRequirementStatus = (requirementId: string | null) => {
@@ -704,18 +706,16 @@ export default function Issues() {
               />
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-36 h-9">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="Open">Open</SelectItem>
-                <SelectItem value="In Progress">In Progress</SelectItem>
-                <SelectItem value="On Hold">On Hold</SelectItem>
-                <SelectItem value="Resolved">Resolved</SelectItem>
-                <SelectItem value="Closed">Closed</SelectItem>
-              </SelectContent>
-            </Select>
+               <SelectTrigger className="w-36 h-9">
+                 <SelectValue placeholder="Status" />
+               </SelectTrigger>
+               <SelectContent>
+                 <SelectItem value="all">All Statuses</SelectItem>
+                 {statusOptions?.filter((opt: any) => opt.value).map((opt: any) => (
+                   <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
+                 ))}
+               </SelectContent>
+             </Select>
             <Select value={priorityFilter} onValueChange={setPriorityFilter}>
               <SelectTrigger className="w-36 h-9">
                 <SelectValue placeholder="Priority" />
@@ -738,16 +738,27 @@ export default function Issues() {
                 ))}
               </SelectContent>
             </Select>
-            {(statusFilter !== "all" || priorityFilter !== "all" || typeFilter !== "all") && (
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-9 text-muted-foreground"
-                onClick={() => { setStatusFilter("all"); setPriorityFilter("all"); setTypeFilter("all"); }}
-              >
-                <X className="w-3.5 h-3.5 mr-1" />Clear
-              </Button>
-            )}
+            <Select value={classFilter} onValueChange={setClassFilter}>
+               <SelectTrigger className="w-36 h-9">
+                 <SelectValue placeholder="Class" />
+               </SelectTrigger>
+               <SelectContent>
+                 <SelectItem value="all">All Classes</SelectItem>
+                 {classOptions?.filter((c: any) => c.value).map((c: any) => (
+                   <SelectItem key={c.id} value={c.value}>{c.value}</SelectItem>
+                 ))}
+               </SelectContent>
+             </Select>
+            {(statusFilter !== "all" || priorityFilter !== "all" || typeFilter !== "all" || classFilter !== "all") && (
+               <Button
+                 size="sm"
+                 variant="ghost"
+                 className="h-9 text-muted-foreground"
+                 onClick={() => { setStatusFilter("all"); setPriorityFilter("all"); setTypeFilter("all"); setClassFilter("all"); }}
+               >
+                 <X className="w-3.5 h-3.5 mr-1" />Clear
+               </Button>
+             )}
             <Button onClick={() => setCreateDialogOpen(true)}>
               <Plus className="w-4 h-4 mr-2" />
               Create New
