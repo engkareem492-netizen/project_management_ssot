@@ -313,6 +313,16 @@ export default function Resources() {
   const [planCategoryFilter, setPlanCategoryFilter] = useState<string>("all");
   const [planResourceFilter, setPlanResourceFilter] = useState<number | null>(null);
   const [planSearch, setPlanSearch] = useState<string>("");
+  const [planDateFrom, setPlanDateFrom] = useState<string>(() => {
+    const d = new Date();
+    d.setDate(1);
+    return d.toISOString().split("T")[0];
+  });
+  const [planDateTo, setPlanDateTo] = useState<string>(() => {
+    const d = new Date();
+    d.setMonth(d.getMonth() + 1, 0);
+    return d.toISOString().split("T")[0];
+  });
 
   // Heatmap filter state
   const [heatmapTypeFilter, setHeatmapTypeFilter] = useState<"all" | "TeamMember" | "External" | "Stakeholder">("all");
@@ -735,21 +745,92 @@ export default function Resources() {
 
   // ─── Resource Plan ─────────────────────────────────────────────────────────
   const resourcePlan = useMemo(() => {
+    // Build a helper: count working days in [planDateFrom, planDateTo] for a stakeholder
+    // using their calendar entries (Leave/Holiday = non-working, Working/Training/Partial = working)
+    const weekendSet = new Set((calSettings as any)?.weekendDays ?? [5, 6]);
+
+    function getWorkingDaysInRange(stakeholderId: number, from: string, to: string): number {
+      if (!from || !to) return 0;
+      const entries = (calendarEntries as any[]).filter((e: any) => {
+        if (e.stakeholderId !== stakeholderId) return false;
+        const dk = e.date instanceof Date ? e.date.toISOString().split("T")[0] : String(e.date).split("T")[0];
+        return dk >= from && dk <= to;
+      });
+      const entryMap: Record<string, string> = {};
+      entries.forEach((e: any) => {
+        const dk = e.date instanceof Date ? e.date.toISOString().split("T")[0] : String(e.date).split("T")[0];
+        entryMap[dk] = e.type;
+      });
+      let workingDays = 0;
+      const cur = new Date(from + "T00:00:00");
+      const end = new Date(to + "T00:00:00");
+      while (cur <= end) {
+        const dk = cur.toISOString().split("T")[0];
+        const dow = cur.getDay();
+        const isWeekend = weekendSet.has(dow);
+        const calType = entryMap[dk];
+        if (calType) {
+          // Explicit calendar entry: Leave/Holiday = 0 days, Working/Training/Partial = 1 day
+          if (calType !== "Leave" && calType !== "Holiday") workingDays++;
+        } else {
+          // No entry: weekends are non-working, weekdays are working
+          if (!isWeekend) workingDays++;
+        }
+        cur.setDate(cur.getDate() + 1);
+      }
+      return workingDays;
+    }
+
+    function getLeaveDaysInRange(stakeholderId: number, from: string, to: string): number {
+      if (!from || !to) return 0;
+      return (calendarEntries as any[]).filter((e: any) => {
+        if (e.stakeholderId !== stakeholderId) return false;
+        if (e.type !== "Leave" && e.type !== "Holiday") return false;
+        const dk = e.date instanceof Date ? e.date.toISOString().split("T")[0] : String(e.date).split("T")[0];
+        return dk >= from && dk <= to;
+      }).length;
+    }
+
+    function getTasksInRange(w: any, from: string, to: string): number {
+      if (!from || !to) return w.totalAssigned;
+      return (tasks as any[]).filter((t: any) => {
+        if (t.responsible !== w.name) return false;
+        const due = t.dueDate ? (t.dueDate instanceof Date ? t.dueDate.toISOString().split("T")[0] : String(t.dueDate).split("T")[0]) : null;
+        if (!due) return false;
+        return due >= from && due <= to;
+      }).length;
+    }
+
     return workloadData.map((w) => {
       const weeklyCapacityHours = w.hoursPerDay * w.daysPerWeek;
-      const totalCapacityHours = weeklyCapacityHours; // per week view
-      const tasksThisWeek = w.thisWeek;
-      // Estimate hours from tasks (assume avg 8h per task if no duration data)
-      const estimatedHoursUsed = tasksThisWeek * 8;
-      const utilPct = totalCapacityHours > 0
-        ? Math.min(Math.round((estimatedHoursUsed / totalCapacityHours) * 100), 999)
+      // Calendar-aware capacity for the selected date range
+      const workingDays = getWorkingDaysInRange(w.id, planDateFrom, planDateTo);
+      const leaveDays = getLeaveDaysInRange(w.id, planDateFrom, planDateTo);
+      const rangeCapacityHours = workingDays * w.hoursPerDay;
+      // Tasks with due date in the selected range
+      const tasksInRange = getTasksInRange(w, planDateFrom, planDateTo);
+      const estimatedHoursUsed = tasksInRange * 8;
+      const utilPct = rangeCapacityHours > 0
+        ? Math.min(Math.round((estimatedHoursUsed / rangeCapacityHours) * 100), 999)
         : 0;
-      const unusedHours = Math.max(totalCapacityHours - estimatedHoursUsed, 0);
+      const unusedHours = Math.max(rangeCapacityHours - estimatedHoursUsed, 0);
       const costAssigned = w.totalAssigned * 8 * w.hourlyRate;
       const costThisWeek = estimatedHoursUsed * w.hourlyRate;
-      return { ...w, weeklyCapacityHours, estimatedHoursUsed, utilPct, unusedHours, costAssigned, costThisWeek };
+      return {
+        ...w,
+        weeklyCapacityHours,
+        rangeCapacityHours,
+        workingDays,
+        leaveDays,
+        tasksInRange,
+        estimatedHoursUsed,
+        utilPct,
+        unusedHours,
+        costAssigned,
+        costThisWeek,
+      };
     });
-  }, [workloadData]);
+  }, [workloadData, calendarEntries, calSettings, planDateFrom, planDateTo, tasks]);
 
   // ─── Handlers ─────────────────────────────────────────────────────────────
   function openCapacityDialog(name: string, currentCap: number) {
@@ -2188,6 +2269,14 @@ export default function Resources() {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">From</Label>
+                  <Input type="date" value={planDateFrom} onChange={e => setPlanDateFrom(e.target.value)} className="w-36 h-8 text-sm" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">To</Label>
+                  <Input type="date" value={planDateTo} onChange={e => setPlanDateTo(e.target.value)} className="w-36 h-8 text-sm" />
+                </div>
               </div>
             </CardHeader>
             <CardContent className="p-0">
@@ -2209,21 +2298,25 @@ export default function Resources() {
                 return (
                 <>
                   {/* Summary bar */}
-                  <div className="px-5 py-3 bg-muted/30 border-b grid grid-cols-4 gap-4 text-center">
+                  <div className="px-5 py-3 bg-muted/30 border-b grid grid-cols-5 gap-4 text-center">
                     <div>
                       <div className="text-xs text-muted-foreground">Total Resources</div>
                       <div className="font-bold text-lg">{filteredPlan.length}{planCategoryFilter !== "all" && <span className="text-xs font-normal text-muted-foreground ml-1">/ {resourcePlan.length}</span>}</div>
                     </div>
                     <div>
-                      <div className="text-xs text-muted-foreground">Total Capacity (hrs/{planViewMode === "weekly" ? "wk" : "mo"})</div>
-                      <div className="font-bold text-lg">{filteredPlan.reduce((s, r) => s + (planViewMode === "weekly" ? r.weeklyCapacityHours : r.weeklyCapacityHours * 4), 0).toFixed(0)}</div>
+                      <div className="text-xs text-muted-foreground">Total Capacity (hrs)</div>
+                      <div className="font-bold text-lg">{filteredPlan.reduce((s, r) => s + (r as any).rangeCapacityHours, 0).toFixed(0)}</div>
                     </div>
                     <div>
-                      <div className="text-xs text-muted-foreground">Total Tasks Assigned</div>
-                      <div className="font-bold text-lg">{filteredPlan.reduce((s, r) => s + r.totalAssigned, 0)}</div>
+                      <div className="text-xs text-muted-foreground">Leave / Holiday Days</div>
+                      <div className="font-bold text-lg text-orange-600">{filteredPlan.reduce((s, r) => s + ((r as any).leaveDays ?? 0), 0)}</div>
                     </div>
                     <div>
-                      <div className="text-xs text-muted-foreground">Estimated Cost (this wk)</div>
+                      <div className="text-xs text-muted-foreground">Tasks in Range</div>
+                      <div className="font-bold text-lg">{filteredPlan.reduce((s, r) => s + ((r as any).tasksInRange ?? 0), 0)}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Estimated Cost (range)</div>
                       <div className="font-bold text-lg">{formatCurrency(filteredPlan.reduce((s, r) => s + r.costThisWeek, 0))}</div>
                     </div>
                   </div>
@@ -2236,32 +2329,32 @@ export default function Resources() {
                           <TableHead>Classification</TableHead>
                           <TableHead className="text-right">Rate ({projectCurrency}/hr)</TableHead>
                           <TableHead className="text-right">RBS Cost Rate</TableHead>
-                          <TableHead className="text-right">Capacity (hrs/{planViewMode === "weekly" ? "wk" : "mo"})</TableHead>
-                          <TableHead className="text-right">Tasks (total)</TableHead>
+                          <TableHead className="text-right">Working Days</TableHead>
+                          <TableHead className="text-right">Leave Days</TableHead>
+                          <TableHead className="text-right">Capacity (hrs)</TableHead>
+                          <TableHead className="text-right">Tasks in Range</TableHead>
                           <TableHead className="text-right">Non-COMM Tasks</TableHead>
                           <TableHead className="text-right">Est. Hours Used</TableHead>
                           <TableHead className="text-right">Utilization</TableHead>
                           <TableHead className="text-right">Unused Hours</TableHead>
-                          <TableHead className="text-right">Planned Wkly Cost</TableHead>
-                          <TableHead className="text-right">Est. Cost (total)</TableHead>
+                          <TableHead className="text-right">Est. Cost (range)</TableHead>
                           <TableHead className="text-center">KPI Score</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {filteredPlan.map((r) => {
-                          const capacityHrs = planViewMode === "weekly" ? r.weeklyCapacityHours : r.weeklyCapacityHours * 4;
-                          const estUsed = planViewMode === "weekly" ? r.estimatedHoursUsed : r.totalAssigned * 8;
-                          const unused = Math.max(capacityHrs - estUsed, 0);
-                          const util = capacityHrs > 0 ? Math.min(Math.round((estUsed / capacityHrs) * 100), 999) : 0;
-                          const costTotal = r.totalAssigned * 8 * r.hourlyRate;
+                          const rangeCapHrs = (r as any).rangeCapacityHours ?? r.weeklyCapacityHours;
+                          const leaveDays = (r as any).leaveDays ?? 0;
+                          const workingDays = (r as any).workingDays ?? 0;
+                          const tasksInRange = (r as any).tasksInRange ?? r.totalAssigned;
+                          const estUsed = r.estimatedHoursUsed;
+                          const unused = Math.max(rangeCapHrs - estUsed, 0);
+                          const util = r.utilPct;
+                          const costRange = estUsed * r.hourlyRate;
                           const utilColor = util > 100 ? "text-red-600 font-bold" : util >= 80 ? "text-yellow-600" : "text-green-600";
                           // RBS cost rate: look up linked RBS leaf node for this stakeholder
                           const linkedRbsNode = (rbsNodes as any[]).find(n => n.stakeholderId === r.id && n.isLeaf === 1);
                           const rbsCostRate = linkedRbsNode ? parseFloat(linkedRbsNode.costRate ?? "0") || 0 : null;
-                          const effectiveCostRate = rbsCostRate != null && rbsCostRate > 0 ? rbsCostRate : r.hourlyRate;
-                          // Planned weekly cost
-                          const plannedHoursThisWeek = (r.thisWeek * r.hoursPerDay) / Math.max(DEFAULT_CAPACITY, 1);
-                          const plannedWeeklyCost = effectiveCostRate * plannedHoursThisWeek;
                           // KPI score
                           const kpiScore = latestScoreMap[r.id];
                           const kpiBadgeCls = kpiScore == null ? "bg-gray-100 text-gray-500"
@@ -2285,14 +2378,19 @@ export default function Resources() {
                                   ? <span className="text-emerald-700 font-medium">{formatCurrency(rbsCostRate)}</span>
                                   : <span className="text-muted-foreground text-xs">fallback</span>}
                               </TableCell>
-                              <TableCell className="text-right font-medium">{capacityHrs.toFixed(0)}h</TableCell>
-                              <TableCell className="text-right">{r.totalAssigned}</TableCell>
+                              <TableCell className="text-right font-medium">{workingDays}d</TableCell>
+                              <TableCell className="text-right">
+                                {leaveDays > 0
+                                  ? <span className="text-orange-600 font-medium">{leaveDays}d</span>
+                                  : <span className="text-muted-foreground">—</span>}
+                              </TableCell>
+                              <TableCell className="text-right font-medium">{rangeCapHrs.toFixed(0)}h</TableCell>
+                              <TableCell className="text-right">{tasksInRange}</TableCell>
                               <TableCell className="text-right">{(r as any).nonCommAssigned ?? 0}</TableCell>
                               <TableCell className="text-right">{estUsed.toFixed(0)}h</TableCell>
                               <TableCell className={`text-right font-semibold ${utilColor}`}>{util}%</TableCell>
                               <TableCell className="text-right text-muted-foreground">{unused.toFixed(0)}h</TableCell>
-                              <TableCell className="text-right">{plannedWeeklyCost > 0 ? formatCurrency(plannedWeeklyCost) : "—"}</TableCell>
-                              <TableCell className="text-right">{costTotal > 0 ? formatCurrency(costTotal) : "—"}</TableCell>
+                              <TableCell className="text-right">{costRange > 0 ? formatCurrency(costRange) : "—"}</TableCell>
                               <TableCell className="text-center">
                                 <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${kpiBadgeCls}`}>
                                   {kpiScore != null ? kpiScore : "—"}
