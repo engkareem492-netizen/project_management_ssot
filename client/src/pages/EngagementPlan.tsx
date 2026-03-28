@@ -213,8 +213,8 @@ function PowerInterestMap({
   }, [stakeholders, localPos]);
 
   // SVG dimensions
-  const W = 900;
-  const H = 660;
+  const W = 1100;
+  const H = 820;
   const PAD = { top: 52, right: 32, bottom: 68, left: 68 };
   const plotW = W - PAD.left - PAD.right;
   const plotH = H - PAD.top - PAD.bottom;
@@ -349,7 +349,7 @@ function PowerInterestMap({
           ref={svgRef}
           viewBox={`0 0 ${W} ${H}`}
           className="w-full select-none"
-          style={{ minWidth: 480, maxHeight: 700, touchAction: "none" }}
+          style={{ minWidth: 600, touchAction: "none" }}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerLeave={handlePointerUp}
@@ -566,10 +566,12 @@ function StakeholderAnalysisTab({
     [mapStakeholders]
   );
 
-  // Engagement Matrix always shows Stakeholder type only, independent of map filter
+  // Engagement Matrix: Stakeholder type only AND must have been assigned (powerLevel or interestLevel set)
   const matrixRows = useMemo(
     () => stakeholders.filter(
-      (s: any) => (s.classification ?? (s.isInternalTeam ? "TeamMember" : "Stakeholder")) === "Stakeholder"
+      (s: any) =>
+        (s.classification ?? (s.isInternalTeam ? "TeamMember" : "Stakeholder")) === "Stakeholder" &&
+        (s.powerLevel != null || s.interestLevel != null)
     ),
     [stakeholders]
   );
@@ -621,45 +623,39 @@ function StakeholderAnalysisTab({
             </button>
           ))}
         </div>
-        {/* Power/Interest Map + Unassigned Sidebar */}
-        <div className="flex gap-4 items-start">
-          {/* Map card — takes all remaining width */}
-          <Card className="flex-1 min-w-0 overflow-hidden">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Power / Interest Map</CardTitle>
-              <p className="text-xs text-muted-foreground">Drag a bubble to reposition · Click to view details · Stakeholders without Power/Interest values appear at center (3,3)</p>
-            </CardHeader>
-            <CardContent>
-              {assignedStakeholders.length === 0 ? (
-                <EmptyState icon={Users} title="No stakeholders yet" description="Add stakeholders in the Stakeholder Register to populate the map." />
-              ) : (
-                <PowerInterestMap
-                  stakeholders={assignedStakeholders}
-                  onUpdate={handlePositionUpdate}
-                  onStakeholderClick={setSelectedStakeholder}
-                />
-              )}
-            </CardContent>
-          </Card>
+        {/* Power/Interest Map — full width */}
+        <Card className="w-full overflow-hidden">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Power / Interest Map</CardTitle>
+            <p className="text-xs text-muted-foreground">Drag a bubble to reposition · Click to view details · Stakeholders without Power/Interest values appear at center (3,3)</p>
+          </CardHeader>
+          <CardContent>
+            {assignedStakeholders.length === 0 ? (
+              <EmptyState icon={Users} title="No stakeholders yet" description="Add stakeholders in the Stakeholder Register to populate the map." />
+            ) : (
+              <PowerInterestMap
+                stakeholders={assignedStakeholders}
+                onUpdate={handlePositionUpdate}
+                onStakeholderClick={setSelectedStakeholder}
+              />
+            )}
+          </CardContent>
+        </Card>
 
-          {/* Unassigned sidebar — stakeholders without Power/Interest values */}
-          {unassignedStakeholders.length > 0 && (
-            <div className="w-60 shrink-0 flex flex-col gap-2">
-              <div className="rounded-xl border border-dashed border-amber-300 bg-amber-50/60 dark:bg-amber-950/20 dark:border-amber-700/50 p-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-amber-500 text-base">⚠️</span>
-                  <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">No P/I Values</span>
-                  <span className="ml-auto text-xs font-bold text-amber-600 bg-amber-100 dark:bg-amber-900/40 rounded-full px-2 py-0.5">{unassignedStakeholders.length}</span>
-                </div>
-                <p className="text-[11px] text-amber-600/80 dark:text-amber-400/70 mb-2 leading-snug">
-                  Shown at center (3,3). Set Power &amp; Interest to move them.
-                </p>
-                {/* Search within unpositioned list */}
-                <UnpositionedSearch stakeholders={unassignedStakeholders} onSelect={setSelectedStakeholder} />
-              </div>
+        {/* Unpositioned list — below the map, outside the graph */}
+        {unassignedStakeholders.length > 0 && (
+          <div className="rounded-xl border border-dashed border-amber-300 bg-amber-50/60 dark:bg-amber-950/20 dark:border-amber-700/50 p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-amber-500 text-base">⚠️</span>
+              <span className="text-sm font-semibold text-amber-700 dark:text-amber-400">Stakeholders Without Power / Interest Values</span>
+              <span className="ml-auto text-xs font-bold text-amber-600 bg-amber-100 dark:bg-amber-900/40 rounded-full px-2 py-0.5">{unassignedStakeholders.length}</span>
             </div>
-          )}
-        </div>
+            <p className="text-xs text-amber-600/80 dark:text-amber-400/70 mb-3">
+              These stakeholders appear at center (3,3) on the map. Set their Power &amp; Interest values in the Stakeholder Register to position them correctly.
+            </p>
+            <UnpositionedSearch stakeholders={unassignedStakeholders} onSelect={setSelectedStakeholder} />
+          </div>
+        )}
 
         {/* Engagement Matrix Table — Stakeholder type ONLY (never Team/External) */}
         <Card>

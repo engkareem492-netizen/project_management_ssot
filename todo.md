@@ -812,3 +812,9 @@
 - [x] Power/Interest Map: fix broken drag-and-drop map - now shows ALL stakeholders on the map (not just pre-positioned ones)
 - [x] Power/Interest Map: fix overlapping unpositioned list - added searchable sidebar showing stakeholders without P/I values
 - [x] Engagement Matrix: filter to show only "Stakeholder" type (exclude Team and External) - uses dedicated matrixRows variable
+
+## Engagement Plan Visual Edits (Mar 28, 2026)
+
+- [x] Make the Power/Interest Map SVG bigger (W=1100, H=820, removed maxHeight cap)
+- [x] Move the unpositioned stakeholders list outside/below the graph (not overlapping) - now a full-width panel below the map
+- [x] Engagement Matrix: show only stakeholders who have been assigned (have powerLevel or interestLevel set)
