@@ -1557,6 +1557,28 @@ export type CommunicationPlanEntry = typeof communicationPlanEntries.$inferSelec
 export type InsertCommunicationPlanEntry = typeof communicationPlanEntries.$inferInsert;
 
 // ─── Resource Calendar ────────────────────────────────────────────────────────
+// ─── Project Calendar Settings ───────────────────────────────────────────────
+export const projectCalendarSettings = mysqlTable("projectCalendarSettings", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull().unique(),
+  weekendDays: varchar("weekendDays", { length: 20 }).notNull().default("0,6"), // comma-separated JS day numbers
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ProjectCalendarSettings = typeof projectCalendarSettings.$inferSelect;
+
+// ─── Project Holidays ─────────────────────────────────────────────────────────
+export const projectHolidays = mysqlTable("projectHolidays", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  name: varchar("name", { length: 200 }).notNull(),
+  date: varchar("date", { length: 10 }).notNull(), // YYYY-MM-DD
+  recurring: boolean("recurring").notNull().default(false),
+  source: varchar("source", { length: 100 }).default("custom"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type ProjectHoliday = typeof projectHolidays.$inferSelect;
+
 export const resourceCalendar = mysqlTable("resourceCalendar", {
   id: int("id").autoincrement().primaryKey(),
   projectId: int("projectId").notNull(),

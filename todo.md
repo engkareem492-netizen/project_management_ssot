@@ -796,3 +796,11 @@
 - [x] Wire update mutation to the Edit dialog save action
 - [x] Add onError toast handler to delete mutation for user feedback
 - [x] Add confirmation dialog before deleting a document
+
+## RBS & Resources Fixes (Mar 28, 2026)
+
+- [x] Remove Action Log / Audit Trail section from RBS & Resources page (was the Invalid Date entries; no standalone log existed)
+- [x] Fix "Invalid Date — Invalid Date" bug in holiday calendar entries (was reading e.startDate/endDate; fixed to e.date/entryDate)
+- [x] Add configurable weekend days per project (not hardcoded Sat/Sun) - Weekend Days button with day selector dialog
+- [x] Add country/project holiday calendar import feature (Saudi Arabia, UAE, International presets + custom holidays)
+- [x] Add stakeholder type search/filter in RBS page (name search + All/Team/External/Stakeholder filter buttons)

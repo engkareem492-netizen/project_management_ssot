@@ -16,6 +16,7 @@ import {
   ArrowUp, ArrowDown, Check, X, FolderTree, Cpu, Wrench, Package, Server, Banknote,
   Building2, HardHat, Truck, FlaskConical, Wifi, UserPlus, Import, Download, Zap,
   CalendarCheck, Layers, Shield, CheckSquare, GraduationCap, Target, Network, BookOpen, Save,
+  Globe, Search, Flag,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
@@ -3079,11 +3080,52 @@ function RMPTab({ projectId }: { projectId: number }) {
 /* ─────────────────────────────────────────────────────────────────────────── */
 /* Resource Calendar Tab                                                       */
 /* ─────────────────────────────────────────────────────────────────────────── */
+// ─── Country holiday presets ─────────────────────────────────────────────────
+const COUNTRY_HOLIDAYS: Record<string, { name: string; date: string; recurring: boolean }[]> = {
+  "Saudi Arabia": [
+    { name: "National Day", date: "2026-09-23", recurring: true },
+    { name: "Founding Day", date: "2026-02-22", recurring: true },
+    { name: "Eid Al-Fitr (Day 1)", date: "2026-03-20", recurring: false },
+    { name: "Eid Al-Fitr (Day 2)", date: "2026-03-21", recurring: false },
+    { name: "Eid Al-Fitr (Day 3)", date: "2026-03-22", recurring: false },
+    { name: "Eid Al-Adha (Day 1)", date: "2026-05-27", recurring: false },
+    { name: "Eid Al-Adha (Day 2)", date: "2026-05-28", recurring: false },
+    { name: "Eid Al-Adha (Day 3)", date: "2026-05-29", recurring: false },
+  ],
+  "UAE": [
+    { name: "New Year's Day", date: "2026-01-01", recurring: true },
+    { name: "National Day", date: "2026-12-02", recurring: true },
+    { name: "National Day (Day 2)", date: "2026-12-03", recurring: true },
+    { name: "Commemoration Day", date: "2026-11-30", recurring: true },
+    { name: "Eid Al-Fitr (Day 1)", date: "2026-03-20", recurring: false },
+    { name: "Eid Al-Fitr (Day 2)", date: "2026-03-21", recurring: false },
+    { name: "Eid Al-Fitr (Day 3)", date: "2026-03-22", recurring: false },
+    { name: "Eid Al-Adha (Day 1)", date: "2026-05-27", recurring: false },
+    { name: "Eid Al-Adha (Day 2)", date: "2026-05-28", recurring: false },
+    { name: "Eid Al-Adha (Day 3)", date: "2026-05-29", recurring: false },
+  ],
+  "International": [
+    { name: "New Year's Day", date: "2026-01-01", recurring: true },
+    { name: "International Labour Day", date: "2026-05-01", recurring: true },
+    { name: "Christmas Day", date: "2026-12-25", recurring: true },
+  ],
+};
+
+const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const DAY_LABELS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
 function ResourceCalendarTab({ stakeholders, projectId }: { stakeholders: any[]; projectId: number }) {
   const utils = trpc.useUtils();
   const { data: calEntries = [] } = trpc.resources.listCalendar.useQuery({ projectId });
+  const { data: calSettings } = trpc.resources.getCalendarSettings.useQuery({ projectId });
+  const { data: projectHolidayList = [] } = trpc.resources.listHolidays.useQuery({ projectId });
   const upsertCal = trpc.resources.upsertCalendar.useMutation({ onSuccess: () => utils.resources.listCalendar.invalidate() });
   const deleteCal = trpc.resources.deleteCalendar.useMutation({ onSuccess: () => utils.resources.listCalendar.invalidate() });
+  const upsertSettings = trpc.resources.upsertCalendarSettings.useMutation({ onSuccess: () => utils.resources.getCalendarSettings.invalidate() });
+  const bulkAddHolidays = trpc.resources.bulkAddHolidays.useMutation({ onSuccess: () => utils.resources.listHolidays.invalidate() });
+  const deleteHoliday = trpc.resources.deleteHoliday.useMutation({ onSuccess: () => utils.resources.listHolidays.invalidate() });
+
+  const weekendDays: number[] = calSettings?.weekendDays ?? [0, 6];
 
   const [form, setForm] = useState({
     stakeholderId: "" as string | number,
@@ -3093,6 +3135,18 @@ function ResourceCalendarTab({ stakeholders, projectId }: { stakeholders: any[];
     description: "",
     allDay: true,
   });
+  const [typeFilter, setTypeFilter] = useState<"all" | "TeamMember" | "External" | "Stakeholder">("all");
+  const [searchQ, setSearchQ] = useState("");
+  const [showWeekendConfig, setShowWeekendConfig] = useState(false);
+  const [showHolidayDialog, setShowHolidayDialog] = useState(false);
+  const [selectedCountry, setSelectedCountry] = useState<string>("Saudi Arabia");
+  const [customHoliday, setCustomHoliday] = useState({ name: "", date: "" });
+  const [pendingWeekend, setPendingWeekend] = useState<number[]>(weekendDays);
+
+  // Sync pendingWeekend when settings load
+  React.useEffect(() => {
+    if (calSettings) setPendingWeekend(calSettings.weekendDays);
+  }, [calSettings]);
 
   const TYPE_COLORS: Record<string, string> = {
     Leave: "bg-blue-100 text-blue-700",
@@ -3100,16 +3154,44 @@ function ResourceCalendarTab({ stakeholders, projectId }: { stakeholders: any[];
     Training: "bg-purple-100 text-purple-700",
     Unavailable: "bg-red-100 text-red-700",
     "Part-Time": "bg-yellow-100 text-yellow-700",
+    Working: "bg-gray-100 text-gray-700",
+    Partial: "bg-orange-100 text-orange-700",
   };
 
-  const grouped = stakeholders.map((s: any) => {
-    const name = s.fullName ?? s.fullName ?? s.stakeholderName ?? `#${s.id}`;
+  const filteredStakeholders = stakeholders.filter((s: any) => {
+    const cls = s.classification ?? (s.isInternalTeam ? "TeamMember" : "Stakeholder");
+    if (typeFilter !== "all" && cls !== typeFilter) return false;
+    if (searchQ && !(s.fullName ?? s.stakeholderName ?? "").toLowerCase().includes(searchQ.toLowerCase())) return false;
+    return true;
+  });
+
+  const grouped = filteredStakeholders.map((s: any) => {
     const entries = calEntries.filter((e: any) => e.stakeholderId === s.id);
-    return { ...s, name, entries };
+    return { ...s, entries };
   }).filter((s: any) => s.entries.length > 0);
+
+  // Format a single date field from DB
+  const fmtDate = (d: string | Date | undefined | null) => {
+    if (!d) return "—";
+    const parsed = new Date(d);
+    if (isNaN(parsed.getTime())) return String(d);
+    return parsed.toLocaleDateString();
+  };
 
   return (
     <div className="space-y-4">
+      {/* ── Settings bar ── */}
+      <div className="flex flex-wrap items-center gap-2">
+        <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => setShowWeekendConfig(true)}>
+          <Settings className="w-3.5 h-3.5" /> Weekend Days
+          <span className="ml-1 text-muted-foreground">{weekendDays.map(d => DAY_NAMES[d]).join(", ")}</span>
+        </Button>
+        <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => setShowHolidayDialog(true)}>
+          <Globe className="w-3.5 h-3.5" /> Holiday Calendar
+          <span className="ml-1 text-muted-foreground">{projectHolidayList.length} holidays</span>
+        </Button>
+      </div>
+
       {/* Add entry */}
       <Card className="p-4">
         <div className="text-sm font-semibold mb-3 flex items-center gap-1.5">
@@ -3120,7 +3202,7 @@ function ResourceCalendarTab({ stakeholders, projectId }: { stakeholders: any[];
             <SelectTrigger><SelectValue placeholder="Select team member" /></SelectTrigger>
             <SelectContent>
               {stakeholders.map((s: any) => (
-                <SelectItem key={s.id} value={String(s.id)}>{s.fullName ?? s.fullName ?? s.stakeholderName}</SelectItem>
+                <SelectItem key={s.id} value={String(s.id)}>{s.fullName ?? s.stakeholderName}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -3130,38 +3212,85 @@ function ResourceCalendarTab({ stakeholders, projectId }: { stakeholders: any[];
               {["Leave", "Holiday", "Training", "Unavailable", "Part-Time"].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Input type="date" value={form.startDate} onChange={e => setForm(p => ({ ...p, startDate: e.target.value }))} />
-          <Input type="date" value={form.endDate} onChange={e => setForm(p => ({ ...p, endDate: e.target.value }))} />
+          <Input type="date" placeholder="Start date" value={form.startDate} onChange={e => setForm(p => ({ ...p, startDate: e.target.value }))} />
+          <Input type="date" placeholder="End date" value={form.endDate} onChange={e => setForm(p => ({ ...p, endDate: e.target.value }))} />
           <Input placeholder="Description (optional)" value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} className="md:col-span-2" />
         </div>
         <Button size="sm" className="mt-2" onClick={() => {
-          if (!form.stakeholderId || !form.startDate) return;
-          upsertCal.mutate({ projectId, stakeholderId: Number(form.stakeholderId), entryDate: form.startDate, type: form.entryType as any, notes: form.description });
-          setForm({ stakeholderId: "", entryType: "Leave", startDate: "", endDate: "", description: "", allDay: true });
+          if (!form.stakeholderId || !form.startDate) { toast.error("Select a team member and start date"); return; }
+          // If range, insert one entry per day
+          const start = new Date(form.startDate);
+          const end = form.endDate ? new Date(form.endDate) : start;
+          const dates: string[] = [];
+          for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+            dates.push(d.toISOString().slice(0, 10));
+          }
+          Promise.all(dates.map(dt =>
+            upsertCal.mutateAsync({ projectId, stakeholderId: Number(form.stakeholderId), entryDate: dt, type: form.entryType as any, notes: form.description })
+          )).then(() => {
+            toast.success(`Added ${dates.length} calendar entr${dates.length > 1 ? 'ies' : 'y'}`);
+            setForm({ stakeholderId: "", entryType: "Leave", startDate: "", endDate: "", description: "", allDay: true });
+          }).catch(e => toast.error(e.message));
         }}>
           <Plus className="w-3.5 h-3.5 mr-1" /> Add Entry
         </Button>
       </Card>
+
+      {/* ── Search & type filter ── */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 min-w-[180px]">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+          <Input value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder="Search by name..." className="pl-8 h-8 text-xs" />
+        </div>
+        <div className="flex items-center gap-1">
+          {(["all", "TeamMember", "External", "Stakeholder"] as const).map(t => (
+            <button key={t} onClick={() => setTypeFilter(t)}
+              className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                typeFilter === t
+                  ? t === "TeamMember" ? "bg-blue-100 text-blue-700 border-blue-300"
+                    : t === "External" ? "bg-orange-100 text-orange-700 border-orange-300"
+                    : t === "Stakeholder" ? "bg-purple-100 text-purple-700 border-purple-300"
+                    : "bg-primary text-primary-foreground border-primary"
+                  : "bg-background text-muted-foreground border-border hover:border-muted-foreground"
+              }`}>
+              {t === "all" ? "All" : t === "TeamMember" ? "Team" : t}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Calendar entries by person */}
       {calEntries.length === 0 ? (
         <Card className="p-8 flex items-center justify-center text-muted-foreground text-sm">
           No calendar entries yet. Add leave, holidays, or training periods above.
         </Card>
+      ) : grouped.length === 0 ? (
+        <Card className="p-8 flex items-center justify-center text-muted-foreground text-sm">
+          No entries match the current filter.
+        </Card>
       ) : (
         <div className="space-y-3">
           {grouped.map((s: any) => (
             <Card key={s.id} className="p-4">
-              <div className="text-sm font-semibold mb-2">{s.fullName}</div>
+              <div className="text-sm font-semibold mb-2 flex items-center gap-2">
+                {s.fullName ?? s.stakeholderName}
+                <Badge className={`text-[10px] px-1 py-0 ${
+                  (s.classification ?? (s.isInternalTeam ? "TeamMember" : "Stakeholder")) === "TeamMember" ? "bg-blue-100 text-blue-700"
+                  : (s.classification ?? "Stakeholder") === "External" ? "bg-orange-100 text-orange-700"
+                  : "bg-purple-100 text-purple-700"
+                }`}>{s.classification ?? (s.isInternalTeam ? "Team" : "Stakeholder")}</Badge>
+              </div>
               <div className="space-y-1.5">
                 {s.entries.map((e: any) => (
                   <div key={e.id} className="flex items-center justify-between bg-muted/20 rounded-lg px-3 py-2 group">
                     <div className="flex items-center gap-2">
-                      <Badge className={`text-[10px] px-1.5 ${TYPE_COLORS[(e as any).type ?? (e as any).entryType] ?? "bg-gray-100 text-gray-700"}`}>{(e as any).type ?? (e as any).entryType}</Badge>
+                      <Badge className={`text-[10px] px-1.5 ${TYPE_COLORS[e.type ?? e.entryType] ?? "bg-gray-100 text-gray-700"}`}>
+                        {e.type ?? e.entryType}
+                      </Badge>
                       <span className="text-xs text-muted-foreground">
-                        {new Date(e.startDate).toLocaleDateString()} — {new Date(e.endDate).toLocaleDateString()}
+                        {fmtDate(e.date ?? e.entryDate)}
                       </span>
-                      {e.description && <span className="text-xs text-muted-foreground">· {e.description}</span>}
+                      {e.notes && <span className="text-xs text-muted-foreground">· {e.notes}</span>}
                     </div>
                     <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-red-400 opacity-0 group-hover:opacity-100"
                       onClick={() => deleteCal.mutate({ id: e.id })}>
@@ -3174,6 +3303,108 @@ function ResourceCalendarTab({ stakeholders, projectId }: { stakeholders: any[];
           ))}
         </div>
       )}
+
+      {/* ── Weekend Config Dialog ── */}
+      <Dialog open={showWeekendConfig} onOpenChange={setShowWeekendConfig}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><Settings className="w-4 h-4" /> Configure Weekend Days</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">Select which days are non-working weekends for this project.</p>
+          <div className="grid grid-cols-4 gap-2 py-2">
+            {DAY_LABELS.map((label, i) => (
+              <button key={i} onClick={() => setPendingWeekend(prev =>
+                prev.includes(i) ? prev.filter(d => d !== i) : [...prev, i]
+              )}
+                className={`rounded-lg border px-2 py-2 text-xs font-medium transition-colors ${
+                  pendingWeekend.includes(i)
+                    ? "bg-red-100 text-red-700 border-red-300"
+                    : "bg-background text-muted-foreground border-border hover:border-muted-foreground"
+                }`}>
+                {label}
+              </button>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowWeekendConfig(false)}>Cancel</Button>
+            <Button onClick={() => {
+              upsertSettings.mutate({ projectId, weekendDays: pendingWeekend }, {
+                onSuccess: () => { toast.success("Weekend days saved"); setShowWeekendConfig(false); }
+              });
+            }} disabled={upsertSettings.isPending}>
+              {upsertSettings.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : null}
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Holiday Calendar Dialog ── */}
+      <Dialog open={showHolidayDialog} onOpenChange={setShowHolidayDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><Globe className="w-4 h-4" /> Holiday Calendar</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            {/* Country import */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Import from Country Calendar</Label>
+              <div className="flex gap-2">
+                <Select value={selectedCountry} onValueChange={setSelectedCountry}>
+                  <SelectTrigger className="flex-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.keys(COUNTRY_HOLIDAYS).map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Button size="sm" onClick={() => {
+                  const holidays = COUNTRY_HOLIDAYS[selectedCountry].map(h => ({ ...h, source: selectedCountry }));
+                  bulkAddHolidays.mutate({ projectId, holidays }, {
+                    onSuccess: () => toast.success(`Imported ${holidays.length} holidays from ${selectedCountry}`),
+                  });
+                }} disabled={bulkAddHolidays.isPending}>
+                  {bulkAddHolidays.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                  Import
+                </Button>
+              </div>
+            </div>
+            {/* Custom holiday */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Add Custom Holiday</Label>
+              <div className="flex gap-2">
+                <Input placeholder="Holiday name" value={customHoliday.name} onChange={e => setCustomHoliday(p => ({ ...p, name: e.target.value }))} className="flex-1" />
+                <Input type="date" value={customHoliday.date} onChange={e => setCustomHoliday(p => ({ ...p, date: e.target.value }))} className="w-36" />
+                <Button size="sm" onClick={() => {
+                  if (!customHoliday.name || !customHoliday.date) { toast.error("Name and date required"); return; }
+                  bulkAddHolidays.mutate({ projectId, holidays: [{ ...customHoliday, recurring: false, source: "custom" }] }, {
+                    onSuccess: () => { toast.success("Holiday added"); setCustomHoliday({ name: "", date: "" }); }
+                  });
+                }}>
+                  <Plus className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            </div>
+            {/* Existing holidays list */}
+            <div className="space-y-1 max-h-48 overflow-y-auto">
+              {projectHolidayList.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-4">No holidays added yet.</p>
+              ) : projectHolidayList.map((h: any) => (
+                <div key={h.id} className="flex items-center justify-between bg-muted/20 rounded-lg px-3 py-2 group">
+                  <div className="flex items-center gap-2">
+                    <Flag className="w-3 h-3 text-muted-foreground" />
+                    <span className="text-xs font-medium">{h.name}</span>
+                    <span className="text-xs text-muted-foreground">{fmtDate(h.date)}</span>
+                    {h.source && h.source !== "custom" && <Badge className="text-[10px] px-1 bg-blue-50 text-blue-600">{h.source}</Badge>}
+                    {h.recurring && <Badge className="text-[10px] px-1 bg-green-50 text-green-600">Recurring</Badge>}
+                  </div>
+                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-red-400 opacity-0 group-hover:opacity-100"
+                    onClick={() => deleteHoliday.mutate({ id: h.id })}>
+                    <Trash2 className="w-3 h-3" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowHolidayDialog(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

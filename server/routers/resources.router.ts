@@ -9,6 +9,8 @@ import {
   resourceBreakdownStructure,
   resourceManagementPlan,
   resourceCalendar,
+  projectCalendarSettings,
+  projectHolidays,
 } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 
@@ -267,5 +269,71 @@ export const resourcesRouter = router({
       const dbc = await getDb();
       if (!dbc) return;
       await dbc.delete(resourceCalendar).where(eq(resourceCalendar.id, input.id));
+    }),
+
+  /* ── Project Calendar Settings (weekend days) ──────────────────────────────────── */
+  getCalendarSettings: protectedProcedure
+    .input(z.object({ projectId: z.number() }))
+    .query(async ({ input }) => {
+      const dbc = await getDb();
+      if (!dbc) return { weekendDays: [0, 6] };
+      const [row] = await dbc.select().from(projectCalendarSettings).where(eq(projectCalendarSettings.projectId, input.projectId));
+      if (!row) return { weekendDays: [0, 6] };
+      return { weekendDays: row.weekendDays.split(',').map(Number) };
+    }),
+
+  upsertCalendarSettings: protectedProcedure
+    .input(z.object({
+      projectId: z.number(),
+      weekendDays: z.array(z.number()), // e.g. [5, 6] for Fri+Sat
+    }))
+    .mutation(async ({ input }) => {
+      const dbc = await getDb();
+      if (!dbc) return;
+      const weekendDaysStr = input.weekendDays.join(',');
+      const existing = await dbc.select({ id: projectCalendarSettings.id }).from(projectCalendarSettings)
+        .where(eq(projectCalendarSettings.projectId, input.projectId));
+      if (existing.length > 0) {
+        await dbc.update(projectCalendarSettings).set({ weekendDays: weekendDaysStr } as any)
+          .where(eq(projectCalendarSettings.projectId, input.projectId));
+      } else {
+        await dbc.insert(projectCalendarSettings).values({ projectId: input.projectId, weekendDays: weekendDaysStr } as any);
+      }
+    }),
+
+  /* ── Project Holidays ───────────────────────────────────────────────────────────────── */
+  listHolidays: protectedProcedure
+    .input(z.object({ projectId: z.number() }))
+    .query(async ({ input }) => {
+      const dbc = await getDb();
+      if (!dbc) return [];
+      return dbc.select().from(projectHolidays).where(eq(projectHolidays.projectId, input.projectId));
+    }),
+
+  bulkAddHolidays: protectedProcedure
+    .input(z.object({
+      projectId: z.number(),
+      holidays: z.array(z.object({
+        name: z.string(),
+        date: z.string(),
+        recurring: z.boolean().default(false),
+        source: z.string().default('custom'),
+      })),
+    }))
+    .mutation(async ({ input }) => {
+      const dbc = await getDb();
+      if (!dbc) return;
+      for (const h of input.holidays) {
+        await dbc.insert(projectHolidays).values({ ...h, projectId: input.projectId } as any)
+          .onDuplicateKeyUpdate({ set: { name: h.name } });
+      }
+    }),
+
+  deleteHoliday: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const dbc = await getDb();
+      if (!dbc) return;
+      await dbc.delete(projectHolidays).where(eq(projectHolidays.id, input.id));
     }),
 });

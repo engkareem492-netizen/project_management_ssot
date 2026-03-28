@@ -1,0 +1,9 @@
+{
+  "query": "\nCREATE TABLE IF NOT EXISTS `projectCalendarSettings` (\n  `id` int NOT NULL AUTO_INCREMENT PRIMARY KEY,\n  `projectId` int NOT NULL UNIQUE,\n  `weekendDays` varchar(20) NOT NULL DEFAULT '0,6',\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP\n);\n\nCREATE TABLE IF NOT EXISTS `projectHolidays` (\n  `id` int NOT NULL AUTO_INCREMENT PRIMARY KEY,\n  `projectId` int NOT NULL,\n  `name` varchar(200) NOT NULL,\n  `date` varchar(10) NOT NULL,\n  `recurring` tinyint(1) NOT NULL DEFAULT 0,\n  `source` varchar(100) DEFAULT 'custom',\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP\n);\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 34DzJoQKEqyc4cp.root --database MtjPfUT7z9e3zhUb3tuetB --execute \nCREATE TABLE IF NOT EXISTS `projectCalendarSettings` (\n  `id` int NOT NULL AUTO_INCREMENT PRIMARY KEY,\n  `projectId` int NOT NULL UNIQUE,\n  `weekendDays` varchar(20) NOT NULL DEFAULT '0,6',\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP\n);\n\nCREATE TABLE IF NOT EXISTS `projectHolidays` (\n  `id` int NOT NULL AUTO_INCREMENT PRIMARY KEY,\n  `projectId` int NOT NULL,\n  `name` varchar(200) NOT NULL,\n  `date` varchar(10) NOT NULL,\n  `recurring` tinyint(1) NOT NULL DEFAULT 0,\n  `source` varchar(100) DEFAULT 'custom',\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP\n);\n",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1939
+}
