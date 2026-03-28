@@ -411,6 +411,12 @@ export default function Resources() {
     { enabled }
   );
 
+  // Resource Plan calendar — fetches ALL stakeholders for the plan date range (independent of calendar tab)
+  const { data: planCalendarEntries = [] } = trpc.teamSkills.listCalendar.useQuery(
+    { projectId, startDate: planDateFrom, endDate: planDateTo },
+    { enabled: enabled && !!planDateFrom && !!planDateTo }
+  );
+
   // KPI summary query for performance scores
   const { data: kpiSummary = [] } = (trpc as any).stakeholderEnhancements?.listProjectKpiSummary?.useQuery
     ? (trpc as any).stakeholderEnhancements.listProjectKpiSummary.useQuery({ projectId }, { enabled })
@@ -751,7 +757,7 @@ export default function Resources() {
 
     function getWorkingDaysInRange(stakeholderId: number, from: string, to: string): number {
       if (!from || !to) return 0;
-      const entries = (calendarEntries as any[]).filter((e: any) => {
+      const entries = (planCalendarEntries as any[]).filter((e: any) => {
         if (e.stakeholderId !== stakeholderId) return false;
         const dk = e.date instanceof Date ? e.date.toISOString().split("T")[0] : String(e.date).split("T")[0];
         return dk >= from && dk <= to;
@@ -783,7 +789,7 @@ export default function Resources() {
 
     function getLeaveDaysInRange(stakeholderId: number, from: string, to: string): number {
       if (!from || !to) return 0;
-      return (calendarEntries as any[]).filter((e: any) => {
+      return (planCalendarEntries as any[]).filter((e: any) => {
         if (e.stakeholderId !== stakeholderId) return false;
         if (e.type !== "Leave" && e.type !== "Holiday") return false;
         const dk = e.date instanceof Date ? e.date.toISOString().split("T")[0] : String(e.date).split("T")[0];
@@ -830,7 +836,7 @@ export default function Resources() {
         costThisWeek,
       };
     });
-  }, [workloadData, calendarEntries, calSettings, planDateFrom, planDateTo, tasks]);
+  }, [workloadData, planCalendarEntries, calSettings, planDateFrom, planDateTo, tasks]);
 
   // ─── Handlers ─────────────────────────────────────────────────────────────
   function openCapacityDialog(name: string, currentCap: number) {
