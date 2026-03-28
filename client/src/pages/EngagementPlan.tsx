@@ -481,6 +481,63 @@ function PowerInterestMap({
   );
 }
 
+// ─── Unpositioned Search Sidebar ────────────────────────────────────────────
+
+function UnpositionedSearch({
+  stakeholders,
+  onSelect,
+}: {
+  stakeholders: any[];
+  onSelect: (s: any) => void;
+}) {
+  const [q, setQ] = useState("");
+  const filtered = q.trim()
+    ? stakeholders.filter((s: any) =>
+        (s.fullName || s.name || "").toLowerCase().includes(q.toLowerCase())
+      )
+    : stakeholders;
+  const colors: Record<string, string> = { TeamMember: "#3b82f6", External: "#f97316", Stakeholder: "#8b5cf6" };
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="relative">
+        <svg className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-amber-500" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx={11} cy={11} r={8}/><path d="m21 21-4.35-4.35"/></svg>
+        <input
+          type="text"
+          placeholder="Search..."
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          className="w-full pl-7 pr-2 py-1 text-xs border border-amber-200 rounded-md bg-white/60 dark:bg-amber-950/30 focus:outline-none focus:ring-1 focus:ring-amber-400"
+        />
+      </div>
+      <div className="flex flex-col gap-1 max-h-[400px] overflow-y-auto pr-0.5">
+        {filtered.length === 0 ? (
+          <p className="text-[10px] text-amber-500/70 text-center py-2">No match</p>
+        ) : (
+          filtered.map((s: any) => {
+            const initials = (s.fullName || s.name || "?").split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
+            const color = colors[s.classification] ?? "#64748b";
+            return (
+              <button
+                key={s.id}
+                onClick={() => onSelect(s)}
+                className="flex items-center gap-2 w-full rounded-lg px-2 py-1.5 hover:bg-amber-100/60 dark:hover:bg-amber-900/30 transition-colors text-left group"
+              >
+                <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0" style={{ backgroundColor: color }}>
+                  {initials}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs font-medium truncate text-foreground">{s.fullName || s.name}</div>
+                  <div className="text-[10px] text-muted-foreground">P: {s.powerLevel ?? "—"} · I: {s.interestLevel ?? "—"}</div>
+                </div>
+              </button>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Stakeholder Analysis Tab ─────────────────────────────────────────────────
 
 function StakeholderAnalysisTab({
@@ -502,14 +559,19 @@ function StakeholderAnalysisTab({
     [stakeholders, classFilter]
   );
 
-  // Split into placed (positionedOnMap=true) vs unassigned (never explicitly positioned)
-  const assignedStakeholders = useMemo(
-    () => mapStakeholders.filter((s) => s.positionedOnMap === true || s.positionedOnMap === 1),
+  // All stakeholders go on the map; unpositioned = those without powerLevel AND interestLevel set
+  const assignedStakeholders = mapStakeholders; // show ALL on the map
+  const unassignedStakeholders = useMemo(
+    () => mapStakeholders.filter((s) => !s.powerLevel && !s.interestLevel),
     [mapStakeholders]
   );
-  const unassignedStakeholders = useMemo(
-    () => mapStakeholders.filter((s) => !s.positionedOnMap),
-    [mapStakeholders]
+
+  // Engagement Matrix always shows Stakeholder type only, independent of map filter
+  const matrixRows = useMemo(
+    () => stakeholders.filter(
+      (s: any) => (s.classification ?? (s.isInternalTeam ? "TeamMember" : "Stakeholder")) === "Stakeholder"
+    ),
+    [stakeholders]
   );
 
   const updateMut = trpc.stakeholders.update.useMutation({
@@ -562,14 +624,14 @@ function StakeholderAnalysisTab({
         {/* Power/Interest Map + Unassigned Sidebar */}
         <div className="flex gap-4 items-start">
           {/* Map card — takes all remaining width */}
-          <Card className="flex-1 min-w-0">
+          <Card className="flex-1 min-w-0 overflow-hidden">
             <CardHeader className="pb-2">
               <CardTitle className="text-base">Power / Interest Map</CardTitle>
-              <p className="text-xs text-muted-foreground">Click a bubble to view details · Drag to reposition · Set Power &amp; Interest in the Stakeholder Register</p>
+              <p className="text-xs text-muted-foreground">Drag a bubble to reposition · Click to view details · Stakeholders without Power/Interest values appear at center (3,3)</p>
             </CardHeader>
             <CardContent>
               {assignedStakeholders.length === 0 ? (
-                <EmptyState icon={Users} title="No positioned stakeholders" description="Set Power &amp; Interest values in the Stakeholder Register to place stakeholders on the map." />
+                <EmptyState icon={Users} title="No stakeholders yet" description="Add stakeholders in the Stakeholder Register to populate the map." />
               ) : (
                 <PowerInterestMap
                   stakeholders={assignedStakeholders}
@@ -580,63 +642,38 @@ function StakeholderAnalysisTab({
             </CardContent>
           </Card>
 
-          {/* Unassigned sidebar — only shown when there are unpositioned stakeholders */}
+          {/* Unassigned sidebar — stakeholders without Power/Interest values */}
           {unassignedStakeholders.length > 0 && (
-            <div className="w-56 shrink-0 flex flex-col gap-2">
+            <div className="w-60 shrink-0 flex flex-col gap-2">
               <div className="rounded-xl border border-dashed border-amber-300 bg-amber-50/60 dark:bg-amber-950/20 dark:border-amber-700/50 p-3">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-amber-500 text-base">⚠️</span>
-                  <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">Not Positioned</span>
+                  <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">No P/I Values</span>
                   <span className="ml-auto text-xs font-bold text-amber-600 bg-amber-100 dark:bg-amber-900/40 rounded-full px-2 py-0.5">{unassignedStakeholders.length}</span>
                 </div>
-                <p className="text-[11px] text-amber-600/80 dark:text-amber-400/70 mb-3 leading-snug">
-                  These stakeholders are missing Power or Interest values. Edit their profile to place them on the map.
+                <p className="text-[11px] text-amber-600/80 dark:text-amber-400/70 mb-2 leading-snug">
+                  Shown at center (3,3). Set Power &amp; Interest to move them.
                 </p>
-                <div className="flex flex-col gap-1.5 max-h-[480px] overflow-y-auto pr-0.5">
-                  {unassignedStakeholders.map((s) => {
-                    const initials = (s.fullName || s.name || "?").split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
-                    const colors: Record<string, string> = { TeamMember: "#3b82f6", External: "#f97316", Stakeholder: "#8b5cf6" };
-                    const color = colors[s.classification] ?? "#64748b";
-                    return (
-                      <button
-                        key={s.id}
-                        onClick={() => setSelectedStakeholder(s)}
-                        className="flex items-center gap-2 w-full rounded-lg px-2 py-1.5 hover:bg-amber-100/60 dark:hover:bg-amber-900/30 transition-colors text-left group"
-                        title={`Click to edit ${s.fullName}`}
-                      >
-                        <div
-                          className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-bold shrink-0 shadow-sm"
-                          style={{ backgroundColor: color }}
-                        >
-                          {initials}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="text-xs font-medium truncate text-foreground group-hover:text-amber-700 dark:group-hover:text-amber-300">{s.fullName || s.name}</div>
-                          <div className="text-[10px] text-muted-foreground truncate">
-                            P: {s.powerLevel ?? <span className="text-red-400">—</span>} · I: {s.interestLevel ?? <span className="text-red-400">—</span>}
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
+                {/* Search within unpositioned list */}
+                <UnpositionedSearch stakeholders={unassignedStakeholders} onSelect={setSelectedStakeholder} />
               </div>
             </div>
           )}
         </div>
 
-        {/* Engagement Matrix Table — Stakeholders only */}
+        {/* Engagement Matrix Table — Stakeholder type ONLY (never Team/External) */}
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Engagement Matrix</CardTitle>
+            <p className="text-xs text-muted-foreground">Shows Stakeholder type only — Team Members and External contacts are excluded</p>
           </CardHeader>
           <CardContent className="p-0">
-            {mapStakeholders.length === 0 ? (
+            {matrixRows.length === 0 ? (
               <div className="p-6">
                 <EmptyState
                   icon={Users}
                   title="No stakeholders yet"
-                  description="Add stakeholders to populate the matrix."
+                  description="Add stakeholders with Stakeholder classification to populate the matrix."
                 />
               </div>
             ) : (
@@ -653,7 +690,7 @@ function StakeholderAnalysisTab({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {mapStakeholders.map((s) => (
+                    {matrixRows.map((s: any) => (
                       <TableRow
                         key={s.id}
                         className="cursor-pointer hover:bg-muted/50"

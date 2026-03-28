@@ -804,3 +804,11 @@
 - [x] Add configurable weekend days per project (not hardcoded Sat/Sun) - Weekend Days button with day selector dialog
 - [x] Add country/project holiday calendar import feature (Saudi Arabia, UAE, International presets + custom holidays)
 - [x] Add stakeholder type search/filter in RBS page (name search + All/Team/External/Stakeholder filter buttons)
+
+## Stakeholder Management & Power Map Fixes (Mar 28, 2026)
+
+- [x] By-Stakeholder tab: only show cards for stakeholders who are a "Subject" in a communication plan entry
+- [x] By-Stakeholder tab: remove card automatically when last comm plan Subject entry for that stakeholder is deleted
+- [x] Power/Interest Map: fix broken drag-and-drop map - now shows ALL stakeholders on the map (not just pre-positioned ones)
+- [x] Power/Interest Map: fix overlapping unpositioned list - added searchable sidebar showing stakeholders without P/I values
+- [x] Engagement Matrix: filter to show only "Stakeholder" type (exclude Team and External) - uses dedicated matrixRows variable

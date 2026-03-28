@@ -232,8 +232,13 @@ export default function StakeholderManagement() {
     { projectId },
     { enabled }
   );
+  // Fetch communication plan entries to determine which stakeholders are Subjects
+  const { data: commPlanEntries = [], isLoading: commLoading } = trpc.communicationPlan.list.useQuery(
+    { projectId },
+    { enabled }
+  );
 
-  const isLoading = tasksLoading || stLoading;
+  const isLoading = tasksLoading || stLoading || commLoading;
 
   // All communication tasks
   const commTasks = useMemo(
@@ -273,16 +278,33 @@ export default function StakeholderManagement() {
 
   // Stakeholder search for cards tab
   const [stSearch, setStSearch] = useState("");
+
+  // IDs of stakeholders who appear as Subject in at least one comm plan entry
+  const subjectStakeholderIds = useMemo(() => {
+    const ids = new Set<number>();
+    (commPlanEntries as any[]).forEach((e: any) => {
+      // targetType === 'stakeholder' means this stakeholder is the Subject
+      if ((e.targetType === 'stakeholder' || !e.targetType) && e.stakeholderId) {
+        ids.add(e.stakeholderId);
+      }
+    });
+    return ids;
+  }, [commPlanEntries]);
+
   const filteredStakeholders = useMemo(() => {
-    if (!stSearch.trim()) return stakeholders as any[];
-    const q = stSearch.toLowerCase();
-    return (stakeholders as any[]).filter(
-      (s: any) =>
-        (s.fullName || "").toLowerCase().includes(q) ||
-        (s.position || "").toLowerCase().includes(q) ||
-        (s.role || "").toLowerCase().includes(q)
-    );
-  }, [stakeholders, stSearch]);
+    // Only show stakeholders who are Subjects in at least one comm plan entry
+    let out = (stakeholders as any[]).filter((s: any) => subjectStakeholderIds.has(s.id));
+    if (stSearch.trim()) {
+      const q = stSearch.toLowerCase();
+      out = out.filter(
+        (s: any) =>
+          (s.fullName || "").toLowerCase().includes(q) ||
+          (s.position || "").toLowerCase().includes(q) ||
+          (s.role || "").toLowerCase().includes(q)
+      );
+    }
+    return out;
+  }, [stakeholders, subjectStakeholderIds, stSearch]);
 
   // Summary stats
   const totalComm = commTasks.length;
@@ -539,7 +561,12 @@ export default function StakeholderManagement() {
             ) : filteredStakeholders.length === 0 ? (
               <div className="text-center py-16 text-muted-foreground">
                 <Users className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                <p className="font-medium">No stakeholders found</p>
+                <p className="font-medium">{stSearch ? "No stakeholders match your search" : "No stakeholders assigned as Subject yet"}</p>
+                {!stSearch && (
+                  <p className="text-sm mt-1 max-w-xs mx-auto">
+                    Cards appear here when a stakeholder is set as the <strong>Subject</strong> in a Communication Plan entry.
+                  </p>
+                )}
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
