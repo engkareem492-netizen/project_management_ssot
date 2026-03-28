@@ -703,15 +703,18 @@ export default function Resources() {
       let filtered = base;
       if (calCategoryFilter !== "all") filtered = filtered.filter(r => r.resourceType === calCategoryFilter);
       if (calStakeholderId) filtered = filtered.filter(r => r.id === calStakeholderId);
+      // Apply stakeholder type filter (calNameSearch holds classification value)
+      if (calNameSearch) filtered = filtered.filter(r => r.resourceType === calNameSearch);
       return filtered;
     }
     const base = leafNodes.map((n: any) => {
       const calId = n.stakeholderId ? n.stakeholderId : -(n.id);
       const linkedSh = n.stakeholderId ? stakeholders.find((s: any) => s.id === n.stakeholderId) : null;
       // classification comes from the linked stakeholder record (TeamMember/External/Stakeholder)
+      // Unlinked RBS nodes get 'TeamMember' as a sensible default so they still show under "All"
       const classification = linkedSh
         ? (linkedSh.classification ?? (linkedSh.isInternalTeam ? 'TeamMember' : 'Stakeholder'))
-        : null;
+        : 'TeamMember';
       return {
         id: calId,
         name: linkedSh ? (linkedSh.fullName ?? n.name) : n.name,
@@ -2067,12 +2070,19 @@ export default function Resources() {
                                 {calDates.map(date => {
                                   const entry = calendarMap[r.id]?.[date];
                                   const d = new Date(date + "T00:00:00");
-                                  const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+                                  // Use project weekend settings (from calSettings) instead of hardcoded Sat/Sun
+                                  const projWeekend: number[] = (calSettings as any)?.weekendDays ?? [5, 6]; // default Fri+Sat
+                                  const isWeekend = projWeekend.includes(d.getDay());
                                   const isToday = date === todayStr;
+                                  // Determine effective type: explicit entry > weekend > default Working
+                                  const effectiveType = entry?.type ?? (isWeekend ? "Weekend" : "Working");
                                   const cellCls = entry
                                     ? CAL_TYPE_COLORS[entry.type] ?? "bg-gray-100 text-gray-600 border-gray-200"
-                                    : isToday ? "bg-red-50 border-red-200"
-                                    : isWeekend ? "bg-gray-100 text-gray-300" : "";
+                                    : isWeekend
+                                      ? "bg-gray-100 text-gray-400 border-gray-200"
+                                      : isToday
+                                        ? "bg-green-50 text-green-700 border-green-200"
+                                        : "bg-green-50/40 text-green-700 border-green-100";
                                   // Task count for this resource on this date
                                   const taskCount = (tasks as any[]).filter((t: any) => {
                                     if (!t.dueDate) return false;
@@ -2082,20 +2092,18 @@ export default function Resources() {
                                   return (
                                     <td
                                       key={date}
-                                      className={`p-1 border border-gray-200 text-center cursor-pointer hover:opacity-80 transition-opacity relative ${cellCls} ${isToday ? "border-red-300" : ""}`}
+                                      className={`p-1 border text-center cursor-pointer hover:opacity-80 transition-opacity relative ${cellCls} ${isToday ? "ring-1 ring-inset ring-red-300" : ""}`}
                                       onClick={() => openCalDialog(r.id, r.name, date, entry, "single")}
                                       title={entry
                                         ? `${entry.type}${entry.availableHours ? " · " + entry.availableHours + "h" : ""}${entry.notes ? " — " + entry.notes : ""}`
-                                        : "Click to mark"}
+                                        : effectiveType === "Weekend" ? "Weekend (non-working)" : "Working (default) — click to change"}
                                     >
-                                      {entry ? (
-                                        <div>
-                                          <div className="font-medium text-[10px]">{entry.type.slice(0, 3)}</div>
-                                          {entry.availableHours !== undefined && entry.availableHours !== "8.0" && (
-                                            <div className="text-[9px]">{entry.availableHours}h</div>
-                                          )}
-                                        </div>
-                                      ) : isWeekend ? <span>—</span> : null}
+                                      <div className="font-medium text-[10px]">
+                                        {entry ? entry.type.slice(0, 3) : isWeekend ? "—" : "Wrk"}
+                                      </div>
+                                      {entry?.availableHours !== undefined && entry.availableHours !== "8.0" && (
+                                        <div className="text-[9px]">{entry.availableHours}h</div>
+                                      )}
                                       {taskCount > 0 && (
                                         <span className="absolute top-0 right-0 w-3.5 h-3.5 bg-blue-500 text-white text-[9px] font-bold rounded-bl flex items-center justify-center leading-none">
                                           {taskCount}

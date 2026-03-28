@@ -489,10 +489,9 @@ export const teamSkillsRouter = router({
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new Error("DB unavailable");
-      const { eq, and } = await import("drizzle-orm");
+      const { eq, and, inArray, gte, lte } = await import("drizzle-orm");
 
-      // Determine which days count as "weekend" (to skip/create holiday for)
-      // skipDays array takes priority over legacy skipSaturday/skipSunday booleans
+      // Determine which days count as "weekend"
       const daysToSkip: number[] = input.skipDays !== undefined
         ? input.skipDays
         : [
@@ -500,72 +499,82 @@ export const teamSkillsRouter = router({
             ...(input.skipSaturday !== false ? [6] : []),
           ];
 
+      // Build full list of dates in range
       const allDates: { date: string; isWeekend: boolean }[] = [];
       const cur = new Date(input.startDate + "T00:00:00");
       const end = new Date(input.endDate + "T00:00:00");
       while (cur <= end) {
-        const dow = cur.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
-        const isWeekend = daysToSkip.includes(dow);
-        allDates.push({ date: cur.toISOString().split("T")[0], isWeekend });
+        const dow = cur.getDay();
+        allDates.push({ date: cur.toISOString().split("T")[0], isWeekend: daysToSkip.includes(dow) });
         cur.setDate(cur.getDate() + 1);
       }
 
+      if (allDates.length === 0 || input.stakeholderIds.length === 0) {
+        return { filledWorking: 0, filledHoliday: 0, total: 0, propagatedCount: 0 };
+      }
+
+      // ── BATCH FETCH: one query for all stakeholders × all dates ──────────
+      const existingRows = await db
+        .select({ stakeholderId: resourceCalendar.stakeholderId, date: resourceCalendar.date })
+        .from(resourceCalendar)
+        .where(
+          and(
+            inArray(resourceCalendar.stakeholderId, input.stakeholderIds),
+            gte(resourceCalendar.date, input.startDate),
+            lte(resourceCalendar.date, input.endDate),
+          )
+        );
+
+      // Build a Set of "sid|date" keys that already have entries
+      const existingSet = new Set(existingRows.map((r) => `${r.stakeholderId}|${r.date}`));
+
+      // Collect sibling info for all stakeholders in parallel
+      const siblingsMap: Record<number, Array<{ stakeholderId: number; projectId: number }>> = {};
+      await Promise.all(
+        input.stakeholderIds.map(async (sid) => {
+          siblingsMap[sid] = await getSiblingPooledStakeholders(db, sid, input.projectId);
+        })
+      );
+
+      // ── BUILD INSERT ROWS ────────────────────────────────────────────────
+      type CalRow = typeof resourceCalendar.$inferInsert;
+      const toInsert: CalRow[] = [];
       let filledWorking = 0;
       let filledHoliday = 0;
       let propagatedCount = 0;
 
       for (const sid of input.stakeholderIds) {
-        // Resolve sibling pooled stakeholders once per stakeholder
-        const siblings = await getSiblingPooledStakeholders(db, sid, input.projectId);
-
+        const siblings = siblingsMap[sid] ?? [];
         for (const { date, isWeekend } of allDates) {
-          // Check if an entry already exists
-          const existing = await db
-            .select()
-            .from(resourceCalendar)
-            .where(
-              and(
-                eq(resourceCalendar.stakeholderId, sid),
-                eq(resourceCalendar.date, date),
-              )
-            )
-            .limit(1);
-
-          if (existing.length > 0) continue; // Never overwrite existing entries
+          if (existingSet.has(`${sid}|${date}`)) continue; // skip existing
 
           if (isWeekend) {
             if (input.createWeekendHolidays) {
-              await db.insert(resourceCalendar).values({
-                stakeholderId: sid,
-                projectId: input.projectId,
-                date,
-                type: "Holiday",
-                availableHours: 0,
-                notes: "Weekend",
-              });
+              toInsert.push({ stakeholderId: sid, projectId: input.projectId, date, type: "Holiday", availableHours: 0, notes: "Weekend" });
               filledHoliday++;
-              // Propagate to siblings
               for (const sib of siblings) {
-                await upsertCalendarForStakeholder(db, sib.stakeholderId, sib.projectId, date, "Holiday", 0, "Weekend [Propagated]");
+                toInsert.push({ stakeholderId: sib.stakeholderId, projectId: sib.projectId, date, type: "Holiday", availableHours: 0, notes: "Weekend [Propagated]" });
                 propagatedCount++;
               }
             }
           } else {
-            await db.insert(resourceCalendar).values({
-              stakeholderId: sid,
-              projectId: input.projectId,
-              date,
-              type: "Working",
-              availableHours: Number(input.fullTimeHours),
-              notes: "",
-            });
+            toInsert.push({ stakeholderId: sid, projectId: input.projectId, date, type: "Working", availableHours: Number(input.fullTimeHours), notes: "" });
             filledWorking++;
-            // Propagate to siblings
             for (const sib of siblings) {
-              await upsertCalendarForStakeholder(db, sib.stakeholderId, sib.projectId, date, "Working", Number(input.fullTimeHours), "[Propagated]");
+              toInsert.push({ stakeholderId: sib.stakeholderId, projectId: sib.projectId, date, type: "Working", availableHours: Number(input.fullTimeHours), notes: "[Propagated]" });
               propagatedCount++;
             }
           }
+        }
+      }
+
+      // ── BATCH INSERT: one round-trip for all new rows ────────────────────
+      if (toInsert.length > 0) {
+        // MySQL INSERT IGNORE skips duplicate key violations gracefully
+        // We insert in chunks of 500 to avoid hitting max_allowed_packet limits
+        const CHUNK = 500;
+        for (let i = 0; i < toInsert.length; i += CHUNK) {
+          await db.insert(resourceCalendar).values(toInsert.slice(i, i + CHUNK)).onDuplicateKeyUpdate({ set: { type: resourceCalendar.type } });
         }
       }
 

@@ -835,3 +835,9 @@
 ## Bug Fix: Calendar Heatmap Type Filter Not Working (Mar 28, 2026)
 
 - [x] Fix Stakeholder Type filter chips in calendar heatmap - now reads classification from linked stakeholder record instead of RBS node resourceType
+
+## RBS Calendar Major Fixes (Mar 28, 2026)
+
+- [ ] Fix type filter - still not working after previous fix attempt
+- [ ] Fix/rewrite mass fill - currently slow and unreliable
+- [ ] Default all calendar cells to "Working" - only override when a specific entry exists
