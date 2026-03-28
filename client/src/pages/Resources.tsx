@@ -708,19 +708,24 @@ export default function Resources() {
     const base = leafNodes.map((n: any) => {
       const calId = n.stakeholderId ? n.stakeholderId : -(n.id);
       const linkedSh = n.stakeholderId ? stakeholders.find((s: any) => s.id === n.stakeholderId) : null;
+      // classification comes from the linked stakeholder record (TeamMember/External/Stakeholder)
+      const classification = linkedSh
+        ? (linkedSh.classification ?? (linkedSh.isInternalTeam ? 'TeamMember' : 'Stakeholder'))
+        : null;
       return {
         id: calId,
         name: linkedSh ? (linkedSh.fullName ?? n.name) : n.name,
         subtitle: n.resourceType + (n.unit ? ` · ${n.unit}` : '') + (n.availability ? ` · ${n.availability}` : ''),
         rbsNodeId: n.id,
         resourceType: n.resourceType,
+        classification,
       };
     });
     let filtered = base;
     if (calCategoryFilter !== "all") filtered = filtered.filter(r => r.resourceType === calCategoryFilter);
     if (calStakeholderId) filtered = filtered.filter(r => r.id === calStakeholderId);
-    // calNameSearch holds either a type keyword ("TeamMember"/"External"/"Stakeholder") or empty for All
-    if (calNameSearch) filtered = filtered.filter(r => r.resourceType === calNameSearch);
+    // calNameSearch holds a stakeholder classification keyword ("TeamMember"/"External"/"Stakeholder") or empty for All
+    if (calNameSearch) filtered = filtered.filter(r => r.classification === calNameSearch);
     return filtered;
   }, [rbsNodes, stakeholders, calStakeholderId, calCategoryFilter, calNameSearch]);
 

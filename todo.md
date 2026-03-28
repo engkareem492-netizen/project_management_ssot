@@ -831,3 +831,7 @@
 ## RBS Calendar Heatmap Type Filter (Mar 28, 2026)
 
 - [x] Replace name search input in calendar heatmap filter row with Stakeholder Type filter chips (All/Team/External/Stakeholder) matching Stakeholder Register classification
+
+## Bug Fix: Calendar Heatmap Type Filter Not Working (Mar 28, 2026)
+
+- [x] Fix Stakeholder Type filter chips in calendar heatmap - now reads classification from linked stakeholder record instead of RBS node resourceType
