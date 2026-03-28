@@ -311,6 +311,7 @@ export default function Resources() {
   // Resource Plan state
   const [planViewMode, setPlanViewMode] = useState<"weekly" | "monthly">("weekly");
   const [planCategoryFilter, setPlanCategoryFilter] = useState<string>("all");
+  const [planTypeFilter, setPlanTypeFilter] = useState<"all" | "TeamMember" | "External" | "Stakeholder">("all");
   const [planResourceFilter, setPlanResourceFilter] = useState<number | null>(null);
   const [planSearch, setPlanSearch] = useState<string>("");
   const [planDateFrom, setPlanDateFrom] = useState<string>(() => {
@@ -755,6 +756,53 @@ export default function Resources() {
     // using their calendar entries (Leave/Holiday = non-working, Working/Training/Partial = working)
     const weekendSet = new Set((calSettings as any)?.weekendDays ?? [5, 6]);
 
+    // Returns available HOURS (not days) for the range, accounting for partial leave
+    function getAvailableHoursInRange(stakeholderId: number, from: string, to: string, hoursPerDay: number): number {
+      if (!from || !to) return 0;
+      const entries = (planCalendarEntries as any[]).filter((e: any) => {
+        if (e.stakeholderId !== stakeholderId) return false;
+        const dk = e.date instanceof Date ? e.date.toISOString().split("T")[0] : String(e.date).split("T")[0];
+        return dk >= from && dk <= to;
+      });
+      // Map date -> entry (type + availableHours stored as integer hours in DB)
+      const entryMap: Record<string, { type: string; availableHours: number }> = {};
+      entries.forEach((e: any) => {
+        const dk = e.date instanceof Date ? e.date.toISOString().split("T")[0] : String(e.date).split("T")[0];
+        entryMap[dk] = { type: e.type, availableHours: Number(e.availableHours ?? 0) };
+      });
+      let totalHours = 0;
+      const cur = new Date(from + "T00:00:00");
+      const end = new Date(to + "T00:00:00");
+      while (cur <= end) {
+        const dk = cur.toISOString().split("T")[0];
+        const dow = cur.getDay();
+        const isWeekend = weekendSet.has(dow);
+        const entry = entryMap[dk];
+        if (entry) {
+          const { type, availableHours } = entry;
+          if (type === "Leave" || type === "Holiday") {
+            // Partial leave: if availableHours > 0, that many hours are still available
+            // e.g. 4h leave on an 8h day → 4h available
+            const leaveHours = availableHours > 0 ? availableHours : hoursPerDay;
+            const remaining = Math.max(hoursPerDay - leaveHours, 0);
+            totalHours += remaining;
+          } else if (type === "Partial") {
+            // Partial working day: availableHours is the number of working hours
+            totalHours += availableHours > 0 ? availableHours : hoursPerDay;
+          } else {
+            // Working / Training: full day
+            totalHours += hoursPerDay;
+          }
+        } else {
+          // No entry: weekends = 0, weekdays = full day
+          if (!isWeekend) totalHours += hoursPerDay;
+        }
+        cur.setDate(cur.getDate() + 1);
+      }
+      return totalHours;
+    }
+
+    // Count working days (for display column only)
     function getWorkingDaysInRange(stakeholderId: number, from: string, to: string): number {
       if (!from || !to) return 0;
       const entries = (planCalendarEntries as any[]).filter((e: any) => {
@@ -776,10 +824,8 @@ export default function Resources() {
         const isWeekend = weekendSet.has(dow);
         const calType = entryMap[dk];
         if (calType) {
-          // Explicit calendar entry: Leave/Holiday = 0 days, Working/Training/Partial = 1 day
           if (calType !== "Leave" && calType !== "Holiday") workingDays++;
         } else {
-          // No entry: weekends are non-working, weekdays are working
           if (!isWeekend) workingDays++;
         }
         cur.setDate(cur.getDate() + 1);
@@ -812,7 +858,8 @@ export default function Resources() {
       // Calendar-aware capacity for the selected date range
       const workingDays = getWorkingDaysInRange(w.id, planDateFrom, planDateTo);
       const leaveDays = getLeaveDaysInRange(w.id, planDateFrom, planDateTo);
-      const rangeCapacityHours = workingDays * w.hoursPerDay;
+      // Use hour-accurate capacity (accounts for partial leave like 4h)
+      const rangeCapacityHours = getAvailableHoursInRange(w.id, planDateFrom, planDateTo, w.hoursPerDay);
       // Tasks with due date in the selected range
       const tasksInRange = getTasksInRange(w, planDateFrom, planDateTo);
       const estimatedHoursUsed = tasksInRange * 8;
@@ -2230,6 +2277,21 @@ export default function Resources() {
                   <Button size="sm" variant={planViewMode === "monthly" ? "default" : "outline"} onClick={() => setPlanViewMode("monthly")} className="text-xs h-7">Monthly</Button>
                 </div>
               </div>
+              {/* Stakeholder type filter chips */}
+              <div className="flex gap-2 pt-2 flex-wrap">
+                {(["all", "TeamMember", "External", "Stakeholder"] as const).map(t => {
+                  const labels: Record<string, string> = { all: "All Types", TeamMember: "Team", External: "External", Stakeholder: "Stakeholder" };
+                  const colors: Record<string, string> = { all: "bg-muted text-foreground", TeamMember: "bg-blue-100 text-blue-700", External: "bg-purple-100 text-purple-700", Stakeholder: "bg-emerald-100 text-emerald-700" };
+                  const activeColors: Record<string, string> = { all: "bg-foreground text-background", TeamMember: "bg-blue-600 text-white", External: "bg-purple-600 text-white", Stakeholder: "bg-emerald-600 text-white" };
+                  const isActive = planTypeFilter === t;
+                  return (
+                    <button key={t} onClick={() => setPlanTypeFilter(t)}
+                      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${isActive ? activeColors[t] : colors[t]} hover:opacity-80`}>
+                      {labels[t]}
+                    </button>
+                  );
+                })}
+              </div>
               {/* Dropdown filters */}
               <div className="flex flex-wrap gap-3 items-end pt-2">
                 <div className="space-y-1">
@@ -2298,6 +2360,10 @@ export default function Resources() {
                         const node = (rbsNodes as any[]).find(n => n.stakeholderId === r.id && n.isLeaf === 1);
                         const typeName = node?.resourceType ?? (r as any).classification;
                         if (typeName !== planCategoryFilter) return false;
+                      }
+                      if (planTypeFilter !== "all") {
+                        const cls = (r as any).classification ?? "TeamMember";
+                        if (cls !== planTypeFilter) return false;
                       }
                       return true;
                     });
