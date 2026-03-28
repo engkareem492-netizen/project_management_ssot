@@ -827,3 +827,7 @@
 
 - [x] Remove duplicate top search/filter bar from ResourceCalendarTab (user marked as not useful)
 - [x] Add name search input to the calendar heatmap section filters ("Search Resource" field) so not all entries always shown
+
+## RBS Calendar Heatmap Type Filter (Mar 28, 2026)
+
+- [x] Replace name search input in calendar heatmap filter row with Stakeholder Type filter chips (All/Team/External/Stakeholder) matching Stakeholder Register classification

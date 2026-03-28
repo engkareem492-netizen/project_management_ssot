@@ -719,7 +719,8 @@ export default function Resources() {
     let filtered = base;
     if (calCategoryFilter !== "all") filtered = filtered.filter(r => r.resourceType === calCategoryFilter);
     if (calStakeholderId) filtered = filtered.filter(r => r.id === calStakeholderId);
-    if (calNameSearch.trim()) filtered = filtered.filter(r => r.name.toLowerCase().includes(calNameSearch.toLowerCase()));
+    // calNameSearch holds either a type keyword ("TeamMember"/"External"/"Stakeholder") or empty for All
+    if (calNameSearch) filtered = filtered.filter(r => r.resourceType === calNameSearch);
     return filtered;
   }, [rbsNodes, stakeholders, calStakeholderId, calCategoryFilter, calNameSearch]);
 
@@ -1887,12 +1888,23 @@ export default function Resources() {
             <CardContent className="space-y-4">
               {/* Filters */}
               <div className="flex flex-wrap gap-3 items-end">
-                {/* Name search */}
+                {/* Stakeholder Type filter */}
                 <div className="space-y-1">
-                  <Label className="text-xs">Search Resource</Label>
-                  <div className="relative">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                    <Input value={calNameSearch} onChange={e => setCalNameSearch(e.target.value)} placeholder="Search by name..." className="pl-8 h-8 text-sm w-48" />
+                  <Label className="text-xs">Stakeholder Type</Label>
+                  <div className="flex items-center gap-1">
+                    {(["all", "TeamMember", "External", "Stakeholder"] as const).map(t => (
+                      <button key={t} onClick={() => setCalNameSearch(t === "all" ? "" : t)}
+                        className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                          (t === "all" && calNameSearch === "") || calNameSearch === t
+                            ? t === "TeamMember" ? "bg-blue-100 text-blue-700 border-blue-300"
+                              : t === "External" ? "bg-orange-100 text-orange-700 border-orange-300"
+                              : t === "Stakeholder" ? "bg-purple-100 text-purple-700 border-purple-300"
+                              : "bg-primary text-primary-foreground border-primary"
+                            : "bg-background text-muted-foreground border-border hover:border-muted-foreground"
+                        }`}>
+                        {t === "all" ? "All" : t === "TeamMember" ? "Team" : t}
+                      </button>
+                    ))}
                   </div>
                 </div>
                 <div className="space-y-1">
