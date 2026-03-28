@@ -1,6 +1,6 @@
 import { protectedProcedure, router } from "../_core/trpc";
 import { z } from "zod";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, sql } from "drizzle-orm";
 import { getDb } from "../db";
 import {
   stakeholderSkills,
@@ -574,7 +574,7 @@ export const teamSkillsRouter = router({
         // We insert in chunks of 500 to avoid hitting max_allowed_packet limits
         const CHUNK = 500;
         for (let i = 0; i < toInsert.length; i += CHUNK) {
-          await db.insert(resourceCalendar).values(toInsert.slice(i, i + CHUNK)).onDuplicateKeyUpdate({ set: { type: resourceCalendar.type } });
+          await db.insert(resourceCalendar).values(toInsert.slice(i, i + CHUNK)).onDuplicateKeyUpdate({ set: { type: sql`VALUES(\`type\`)` as any } });
         }
       }
 

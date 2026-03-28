@@ -129,6 +129,14 @@ export default function Tasks() {
   };
   const toggleViewMode = cycleViewMode;
 
+  // Task type tab: 'project' | 'comm' | 'dev'
+  const [taskTypeTab, setTaskTypeTab] = useState<'project' | 'comm' | 'dev'>(() => {
+    const saved = sessionStorage.getItem('tasks_tab');
+    if (saved === 'communication') return 'comm';
+    if (saved === 'development') return 'dev';
+    return 'project';
+  });
+
   // Recurring task state
   const [recurringDialogOpen, setRecurringDialogOpen] = useState(false);
   const [taskForRecurring, setTaskForRecurring] = useState<any>(null);
@@ -579,6 +587,13 @@ export default function Tasks() {
   const getSubTasks = (parentId: number) => tasks?.filter((t: any) => t.parentTaskId === parentId) || [];
 
   const filteredTasks = tasks?.filter(task => {
+    // ── Task type tab filter ──
+    const isComm = !!(task as any).communicationStakeholderId || (task.taskId ?? '').startsWith('COMM-');
+    const isDev = !!(task as any).devPlanId || (task.taskId ?? '').startsWith('DEV-');
+    if (taskTypeTab === 'comm' && !isComm) return false;
+    if (taskTypeTab === 'dev' && !isDev) return false;
+    if (taskTypeTab === 'project' && (isComm || isDev)) return false;
+
     const matchesSearch =
       task.taskId.toLowerCase().includes(searchTerm.toLowerCase()) ||
       task.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -927,6 +942,42 @@ export default function Tasks() {
       </div>
       <Card className="border-blue-100">
         <CardContent>
+          {/* ── Task Type Tabs ── */}
+          <div className="flex items-center gap-1 mb-4 border-b border-gray-200 pb-0">
+            {([
+              { key: 'project', label: 'Project Tasks', color: 'text-blue-700 border-blue-600', badge: 'bg-blue-100 text-blue-700' },
+              { key: 'comm', label: 'COMM Tasks', color: 'text-purple-700 border-purple-600', badge: 'bg-purple-100 text-purple-700' },
+              { key: 'dev', label: 'DEV Tasks', color: 'text-teal-700 border-teal-600', badge: 'bg-teal-100 text-teal-700' },
+            ] as const).map(({ key, label, color, badge }) => {
+              const count = tasks?.filter((t: any) => {
+                const isComm = !!t.communicationStakeholderId || (t.taskId ?? '').startsWith('COMM-');
+                const isDev = !!t.devPlanId || (t.taskId ?? '').startsWith('DEV-');
+                if (key === 'comm') return isComm;
+                if (key === 'dev') return isDev;
+                return !isComm && !isDev;
+              }).length ?? 0;
+              return (
+                <button
+                  key={key}
+                  onClick={() => {
+                    setTaskTypeTab(key);
+                    sessionStorage.setItem('tasks_tab', key === 'comm' ? 'communication' : key === 'dev' ? 'development' : 'project');
+                  }}
+                  className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+                    taskTypeTab === key
+                      ? `${color} bg-transparent`
+                      : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  {label}
+                  <span className={`text-[11px] px-1.5 py-0.5 rounded-full font-semibold ${taskTypeTab === key ? badge : 'bg-gray-100 text-gray-500'}`}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
           <div className="flex items-center gap-4 mb-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />

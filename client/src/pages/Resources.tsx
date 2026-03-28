@@ -378,6 +378,7 @@ export default function Resources() {
     { projectId, stakeholderId: calStakeholderId ?? undefined, startDate: calStart, endDate: calEnd },
     { enabled }
   );
+  const { data: calSettings } = trpc.resources.getCalendarSettings.useQuery({ projectId }, { enabled });
   // Cross-project pooled calendar — only fetched when a single pooled resource is selected
   const { data: pooledCalEntries = [] } = trpc.teamSkills.listPooledCalendar.useQuery(
     { stakeholderId: calStakeholderId!, projectId, startDate: calStart, endDate: calEnd },
