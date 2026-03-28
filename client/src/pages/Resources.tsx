@@ -3180,6 +3180,28 @@ function ResourceCalendarTab({ stakeholders, projectId }: { stakeholders: any[];
 
   return (
     <div className="space-y-4">
+      {/* ── Top search & type filter ── */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 min-w-[180px]">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+          <Input value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder="Search by name..." className="pl-8 h-8 text-xs" />
+        </div>
+        <div className="flex items-center gap-1">
+          {(["all", "TeamMember", "External", "Stakeholder"] as const).map(t => (
+            <button key={t} onClick={() => setTypeFilter(t)}
+              className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                typeFilter === t
+                  ? t === "TeamMember" ? "bg-blue-100 text-blue-700 border-blue-300"
+                    : t === "External" ? "bg-orange-100 text-orange-700 border-orange-300"
+                    : t === "Stakeholder" ? "bg-purple-100 text-purple-700 border-purple-300"
+                    : "bg-primary text-primary-foreground border-primary"
+                  : "bg-background text-muted-foreground border-border hover:border-muted-foreground"
+              }`}>
+              {t === "all" ? "All" : t === "TeamMember" ? "Team" : t}
+            </button>
+          ))}
+        </div>
+      </div>
       {/* ── Settings bar ── */}
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => setShowWeekendConfig(true)}>

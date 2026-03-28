@@ -818,3 +818,7 @@
 - [x] Make the Power/Interest Map SVG bigger (W=1100, H=820, removed maxHeight cap)
 - [x] Move the unpositioned stakeholders list outside/below the graph (not overlapping) - now a full-width panel below the map
 - [x] Engagement Matrix: show only stakeholders who have been assigned (have powerLevel or interestLevel set)
+
+## RBS Calendar Search Filter (Mar 28, 2026)
+
+- [x] Add search + stakeholder type filter above the calendar section (same as entries list filter) - now appears at top of calendar tab before settings bar
