@@ -281,6 +281,7 @@ export default function Resources() {
   });
   const [calStakeholderId, setCalStakeholderId] = useState<number | null>(null);
   const [calCategoryFilter, setCalCategoryFilter] = useState<string>("all");
+  const [calNameSearch, setCalNameSearch] = useState("");
   const [calEditDate, setCalEditDate] = useState<string | null>(null);
   const [calEditEndDate, setCalEditEndDate] = useState<string | null>(null);
   const [calEntryMode, setCalEntryMode] = useState<"single" | "range">("single");
@@ -718,8 +719,9 @@ export default function Resources() {
     let filtered = base;
     if (calCategoryFilter !== "all") filtered = filtered.filter(r => r.resourceType === calCategoryFilter);
     if (calStakeholderId) filtered = filtered.filter(r => r.id === calStakeholderId);
+    if (calNameSearch.trim()) filtered = filtered.filter(r => r.name.toLowerCase().includes(calNameSearch.toLowerCase()));
     return filtered;
-  }, [rbsNodes, stakeholders, calStakeholderId, calCategoryFilter]);
+  }, [rbsNodes, stakeholders, calStakeholderId, calCategoryFilter, calNameSearch]);
 
   // ─── Resource Plan ─────────────────────────────────────────────────────────
   const resourcePlan = useMemo(() => {
@@ -1885,6 +1887,14 @@ export default function Resources() {
             <CardContent className="space-y-4">
               {/* Filters */}
               <div className="flex flex-wrap gap-3 items-end">
+                {/* Name search */}
+                <div className="space-y-1">
+                  <Label className="text-xs">Search Resource</Label>
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                    <Input value={calNameSearch} onChange={e => setCalNameSearch(e.target.value)} placeholder="Search by name..." className="pl-8 h-8 text-sm w-48" />
+                  </div>
+                </div>
                 <div className="space-y-1">
                   <Label className="text-xs">From</Label>
                   <Input type="date" value={calStart} onChange={e => setCalStart(e.target.value)} className="w-40 h-8 text-sm" />
@@ -3180,28 +3190,6 @@ function ResourceCalendarTab({ stakeholders, projectId }: { stakeholders: any[];
 
   return (
     <div className="space-y-4">
-      {/* ── Top search & type filter ── */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[180px]">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-          <Input value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder="Search by name..." className="pl-8 h-8 text-xs" />
-        </div>
-        <div className="flex items-center gap-1">
-          {(["all", "TeamMember", "External", "Stakeholder"] as const).map(t => (
-            <button key={t} onClick={() => setTypeFilter(t)}
-              className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
-                typeFilter === t
-                  ? t === "TeamMember" ? "bg-blue-100 text-blue-700 border-blue-300"
-                    : t === "External" ? "bg-orange-100 text-orange-700 border-orange-300"
-                    : t === "Stakeholder" ? "bg-purple-100 text-purple-700 border-purple-300"
-                    : "bg-primary text-primary-foreground border-primary"
-                  : "bg-background text-muted-foreground border-border hover:border-muted-foreground"
-              }`}>
-              {t === "all" ? "All" : t === "TeamMember" ? "Team" : t}
-            </button>
-          ))}
-        </div>
-      </div>
       {/* ── Settings bar ── */}
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => setShowWeekendConfig(true)}>

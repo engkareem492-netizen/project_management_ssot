@@ -822,3 +822,8 @@
 ## RBS Calendar Search Filter (Mar 28, 2026)
 
 - [x] Add search + stakeholder type filter above the calendar section (same as entries list filter) - now appears at top of calendar tab before settings bar
+
+## RBS Calendar UI Refinements (Mar 28, 2026)
+
+- [x] Remove duplicate top search/filter bar from ResourceCalendarTab (user marked as not useful)
+- [x] Add name search input to the calendar heatmap section filters ("Search Resource" field) so not all entries always shown
