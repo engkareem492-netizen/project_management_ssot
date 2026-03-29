@@ -108,6 +108,7 @@ import {
   DragOverlay,
   DragStartEvent,
   PointerSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   closestCenter,
@@ -266,20 +267,20 @@ function SortableNavItem({
       <div className={`group-data-[collapsible=icon]:hidden flex items-center group/item w-full rounded-md transition-all duration-150 ${
         isDragging ? "shadow-lg ring-2 ring-primary/40 bg-background" : ""
       }`}>
-        {/* Drag handle */}
+        {/* Drag handle — always visible at low opacity, full on hover */}
         <span
           {...attributes}
           {...listeners}
           title="Drag to reorder or move to another section"
-          className={`flex items-center justify-center w-5 h-8 shrink-0 cursor-grab active:cursor-grabbing transition-all duration-150 select-none ${
+          className={`flex items-center justify-center w-7 h-9 shrink-0 cursor-grab active:cursor-grabbing transition-all duration-150 select-none rounded ${
             isDragging
-              ? "text-primary"
+              ? "text-primary bg-primary/10"
               : isDraggingActive
-              ? "text-muted-foreground/60 group-hover/item:text-muted-foreground"
-              : "text-muted-foreground/20 group-hover/item:text-muted-foreground/70"
+              ? "text-muted-foreground/50 group-hover/item:text-muted-foreground"
+              : "text-muted-foreground/35 hover:text-muted-foreground hover:bg-accent"
           }`}
         >
-          <GripVertical className="h-3 w-3" />
+          <GripVertical className="h-4 w-4" />
         </span>
         <div className="flex-1 min-w-0">
           <SidebarMenuButton
@@ -604,7 +605,8 @@ function DashboardLayoutContent({
 
   // ─── DnD ────────────────────────────────────────────────────────────────
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 4 } })
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } })
   );
 
   function handleDragStart(event: DragStartEvent) {
@@ -860,14 +862,14 @@ function DashboardLayoutContent({
                 {({ attributes: sectionDragAttrs, listeners: sectionDragListeners }) => (
                 <div className="group/section">
                   <div className="px-3 pt-3 pb-0.5 group-data-[collapsible=icon]:hidden flex items-center gap-1 group/sectionhdr">
-                    {/* Section reorder drag handle */}
+                    {/* Section reorder drag handle — always visible at low opacity */}
                     <span
                       {...(sectionDragAttrs as React.HTMLAttributes<HTMLSpanElement>)}
                       {...(sectionDragListeners as React.HTMLAttributes<HTMLSpanElement>)}
                       title="Drag to reorder section"
-                      className="opacity-0 group-hover/sectionhdr:opacity-100 cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground/70 transition-all shrink-0 select-none flex items-center"
+                      className="opacity-40 group-hover/sectionhdr:opacity-100 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground transition-all shrink-0 select-none flex items-center px-0.5 py-1 rounded hover:bg-accent"
                     >
-                      <GripVertical className="h-3 w-3" />
+                      <GripVertical className="h-4 w-4" />
                     </span>
                     {renamingSection === section.label ? (
                       <form
