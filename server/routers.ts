@@ -790,7 +790,7 @@ export const appRouter = router({
         manHours: z.number().optional(),
         subject: z.string().optional(),
         subjectId: z.number().optional(),
-        taskCategory: z.enum(['task', 'communication', 'development']).optional(),
+        taskCategory: z.enum(['task', 'communication', 'development', 'action_item']).optional(),
         devPlanId: z.number().nullable().optional(),
         devTaskSwotId: z.number().nullable().optional(),
         devTaskSkillId: z.number().nullable().optional(),
@@ -806,13 +806,16 @@ export const appRouter = router({
             }
           });
 
-          // Choose prefix: COMM for communication, DEV for development, T for regular
+          // Choose prefix: COMM for communication, DEV for development, ACT for action items, T for regular
           const isCommTask = input.taskCategory === 'communication';
           const isDevTask = input.taskCategory === 'development';
+          const isActionItem = input.taskCategory === 'action_item';
           const taskId = isCommTask
             ? await db.getNextId('commTask', 'COMM', input.projectId)
             : isDevTask
             ? await db.getNextId('devTask', 'DEV', input.projectId)
+            : isActionItem
+            ? await db.getNextId('actionItem', 'ACT', input.projectId)
             : await db.getNextId('task', 'T', input.projectId);
           // Strip fields that are not columns in the tasks table
           // Note: issueId IS a valid column and must NOT be stripped
@@ -877,7 +880,7 @@ export const appRouter = router({
           manHours: z.union([z.number(), z.string()]).nullable().optional(),
           subject: z.string().nullable().optional(),
           subjectId: z.number().nullable().optional(),
-          taskCategory: z.enum(['task', 'communication', 'development']).optional(),
+          taskCategory: z.enum(['task', 'communication', 'development', 'action_item']).optional(),
           devPlanId: z.number().nullable().optional(),
           devTaskSwotId: z.number().nullable().optional(),
           devTaskSkillId: z.number().nullable().optional(),

@@ -240,6 +240,8 @@ export default function GanttChart() {
         if ((gt.taskId ?? "").startsWith("COMM-")) return false;
         // Exclude DEV tasks (stakeholder development plan tasks)
         if ((gt.taskId ?? "").startsWith("DEV-")) return false;
+        // Exclude ACT tasks (action items - tracked separately, not part of project schedule)
+        if ((gt.taskId ?? "").startsWith("ACT-")) return false;
         return true;
       })
       .map((gt) => {

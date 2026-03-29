@@ -129,11 +129,12 @@ export default function Tasks() {
   };
   const toggleViewMode = cycleViewMode;
 
-  // Task type tab: 'project' | 'comm' | 'dev'
-  const [taskTypeTab, setTaskTypeTab] = useState<'project' | 'comm' | 'dev'>(() => {
+  // Task type tab: 'project' | 'comm' | 'dev' | 'action'
+  const [taskTypeTab, setTaskTypeTab] = useState<'project' | 'comm' | 'dev' | 'action'>(() => {
     const saved = sessionStorage.getItem('tasks_tab');
     if (saved === 'communication') return 'comm';
     if (saved === 'development') return 'dev';
+    if (saved === 'action') return 'action';
     return 'project';
   });
 
@@ -590,9 +591,12 @@ export default function Tasks() {
     // ── Task type tab filter ──
     const isComm = !!(task as any).communicationStakeholderId || (task.taskId ?? '').startsWith('COMM-');
     const isDev = !!(task as any).devPlanId || (task.taskId ?? '').startsWith('DEV-');
+    const isAct = (task.taskId ?? '').startsWith('ACT-');
     if (taskTypeTab === 'comm' && !isComm) return false;
     if (taskTypeTab === 'dev' && !isDev) return false;
-    if (taskTypeTab === 'project' && (isComm || isDev)) return false;
+    if (taskTypeTab === 'action' && !isAct) return false;
+    // Project tab: hide COMM, DEV, and ACT tasks
+    if (taskTypeTab === 'project' && (isComm || isDev || isAct)) return false;
 
     const matchesSearch =
       task.taskId.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -623,7 +627,7 @@ export default function Tasks() {
         return true; // fallback: show all
       }
       if (responsibleFilter === '__action_items__') {
-        return !!(task as any).isActionItem;
+        return (task.taskId ?? '').startsWith('ACT-');
       }
       return (task.responsible || 'Unassigned') === responsibleFilter;
     })();
@@ -702,6 +706,8 @@ export default function Tasks() {
       dueDate: newTask.dueDate || undefined,
       // Preserve assignDate default value (today's date) if not changed
       assignDate: newTask.assignDate,
+      // Map isActionItem checkbox → taskCategory so backend assigns ACT- prefix
+      taskCategory: newTask.isActionItem ? 'action_item' : undefined,
     };
     
     // Clean up empty strings and convert to undefined to prevent SQL errors
@@ -757,7 +763,7 @@ export default function Tasks() {
       assignDate: task.assignDate || '',
       newStatusUpdate: '',
       manHours: task.manHours != null ? parseFloat(task.manHours) : undefined,
-      isActionItem: !!(task as any).isActionItem,
+      isActionItem: (task.taskId ?? '').startsWith('ACT-'),
       actionSourceType: (task as any).actionSourceType || '',
       actionSourceId: (task as any).actionSourceId || '',
       actionNotes: (task as any).actionNotes || '',
@@ -787,7 +793,7 @@ export default function Tasks() {
       assignDate: task.assignDate || '',
       newStatusUpdate: '',
       manHours: task.manHours != null ? parseFloat(task.manHours) : undefined,
-      isActionItem: !!(task as any).isActionItem,
+      isActionItem: (task.taskId ?? '').startsWith('ACT-'),
       actionSourceType: (task as any).actionSourceType || '',
       actionSourceId: (task as any).actionSourceId || '',
       actionNotes: (task as any).actionNotes || '',
@@ -948,20 +954,23 @@ export default function Tasks() {
               { key: 'project', label: 'Project Tasks', color: 'text-blue-700 border-blue-600', badge: 'bg-blue-100 text-blue-700' },
               { key: 'comm', label: 'COMM Tasks', color: 'text-purple-700 border-purple-600', badge: 'bg-purple-100 text-purple-700' },
               { key: 'dev', label: 'DEV Tasks', color: 'text-teal-700 border-teal-600', badge: 'bg-teal-100 text-teal-700' },
+              { key: 'action', label: 'Action Items', color: 'text-orange-700 border-orange-600', badge: 'bg-orange-100 text-orange-700' },
             ] as const).map(({ key, label, color, badge }) => {
               const count = tasks?.filter((t: any) => {
                 const isComm = !!t.communicationStakeholderId || (t.taskId ?? '').startsWith('COMM-');
                 const isDev = !!t.devPlanId || (t.taskId ?? '').startsWith('DEV-');
+                const isAct = (t.taskId ?? '').startsWith('ACT-');
                 if (key === 'comm') return isComm;
                 if (key === 'dev') return isDev;
-                return !isComm && !isDev;
+                if (key === 'action') return isAct;
+                return !isComm && !isDev && !isAct;
               }).length ?? 0;
               return (
                 <button
                   key={key}
                   onClick={() => {
                     setTaskTypeTab(key);
-                    sessionStorage.setItem('tasks_tab', key === 'comm' ? 'communication' : key === 'dev' ? 'development' : 'project');
+                    sessionStorage.setItem('tasks_tab', key === 'comm' ? 'communication' : key === 'dev' ? 'development' : key === 'action' ? 'action' : 'project');
                   }}
                   className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
                     taskTypeTab === key
