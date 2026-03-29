@@ -70,6 +70,150 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
+// ─── Pre-upload Metadata Dialog ─────────────────────────────────────────────
+interface PendingFile {
+  file: File;
+  name: string;
+  description: string;
+  categoryId: string;
+  tags: string;
+}
+
+function PreUploadDialog({
+  pending,
+  categories,
+  open,
+  onConfirm,
+  onCancel,
+  uploading,
+  uploadProgress,
+}: {
+  pending: PendingFile[];
+  categories: any[];
+  open: boolean;
+  onConfirm: (items: PendingFile[]) => void;
+  onCancel: () => void;
+  uploading: boolean;
+  uploadProgress: number;
+}) {
+  const [items, setItems] = useState<PendingFile[]>([]);
+
+  useEffect(() => {
+    if (open) setItems(pending.map(p => ({ ...p })));
+  }, [open, pending]);
+
+  const update = (idx: number, field: keyof PendingFile, value: string) =>
+    setItems(prev => prev.map((it, i) => i === idx ? { ...it, [field]: value } : it));
+
+  const getFileIcon = (file: File) => {
+    if (file.type.startsWith("image/")) return FileImage;
+    if (file.type.includes("pdf") || file.type.includes("word")) return FileText;
+    if (file.type.includes("sheet") || file.type.includes("excel") || file.type.includes("csv")) return FileSpreadsheet;
+    return File;
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={v => { if (!v && !uploading) onCancel(); }}>
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <CloudUpload className="w-4 h-4" />
+            Review Files Before Upload
+          </DialogTitle>
+          <DialogDescription className="text-xs">
+            Set a name and description for each file, then click Upload to proceed.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+          {items.map((item, idx) => {
+            const Icon = getFileIcon(item.file);
+            return (
+              <div key={idx} className="border rounded-lg p-3 space-y-2.5 bg-muted/20">
+                <div className="flex items-center gap-2">
+                  <Icon className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <span className="text-xs text-muted-foreground truncate flex-1">{item.file.name}</span>
+                  <span className="text-xs text-muted-foreground shrink-0">{formatBytes(item.file.size)}</span>
+                </div>
+                <div>
+                  <Label className="text-xs">Display Name *</Label>
+                  <Input
+                    value={item.name}
+                    onChange={e => update(idx, "name", e.target.value)}
+                    placeholder="Document display name…"
+                    className="h-8 text-sm mt-0.5"
+                    disabled={uploading}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Description</Label>
+                  <Textarea
+                    value={item.description}
+                    onChange={e => update(idx, "description", e.target.value)}
+                    placeholder="Brief description (optional)…"
+                    rows={2}
+                    className="text-sm mt-0.5 resize-none"
+                    disabled={uploading}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs">Category</Label>
+                    <Select
+                      value={item.categoryId || "none"}
+                      onValueChange={v => update(idx, "categoryId", v === "none" ? "" : v)}
+                      disabled={uploading}
+                    >
+                      <SelectTrigger className="h-8 text-xs mt-0.5"><SelectValue placeholder="No category" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No category</SelectItem>
+                        {categories.map(cat => <SelectItem key={cat.id} value={String(cat.id)}>{cat.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Tags (comma-separated)</Label>
+                    <Input
+                      value={item.tags}
+                      onChange={e => update(idx, "tags", e.target.value)}
+                      placeholder="tag1, tag2…"
+                      className="h-8 text-xs mt-0.5"
+                      disabled={uploading}
+                    />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {uploading && (
+          <div className="space-y-1.5 pt-2">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>Uploading…</span>
+              <span>{uploadProgress}%</span>
+            </div>
+            <Progress value={uploadProgress} className="h-1.5" />
+          </div>
+        )}
+
+        <DialogFooter className="pt-2">
+          <Button variant="outline" onClick={onCancel} disabled={uploading}>Cancel</Button>
+          <Button
+            onClick={() => onConfirm(items)}
+            disabled={uploading || items.some(it => !it.name.trim())}
+          >
+            {uploading
+              ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Uploading…</>
+              : <><CloudUpload className="w-4 h-4 mr-2" />Upload {items.length} file{items.length > 1 ? "s" : ""}</>
+            }
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ─── Upload Drop Zone ─────────────────────────────────────────────────────────
 function UploadDropZone({
   onFiles,
@@ -488,6 +632,8 @@ export default function DocumentLibrary() {
   // Upload state
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
+  const [preUploadOpen, setPreUploadOpen] = useState(false);
 
   // Edit / Delete / Link / Category dialog state
   const [editDoc, setEditDoc] = useState<any | null>(null);
@@ -502,8 +648,26 @@ export default function DocumentLibrary() {
   const set = (field: string, value: string) => setForm(prev => ({ ...prev, [field]: value }));
   const resetForm = () => { setForm({ ...EMPTY_FORM }); setFormIssueIds([]); setFormReqIds([]); };
 
+  // ─── Queue files for pre-upload review ──────────────────────────────────
+  const queueFilesForUpload = (files: File[]) => {
+    const MAX_SIZE = 16 * 1024 * 1024;
+    const valid = files.filter(f => {
+      if (f.size > MAX_SIZE) { toast.error(`${f.name} exceeds 16 MB limit`); return false; }
+      return true;
+    });
+    if (!valid.length) return;
+    setPendingFiles(valid.map(f => ({
+      file: f,
+      name: f.name.replace(/\.[^.]+$/, ""), // strip extension for display name
+      description: "",
+      categoryId: "",
+      tags: "",
+    })));
+    setPreUploadOpen(true);
+  };
+
   // ─── Paste image from clipboard ──────────────────────────────────────────
-  const handlePaste = useCallback(async (e: ClipboardEvent) => {
+  const handlePaste = useCallback((e: ClipboardEvent) => {
     if (!open) return;
     const items = Array.from(e.clipboardData?.items ?? []);
     const imageItem = items.find(item => item.type.startsWith("image/"));
@@ -511,9 +675,9 @@ export default function DocumentLibrary() {
     e.preventDefault();
     const file = imageItem.getAsFile();
     if (!file) return;
-    toast.info("Uploading pasted image…");
-    await uploadAndRegister([file]);
-  }, [open, projectId]); // eslint-disable-line react-hooks/exhaustive-deps
+    // Queue the pasted file — queueFilesForUpload will strip the extension for the display name
+    queueFilesForUpload([file]);
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     document.addEventListener("paste", handlePaste);
@@ -521,44 +685,42 @@ export default function DocumentLibrary() {
   }, [handlePaste]);
 
   // ─── Upload files to S3 then auto-register as documents ──────────────────
-  const uploadAndRegister = async (files: File[]) => {
-    const MAX_SIZE = 16 * 1024 * 1024;
-    const validFiles = files.filter(f => {
-      if (f.size > MAX_SIZE) { toast.error(`${f.name} exceeds 16 MB limit`); return false; }
-      return true;
-    });
-    if (!validFiles.length) return;
-
+  const uploadAndRegister = async (items: PendingFile[]) => {
     setUploading(true);
     setUploadProgress(0);
     let done = 0;
 
-    for (const file of validFiles) {
+    for (const item of items) {
       try {
-        const base64 = await fileToBase64(file);
+        const base64 = await fileToBase64(item.file);
         const result = await uploadFile.mutateAsync({
           projectId,
-          fileName: file.name,
+          fileName: item.file.name,
           fileData: base64,
-          mimeType: file.type || "application/octet-stream",
+          mimeType: item.file.type || "application/octet-stream",
         });
         await create.mutateAsync({
           projectId,
           fileName: result.fileName,
-          originalName: result.fileName,
+          originalName: item.name.trim() || result.fileName,
           fileUrl: result.url,
           fileSize: result.fileSize,
           mimeType: result.mimeType,
+          description: item.description.trim() || undefined,
+          categoryId: item.categoryId ? parseInt(item.categoryId) : undefined,
+          tags: item.tags ? item.tags.split(",").map((t: string) => t.trim()).filter(Boolean) : [],
         });
         done++;
-        setUploadProgress(Math.round((done / validFiles.length) * 100));
+        setUploadProgress(Math.round((done / items.length) * 100));
       } catch (err: any) {
-        toast.error(`Failed to upload ${file.name}: ${err.message}`);
+        toast.error(`Failed to upload ${item.file.name}: ${err.message}`);
       }
     }
 
     setUploading(false);
     setUploadProgress(0);
+    setPreUploadOpen(false);
+    setPendingFiles([]);
     if (done > 0) {
       toast.success(`${done} file${done > 1 ? "s" : ""} uploaded and registered`);
       refetch();
@@ -611,7 +773,7 @@ export default function DocumentLibrary() {
       </div>
 
       {/* Global drag-and-drop zone — always visible */}
-      <UploadDropZone onFiles={uploadAndRegister} uploading={uploading} uploadProgress={uploadProgress} />
+      <UploadDropZone onFiles={queueFilesForUpload} uploading={uploading} uploadProgress={uploadProgress} />
 
       <div className="flex gap-3 flex-wrap">
         <div className="relative flex-1 min-w-48">
@@ -712,7 +874,7 @@ export default function DocumentLibrary() {
 
             {/* Upload tab */}
             <TabsContent value="upload" className="space-y-4">
-              <UploadDropZone onFiles={uploadAndRegister} uploading={uploading} uploadProgress={uploadProgress} />
+              <UploadDropZone onFiles={queueFilesForUpload} uploading={uploading} uploadProgress={uploadProgress} />
               <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/40 rounded-lg px-3 py-2">
                 <Clipboard className="w-3.5 h-3.5 shrink-0" />
                 <span>You can also paste an image directly from your clipboard (Ctrl+V / Cmd+V) while this dialog is open.</span>
@@ -778,6 +940,17 @@ export default function DocumentLibrary() {
 
       {/* Link Dialog */}
       {linkDocId !== null && <LinkDialog open={linkDocId !== null} onClose={() => setLinkDocId(null)} docId={linkDocId} projectId={projectId} />}
+
+      {/* Pre-upload metadata review */}
+      <PreUploadDialog
+        pending={pendingFiles}
+        categories={categories as any[]}
+        open={preUploadOpen}
+        onConfirm={uploadAndRegister}
+        onCancel={() => { setPreUploadOpen(false); setPendingFiles([]); }}
+        uploading={uploading}
+        uploadProgress={uploadProgress}
+      />
 
       {/* Category Manager */}
       <CategoryManagerDialog open={catManagerOpen} onClose={() => { setCatManagerOpen(false); refetchCats(); }} projectId={projectId} />
