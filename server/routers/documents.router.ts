@@ -2,6 +2,7 @@ import { protectedProcedure, router } from "../_core/trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "../db";
+import { storagePut } from "../storage";
 import {
   documents,
   documentCategories,
@@ -153,6 +154,25 @@ export const documentsRouter = router({
         .where(eq(documentRequirementLinks.documentId, input.id));
       await db.delete(documents).where(eq(documents.id, input.id));
       return { success: true };
+    }),
+
+  // ─── File Upload ────────────────────────────────────────────────────────────
+  uploadFile: protectedProcedure
+    .input(
+      z.object({
+        projectId: z.number(),
+        fileName: z.string(),
+        fileData: z.string(), // base64 encoded
+        mimeType: z.string(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const timestamp = Date.now();
+      const sanitized = input.fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const fileKey = `doc-library/project-${input.projectId}/${timestamp}-${sanitized}`;
+      const buffer = Buffer.from(input.fileData, "base64");
+      const { url } = await storagePut(fileKey, buffer, input.mimeType);
+      return { url, fileKey, fileName: input.fileName, mimeType: input.mimeType, fileSize: buffer.byteLength };
     }),
 
   // ─── Issue Links ────────────────────────────────────────────────────────────

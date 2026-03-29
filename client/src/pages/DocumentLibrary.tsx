@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useProject } from "@/contexts/ProjectContext";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -12,11 +12,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import {
   Loader2, Plus, Trash2, FolderOpen, Search, FileText, File,
   FileImage, FileSpreadsheet, ExternalLink, Upload, Link2, Tag,
-  Settings2, Pencil, X, Check, AlertTriangle,
+  Settings2, Pencil, X, Check, AlertTriangle, CloudUpload, Clipboard,
 } from "lucide-react";
 
 function getFileIcon(mimeType: string | null) {
@@ -55,6 +56,79 @@ const EMPTY_FORM = {
   uploadedBy: "", tags: "", categoryId: "",
 };
 
+// ─── File to base64 helper ────────────────────────────────────────────────────
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      // Strip the data:...;base64, prefix
+      resolve(result.split(",")[1]);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// ─── Upload Drop Zone ─────────────────────────────────────────────────────────
+function UploadDropZone({
+  onFiles,
+  uploading,
+  uploadProgress,
+}: {
+  onFiles: (files: File[]) => void;
+  uploading: boolean;
+  uploadProgress: number;
+}) {
+  const [isDragOver, setIsDragOver] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) onFiles(files);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragOver(true); };
+  const handleDragLeave = () => setIsDragOver(false);
+
+  return (
+    <div
+      onDrop={handleDrop}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onClick={() => !uploading && inputRef.current?.click()}
+      className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-200 select-none ${
+        isDragOver
+          ? "border-primary bg-primary/5 scale-[1.01]"
+          : "border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/30"
+      } ${uploading ? "pointer-events-none opacity-70" : ""}`}
+    >
+      <input
+        ref={inputRef}
+        type="file"
+        multiple
+        className="hidden"
+        onChange={e => { const files = Array.from(e.target.files ?? []); if (files.length) onFiles(files); e.target.value = ""; }}
+      />
+      {uploading ? (
+        <div className="space-y-3">
+          <Loader2 className="w-8 h-8 mx-auto text-primary animate-spin" />
+          <p className="text-sm font-medium text-primary">Uploading…</p>
+          <Progress value={uploadProgress} className="h-1.5 max-w-48 mx-auto" />
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <CloudUpload className={`w-10 h-10 mx-auto transition-colors ${isDragOver ? "text-primary" : "text-muted-foreground/50"}`} />
+          <p className="text-sm font-medium">Drop files here or click to browse</p>
+          <p className="text-xs text-muted-foreground">Supports any file type · Multiple files allowed · Max 16 MB each</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Link Dialog ─────────────────────────────────────────────────────────────
 function LinkDialog({ open, onClose, docId, projectId }: { open: boolean; onClose: () => void; docId: number; projectId: number; }) {
   const utils = trpc.useUtils();
@@ -82,12 +156,12 @@ function LinkDialog({ open, onClose, docId, projectId }: { open: boolean; onClos
   const toggleReq = (id: number) => setSelectedReqIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   return (
     <Dialog open={open} onOpenChange={v => { if (!v) { setInitialized(false); onClose(); } }}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader><DialogTitle className="flex items-center gap-2"><Link2 className="w-4 h-4" /> Link Document</DialogTitle></DialogHeader>
+      <DialogContent className="max-w-xl">
+        <DialogHeader><DialogTitle className="flex items-center gap-2"><Link2 className="w-4 h-4" /> Manage Links</DialogTitle></DialogHeader>
         <Tabs defaultValue="issues">
           <TabsList className="mb-3">
-            <TabsTrigger value="issues">Issues ({selectedIssueIds.length} linked)</TabsTrigger>
-            <TabsTrigger value="requirements">Requirements ({selectedReqIds.length} linked)</TabsTrigger>
+            <TabsTrigger value="issues">Issues ({selectedIssueIds.length})</TabsTrigger>
+            <TabsTrigger value="requirements">Requirements ({selectedReqIds.length})</TabsTrigger>
           </TabsList>
           <TabsContent value="issues">
             <div className="max-h-72 overflow-y-auto border rounded-md divide-y">
@@ -192,7 +266,7 @@ function CategoryManagerDialog({ open, onClose, projectId }: { open: boolean; on
   );
 }
 
-// ─── Issue/Req Selector (used in both Create and Edit dialogs) ────────────────
+// ─── Issue/Req Selector ───────────────────────────────────────────────────────
 function IssueReqSelector({ projectId, selectedIssueIds, selectedReqIds, onIssueChange, onReqChange }: {
   projectId: number; selectedIssueIds: number[]; selectedReqIds: number[];
   onIssueChange: (ids: number[]) => void; onReqChange: (ids: number[]) => void;
@@ -253,7 +327,6 @@ function EditDocumentDialog({ doc, categories, open, onClose, onSaved }: {
     { documentId: doc?.id ?? 0 }, { enabled: open && !!doc }
   );
 
-  // Populate form when doc changes or dialog opens
   useEffect(() => {
     if (doc && open) {
       setForm({
@@ -272,13 +345,8 @@ function EditDocumentDialog({ doc, categories, open, onClose, onSaved }: {
     }
   }, [doc, open]);
 
-  // Populate link selections once loaded
-  useEffect(() => {
-    if (!loadingIssues) setEditIssueIds((linkedIssues as any[]).map(i => i.id));
-  }, [loadingIssues, linkedIssues]);
-  useEffect(() => {
-    if (!loadingReqs) setEditReqIds((linkedReqs as any[]).map(r => r.id));
-  }, [loadingReqs, linkedReqs]);
+  useEffect(() => { if (!loadingIssues) setEditIssueIds((linkedIssues as any[]).map(i => i.id)); }, [loadingIssues, linkedIssues]);
+  useEffect(() => { if (!loadingReqs) setEditReqIds((linkedReqs as any[]).map(r => r.id)); }, [loadingReqs, linkedReqs]);
 
   const update = trpc.documents.update.useMutation({
     onSuccess: () => { toast.success("Document updated"); onSaved(); onClose(); },
@@ -292,16 +360,15 @@ function EditDocumentDialog({ doc, categories, open, onClose, onSaved }: {
   const handleSave = async () => {
     if (!form.originalName.trim()) return toast.error("File name is required");
     if (!form.fileUrl.trim()) return toast.error("File URL is required");
-    // Update metadata
     await update.mutateAsync({
       id: doc.id,
+      originalName: form.originalName,
       description: form.description || undefined,
       entityType: form.entityType || undefined,
       entityId: form.entityId || undefined,
       categoryId: form.categoryId ? parseInt(form.categoryId) : null,
       tags: form.tags ? form.tags.split(",").map((t: string) => t.trim()).filter(Boolean) : [],
     });
-    // Update links
     await setIssueLinks.mutateAsync({ documentId: doc.id, issueIds: editIssueIds });
     await setReqLinks.mutateAsync({ documentId: doc.id, requirementIds: editReqIds });
     utils.documents.getIssueLinks.invalidate({ documentId: doc.id });
@@ -343,10 +410,7 @@ function EditDocumentDialog({ doc, categories, open, onClose, onSaved }: {
               <div><Label>Uploaded By</Label><Input value={form.uploadedBy} onChange={e => set("uploadedBy", e.target.value)} placeholder="Name..." /></div>
             </div>
             <div><Label>Description</Label><Textarea rows={2} value={form.description} onChange={e => set("description", e.target.value)} /></div>
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label>MIME Type</Label><Input value={form.mimeType} onChange={e => set("mimeType", e.target.value)} placeholder="application/pdf" /></div>
-              <div><Label>Tags (comma-separated)</Label><Input value={form.tags} onChange={e => set("tags", e.target.value)} placeholder="blueprint, approval, v2" /></div>
-            </div>
+            <div><Label>Tags (comma-separated)</Label><Input value={form.tags} onChange={e => set("tags", e.target.value)} placeholder="blueprint, approval, v2" /></div>
           </TabsContent>
           <TabsContent value="links">
             {doc && (
@@ -409,6 +473,7 @@ export default function DocumentLibrary() {
     onSuccess: () => { toast.success("Document registered"); refetch(); setOpen(false); resetForm(); },
     onError: (e) => toast.error("Failed to register document: " + e.message),
   });
+  const uploadFile = trpc.documents.uploadFile.useMutation();
   const del = trpc.documents.delete.useMutation({
     onSuccess: () => { toast.success("Document deleted"); refetch(); setDeleteDoc(null); },
     onError: (e) => toast.error("Failed to delete: " + e.message),
@@ -420,35 +485,88 @@ export default function DocumentLibrary() {
   const [formIssueIds, setFormIssueIds] = useState<number[]>([]);
   const [formReqIds, setFormReqIds] = useState<number[]>([]);
 
-  // Edit dialog state
+  // Upload state
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+
+  // Edit / Delete / Link / Category dialog state
   const [editDoc, setEditDoc] = useState<any | null>(null);
-
-  // Delete dialog state
   const [deleteDoc, setDeleteDoc] = useState<any | null>(null);
-
-  // Other UI state
-  const [search, setSearch] = useState("");
-  const [catFilter, setCatFilter] = useState("all");
   const [linkDocId, setLinkDocId] = useState<number | null>(null);
   const [catManagerOpen, setCatManagerOpen] = useState(false);
+
+  // Filter state
+  const [search, setSearch] = useState("");
+  const [catFilter, setCatFilter] = useState("all");
 
   const set = (field: string, value: string) => setForm(prev => ({ ...prev, [field]: value }));
   const resetForm = () => { setForm({ ...EMPTY_FORM }); setFormIssueIds([]); setFormReqIds([]); };
 
-  const filtered = useMemo(() => (docs as any[]).filter(doc => {
-    const matchSearch = !search || doc.originalName.toLowerCase().includes(search.toLowerCase()) ||
-      (doc.description ?? "").toLowerCase().includes(search.toLowerCase()) ||
-      (doc.documentId ?? "").toLowerCase().includes(search.toLowerCase());
-    const matchCat = catFilter === "all" || (catFilter === "uncategorized" ? !doc.categoryId : String(doc.categoryId) === catFilter);
-    return matchSearch && matchCat;
-  }), [docs, search, catFilter]);
+  // ─── Paste image from clipboard ──────────────────────────────────────────
+  const handlePaste = useCallback(async (e: ClipboardEvent) => {
+    if (!open) return;
+    const items = Array.from(e.clipboardData?.items ?? []);
+    const imageItem = items.find(item => item.type.startsWith("image/"));
+    if (!imageItem) return;
+    e.preventDefault();
+    const file = imageItem.getAsFile();
+    if (!file) return;
+    toast.info("Uploading pasted image…");
+    await uploadAndRegister([file]);
+  }, [open, projectId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const catMap = useMemo(() => {
-    const m: Record<number, any> = {};
-    (categories as any[]).forEach(c => { m[c.id] = c; });
-    return m;
-  }, [categories]);
+  useEffect(() => {
+    document.addEventListener("paste", handlePaste);
+    return () => document.removeEventListener("paste", handlePaste);
+  }, [handlePaste]);
 
+  // ─── Upload files to S3 then auto-register as documents ──────────────────
+  const uploadAndRegister = async (files: File[]) => {
+    const MAX_SIZE = 16 * 1024 * 1024;
+    const validFiles = files.filter(f => {
+      if (f.size > MAX_SIZE) { toast.error(`${f.name} exceeds 16 MB limit`); return false; }
+      return true;
+    });
+    if (!validFiles.length) return;
+
+    setUploading(true);
+    setUploadProgress(0);
+    let done = 0;
+
+    for (const file of validFiles) {
+      try {
+        const base64 = await fileToBase64(file);
+        const result = await uploadFile.mutateAsync({
+          projectId,
+          fileName: file.name,
+          fileData: base64,
+          mimeType: file.type || "application/octet-stream",
+        });
+        await create.mutateAsync({
+          projectId,
+          fileName: result.fileName,
+          originalName: result.fileName,
+          fileUrl: result.url,
+          fileSize: result.fileSize,
+          mimeType: result.mimeType,
+        });
+        done++;
+        setUploadProgress(Math.round((done / validFiles.length) * 100));
+      } catch (err: any) {
+        toast.error(`Failed to upload ${file.name}: ${err.message}`);
+      }
+    }
+
+    setUploading(false);
+    setUploadProgress(0);
+    if (done > 0) {
+      toast.success(`${done} file${done > 1 ? "s" : ""} uploaded and registered`);
+      refetch();
+      if (open) setOpen(false);
+    }
+  };
+
+  // ─── Manual URL register ──────────────────────────────────────────────────
   const handleSave = () => {
     if (!form.fileUrl.trim()) return toast.error("File URL is required");
     if (!form.originalName.trim()) return toast.error("File name is required");
@@ -464,6 +582,20 @@ export default function DocumentLibrary() {
     });
   };
 
+  const filtered = useMemo(() => (docs as any[]).filter(doc => {
+    const matchSearch = !search || doc.originalName.toLowerCase().includes(search.toLowerCase()) ||
+      (doc.description ?? "").toLowerCase().includes(search.toLowerCase()) ||
+      (doc.documentId ?? "").toLowerCase().includes(search.toLowerCase());
+    const matchCat = catFilter === "all" || (catFilter === "uncategorized" ? !doc.categoryId : String(doc.categoryId) === catFilter);
+    return matchSearch && matchCat;
+  }), [docs, search, catFilter]);
+
+  const catMap = useMemo(() => {
+    const m: Record<number, any> = {};
+    (categories as any[]).forEach(c => { m[c.id] = c; });
+    return m;
+  }, [categories]);
+
   return (
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
@@ -474,14 +606,17 @@ export default function DocumentLibrary() {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => setCatManagerOpen(true)}><Settings2 className="w-4 h-4 mr-1" /> Categories</Button>
-          <Button size="sm" onClick={() => setOpen(true)}><Plus className="w-4 h-4 mr-1" /> Register Document</Button>
+          <Button size="sm" onClick={() => setOpen(true)}><Upload className="w-4 h-4 mr-1" /> Upload / Register</Button>
         </div>
       </div>
+
+      {/* Global drag-and-drop zone — always visible */}
+      <UploadDropZone onFiles={uploadAndRegister} uploading={uploading} uploadProgress={uploadProgress} />
 
       <div className="flex gap-3 flex-wrap">
         <div className="relative flex-1 min-w-48">
           <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Search documents..." value={search} onChange={e => setSearch(e.target.value)} className="pl-8 h-9" />
+          <Input placeholder="Search documents…" value={search} onChange={e => setSearch(e.target.value)} className="pl-8 h-9" />
         </div>
         <Select value={catFilter} onValueChange={setCatFilter}>
           <SelectTrigger className="h-9 w-48"><SelectValue placeholder="All categories" /></SelectTrigger>
@@ -499,7 +634,7 @@ export default function DocumentLibrary() {
         <Card className="py-16 text-center">
           <FolderOpen className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
           <p className="text-muted-foreground">No documents found</p>
-          <Button variant="outline" size="sm" className="mt-3" onClick={() => setOpen(true)}><Plus className="w-4 h-4 mr-1" /> Register your first document</Button>
+          <p className="text-xs text-muted-foreground mt-1">Drop files above or click "Upload / Register" to add documents</p>
         </Card>
       ) : (
         <Card>
@@ -559,47 +694,64 @@ export default function DocumentLibrary() {
         </Card>
       )}
 
-      {/* Register Document Dialog */}
+      {/* Upload / Register Dialog */}
       <Dialog open={open} onOpenChange={v => { if (!v) resetForm(); setOpen(v); }}>
         <DialogContent className="max-w-2xl">
-          <DialogHeader><DialogTitle className="flex items-center gap-2"><Upload className="w-4 h-4" /> Register Document</DialogTitle></DialogHeader>
-          <Tabs defaultValue="details">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Upload className="w-4 h-4" /> Upload / Register Document</DialogTitle>
+            <DialogDescription className="text-xs">Upload a file directly or register an external URL. You can also paste an image (Ctrl+V / Cmd+V) anywhere on this dialog.</DialogDescription>
+          </DialogHeader>
+          <Tabs defaultValue="upload">
             <TabsList className="mb-4">
-              <TabsTrigger value="details">Details</TabsTrigger>
+              <TabsTrigger value="upload"><CloudUpload className="w-3.5 h-3.5 mr-1.5" />Upload File</TabsTrigger>
+              <TabsTrigger value="url"><Link2 className="w-3.5 h-3.5 mr-1.5" />Register URL</TabsTrigger>
               <TabsTrigger value="links">
                 Links{(formIssueIds.length + formReqIds.length) > 0 && <Badge variant="secondary" className="ml-1 text-xs">{formIssueIds.length + formReqIds.length}</Badge>}
               </TabsTrigger>
             </TabsList>
-            <TabsContent value="details" className="space-y-4">
-              <p className="text-xs text-muted-foreground bg-muted/50 p-3 rounded-lg">Paste the file URL from SharePoint, Google Drive, S3, or any other file storage. This registers the link, files are not uploaded directly.</p>
+
+            {/* Upload tab */}
+            <TabsContent value="upload" className="space-y-4">
+              <UploadDropZone onFiles={uploadAndRegister} uploading={uploading} uploadProgress={uploadProgress} />
+              <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/40 rounded-lg px-3 py-2">
+                <Clipboard className="w-3.5 h-3.5 shrink-0" />
+                <span>You can also paste an image directly from your clipboard (Ctrl+V / Cmd+V) while this dialog is open.</span>
+              </div>
+            </TabsContent>
+
+            {/* URL register tab */}
+            <TabsContent value="url" className="space-y-4">
+              <p className="text-xs text-muted-foreground bg-muted/50 p-3 rounded-lg">Paste the file URL from SharePoint, Google Drive, S3, or any other file storage. This registers the link — files are not uploaded directly.</p>
               <div><Label>File Name *</Label><Input value={form.originalName} onChange={e => set("originalName", e.target.value)} placeholder="Report_Q1_2026.pdf" /></div>
-              <div><Label>File URL *</Label><Input value={form.fileUrl} onChange={e => set("fileUrl", e.target.value)} placeholder="https://..." /></div>
+              <div><Label>File URL *</Label><Input value={form.fileUrl} onChange={e => set("fileUrl", e.target.value)} placeholder="https://…" /></div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>Category</Label>
                   <Select value={form.categoryId || "none"} onValueChange={v => set("categoryId", v === "none" ? "" : v)}>
-                    <SelectTrigger><SelectValue placeholder="Select category..." /></SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder="Select category…" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">No category</SelectItem>
                       {(categories as any[]).map(cat => <SelectItem key={cat.id} value={String(cat.id)}>{cat.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
-                <div><Label>Uploaded By</Label><Input value={form.uploadedBy} onChange={e => set("uploadedBy", e.target.value)} placeholder="Name..." /></div>
+                <div><Label>Uploaded By</Label><Input value={form.uploadedBy} onChange={e => set("uploadedBy", e.target.value)} placeholder="Name…" /></div>
               </div>
-              <div><Label>Description</Label><Textarea rows={2} value={form.description} onChange={e => set("description", e.target.value)} placeholder="Brief description..." /></div>
+              <div><Label>Description</Label><Textarea rows={2} value={form.description} onChange={e => set("description", e.target.value)} placeholder="Brief description…" /></div>
               <div className="grid grid-cols-2 gap-3">
                 <div><Label>MIME Type (optional)</Label><Input value={form.mimeType} onChange={e => set("mimeType", e.target.value)} placeholder="application/pdf" /></div>
                 <div><Label>Tags (comma-separated)</Label><Input value={form.tags} onChange={e => set("tags", e.target.value)} placeholder="blueprint, approval, v2" /></div>
               </div>
             </TabsContent>
+
+            {/* Links tab */}
             <TabsContent value="links">
               <IssueReqSelector projectId={projectId} selectedIssueIds={formIssueIds} selectedReqIds={formReqIds} onIssueChange={setFormIssueIds} onReqChange={setFormReqIds} />
             </TabsContent>
           </Tabs>
           <DialogFooter>
             <Button variant="outline" onClick={() => { resetForm(); setOpen(false); }}>Cancel</Button>
-            <Button onClick={handleSave} disabled={create.isPending}>{create.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Register</Button>
+            <Button onClick={handleSave} disabled={create.isPending}>{create.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Register URL</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
