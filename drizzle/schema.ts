@@ -1132,6 +1132,19 @@ export const projectCharter = mysqlTable("projectCharter", {
   budget: decimal("budget", { precision: 15, scale: 2 }),
   currency: varchar("currency", { length: 10 }).default("USD"),
   notes: text("notes"),
+  // Business Case tab
+  businessCaseCause: text("businessCaseCause"),
+  businessCaseSummary: text("businessCaseSummary"),
+  feasibilityStudy: text("feasibilityStudy"),
+  // Governance tab
+  governanceStructure: text("governanceStructure"),
+  pmResponsibilities: text("pmResponsibilities"),
+  escalationPath: text("escalationPath"),
+  decisionAuthority: text("decisionAuthority"),
+  // Need Assessment & Benefits tab
+  needAssessment: text("needAssessment"),
+  benefitsManagementPlan: text("benefitsManagementPlan"),
+  expectedBenefits: json("expectedBenefits"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

@@ -384,3 +384,15 @@ ALTER TABLE `tasks` ADD COLUMN IF NOT EXISTS `manHours` decimal(10,2);
 ALTER TABLE `changeRequests` ADD COLUMN IF NOT EXISTS `scopeItemId` int;
 ALTER TABLE `requirements` ADD COLUMN IF NOT EXISTS `scopeItemId` int;
 ALTER TABLE `knowledgeBase` ADD COLUMN IF NOT EXISTS `linkedDocumentId` int;
+
+-- projectCharter extended columns (Business Case, Governance, Need Assessment tabs)
+ALTER TABLE `projectCharter` ADD COLUMN IF NOT EXISTS `businessCaseCause` text;
+ALTER TABLE `projectCharter` ADD COLUMN IF NOT EXISTS `businessCaseSummary` text;
+ALTER TABLE `projectCharter` ADD COLUMN IF NOT EXISTS `feasibilityStudy` text;
+ALTER TABLE `projectCharter` ADD COLUMN IF NOT EXISTS `governanceStructure` text;
+ALTER TABLE `projectCharter` ADD COLUMN IF NOT EXISTS `pmResponsibilities` text;
+ALTER TABLE `projectCharter` ADD COLUMN IF NOT EXISTS `escalationPath` text;
+ALTER TABLE `projectCharter` ADD COLUMN IF NOT EXISTS `decisionAuthority` text;
+ALTER TABLE `projectCharter` ADD COLUMN IF NOT EXISTS `needAssessment` text;
+ALTER TABLE `projectCharter` ADD COLUMN IF NOT EXISTS `benefitsManagementPlan` text;
+ALTER TABLE `projectCharter` ADD COLUMN IF NOT EXISTS `expectedBenefits` json;
