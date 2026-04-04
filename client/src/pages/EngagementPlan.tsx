@@ -598,11 +598,9 @@ function StakeholderAnalysisTab({
                     const colors: Record<string, string> = { TeamMember: "#3b82f6", External: "#f97316", Stakeholder: "#8b5cf6" };
                     const color = colors[s.classification] ?? "#64748b";
                     return (
-                      <button
+                      <div
                         key={s.id}
-                        onClick={() => setSelectedStakeholder(s)}
-                        className="flex items-center gap-2 w-full rounded-lg px-2 py-1.5 hover:bg-amber-100/60 dark:hover:bg-amber-900/30 transition-colors text-left group"
-                        title={`Click to edit ${s.fullName}`}
+                        className="flex items-center gap-2 w-full rounded-lg px-2 py-1.5 hover:bg-amber-100/60 dark:hover:bg-amber-900/30 transition-colors group"
                       >
                         <div
                           className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-bold shrink-0 shadow-sm"
@@ -610,13 +608,20 @@ function StakeholderAnalysisTab({
                         >
                           {initials}
                         </div>
-                        <div className="min-w-0 flex-1">
+                        <div className="min-w-0 flex-1 text-left">
                           <div className="text-xs font-medium truncate text-foreground group-hover:text-amber-700 dark:group-hover:text-amber-300">{s.fullName || s.name}</div>
                           <div className="text-[10px] text-muted-foreground truncate">
-                            P: {s.powerLevel ?? <span className="text-red-400">—</span>} · I: {s.interestLevel ?? <span className="text-red-400">—</span>}
+                            P: {s.powerLevel ?? "—"} · I: {s.interestLevel ?? "—"}
                           </div>
                         </div>
-                      </button>
+                        <button
+                          onClick={() => handlePositionUpdate(s.id, s.powerLevel ?? 3, s.interestLevel ?? 3)}
+                          className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-amber-200 text-amber-800 hover:bg-amber-300 opacity-0 group-hover:opacity-100 transition-opacity font-medium"
+                          title="Place on map at current power/interest position"
+                        >
+                          → Map
+                        </button>
+                      </div>
                     );
                   })}
                 </div>
