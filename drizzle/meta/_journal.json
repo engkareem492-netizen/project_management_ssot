@@ -421,6 +421,13 @@
       "when": 1743800100000,
       "tag": "0052_kb_linked_document",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1743800200000,
+      "tag": "0053_catch_all_tables",
+      "breakpoints": true
     }
   ]
 }
