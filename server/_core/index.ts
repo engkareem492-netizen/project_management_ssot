@@ -9,6 +9,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { renewRecurringTasks } from "../recurringTaskRenewal";
+import { runMigrations } from "./runMigrations";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -30,6 +31,14 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 }
 
 async function startServer() {
+  // Auto-run pending DB migrations on every startup
+  try {
+    await runMigrations();
+  } catch (e: any) {
+    console.error("[Migrations] Failed to run migrations:", e.message);
+    // Don't crash the server — migrations might partially succeed
+  }
+
   const app = express();
   const server = createServer(app);
   // Configure body parser with larger size limit for file uploads
