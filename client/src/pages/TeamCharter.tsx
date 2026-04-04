@@ -169,17 +169,19 @@ export default function TeamCharter() {
     <>
       <style>{`
         @media print {
-          body > *:not(#team-charter-root) {
+          /* Hide sidebar and all its sub-elements */
+          [data-sidebar] {
             display: none !important;
           }
-          #team-charter-root {
-            display: block !important;
-          }
+          /* Hide resize handle, top header bar, and any print-hide elements */
           .print-hide {
             display: none !important;
           }
-          .print-show {
-            display: block !important;
+          /* Make the main content area fill the full page width */
+          main {
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
           }
           #team-charter-print-title {
             display: block !important;
