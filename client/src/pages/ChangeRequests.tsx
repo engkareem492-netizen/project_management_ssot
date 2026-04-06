@@ -239,7 +239,7 @@ export default function ChangeRequests() {
                 <SelectTrigger><SelectValue placeholder="Select requirement..." /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__">None</SelectItem>
-                  {(requirements as any[]).map((r: any) => <SelectItem key={r.id} value={r.requirementId}>{r.requirementId}{r.title ? ` — ${r.title}` : ""}</SelectItem>)}
+                  {(requirements as any[]).map((r: any) => <SelectItem key={r.id} value={r.idCode ?? ''}>{r.idCode}{r.description ? ` — ${r.description}` : ""}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -325,7 +325,7 @@ export default function ChangeRequests() {
                 <SelectTrigger><SelectValue placeholder="Select requirement..." /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__">None</SelectItem>
-                  {(requirements as any[]).map((r: any) => <SelectItem key={r.id} value={r.requirementId}>{r.requirementId}{r.title ? ` — ${r.title}` : ""}</SelectItem>)}
+                  {(requirements as any[]).map((r: any) => <SelectItem key={r.id} value={r.idCode ?? ''}>{r.idCode}{r.description ? ` — ${r.description}` : ""}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -392,6 +392,14 @@ export default function ChangeRequests() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* Floating Add Button */}
+      <button
+        onClick={() => { setForm(emptyForm); setShowCreate(true); }}
+        className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 flex items-center justify-center transition-all hover:scale-110"
+        title="Add Change Request"
+      >
+        <Plus className="w-6 h-6" />
+      </button>
     </div>
   );
 }

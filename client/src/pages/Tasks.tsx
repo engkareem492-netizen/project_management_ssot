@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { TasksByResponsibleChart } from "@/components/TasksByResponsibleChart";
 import { useProject } from "@/contexts/ProjectContext";
@@ -182,6 +182,7 @@ export default function Tasks() {
     actionSourceId: '',
     actionNotes: '',
     startDate: '',
+    scheduleType: 'date_based' as 'date_based' | 'effort_based',
     phaseId: '',
     milestoneId: undefined as number | undefined,
   });
@@ -254,6 +255,31 @@ export default function Tasks() {
   const { data: priorityOptions } = trpc.dropdownOptions.priority.getAll.useQuery();
 
   const utils = trpc.useUtils();
+
+  // ── Scheduling: Date-Based vs Effort-Based ─────────────────────────────────
+  // Stable references to avoid infinite re-fetch loops
+  const [schedCalcKey, setSchedCalcKey] = useState(0);
+  const schedCalcEnabled = useMemo(() => {
+    return !!currentProjectId && !!newTask.responsibleId &&
+      !!newTask.startDate && !!newTask.dueDate &&
+      newTask.scheduleType === 'date_based';
+  }, [currentProjectId, newTask.responsibleId, newTask.startDate, newTask.dueDate, newTask.scheduleType, schedCalcKey]);
+  const { data: activeHoursData } = trpc.resources.calculateActiveHours.useQuery(
+    {
+      projectId: currentProjectId ?? 0,
+      stakeholderId: newTask.responsibleId ?? 0,
+      startDate: newTask.startDate || '2000-01-01',
+      endDate: newTask.dueDate || '2000-01-01',
+      hoursPerDay: 8,
+    },
+    { enabled: schedCalcEnabled }
+  );
+  // Auto-fill manHours when date-based and both dates set
+  useEffect(() => {
+    if (schedCalcEnabled && activeHoursData?.activeHours !== undefined) {
+      setNewTask((prev: any) => ({ ...prev, manHours: activeHoursData.activeHours }));
+    }
+  }, [activeHoursData, schedCalcEnabled]);
 
   const createTaskGroupMutation = trpc.dropdownOptions.taskGroups.create.useMutation({
     onSuccess: (data) => {
@@ -689,7 +715,7 @@ export default function Tasks() {
     setHistoryDialogOpen(true);
   };
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!currentProjectId) {
       toast.error('No project selected. Please select a project first.');
       return;
@@ -698,16 +724,35 @@ export default function Tasks() {
       toast.error('Description is required');
       return;
     }
+
+    // For effort-based: calculate end date from start date + manHours via server
+    let resolvedDueDate = newTask.dueDate || undefined;
+    if (newTask.scheduleType === 'effort_based' && newTask.startDate && newTask.manHours && newTask.responsibleId) {
+      try {
+        const result = await utils.resources.calculateEndDate.fetch({
+          projectId: currentProjectId,
+          stakeholderId: newTask.responsibleId,
+          startDate: newTask.startDate,
+          activeHours: newTask.manHours,
+          hoursPerDay: 8,
+        });
+        resolvedDueDate = result?.endDate || undefined;
+      } catch (e) {
+        // Fall back to no due date if calculation fails
+      }
+    }
+
     // Only include requirementId if linkRequirement checkbox is checked
     const taskData: any = {
       ...newTask,
       projectId: currentProjectId!,
       requirementId: linkRequirement && newTask.requirementId && newTask.requirementId !== "none" ? newTask.requirementId : undefined,
-      dueDate: newTask.dueDate || undefined,
+      dueDate: resolvedDueDate,
       // Preserve assignDate default value (today's date) if not changed
       assignDate: newTask.assignDate,
       // Map isActionItem checkbox → taskCategory so backend assigns ACT- prefix
       taskCategory: newTask.isActionItem ? 'action_item' : undefined,
+      scheduleType: newTask.scheduleType || 'date_based',
     };
     
     // Clean up empty strings and convert to undefined to prevent SQL errors
@@ -768,6 +813,7 @@ export default function Tasks() {
       actionSourceId: (task as any).actionSourceId || '',
       actionNotes: (task as any).actionNotes || '',
       startDate: (task as any).startDate || '',
+      scheduleType: (task as any).scheduleType || 'date_based',
       phaseId: (task as any).phaseId || '',
       milestoneId: (task as any).milestoneId ?? undefined,
     });
@@ -798,10 +844,11 @@ export default function Tasks() {
       actionSourceId: (task as any).actionSourceId || '',
       actionNotes: (task as any).actionNotes || '',
       startDate: (task as any).startDate || '',
+      scheduleType: (task as any).scheduleType || 'date_based',
       phaseId: (task as any).phaseId || '',
       milestoneId: (task as any).milestoneId ?? undefined,
     });
-    setViewDialogOpen(true);;
+    setViewDialogOpen(true);
   };
 
   const handleSaveEdit = () => {
@@ -1797,38 +1844,128 @@ export default function Tasks() {
               </div>
             </div>
 
-            {/* Dates Section */}
+            {/* Dates & Scheduling Section */}
             <div className="space-y-4">
-              <h4 className="text-sm font-semibold border-b pb-2">Dates</h4>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="startDate">Start Date</Label>
-                  <Input
-                    id="startDate"
-                    type="date"
-                    value={newTask.startDate}
-                    onChange={(e) => setNewTask({ ...newTask, startDate: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="assignDate">Assign Date</Label>
-                  <Input
-                    id="assignDate"
-                    type="date"
-                    value={newTask.assignDate}
-                    onChange={(e) => setNewTask({ ...newTask, assignDate: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="dueDate">Due Date (ETD)</Label>
-                  <Input
-                    id="dueDate"
-                    type="date"
-                    value={newTask.dueDate}
-                    onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })}
-                  />
+              <div className="flex items-center justify-between border-b pb-2">
+                <h4 className="text-sm font-semibold">Dates &amp; Scheduling</h4>
+                {/* Schedule Type Toggle */}
+                <div className="flex items-center gap-1 bg-muted rounded-md p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setNewTask({ ...newTask, scheduleType: 'date_based', manHours: undefined })}
+                    className={`px-2.5 py-1 text-xs rounded transition-colors ${
+                      newTask.scheduleType !== 'effort_based'
+                        ? 'bg-background text-foreground shadow-sm font-medium'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    Date-Based
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewTask({ ...newTask, scheduleType: 'effort_based', dueDate: '' })}
+                    className={`px-2.5 py-1 text-xs rounded transition-colors ${
+                      newTask.scheduleType === 'effort_based'
+                        ? 'bg-background text-foreground shadow-sm font-medium'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    Effort-Based
+                  </button>
                 </div>
               </div>
+
+              {newTask.scheduleType !== 'effort_based' ? (
+                /* Date-Based: both start + end dates, system calculates active hours */
+                <>
+                  <p className="text-xs text-muted-foreground -mt-2">
+                    Set start and end dates — active man-hours are calculated automatically from the responsible person’s calendar.
+                  </p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="startDate">Start Date</Label>
+                      <Input
+                        id="startDate"
+                        type="date"
+                        value={newTask.startDate}
+                        onChange={(e) => setNewTask({ ...newTask, startDate: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="dueDate">End Date (ETD)</Label>
+                      <Input
+                        id="dueDate"
+                        type="date"
+                        value={newTask.dueDate}
+                        onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="assignDate">Assign Date</Label>
+                      <Input
+                        id="assignDate"
+                        type="date"
+                        value={newTask.assignDate}
+                        onChange={(e) => setNewTask({ ...newTask, assignDate: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Active Man-Hours (auto)</Label>
+                      <div className="flex items-center h-9 px-3 border rounded-md bg-muted/50 text-sm">
+                        {schedCalcEnabled && activeHoursData
+                          ? <span className="font-medium text-green-600">{activeHoursData.activeHours}h ({activeHoursData.workingDays} working days)</span>
+                          : <span className="text-muted-foreground">{newTask.responsibleId && newTask.startDate && newTask.dueDate ? 'Calculating…' : 'Select responsible + both dates'}</span>
+                        }
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                /* Effort-Based: start date + active hours, system calculates end date */
+                <>
+                  <p className="text-xs text-muted-foreground -mt-2">
+                    Set start date and required hours — the end date is calculated automatically from the responsible person’s calendar.
+                  </p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="startDate">Start Date</Label>
+                      <Input
+                        id="startDate"
+                        type="date"
+                        value={newTask.startDate}
+                        onChange={(e) => setNewTask({ ...newTask, startDate: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="manHoursEffort">Active Man-Hours Required</Label>
+                      <Input
+                        id="manHoursEffort"
+                        type="number"
+                        min="0"
+                        step="0.5"
+                        placeholder="e.g. 40"
+                        value={newTask.manHours ?? ''}
+                        onChange={(e) => setNewTask({ ...newTask, manHours: e.target.value ? parseFloat(e.target.value) : undefined })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="assignDate">Assign Date</Label>
+                      <Input
+                        id="assignDate"
+                        type="date"
+                        value={newTask.assignDate}
+                        onChange={(e) => setNewTask({ ...newTask, assignDate: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Calculated End Date</Label>
+                      <div className="flex items-center h-9 px-3 border rounded-md bg-muted/50 text-sm">
+                        <span className="text-muted-foreground text-xs">End date auto-calculated on save</span>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
             {/* Phase & Milestone Section */}
             <div className="space-y-4">
@@ -1917,18 +2054,6 @@ export default function Tasks() {
                     placeholder="Select priority"
                   />
                 </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="manHours">Active Man-Hours</Label>
-                <Input
-                  id="manHours"
-                  type="number"
-                  min="0"
-                  step="0.5"
-                  placeholder="0.0"
-                  value={newTask.manHours ?? ''}
-                  onChange={(e) => setNewTask({ ...newTask, manHours: e.target.value ? parseFloat(e.target.value) : undefined })}
-                />
               </div>
             </div>
             {/* Action Item Section */}
@@ -2316,7 +2441,23 @@ export default function Tasks() {
                 )}
               </div>
               <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
-                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Start Date</Label>
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Start Date</Label>
+                  {isEditMode ? (
+                    <div className="flex items-center gap-0.5 bg-muted rounded p-0.5">
+                      <button type="button" onClick={() => setEditFormData({...editFormData, scheduleType: 'date_based'})} className={`px-2 py-0.5 text-xs rounded transition-colors ${editFormData.scheduleType !== 'effort_based' ? 'bg-background shadow-sm font-medium' : 'text-muted-foreground'}`}>Date</button>
+                      <button type="button" onClick={() => setEditFormData({...editFormData, scheduleType: 'effort_based'})} className={`px-2 py-0.5 text-xs rounded transition-colors ${editFormData.scheduleType === 'effort_based' ? 'bg-background shadow-sm font-medium' : 'text-muted-foreground'}`}>Effort</button>
+                    </div>
+                  ) : (
+                    <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${
+                      (selectedTask as any)?.scheduleType === 'effort_based'
+                        ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
+                        : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                    }`}>
+                      {(selectedTask as any)?.scheduleType === 'effort_based' ? 'Effort-Based' : 'Date-Based'}
+                    </span>
+                  )}
+                </div>
                 {isEditMode ? (
                   <Input type="date" value={editFormData.startDate || ''} onChange={(e) => setEditFormData({...editFormData, startDate: e.target.value})} className="h-8" />
                 ) : (
@@ -3828,6 +3969,14 @@ export default function Tasks() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* Floating Add Button */}
+      <button
+        onClick={() => setCreateDialogOpen(true)}
+        className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 flex items-center justify-center transition-all hover:scale-110"
+        title="Add Task"
+      >
+        <Plus className="w-6 h-6" />
+      </button>
     </div>
   );
 }

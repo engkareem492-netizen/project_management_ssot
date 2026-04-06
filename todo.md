@@ -841,3 +841,15 @@
 - [ ] Fix type filter - still not working after previous fix attempt
 - [ ] Fix/rewrite mass fill - currently slow and unreliable
 - [ ] Default all calendar cells to "Working" - only override when a specific entry exists
+
+## Date-Based vs Effort-Based Scheduling (Apr 6, 2026)
+- [x] Add `scheduleType` column (date_based | effort_based) to tasks DB table + push migration
+- [x] Add `calculateActiveHours` server procedure to resources router (start+end → active hours from calendar)
+- [x] Add `calculateEndDate` server procedure to resources router (start+hours → end date from calendar)
+- [x] Add Date-Based / Effort-Based toggle to Tasks create dialog
+- [x] Date-Based mode: auto-calculates active man-hours from responsible person's calendar
+- [x] Effort-Based mode: user enters hours, end date calculated on save via server
+- [x] Show scheduling type badge (Date-Based / Effort-Based) in task detail view
+- [x] Add scheduling type toggle in task edit mode
+- [x] Write 11 unit tests for scheduling helpers (all passing)
+- [x] Floating Add buttons confirmed present on all 8 list pages (Tasks, Issues, ChangeRequests, Decisions, Dependencies, Meetings, TestCases, Requirements)

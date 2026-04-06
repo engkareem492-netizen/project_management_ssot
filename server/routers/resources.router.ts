@@ -12,7 +12,7 @@ import {
   projectCalendarSettings,
   projectHolidays,
 } from "../../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 
 export const resourcesRouter = router({
   getWorkload: protectedProcedure
@@ -335,5 +335,132 @@ export const resourcesRouter = router({
       const dbc = await getDb();
       if (!dbc) return;
       await dbc.delete(projectHolidays).where(eq(projectHolidays.id, input.id));
+    }),
+
+  /* ── Scheduling Helpers ──────────────────────────────────────────────────────────── */
+  /**
+   * Calculate active man-hours for a stakeholder between two dates,
+   * based on their Resource Calendar entries and project weekend settings.
+   * Used by Tasks page for Date-Based scheduling (start+end → active hours).
+   */
+  calculateActiveHours: protectedProcedure
+    .input(z.object({
+      projectId: z.number(),
+      stakeholderId: z.number(),
+      startDate: z.string(),
+      endDate: z.string(),
+      hoursPerDay: z.number().default(8),
+    }))
+    .query(async ({ input }) => {
+      const dbc = await getDb();
+      if (!dbc) return { activeHours: 0, workingDays: 0 };
+      const [calSettings] = await dbc.select().from(projectCalendarSettings)
+        .where(eq(projectCalendarSettings.projectId, input.projectId));
+      const weekendDays = new Set(
+        (calSettings?.weekendDays ?? '0,6').split(',').map(Number)
+      );
+      const entries = await dbc.select().from(resourceCalendar)
+        .where(and(
+          eq(resourceCalendar.projectId, input.projectId),
+          eq(resourceCalendar.stakeholderId, input.stakeholderId)
+        ));
+      const entryMap: Record<string, { type: string; availableHours: number }> = {};
+      entries.forEach((e: any) => {
+        const dk = e.date instanceof Date ? e.date.toISOString().split('T')[0] : String(e.date).split('T')[0];
+        entryMap[dk] = { type: e.type, availableHours: Number(e.availableHours ?? 0) };
+      });
+      let totalHours = 0;
+      let workingDays = 0;
+      const hpd = input.hoursPerDay;
+      const cur = new Date(input.startDate + 'T00:00:00');
+      const end = new Date(input.endDate + 'T00:00:00');
+      while (cur <= end) {
+        const dk = cur.toISOString().split('T')[0];
+        const dow = cur.getDay();
+        const isWeekend = weekendDays.has(dow);
+        const entry = entryMap[dk];
+        if (entry) {
+          const { type, availableHours } = entry;
+          if (type === 'Leave' || type === 'Holiday') {
+            const leaveHours = availableHours > 0 ? availableHours : hpd;
+            const remaining = Math.max(hpd - leaveHours, 0);
+            totalHours += remaining;
+            if (remaining > 0) workingDays++;
+          } else if (type === 'Partial') {
+            const hrs = availableHours > 0 ? availableHours : hpd;
+            totalHours += hrs;
+            workingDays++;
+          } else {
+            totalHours += hpd;
+            workingDays++;
+          }
+        } else if (!isWeekend) {
+          totalHours += hpd;
+          workingDays++;
+        }
+        cur.setDate(cur.getDate() + 1);
+      }
+      return { activeHours: totalHours, workingDays };
+    }),
+
+  /**
+   * Calculate the end date for effort-based scheduling:
+   * given a start date and required active hours, find the date
+   * when those hours are exhausted based on the resource calendar.
+   */
+  calculateEndDate: protectedProcedure
+    .input(z.object({
+      projectId: z.number(),
+      stakeholderId: z.number(),
+      startDate: z.string(),
+      activeHours: z.number(),
+      hoursPerDay: z.number().default(8),
+    }))
+    .query(async ({ input }) => {
+      const dbc = await getDb();
+      if (!dbc) return { endDate: input.startDate };
+      const [calSettings] = await dbc.select().from(projectCalendarSettings)
+        .where(eq(projectCalendarSettings.projectId, input.projectId));
+      const weekendDays = new Set(
+        (calSettings?.weekendDays ?? '0,6').split(',').map(Number)
+      );
+      const entries = await dbc.select().from(resourceCalendar)
+        .where(and(
+          eq(resourceCalendar.projectId, input.projectId),
+          eq(resourceCalendar.stakeholderId, input.stakeholderId)
+        ));
+      const entryMap: Record<string, { type: string; availableHours: number }> = {};
+      entries.forEach((e: any) => {
+        const dk = e.date instanceof Date ? e.date.toISOString().split('T')[0] : String(e.date).split('T')[0];
+        entryMap[dk] = { type: e.type, availableHours: Number(e.availableHours ?? 0) };
+      });
+      let remaining = input.activeHours;
+      const hpd = input.hoursPerDay;
+      const cur = new Date(input.startDate + 'T00:00:00');
+      const maxDate = new Date(cur);
+      maxDate.setFullYear(maxDate.getFullYear() + 2);
+      while (remaining > 0 && cur <= maxDate) {
+        const dk = cur.toISOString().split('T')[0];
+        const dow = cur.getDay();
+        const isWeekend = weekendDays.has(dow);
+        const entry = entryMap[dk];
+        let dayHours = 0;
+        if (entry) {
+          const { type, availableHours } = entry;
+          if (type === 'Leave' || type === 'Holiday') {
+            const leaveHours = availableHours > 0 ? availableHours : hpd;
+            dayHours = Math.max(hpd - leaveHours, 0);
+          } else if (type === 'Partial') {
+            dayHours = availableHours > 0 ? availableHours : hpd;
+          } else {
+            dayHours = hpd;
+          }
+        } else if (!isWeekend) {
+          dayHours = hpd;
+        }
+        remaining -= dayHours;
+        if (remaining > 0) cur.setDate(cur.getDate() + 1);
+      }
+      return { endDate: cur.toISOString().split('T')[0] };
     }),
 });

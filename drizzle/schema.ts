@@ -269,6 +269,9 @@ export const tasks = mysqlTable("tasks", {
   devPlanId: int("devPlanId"),
   devTaskSwotId: int("devTaskSwotId"),
   devTaskSkillId: int("devTaskSkillId"),
+  // Scheduling
+  startDate: varchar("startDate", { length: 50 }),
+  scheduleType: varchar("scheduleType", { length: 20 }).default("date_based"),
   // Resource effort
   manHours: decimal("manHours", { precision: 10, scale: 2 }),
   // Sprint association
@@ -2120,6 +2123,7 @@ export const testPlans = mysqlTable("testPlans", {
   description: text("description"),
   status: varchar("status", { length: 50 }).default("Draft"),
   startDate: varchar("startDate", { length: 20 }),
+  scheduleType: varchar("scheduleType", { length: 20 }).default("date_based"),
   endDate: varchar("endDate", { length: 20 }),
   owner: varchar("owner", { length: 100 }),
   notes: text("notes"),
