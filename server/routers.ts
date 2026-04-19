@@ -72,6 +72,7 @@ import { defectsRouter } from "./routers/defects.router";
 import { pmPlanRouter } from "./routers/pmPlan.router";
 import { currenciesRouter } from "./routers/currencies.router";
 import { portfoliosRouter } from "./routers/portfolios.router";
+import { stakeholderSubFeaturesRouter } from "./routers/stakeholderSubFeatures.router";
 import { programsRouter } from "./routers/programs.router";
 import { businessCaseRouter } from "./routers/businessCase.router";
 import { closingReportRouter } from "./routers/closingReport.router";
@@ -144,6 +145,7 @@ export const appRouter = router({
   pmPlan: pmPlanRouter,
   currencies: currenciesRouter,
   portfolios: portfoliosRouter,
+  stakeholderSub: stakeholderSubFeaturesRouter,
   programs: programsRouter,
   businessCase: businessCaseRouter,
   closingReport: closingReportRouter,

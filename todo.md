@@ -853,3 +853,45 @@
 - [x] Add scheduling type toggle in task edit mode
 - [x] Write 11 unit tests for scheduling helpers (all passing)
 - [x] Floating Add buttons confirmed present on all 8 list pages (Tasks, Issues, ChangeRequests, Decisions, Dependencies, Meetings, TestCases, Requirements)
+
+## PMIS-Claude Feature Adoptions (Apr 19, 2026)
+
+### DB Schema
+- [ ] DB: stakeholderSwotItems table (stakeholderId, quadrant S/W/O/T, description)
+- [ ] DB: stakeholderKpis table (stakeholderId, name, target, actual, weight, assessment, skillTag)
+- [ ] DB: stakeholderKpiAssessments table (stakeholderId, assessmentDate, overallScore, notes)
+- [ ] DB: stakeholderKpiScores table (assessmentId, kpiId, value 0-100)
+- [ ] DB: stakeholderDevPlanItems table (stakeholderId, area, goal, actions, timeline, skillTag, status)
+- [ ] DB: resourceAbsences table (stakeholderId, startDate, endDate, absenceType, status, isPartial, hoursPerDay, notes)
+- [ ] DB: projectHolidays table (projectId, name, date, endDate, isRecurring)
+- [ ] DB: resourceAllocations table (projectId, stakeholderId, phase, wbsElementId, roleOnPhase, startDate, endDate, allocationPct, plannedHours, actualHours, costRate, notes)
+- [ ] DB: portfolios table (name, description, ownerId)
+- [ ] DB: programs table (name, description, portfolioId, ownerId)
+- [ ] DB: add programId + portfolioId columns to projects table
+- [ ] DB: add workStartHour, workEndHour, workDaysPerWeek, costPerHour, isPooled, portfolioMemberId to stakeholders
+
+### Backend Routers
+- [x] Backend: SWOT tRPC procedures (list, add, update, delete per stakeholder)
+- [x] Backend: KPI tRPC procedures (list, add, update, delete, addAssessment, listAssessments)
+- [x] Backend: Dev Plan tRPC procedures (list, add, update, delete per stakeholder)
+- [x] Backend: Resource Absences tRPC procedures (list, create, update, delete, approve/reject)
+- [x] Backend: Holidays tRPC procedures (list, create, update, delete)
+- [x] Backend: Resource Allocations tRPC procedures (matrix, costSummary, utilizationDashboard, availabilityCheck)
+- [x] Backend: Portfolios tRPC procedures (list, create, update, delete)
+- [x] Backend: Programs tRPC procedures (list, create, update, delete)
+
+### Frontend
+- [x] Frontend: Stakeholder detail sheet — SWOT 4-quadrant board tab
+- [x] Frontend: Stakeholder detail sheet — KPI list + Assessment Sessions tab
+- [x] Frontend: Stakeholder detail sheet — Development Plan tab
+- [x] Frontend: Stakeholder detail sheet — working schedule stat cards (start/end hour, days/week, cost/hr, cost/day)
+- [x] Frontend: Resource Calendar — absences section (Approved/Pending/Rejected + partial-day)
+- [x] Frontend: Resource Calendar — project-level holidays section
+- [x] Frontend: Resource Plan — Allocation Matrix tab (resource × phase grid)
+- [x] Frontend: Resource Plan — Resource Timeline (Gantt-style) tab
+- [x] Frontend: Resource Plan — Cost Summary tab (stat cards + breakdown table + chart)
+- [x] Frontend: Resource Plan — Utilization Dashboard tab (per-resource bars with availability check)
+- [x] Frontend: Portfolio → Program → Project hierarchy pages
+- [x] Frontend: System Landscape Diagram (interactive SVG hierarchy)
+- [x] Frontend: Workload — Day view granularity
+- [x] Frontend: Stakeholder Excel import (3-sheet xlsx)

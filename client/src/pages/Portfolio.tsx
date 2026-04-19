@@ -15,10 +15,11 @@ import { LineChart, Line, ResponsiveContainer } from "recharts";
 import {
   BarChart2, AlertTriangle, CheckSquare, Bug, Calendar, Layers,
   FolderKanban, BookOpen, Plus, Pencil, Trash2, Link, ChevronRight,
-  Users, ArrowRight,
+  Users, ArrowRight, Network,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import SystemLandscapeDiagram from "@/components/SystemLandscapeDiagram";
 
 // ─── RAG dot ─────────────────────────────────────────────────────────────────
 function RAGDot({ status }: { status?: string | null }) {
@@ -586,6 +587,9 @@ export default function Portfolio() {
           <TabsTrigger value="hierarchy">Portfolio Hierarchy</TabsTrigger>
           <TabsTrigger value="programs">Programs</TabsTrigger>
           <TabsTrigger value="all">All Projects</TabsTrigger>
+          <TabsTrigger value="landscape" className="flex items-center gap-1.5">
+            <Network className="w-3.5 h-3.5" />System Landscape
+          </TabsTrigger>
         </TabsList>
 
         {/* ── Portfolio Hierarchy ─────────────────────────────────────────────── */}
@@ -703,6 +707,14 @@ export default function Portfolio() {
               ))}
             </div>
           )}
+        </TabsContent>
+        {/* ── System Landscape ─────────────────────────────────────────────── */}
+        <TabsContent value="landscape" className="mt-4">
+          <SystemLandscapeDiagram
+            portfolios={portfolios as any[]}
+            programs={programs as any[]}
+            projects={projects}
+          />
         </TabsContent>
       </Tabs>
 

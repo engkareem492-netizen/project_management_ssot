@@ -16,13 +16,15 @@ import {
   ArrowUp, ArrowDown, Check, X, FolderTree, Cpu, Wrench, Package, Server, Banknote,
   Building2, HardHat, Truck, FlaskConical, Wifi, UserPlus, Import, Download, Zap,
   CalendarCheck, Layers, Shield, CheckSquare, GraduationCap, Target, Network, BookOpen, Save,
-  Globe, Search, Flag,
+  Globe, Search, Flag, CalendarOff,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import WorkloadHeatmap from "@/components/WorkloadHeatmap";
+import ResourceAbsencesTab from "@/components/ResourceAbsencesTab";
+import ResourceAllocationTab from "@/components/ResourceAllocationTab";
 
 const DEFAULT_CAPACITY = 5; // tasks/week
 
@@ -1009,6 +1011,8 @@ export default function Resources() {
           <TabsTrigger value="rbs"><TreeDeciduous className="w-3.5 h-3.5 mr-1.5" />RBS</TabsTrigger>
           <TabsTrigger value="calendar"><CalendarDays className="w-3.5 h-3.5 mr-1.5" />Resource Calendar</TabsTrigger>
           <TabsTrigger value="plan"><FileText className="w-3.5 h-3.5 mr-1.5" />Resource Plan</TabsTrigger>
+          <TabsTrigger value="absences"><CalendarOff className="w-3.5 h-3.5 mr-1.5" />Absences</TabsTrigger>
+          <TabsTrigger value="allocation"><DollarSign className="w-3.5 h-3.5 mr-1.5" />Allocation</TabsTrigger>
         </TabsList>
 
         {/* ─── Workload Tab ─────────────────────────────────────────────── */}
@@ -2504,6 +2508,20 @@ export default function Resources() {
         {/* ── Utilization Tab ── */}
         <TabsContent value="utilization" className="mt-0">
           <UtilizationTab stakeholders={stakeholders} tasks={tasks} />
+        </TabsContent>
+        {/* ── Absences Tab ── */}
+        <TabsContent value="absences" className="mt-0">
+          <ResourceAbsencesTab
+            projectId={projectId}
+            stakeholders={stakeholders.map((s: any) => ({ id: s.id, fullName: s.fullName ?? s.name, classification: s.classification }))}
+          />
+        </TabsContent>
+        {/* ── Allocation Tab ── */}
+        <TabsContent value="allocation" className="mt-0">
+          <ResourceAllocationTab
+            projectId={projectId}
+            stakeholders={stakeholders.map((s: any) => ({ id: s.id, fullName: s.fullName ?? s.name, classification: s.classification }))}
+          />
         </TabsContent>
       </Tabs>
 

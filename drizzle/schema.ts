@@ -156,6 +156,9 @@ export const stakeholders = mysqlTable("stakeholders", {
   isPooledResource: boolean("isPooledResource").default(false),
   workingHoursPerDay: decimal("workingHoursPerDay", { precision: 4, scale: 1 }).default("8.0"),
   workingDaysPerWeek: int("workingDaysPerWeek").default(5),
+  workStartHour: int("workStartHour").default(8),    // 8 = 8:00 AM
+  workEndHour: int("workEndHour").default(17),        // 17 = 5:00 PM
+  portfolioMemberId: varchar("portfolioMemberId", { length: 50 }),  // external HR/portfolio ID
   // External-specific: manager is another stakeholder
   stakeholderManagerId: int("stakeholderManagerId"),
   // External-specific: which external party/organisation this person belongs to
@@ -2435,3 +2438,44 @@ export const documentRequirementLinks = mysqlTable("documentRequirementLinks", {
 });
 export type DocumentRequirementLink = typeof documentRequirementLinks.$inferSelect;
 export type InsertDocumentRequirementLink = typeof documentRequirementLinks.$inferInsert;
+
+// ─── Resource Absences ────────────────────────────────────────────────────────
+// Per-person leave/absence entries (vacation, sick leave, training, partial days)
+export const resourceAbsences = mysqlTable("resourceAbsences", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  stakeholderId: int("stakeholderId").notNull(),
+  startDate: varchar("startDate", { length: 10 }).notNull(),  // YYYY-MM-DD
+  endDate: varchar("endDate", { length: 10 }).notNull(),      // YYYY-MM-DD
+  absenceType: mysqlEnum("absenceType", ["Vacation", "Sick Leave", "Training", "Personal", "Part-Time", "Other"]).default("Vacation").notNull(),
+  status: mysqlEnum("absenceStatus", ["Approved", "Pending", "Rejected"]).default("Pending").notNull(),
+  isPartial: boolean("isPartial").default(false).notNull(),   // true = reduced hours, not fully absent
+  hoursPerDay: decimal("hoursPerDay", { precision: 4, scale: 1 }),  // only when isPartial=true
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ResourceAbsence = typeof resourceAbsences.$inferSelect;
+export type InsertResourceAbsence = typeof resourceAbsences.$inferInsert;
+
+// ─── Resource Allocations ─────────────────────────────────────────────────────
+// Phase-based resource allocation: resource × phase with planned/actual hours and cost
+export const resourceAllocations = mysqlTable("resourceAllocations", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  stakeholderId: int("stakeholderId").notNull(),
+  phase: mysqlEnum("allocationPhase", ["Initiation", "Planning", "Design", "Development", "Testing", "Deployment", "Closure"]).notNull(),
+  wbsElementId: int("wbsElementId"),           // optional link to WBS element
+  roleOnPhase: varchar("roleOnPhase", { length: 100 }),
+  startDate: varchar("startDate", { length: 10 }),   // YYYY-MM-DD
+  endDate: varchar("endDate", { length: 10 }),       // YYYY-MM-DD
+  allocationPct: int("allocationPct").default(100),  // 0-100%
+  plannedHours: decimal("plannedHours", { precision: 8, scale: 1 }).default("0"),
+  actualHours: decimal("actualHours", { precision: 8, scale: 1 }).default("0"),
+  costRate: decimal("costRate", { precision: 10, scale: 2 }),  // override; null = use stakeholder's costPerHour
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ResourceAllocation = typeof resourceAllocations.$inferSelect;
+export type InsertResourceAllocation = typeof resourceAllocations.$inferInsert;
