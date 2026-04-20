@@ -709,12 +709,14 @@ export default function Portfolio() {
           )}
         </TabsContent>
         {/* ── System Landscape ─────────────────────────────────────────────── */}
-        <TabsContent value="landscape" className="mt-4">
-          <SystemLandscapeDiagram
-            portfolios={portfolios as any[]}
-            programs={programs as any[]}
-            projects={projects}
-          />
+        <TabsContent value="landscape" className="mt-0">
+          <div className="rounded-xl overflow-hidden border border-white/10" style={{ height: "calc(100vh - 220px)", minHeight: 520 }}>
+            <SystemLandscapeDiagram
+              portfolios={portfolios as any[]}
+              programs={programs as any[]}
+              projects={projects}
+            />
+          </div>
         </TabsContent>
       </Tabs>
 
