@@ -906,3 +906,12 @@
 - [x] WBS: taskType field (Summary / Work Package / Milestone) with colour badges
 - [x] RAG health section added to Periodic Report
 - [x] CPM tests (5 passing)
+
+## Feature Requests (Apr 23, 2026 - App Mode Switcher)
+
+- [x] Add 3-mode App Mode Switcher to sidebar: Project (blue) / Operations (green) / Agile (purple)
+- [x] Operations mode: show Service Desk navigation (SLA Tickets, Escalations, Knowledge Base)
+- [x] Agile mode: show Scrum navigation (Sprints, User Stories/Backlog, Board, Burndown)
+- [x] Persist selected mode in localStorage
+- [x] Sidebar left border accent changes colour per mode
+- [x] Issues list row layout fix: ID + badges + description on one clean row (no red vertical line)

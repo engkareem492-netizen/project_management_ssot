@@ -89,6 +89,9 @@ import {
   ClipboardList,
   Puzzle,
   ListChecks,
+  FolderKanban,
+  Headset,
+  IterationCw,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -220,6 +223,38 @@ const CUSTOM_SECTIONS_KEY      = "sidebar-custom-sections";
 const COLLAPSED_SECTIONS_KEY   = "sidebar-collapsed-sections";
 const SECTION_ORDER_LIST_KEY   = "sidebar-section-order-list";
 const MAX_CUSTOM_SECTIONS      = 3;
+// ─── App Mode Switcher ───────────────────────────────────────────────────────
+type AppMode = "project" | "operations" | "agile";
+const APP_MODE_KEY = "pm-ssot-app-mode";
+const APP_MODES: Array<{ key: AppMode; label: string; Icon: React.ElementType; accent: string }> = [
+  { key: "project",    label: "Project",    Icon: FolderKanban, accent: "#3b82f6" },
+  { key: "operations", label: "Operations", Icon: Headset,      accent: "#10b981" },
+  { key: "agile",      label: "Agile",      Icon: IterationCw,  accent: "#8b5cf6" },
+];
+const OPS_SECTIONS: SidebarSection[] = [
+  {
+    label: "SERVICE DESK",
+    items: [
+      { icon: LayoutDashboard, label: "Dashboard",     path: "/dashboard" },
+      { icon: Ticket,          label: "SLA Tickets",   path: "/sla-tickets" },
+      { icon: Flame,           label: "Escalations",   path: "/escalations" },
+      { icon: BookOpen,        label: "Knowledge Base", path: "/knowledge-base" },
+    ],
+  },
+];
+const AGILE_SECTIONS: SidebarSection[] = [
+  {
+    label: "AGILE / SCRUM",
+    items: [
+      { icon: LayoutDashboard, label: "Dashboard",  path: "/dashboard" },
+      { icon: ListChecks,      label: "Backlog",    path: "/user-stories" },
+      { icon: Zap,             label: "Sprints",    path: "/sprints" },
+      { icon: LayoutGrid,      label: "Board",      path: "/sprints?tab=board" },
+      { icon: TrendingUp,      label: "Burndown",   path: "/sprints?tab=burndown" },
+    ],
+  },
+];
+// ─────────────────────────────────────────────────────────────────────────────
 const SECTION_PREFIX = "__section__:";
 const EMPTY_PREFIX   = "__empty__:";
 const DEFAULT_WIDTH = 280;
@@ -431,6 +466,18 @@ function DashboardLayoutContent({
   const { currentProjectId, setCurrentProjectId } = useProject();
   const { data: projects } = trpc.projects.list.useQuery();
 
+  // ─── App Mode state ──────────────────────────────────────────────────────
+  const [appMode, setAppMode] = useState<AppMode>(() => {
+    const saved = localStorage.getItem(APP_MODE_KEY);
+    if (saved === "project" || saved === "operations" || saved === "agile") return saved;
+    return "project";
+  });
+  function switchMode(mode: AppMode) {
+    setAppMode(mode);
+    localStorage.setItem(APP_MODE_KEY, mode);
+  }
+  const activeMode = APP_MODES.find(m => m.key === appMode)!;
+
   // ─── Section customisation state ────────────────────────────────────────
   const [sectionOrders, setSectionOrders] = useState<Record<string, string[]>>(() => {
     try { return JSON.parse(localStorage.getItem(SECTION_ORDERS_KEY) ?? "{}"); } catch { return {}; }
@@ -570,6 +617,14 @@ function DashboardLayoutContent({
     });
 
   const sectionsWithOrder = (() => {
+    // When in Operations or Agile mode, show the mode-specific nav instead
+    if (appMode === "operations") {
+      return OPS_SECTIONS.map(s => ({ ...s, displayLabel: s.label, isCustom: false }));
+    }
+    if (appMode === "agile") {
+      return AGILE_SECTIONS.map(s => ({ ...s, displayLabel: s.label, isCustom: false }));
+    }
+    // Default Project mode
     const all = [...builtInSectionsWithOrder, ...customSectionsWithOrder];
     if (!sectionOrderList.length) return all;
     const ordered = sectionOrderList
@@ -829,6 +884,44 @@ function DashboardLayoutContent({
                   className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
                 >
                   <Search className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* App Mode Switcher */}
+              <div className="px-2 py-2 group-data-[collapsible=icon]:hidden">
+                <div
+                  className="flex rounded-lg overflow-hidden border border-border/50"
+                  style={{ borderColor: activeMode.accent + "55" }}
+                >
+                  {APP_MODES.map((mode) => {
+                    const isActive = appMode === mode.key;
+                    return (
+                      <button
+                        key={mode.key}
+                        onClick={() => switchMode(mode.key)}
+                        className="flex-1 flex flex-col items-center gap-0.5 py-1.5 text-[10px] font-semibold tracking-wide transition-all"
+                        style={isActive
+                          ? { background: mode.accent + "22", color: mode.accent, borderBottom: `2px solid ${mode.accent}` }
+                          : { color: "var(--muted-foreground)", borderBottom: "2px solid transparent" }
+                        }
+                        title={mode.label}
+                      >
+                        <mode.Icon className="h-3.5 w-3.5" />
+                        {mode.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              {/* Icon-collapsed mode: single icon showing active mode */}
+              <div className="hidden group-data-[collapsible=icon]:flex justify-center px-2 py-2">
+                <button
+                  onClick={() => switchMode(appMode === "project" ? "operations" : appMode === "operations" ? "agile" : "project")}
+                  title={`Mode: ${activeMode.label} (click to cycle)`}
+                  className="h-8 w-8 flex items-center justify-center rounded-md transition-colors"
+                  style={{ color: activeMode.accent, background: activeMode.accent + "22" }}
+                >
+                  <activeMode.Icon className="h-4 w-4" />
                 </button>
               </div>
 
