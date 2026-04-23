@@ -235,7 +235,7 @@ const OPS_SECTIONS: SidebarSection[] = [
   {
     label: "SERVICE DESK",
     items: [
-      { icon: LayoutDashboard, label: "Dashboard",     path: "/dashboard" },
+      { icon: LayoutDashboard, label: "Dashboard",     path: "/operations" },
       { icon: Ticket,          label: "SLA Tickets",   path: "/sla-tickets" },
       { icon: Flame,           label: "Escalations",   path: "/escalations" },
       { icon: BookOpen,        label: "Knowledge Base", path: "/knowledge-base" },
@@ -246,7 +246,7 @@ const AGILE_SECTIONS: SidebarSection[] = [
   {
     label: "AGILE / SCRUM",
     items: [
-      { icon: LayoutDashboard, label: "Dashboard",  path: "/dashboard" },
+      { icon: LayoutDashboard, label: "Dashboard",  path: "/agile" },
       { icon: ListChecks,      label: "Backlog",    path: "/user-stories" },
       { icon: Zap,             label: "Sprints",    path: "/sprints" },
       { icon: LayoutGrid,      label: "Board",      path: "/sprints?tab=board" },
@@ -476,6 +476,16 @@ function DashboardLayoutContent({
     setAppMode(mode);
     localStorage.setItem(APP_MODE_KEY, mode);
   }
+  // Auto-detect mode from current route
+  useEffect(() => {
+    if (location.startsWith("/operations") || location.startsWith("/sla-tickets") || location.startsWith("/escalations")) {
+      if (appMode !== "operations") switchMode("operations");
+    } else if (location.startsWith("/agile") || location.startsWith("/sprints") || location.startsWith("/user-stories")) {
+      if (appMode !== "agile") switchMode("agile");
+    }
+    // Note: we don't auto-switch back to project to avoid jarring UX
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location]);
   const activeMode = APP_MODES.find(m => m.key === appMode)!;
 
   // ─── Section customisation state ────────────────────────────────────────

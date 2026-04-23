@@ -71,6 +71,8 @@ import ReqTraceability from "./pages/ReqTraceability";
 import BusinessCase from "./pages/BusinessCase";
 import ClosingReport from "./pages/ClosingReport";
 import Escalations from "./pages/Escalations";
+import OperationsDashboard from "./pages/OperationsDashboard";
+import AgileDashboard from "./pages/AgileDashboard";
 const FeaturesPage = Features;
 const UserStoriesPage = UserStories;
 const TestPlansPage = TestPlans;
@@ -379,6 +381,16 @@ function Router() {
       </Route>
       <Route path="/escalations">
         <Escalations />
+      </Route>
+      <Route path="/operations">
+        <DashboardLayout>
+          <OperationsDashboard />
+        </DashboardLayout>
+      </Route>
+      <Route path="/agile">
+        <DashboardLayout>
+          <AgileDashboard />
+        </DashboardLayout>
       </Route>
       <Route path={"/stakeholder-management"}>
         <DashboardLayout>

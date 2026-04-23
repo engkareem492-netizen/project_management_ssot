@@ -889,8 +889,12 @@ export default function Issues() {
                           {issue.issueGroup && (
                             <Badge variant="outline" className="whitespace-nowrap shrink-0">{issue.issueGroup}</Badge>
                           )}
-                          <Badge variant={getPriorityColor(issue.priority)} className="whitespace-nowrap shrink-0">{issue.priority || '-'}</Badge>
-                          <Badge variant={getStatusColor(issue.status)} className="whitespace-nowrap shrink-0">{issue.status || '-'}</Badge>
+                          <span className="inline-flex w-24 shrink-0">
+                            <Badge variant={getPriorityColor(issue.priority)} className="w-full justify-center">{issue.priority || '-'}</Badge>
+                          </span>
+                          <span className="inline-flex w-20 shrink-0">
+                            <Badge variant={getStatusColor(issue.status)} className="w-full justify-center">{issue.status || '-'}</Badge>
+                          </span>
                           <span className="text-sm flex-1 break-words min-w-0 text-muted-foreground">{issue.description}</span>
                         </div>
                       ) : (
@@ -902,8 +906,12 @@ export default function Issues() {
                             {issue.issueGroup && (
                               <Badge variant="outline" className="whitespace-nowrap shrink-0">{issue.issueGroup}</Badge>
                             )}
-                            <Badge variant={getPriorityColor(issue.priority)} className="whitespace-nowrap shrink-0">{issue.priority || '-'}</Badge>
-                            <Badge variant={getStatusColor(issue.status)} className="whitespace-nowrap shrink-0">{issue.status || '-'}</Badge>
+                            <span className="inline-flex w-24 shrink-0">
+                              <Badge variant={getPriorityColor(issue.priority)} className="w-full justify-center">{issue.priority || '-'}</Badge>
+                            </span>
+                            <span className="inline-flex w-20 shrink-0">
+                              <Badge variant={getStatusColor(issue.status)} className="w-full justify-center">{issue.status || '-'}</Badge>
+                            </span>
                             <span className="text-sm flex-1 break-words min-w-0 text-muted-foreground">{issue.description}</span>
                           </div>
                           {/* Line 2: Vertical field layout */}
