@@ -93,6 +93,30 @@ export const portfoliosRouter = router({
         .orderBy(programs.name);
     }),
 
+  /** Link a program to a portfolio (sets programs.portfolioId) */
+  linkProgram: protectedProcedure
+    .input(z.object({ portfolioId: z.number(), programId: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("DB unavailable");
+      await db.update(programs)
+        .set({ portfolioId: input.portfolioId })
+        .where(eq(programs.id, input.programId));
+      return { success: true };
+    }),
+
+  /** Link a project directly to a portfolio (sets projects.portfolioId) */
+  linkProject: protectedProcedure
+    .input(z.object({ portfolioId: z.number(), projectId: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("DB unavailable");
+      await db.update(projects)
+        .set({ portfolioId: input.portfolioId })
+        .where(eq(projects.id, input.projectId));
+      return { success: true };
+    }),
+
   /**
    * Returns a full summary: portfolio + programs + projects (grouped),
    * plus unassigned projects that have no programId but belong to this portfolio.

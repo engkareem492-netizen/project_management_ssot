@@ -1464,6 +1464,8 @@ export async function getAllProjects() {
       createdAt: projects.createdAt,
       createdBy: projects.createdBy,
       password: projects.password,
+      programId: projects.programId,
+      portfolioId: projects.portfolioId,
     }).from(projects);
     return result.map(p => ({ ...p, hasPassword: !!p.password, password: undefined }));
   } catch (error) {
@@ -1484,6 +1486,8 @@ export async function getProjectsByUser(userId: number) {
       createdAt: projects.createdAt,
       createdBy: projects.createdBy,
       password: projects.password,
+      programId: projects.programId,
+      portfolioId: projects.portfolioId,
     }).from(projects).where(eq(projects.createdBy, userId));
     return result.map(p => ({ ...p, hasPassword: !!p.password, password: undefined }));
   } catch (error) {

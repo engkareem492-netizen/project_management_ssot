@@ -81,6 +81,18 @@ export const programsRouter = router({
         .orderBy(projects.name);
     }),
 
+  /** Link a project to a program (sets projects.programId) */
+  linkProject: protectedProcedure
+    .input(z.object({ programId: z.number(), projectId: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("DB unavailable");
+      await db.update(projects)
+        .set({ programId: input.programId })
+        .where(eq(projects.id, input.projectId));
+      return { success: true };
+    }),
+
   /**
    * Returns pooled (isPooledResource=true) stakeholders across all projects
    * in this program. Used to show cross-project resource impact.

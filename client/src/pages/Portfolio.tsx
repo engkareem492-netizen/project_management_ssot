@@ -715,6 +715,11 @@ export default function Portfolio() {
               portfolios={portfolios as any[]}
               programs={programs as any[]}
               projects={projects}
+              onLinkCreated={() => {
+                utils.projects.list.invalidate();
+                utils.programs.list.invalidate();
+                utils.portfolios.list.invalidate();
+              }}
             />
           </div>
         </TabsContent>

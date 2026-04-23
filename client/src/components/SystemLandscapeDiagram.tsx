@@ -19,6 +19,8 @@ import {
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { Search, Network } from "lucide-react";
+import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 export interface Portfolio {
@@ -44,6 +46,8 @@ interface Props {
   portfolios: Portfolio[];
   programs: Program[];
   projects: Project[];
+  /** Called after a link is persisted so the parent can refetch data */
+  onLinkCreated?: () => void;
 }
 
 // ── Custom node: Portfolio ────────────────────────────────────────────────────
@@ -63,13 +67,13 @@ function PortfolioNode({ data, selected }: NodeProps) {
       <Handle
         type="target"
         position={Position.Top}
-        style={{ background: "#60a5fa", width: 12, height: 12, border: "2px solid #1e3a5f" }}
+        style={{ background: "#60a5fa", width: 14, height: 14, border: "2px solid #1e3a5f" }}
       />
       {/* Source handle at bottom — drag from here to connect */}
       <Handle
         type="source"
         position={Position.Bottom}
-        style={{ background: "#60a5fa", width: 12, height: 12, border: "2px solid #1e3a5f" }}
+        style={{ background: "#60a5fa", width: 14, height: 14, border: "2px solid #1e3a5f" }}
       />
       <div className="text-[10px] font-bold tracking-widest text-blue-400 mb-1">PORTFOLIO</div>
       <div
@@ -104,12 +108,12 @@ function ProgramNode({ data, selected }: NodeProps) {
       <Handle
         type="target"
         position={Position.Top}
-        style={{ background: "#f59e0b", width: 12, height: 12, border: "2px solid #451a03" }}
+        style={{ background: "#f59e0b", width: 14, height: 14, border: "2px solid #451a03" }}
       />
       <Handle
         type="source"
         position={Position.Bottom}
-        style={{ background: "#f59e0b", width: 12, height: 12, border: "2px solid #451a03" }}
+        style={{ background: "#f59e0b", width: 14, height: 14, border: "2px solid #451a03" }}
       />
       <div className="text-[10px] font-bold tracking-widest text-amber-400 mb-1">PROGRAM</div>
       <div
@@ -160,8 +164,8 @@ function ProjectNode({ data, selected }: NodeProps) {
         position={Position.Top}
         style={{
           background: colors.border,
-          width: 12,
-          height: 12,
+          width: 14,
+          height: 14,
           border: "2px solid #052e16",
         }}
       />
@@ -170,8 +174,8 @@ function ProjectNode({ data, selected }: NodeProps) {
         position={Position.Bottom}
         style={{
           background: colors.border,
-          width: 12,
-          height: 12,
+          width: 14,
+          height: 14,
           border: "2px solid #052e16",
         }}
       />
@@ -211,11 +215,47 @@ const NODE_W = 210;
 const H_GAP = 70;
 const ROW_Y = { portfolio: 60, program: 300, project: 540 };
 
+// ── Parse node id helpers ─────────────────────────────────────────────────────
+function parseNodeId(id: string): { type: "portfolio" | "program" | "project"; id: number } | null {
+  const m = id.match(/^(portfolio|program|project)-(\d+)$/);
+  if (!m) return null;
+  return { type: m[1] as "portfolio" | "program" | "project", id: parseInt(m[2]) };
+}
+
 // ── Main component (inner) ────────────────────────────────────────────────────
-function SystemLandscapeDiagramInner({ portfolios, programs, projects }: Props) {
+function SystemLandscapeDiagramInner({ portfolios, programs, projects, onLinkCreated }: Props) {
   const [filter, setFilter] = useState<"all" | "portfolio" | "program" | "project">("all");
   const [search, setSearch] = useState("");
   const [selectedNode, setSelectedNode] = useState<any>(null);
+
+  // tRPC mutations for persisting links
+  const utils = trpc.useUtils();
+  const linkProgramToPortfolio = trpc.portfolios.linkProgram.useMutation({
+    onSuccess: () => {
+      utils.programs.list.invalidate();
+      utils.portfolios.list.invalidate();
+      utils.projects.list.invalidate();
+      onLinkCreated?.();
+      toast.success("Program linked to portfolio");
+    },
+    onError: (e) => toast.error(`Failed to link: ${e.message}`),
+  });
+  const linkProjectToPortfolio = trpc.portfolios.linkProject.useMutation({
+    onSuccess: () => {
+      utils.projects.list.invalidate();
+      onLinkCreated?.();
+      toast.success("Project linked to portfolio");
+    },
+    onError: (e) => toast.error(`Failed to link: ${e.message}`),
+  });
+  const linkProjectToProgram = trpc.programs.linkProject.useMutation({
+    onSuccess: () => {
+      utils.projects.list.invalidate();
+      onLinkCreated?.();
+      toast.success("Project linked to program");
+    },
+    onError: (e) => toast.error(`Failed to link: ${e.message}`),
+  });
 
   // Build nodes + edges from data
   const { initialNodes, initialEdges } = useMemo(() => {
@@ -392,9 +432,38 @@ function SystemLandscapeDiagramInner({ portfolios, programs, projects }: Props) 
     setEdges(initialEdges);
   }, [initialNodes, initialEdges]);
 
-  // ── Drag-to-connect handler ──
+  // ── Drag-to-connect handler — persists to DB ──────────────────────────────
   const onConnect = useCallback(
     (connection: Connection) => {
+      if (!connection.source || !connection.target) return;
+
+      const src = parseNodeId(connection.source);
+      const tgt = parseNodeId(connection.target);
+
+      if (!src || !tgt) return;
+
+      // Determine relationship type and call the right mutation
+      if (src.type === "portfolio" && tgt.type === "program") {
+        linkProgramToPortfolio.mutate({ portfolioId: src.id, programId: tgt.id });
+      } else if (src.type === "portfolio" && tgt.type === "project") {
+        linkProjectToPortfolio.mutate({ portfolioId: src.id, projectId: tgt.id });
+      } else if (src.type === "program" && tgt.type === "project") {
+        linkProjectToProgram.mutate({ programId: src.id, projectId: tgt.id });
+      } else if (src.type === "program" && tgt.type === "portfolio") {
+        // Reverse drag: portfolio→program
+        linkProgramToPortfolio.mutate({ portfolioId: tgt.id, programId: src.id });
+      } else if (src.type === "project" && tgt.type === "program") {
+        // Reverse drag: program→project
+        linkProjectToProgram.mutate({ programId: tgt.id, projectId: src.id });
+      } else if (src.type === "project" && tgt.type === "portfolio") {
+        // Reverse drag: portfolio→project
+        linkProjectToPortfolio.mutate({ portfolioId: tgt.id, projectId: src.id });
+      } else {
+        toast.error("Cannot connect two nodes of the same type");
+        return;
+      }
+
+      // Optimistically add the edge (will be replaced by real edge on refetch)
       const newEdge: Edge = {
         ...connection,
         id: `e-custom-${connection.source}-${connection.target}-${Date.now()}`,
@@ -410,7 +479,7 @@ function SystemLandscapeDiagramInner({ portfolios, programs, projects }: Props) 
       } as Edge;
       setEdges((eds) => addEdge(newEdge, eds));
     },
-    [setEdges]
+    [setEdges, linkProgramToPortfolio, linkProjectToPortfolio, linkProjectToProgram]
   );
 
   const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
@@ -463,8 +532,7 @@ function SystemLandscapeDiagramInner({ portfolios, programs, projects }: Props) 
 
         <div className="ml-auto text-[11px] text-white/30 hidden sm:block">
           Click nodes to view details · Drag nodes to reposition · Drag from{" "}
-          <strong className="text-white/50">bottom port</strong> to{" "}
-          <strong className="text-white/50">top port</strong> to connect
+          <strong className="text-white/50">any port</strong> to another node to connect
         </div>
       </div>
 
