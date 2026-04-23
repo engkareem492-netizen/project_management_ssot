@@ -915,3 +915,11 @@
 - [x] Persist selected mode in localStorage
 - [x] Sidebar left border accent changes colour per mode
 - [x] Issues list row layout fix: ID + badges + description on one clean row (no red vertical line)
+
+## Sidebar Mode Cleanup (Apr 23, 2026)
+- [x] Remove Sprints from Project mode SIDEBAR_SECTIONS (covered in Agile mode)
+- [x] Remove User Stories from Project mode SIDEBAR_SECTIONS (covered in Agile mode as Backlog)
+- [x] Remove SLA Tickets from Project mode SIDEBAR_SECTIONS (covered in Operations mode)
+- [x] Remove Escalations from Project mode SIDEBAR_SECTIONS (covered in Operations mode)
+- [x] Verify Agile mode has: Dashboard, Backlog (User Stories), Sprints, Board, Burndown
+- [x] Verify Operations mode has: Dashboard, SLA Tickets, Escalations, Knowledge Base

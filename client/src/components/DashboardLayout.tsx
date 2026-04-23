@@ -152,7 +152,6 @@ const SIDEBAR_SECTIONS: SidebarSection[] = [
       { icon: FolderTree, label: "WBS", path: "/wbs" },
       { icon: Crosshair, label: "Scope Items", path: "/scope" },
       { icon: FileText, label: "Requirements", path: "/requirements" },
-      { icon: BookOpen, label: "User Stories", path: "/user-stories" },
       { icon: Flag, label: "Milestones", path: "/milestones" },
       { icon: BarChart2, label: "Gantt Chart", path: "/gantt" },
       { icon: AlertTriangle, label: "Risk Register", path: "/risk-register" },
@@ -169,14 +168,11 @@ const SIDEBAR_SECTIONS: SidebarSection[] = [
     label: "EXECUTION",
     items: [
       { icon: CheckSquare, label: "Tasks", path: "/tasks" },
-      { icon: Zap, label: "Sprints", path: "/sprints" },
       { icon: AlertCircle, label: "Issues", path: "/issues" },
       { icon: GitPullRequest, label: "Change Requests", path: "/change-requests" },
       { icon: MessageSquare, label: "Meetings & Decisions", path: "/meetings" },
       { icon: ListChecks, label: "Action Items", path: "/action-items" },
       { icon: Clock, label: "Time Tracking", path: "/time-tracking" },
-      { icon: Ticket, label: "SLA Tickets", path: "/sla-tickets" },
-      { icon: Flame, label: "Escalations", path: "/escalations" },
     ],
   },
   {
