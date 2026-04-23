@@ -610,29 +610,33 @@ export default function Dashboard() {
         {/* Project Health */}
         <Card className="p-6">
           <SectionTitle icon={Activity} title="Project Health" />
-          <div className="flex items-center gap-6">
-            <div className="relative flex-shrink-0">
+          <div className="flex items-start gap-4 mt-2">
+            {/* Ring with score centred inside */}
+            <div className="relative flex-shrink-0" style={{ width: 96, height: 96 }}>
               <ProgressRing pct={healthScore} color={healthColor} size={96} />
               <div className="absolute inset-0 flex items-center justify-center">
                 <span className="text-xl font-bold" style={{ color: healthColor }}>{healthScore}</span>
               </div>
-              <div className="mt-2 space-y-0.5 text-xs text-muted-foreground">
-                {risks.filter((r: any) => r.impact >= 4 && !isStatusComplete(r.status)).length > 0 && (
-                  <div>⚠ Critical risks: -{Math.min(risks.filter((r: any) => r.impact >= 4 && !isStatusComplete(r.status)).length * 10, 100)} pts</div>
-                )}
-                {kpis.overdueTasks > 0 && <div>⚠ Overdue tasks: -{Math.min(kpis.overdueTasks * 5, 30)} pts</div>}
-              </div>
-              {risks.filter((r: any) => r.impact >= 4 && !kpis.closedStatusIds.has(r.riskStatusId)).length > 0 && (
-                <div className="text-xs text-red-600">⚠ {risks.filter((r: any) => r.impact >= 4 && !kpis.closedStatusIds.has(r.riskStatusId)).length} critical risk(s)</div>
+            </div>
+            {/* Warning / healthy indicators in a separate column */}
+            <div className="flex-1 min-w-0 space-y-1 text-xs pt-1">
+              {risks.filter((r: any) => r.impact >= 4 && !isStatusComplete(r.status)).length > 0 && (
+                <div className="text-muted-foreground">⚠ Critical risks: -{Math.min(risks.filter((r: any) => r.impact >= 4 && !isStatusComplete(r.status)).length * 10, 100)} pts</div>
               )}
               {kpis.overdueTasks > 0 && (
-                <div className="text-xs text-red-600">⚠ {kpis.overdueTasks} overdue task(s)</div>
+                <div className="text-muted-foreground">⚠ Overdue tasks: -{Math.min(kpis.overdueTasks * 5, 30)} pts</div>
+              )}
+              {risks.filter((r: any) => r.impact >= 4 && !kpis.closedStatusIds.has(r.riskStatusId)).length > 0 && (
+                <div className="text-red-500">⚠ {risks.filter((r: any) => r.impact >= 4 && !kpis.closedStatusIds.has(r.riskStatusId)).length} critical risk(s)</div>
+              )}
+              {kpis.overdueTasks > 0 && (
+                <div className="text-red-500">⚠ {kpis.overdueTasks} overdue task(s)</div>
               )}
               {kpis.blockedDeps > 0 && (
-                <div className="text-xs text-orange-600">⚠ {kpis.blockedDeps} blocked dependency(ies)</div>
+                <div className="text-orange-500">⚠ {kpis.blockedDeps} blocked dependency(ies)</div>
               )}
               {healthScore >= 80 && (
-                <div className="text-xs text-green-600">✓ All indicators healthy</div>
+                <div className="text-green-500">✓ All indicators healthy</div>
               )}
             </div>
           </div>
