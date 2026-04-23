@@ -79,6 +79,7 @@ import { closingReportRouter } from "./routers/closingReport.router";
 import { customFieldsRouter } from "./routers/customFields";
 import { phasesRouter } from "./routers/phases.router";
 import { wbsRouter } from "./routers/wbs.router";
+import { escalationsRouter } from "./routers/escalations.router";
 
 export const appRouter = router({
   system: systemRouter,
@@ -152,6 +153,7 @@ export const appRouter = router({
   customFields: customFieldsRouter,
   phases: phasesRouter,
   wbs: wbsRouter,
+  escalations: escalationsRouter,
   scopeItems: router({
     list: protectedProcedure
       .input(z.object({ projectId: z.number() }))
@@ -811,6 +813,13 @@ export const appRouter = router({
         milestoneId: z.number().nullable().optional(),
         phaseId: z.union([z.string(), z.number()]).nullable().optional(),
         issueId: z.string().nullable().optional(),
+        taskType: z.string().optional(),
+        percentComplete: z.number().min(0).max(100).optional(),
+        plannedCost: z.number().optional(),
+        actualCost: z.number().optional(),
+        durationDays: z.number().optional(),
+        baselineStart: z.string().optional(),
+        baselineEnd: z.string().optional(),
       }))
       .mutation(async ({ input }) => {
         try {
@@ -903,6 +912,20 @@ export const appRouter = router({
           devPlanId: z.number().nullable().optional(),
           devTaskSwotId: z.number().nullable().optional(),
           devTaskSkillId: z.number().nullable().optional(),
+          taskType: z.string().nullable().optional(),
+          percentComplete: z.number().min(0).max(100).nullable().optional(),
+          plannedCost: z.number().nullable().optional(),
+          actualCost: z.number().nullable().optional(),
+          earnedValue: z.number().nullable().optional(),
+          durationDays: z.number().nullable().optional(),
+          baselineStart: z.string().nullable().optional(),
+          baselineEnd: z.string().nullable().optional(),
+          earlyStart: z.string().nullable().optional(),
+          earlyFinish: z.string().nullable().optional(),
+          lateStart: z.string().nullable().optional(),
+          lateFinish: z.string().nullable().optional(),
+          totalFloat: z.number().nullable().optional(),
+          isCritical: z.boolean().nullable().optional(),
         }),
       }))
       .mutation(async ({ input, ctx }) => {

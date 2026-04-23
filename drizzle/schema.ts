@@ -277,6 +277,25 @@ export const tasks = mysqlTable("tasks", {
   scheduleType: varchar("scheduleType", { length: 20 }).default("date_based"),
   // Resource effort
   manHours: decimal("manHours", { precision: 10, scale: 2 }),
+  // Task type for WBS (Summary | Work Package | Milestone)
+  taskType: varchar("taskType", { length: 50 }).default("Work Package"),
+  // Progress
+  percentComplete: int("percentComplete").default(0),
+  // Cost fields (for live EVM)
+  plannedCost: decimal("plannedCost", { precision: 15, scale: 2 }).default("0"),
+  actualCost: decimal("actualCost", { precision: 15, scale: 2 }).default("0"),
+  earnedValue: decimal("earnedValue", { precision: 15, scale: 2 }).default("0"),
+  durationDays: decimal("durationDays", { precision: 8, scale: 1 }),
+  // Baseline dates
+  baselineStart: varchar("baselineStart", { length: 50 }),
+  baselineEnd: varchar("baselineEnd", { length: 50 }),
+  // CPM fields
+  earlyStart: varchar("earlyStart", { length: 50 }),
+  earlyFinish: varchar("earlyFinish", { length: 50 }),
+  lateStart: varchar("lateStart", { length: 50 }),
+  lateFinish: varchar("lateFinish", { length: 50 }),
+  totalFloat: decimal("totalFloat", { precision: 8, scale: 2 }),
+  isCritical: int("isCritical").default(0),
   // Sprint association
   sprintId: int("sprintId"),
   importedAt: timestamp("importedAt").defaultNow().notNull(),
@@ -1829,6 +1848,7 @@ export const wbsNodes = mysqlTable("wbsNodes", {
   responsible: varchar("responsible", { length: 255 }),
   status: mysqlEnum("status", ["Not Started", "In Progress", "Complete", "On Hold"]).default("Not Started"),
   linkedTaskId: int("linkedTaskId"),                          // FK → tasks.id
+  taskType: varchar("taskType", { length: 30 }).default("Work Package"),  // Summary | Work Package | Milestone
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -2479,3 +2499,61 @@ export const resourceAllocations = mysqlTable("resourceAllocations", {
 });
 export type ResourceAllocation = typeof resourceAllocations.$inferSelect;
 export type InsertResourceAllocation = typeof resourceAllocations.$inferInsert;
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// ESCALATIONS
+// ════════════════════════════════════════════════════════════════════════════
+export const escalations = mysqlTable("escalations", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  code: varchar("code", { length: 30 }).notNull(),          // ESC-001
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  level: int("level").default(1),                            // 1=Low, 2=Medium, 3=High
+  status: varchar("status", { length: 50 }).default("Open"), // Open | In Progress | Resolved | Closed
+  raisedBy: varchar("raisedBy", { length: 200 }),
+  raisedAt: varchar("raisedAt", { length: 50 }),
+  dueDate: varchar("dueDate", { length: 50 }),
+  resolvedAt: varchar("resolvedAt", { length: 50 }),
+  slaHours: int("slaHours"),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type Escalation = typeof escalations.$inferSelect;
+export type InsertEscalation = typeof escalations.$inferInsert;
+
+// ════════════════════════════════════════════════════════════════════════════
+// WBS RELATIONSHIPS
+// ════════════════════════════════════════════════════════════════════════════
+export const wbsRelationships = mysqlTable("wbsRelationships", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  sourceId: int("sourceId").notNull(),   // FK to wbsNodes.id
+  targetId: int("targetId").notNull(),   // FK to wbsNodes.id
+  relation: varchar("relation", { length: 20 }).default("dependency"), // 1:1 | 1:N | dependency
+  lagDays: int("lagDays").default(0),
+  note: text("note"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type WbsRelationship = typeof wbsRelationships.$inferSelect;
+export type InsertWbsRelationship = typeof wbsRelationships.$inferInsert;
+
+// ════════════════════════════════════════════════════════════════════════════
+// WORK PATTERNS (reusable resource calendar templates)
+// ════════════════════════════════════════════════════════════════════════════
+export const workPatterns = mysqlTable("workPatterns", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  name: varchar("name", { length: 100 }).notNull(),          // e.g. "Standard 5-day"
+  workDays: varchar("workDays", { length: 20 }).default("1,2,3,4,5"), // comma-separated 1=Mon..7=Sun
+  hoursPerDay: decimal("hoursPerDay", { precision: 4, scale: 1 }).default("8"),
+  startHour: int("startHour").default(9),
+  endHour: int("endHour").default(17),
+  description: text("description"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type WorkPattern = typeof workPatterns.$inferSelect;
+export type InsertWorkPattern = typeof workPatterns.$inferInsert;

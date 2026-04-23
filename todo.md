@@ -895,3 +895,14 @@
 - [x] Frontend: System Landscape Diagram (interactive SVG hierarchy)
 - [x] Frontend: Workload — Day view granularity
 - [x] Frontend: Stakeholder Excel import (3-sheet xlsx)
+
+## Reference Branch Comparison Enhancements (Apr 23 2026)
+- [x] CPM lib (forward/backward pass, earlyStart, lateStart, totalFloat, isCritical)
+- [x] CPM propagation tRPC procedure (wbsNodes.propagateCPM)
+- [x] Escalations DB table + tRPC router (ESC-XXXX, priority, SLA, status)
+- [x] Escalations page with full CRUD + SLA tracking
+- [x] Escalations added to sidebar navigation
+- [x] Tasks: percentComplete, plannedCost, actualCost, durationDays, baselineStart/End fields
+- [x] WBS: taskType field (Summary / Work Package / Milestone) with colour badges
+- [x] RAG health section added to Periodic Report
+- [x] CPM tests (5 passing)

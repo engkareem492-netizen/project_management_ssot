@@ -27,6 +27,13 @@ const EMPTY_FORM = {
   code: "", name: "", description: "", deliverable: "",
   responsible: "", status: "Not Started" as const,
   linkedTaskId: "" as string,
+  taskType: "Work Package" as string,
+};
+
+const TASK_TYPE_COLORS: Record<string, string> = {
+  "Summary":      "bg-purple-50 text-purple-700 border-purple-200",
+  "Work Package": "bg-blue-50 text-blue-700 border-blue-200",
+  "Milestone":    "bg-amber-50 text-amber-700 border-amber-200",
 };
 
 export default function WBS() {
@@ -93,6 +100,7 @@ export default function WBS() {
       responsible: node.responsible ?? "",
       status: node.status ?? "Not Started",
       linkedTaskId: node.linkedTaskId ? String(node.linkedTaskId) : "",
+      taskType: node.taskType ?? "Work Package",
     });
   };
 
@@ -166,9 +174,22 @@ export default function WBS() {
                     </Select>
                   </div>
                 </div>
-                <div>
-                  <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Description</Label>
-                  <Input className="h-7 text-xs mt-0.5" placeholder="Optional" value={editForm.description} onChange={e => setEditForm(p => ({ ...p, description: e.target.value }))} />
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Task Type</Label>
+                    <Select value={editForm.taskType} onValueChange={v => setEditForm(p => ({ ...p, taskType: v }))}>
+                      <SelectTrigger className="h-7 text-xs mt-0.5"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Summary">Summary</SelectItem>
+                        <SelectItem value="Work Package">Work Package</SelectItem>
+                        <SelectItem value="Milestone">Milestone</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Description</Label>
+                    <Input className="h-7 text-xs mt-0.5" placeholder="Optional" value={editForm.description} onChange={e => setEditForm(p => ({ ...p, description: e.target.value }))} />
+                  </div>
                 </div>
                 <div className="flex gap-2 pt-1">
                   <Button size="sm" className="h-7 text-xs gap-1"
@@ -181,6 +202,7 @@ export default function WBS() {
                       deliverable: editForm.deliverable || undefined,
                       responsible: editForm.responsible || undefined,
                       status: editForm.status,
+                      taskType: (editForm.taskType || undefined) as "Work Package" | "Summary" | "Milestone" | undefined,
                       linkedTaskId: editForm.linkedTaskId ? parseInt(editForm.linkedTaskId) : null,
                     })}>
                     {updateNode.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />} Save
@@ -216,6 +238,13 @@ export default function WBS() {
                     <Link2 className="w-2.5 h-2.5" />
                     {(tasks as any[]).find((t: any) => t.id === node.linkedTaskId)?.taskId ?? `#${node.linkedTaskId}`}
                   </Badge>
+                )}
+
+                {/* Task Type */}
+                {node.taskType && node.taskType !== "Work Package" && (
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium shrink-0 ${TASK_TYPE_COLORS[node.taskType] ?? ""}`}>
+                    {node.taskType}
+                  </span>
                 )}
 
                 {/* Status */}
@@ -377,9 +406,22 @@ export default function WBS() {
                 </Select>
               </div>
             </div>
-            <div>
-              <Label className="text-xs">Description</Label>
-              <Input className="mt-1" placeholder="Optional description" value={addForm.description} onChange={e => setAddForm(p => ({ ...p, description: e.target.value }))} />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs">Task Type</Label>
+                <Select value={addForm.taskType} onValueChange={v => setAddForm(p => ({ ...p, taskType: v }))}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Summary">Summary</SelectItem>
+                    <SelectItem value="Work Package">Work Package</SelectItem>
+                    <SelectItem value="Milestone">Milestone</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Description</Label>
+                <Input className="mt-1" placeholder="Optional description" value={addForm.description} onChange={e => setAddForm(p => ({ ...p, description: e.target.value }))} />
+              </div>
             </div>
           </div>
           <DialogFooter>
@@ -394,6 +436,7 @@ export default function WBS() {
                 deliverable: addForm.deliverable || undefined,
                 responsible: addForm.responsible || undefined,
                 status: addForm.status,
+                taskType: (addForm.taskType || undefined) as "Work Package" | "Summary" | "Milestone" | undefined,
                 linkedTaskId: addForm.linkedTaskId ? parseInt(addForm.linkedTaskId) : undefined,
                 parentId: addParentId ?? undefined,
               })}>

@@ -64,6 +64,7 @@ import {
   Scroll,
   LayoutGrid,
   Zap,
+  Flame,
   Target,
   Clock,
   Ticket,
@@ -172,6 +173,7 @@ const SIDEBAR_SECTIONS: SidebarSection[] = [
       { icon: ListChecks, label: "Action Items", path: "/action-items" },
       { icon: Clock, label: "Time Tracking", path: "/time-tracking" },
       { icon: Ticket, label: "SLA Tickets", path: "/sla-tickets" },
+      { icon: Flame, label: "Escalations", path: "/escalations" },
     ],
   },
   {

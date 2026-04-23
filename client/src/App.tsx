@@ -70,6 +70,7 @@ import ConceptGuidePage from "./pages/ConceptGuide";
 import ReqTraceability from "./pages/ReqTraceability";
 import BusinessCase from "./pages/BusinessCase";
 import ClosingReport from "./pages/ClosingReport";
+import Escalations from "./pages/Escalations";
 const FeaturesPage = Features;
 const UserStoriesPage = UserStories;
 const TestPlansPage = TestPlans;
@@ -375,6 +376,9 @@ function Router() {
       </Route>
       <Route path={"/defects"}>
         <DashboardLayout><Defects /></DashboardLayout>
+      </Route>
+      <Route path="/escalations">
+        <Escalations />
       </Route>
       <Route path={"/stakeholder-management"}>
         <DashboardLayout>

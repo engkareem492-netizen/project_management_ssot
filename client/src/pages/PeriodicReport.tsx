@@ -32,7 +32,8 @@ type SectionKey =
   | "requirements-in-period"
   | "risk-overview" | "overdue-tasks"
   | "pending-crs" | "recent-decisions"
-  | "risks-blockers" | "next-period-plan";
+  | "risks-blockers" | "next-period-plan"
+  | "rag-health";
 
 type PeriodType = "weekly" | "biweekly" | "monthly" | "quarterly" | "custom";
 
@@ -60,12 +61,13 @@ const ALL_SECTIONS: { key: SectionKey; label: string; desc: string; icon: string
   { key: "recent-decisions",     label: "Recent Decisions",           desc: "Decisions logged in the system",                     icon: "📅" },
   { key: "risks-blockers",       label: "Risks & Blockers",           desc: "Free-text risks and blockers for the period",         icon: "🚫" },
   { key: "next-period-plan",     label: "Next Period's Plan",         desc: "Free-text plan for the upcoming period",              icon: "🎯" },
+  { key: "rag-health",           label: "RAG Health Status",           desc: "Auto-computed Red/Amber/Green for Schedule, Cost, Scope, Risk, Overall", icon: "🚦" },
 ];
 
 const BUILT_IN_VERSIONS: Record<string, { label: string; desc: string; color: string; sections: SectionKey[] }> = {
   full: {
     label: "Full Report",
-    desc: "All 15 sections — comprehensive project status update",
+    desc: "All 16 sections — comprehensive project status update",
     color: "bg-slate-100 text-slate-800 border-slate-300",
     sections: ALL_SECTIONS.map((s) => s.key),
   },
@@ -629,6 +631,46 @@ tr:nth-child(even) td{background:#f9fafb}
               <div style={{ background: "#f0f7ff", borderLeft: "4px solid #0f4c75", padding: "12px 16px", borderRadius: "4px", whiteSpace: "pre-wrap" }}>{nextSteps}</div>
             </SectionBlock>
           )}
+
+          {hasSection("rag-health") && (() => {
+            const totalTasks = summary.totalTasks ?? 0;
+            const overdue = overdueTasks.length;
+            const overdueRatio = totalTasks > 0 ? overdue / totalTasks : 0;
+            const scheduleRAG = overdueRatio > 0.2 ? "Red" : overdueRatio > 0.1 ? "Amber" : "Green";
+            const criticalRisks = riskScoreBreakdown?.critical ?? 0;
+            const highRisks = riskScoreBreakdown?.high ?? 0;
+            const riskRAG = criticalRisks > 0 ? "Red" : highRisks > 2 ? "Amber" : "Green";
+            const openHighIssues = highPriorityOpenIssues.length;
+            const scopeRAG = openHighIssues > 5 ? "Red" : openHighIssues > 2 ? "Amber" : "Green";
+            const pendingCRCount = pendingCRs.length;
+            const costRAG = pendingCRCount > 5 ? "Amber" : "Green";
+            const overallRAG = [scheduleRAG, riskRAG, scopeRAG, costRAG].includes("Red") ? "Red" : [scheduleRAG, riskRAG, scopeRAG, costRAG].includes("Amber") ? "Amber" : "Green";
+            const ragColor = (r: string) => r === "Red" ? { bg: "#fee2e2", color: "#dc2626", dot: "#dc2626" } : r === "Amber" ? { bg: "#fef3c7", color: "#d97706", dot: "#d97706" } : { bg: "#dcfce7", color: "#16a34a", dot: "#16a34a" };
+            const items = [
+              { label: "Schedule", rag: scheduleRAG, note: `${overdue} overdue task${overdue !== 1 ? "s" : ""}` },
+              { label: "Cost", rag: costRAG, note: `${pendingCRCount} pending CR${pendingCRCount !== 1 ? "s" : ""}` },
+              { label: "Scope", rag: scopeRAG, note: `${openHighIssues} high-priority issue${openHighIssues !== 1 ? "s" : ""}` },
+              { label: "Risk", rag: riskRAG, note: `${criticalRisks} critical, ${highRisks} high risk${highRisks !== 1 ? "s" : ""}` },
+              { label: "Overall", rag: overallRAG, note: "Composite health" },
+            ];
+            return (
+              <SectionBlock num={sectionNum(activeSections, "rag-health")} title="RAG Health Status" h2Style={{ ...H2, color: "#374151", borderBottomColor: "#374151" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: "10px", margin: "12px 0" }}>
+                  {items.map((item) => {
+                    const c = ragColor(item.rag);
+                    return (
+                      <div key={item.label} style={{ background: c.bg, border: `2px solid ${c.color}40`, borderRadius: "10px", padding: "14px 10px", textAlign: "center" }}>
+                        <div style={{ width: "14px", height: "14px", borderRadius: "50%", background: c.dot, margin: "0 auto 8px" }} />
+                        <div style={{ fontSize: "13px", fontWeight: "700", color: c.color }}>{item.rag}</div>
+                        <div style={{ fontSize: "12px", fontWeight: "600", color: "#374151", marginTop: "4px" }}>{item.label}</div>
+                        <div style={{ fontSize: "10px", color: "#6b7280", marginTop: "4px" }}>{item.note}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </SectionBlock>
+            );
+          })()}
 
           {/* Footer */}
           <div style={{ marginTop: "40px", borderTop: "1px solid #e5e7eb", paddingTop: "12px", color: "#888", fontSize: "11px" }}>

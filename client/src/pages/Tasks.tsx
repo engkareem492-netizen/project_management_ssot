@@ -753,6 +753,9 @@ export default function Tasks() {
       // Map isActionItem checkbox → taskCategory so backend assigns ACT- prefix
       taskCategory: newTask.isActionItem ? 'action_item' : undefined,
       scheduleType: newTask.scheduleType || 'date_based',
+      percentComplete: newTask.percentComplete ?? 0,
+      plannedCost: newTask.plannedCost,
+      actualCost: newTask.actualCost,
     };
     
     // Clean up empty strings and convert to undefined to prevent SQL errors
@@ -2052,6 +2055,39 @@ export default function Tasks() {
                     value={newTask.priority}
                     onValueChange={(value) => setNewTask({ ...newTask, priority: value })}
                     placeholder="Select priority"
+                  />
+                </div>
+              </div>
+              {/* Progress & Cost */}
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="percentComplete">% Complete</Label>
+                  <Input
+                    id="percentComplete"
+                    type="number" min={0} max={100}
+                    value={newTask.percentComplete ?? 0}
+                    onChange={(e) => setNewTask({ ...newTask, percentComplete: parseInt(e.target.value) || 0 })}
+                    placeholder="0"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="plannedCost">Planned Cost</Label>
+                  <Input
+                    id="plannedCost"
+                    type="number" min={0} step={0.01}
+                    value={newTask.plannedCost ?? ''}
+                    onChange={(e) => setNewTask({ ...newTask, plannedCost: e.target.value ? parseFloat(e.target.value) : undefined })}
+                    placeholder="0.00"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="actualCost">Actual Cost</Label>
+                  <Input
+                    id="actualCost"
+                    type="number" min={0} step={0.01}
+                    value={newTask.actualCost ?? ''}
+                    onChange={(e) => setNewTask({ ...newTask, actualCost: e.target.value ? parseFloat(e.target.value) : undefined })}
+                    placeholder="0.00"
                   />
                 </div>
               </div>
